@@ -238,6 +238,13 @@ h2.section-title{
   color:var(--ink);
   margin-bottom:3px;
 }
+.materia-assunto-label{
+  font-family:var(--font-display);
+  font-size:14px;
+  font-weight:500;
+  color:var(--ink-soft);
+  margin-bottom:4px;
+}
 .section-desc{
   color:var(--ink-soft);
   font-size:12.5px;
@@ -1290,6 +1297,102 @@ const TEMA_RULES = [
   ['Controle Externo e Legislação Institucional', /controle externo|legisla[çc][ãa]o institucional|C[âa]mara Legislativa|controle da administra[çc][ãa]o|controle legislativo|poderes,? organiza[çc][ãa]o administrativa/],
 ];
 
+// Mapeamento tópico-do-Fonte → tema canônico, usado pelo parser legado (formato
+// com [Fonte]: "Tópico — Teoria (...)") quando não há TEMA/ASSUNTO explícito.
+// Construído a partir da lista real de Direito Tributário — evita que dezenas
+// de rótulos granulares (ex.: "ITR", "IPTU", "ICMS e DIFAL") virem "Geral".
+const FONTE_TOPICO_PARA_TEMA = {
+  'princípios tributários':'Sistema Tributário Nacional — Princípios Gerais',
+  'sistemas tributários':'Sistema Tributário Nacional — Princípios Gerais',
+  'sistema tributário nacional':'Sistema Tributário Nacional — Princípios Gerais',
+  'princípios do stn':'Sistema Tributário Nacional — Princípios Gerais',
+  'normas gerais':'Sistema Tributário Nacional — Princípios Gerais',
+  'legislação tributária':'Sistema Tributário Nacional — Princípios Gerais',
+  'fontes do direito tributário':'Sistema Tributário Nacional — Princípios Gerais',
+  'vigência e aplicação':'Sistema Tributário Nacional — Princípios Gerais',
+  'interpretação da lei':'Sistema Tributário Nacional — Princípios Gerais',
+  'integração da legislação':'Sistema Tributário Nacional — Princípios Gerais',
+  'leis interpretativas':'Sistema Tributário Nacional — Princípios Gerais',
+  'retroatividade benigna':'Sistema Tributário Nacional — Princípios Gerais',
+  'processo legislativo tributário':'Sistema Tributário Nacional — Princípios Gerais',
+  'competência tributária':'Competência Tributária',
+  'competência extraordinária':'Competência Tributária',
+  'competência cumulativa':'Competência Tributária',
+  'capacidade tributária ativa':'Competência Tributária',
+  'parafiscalidade':'Competência Tributária',
+  'limitações ao poder de tributar':'Limitações Constitucionais ao Poder de Tributar',
+  'princípio da anterioridade':'Limitações Constitucionais ao Poder de Tributar',
+  'princípio da anterioridade/noventena':'Limitações Constitucionais ao Poder de Tributar',
+  'princípio da legalidade':'Limitações Constitucionais ao Poder de Tributar',
+  'princípio do não confisco':'Limitações Constitucionais ao Poder de Tributar',
+  'princípio da irretroatividade':'Limitações Constitucionais ao Poder de Tributar',
+  'princípio da capacidade contributiva':'Limitações Constitucionais ao Poder de Tributar',
+  'imunidades tributárias':'Limitações Constitucionais ao Poder de Tributar',
+  'imunidade recíproca':'Limitações Constitucionais ao Poder de Tributar',
+  'imunidade religiosa':'Limitações Constitucionais ao Poder de Tributar',
+  'imunidade de imprensa':'Limitações Constitucionais ao Poder de Tributar',
+  'imunidade assistencial':'Limitações Constitucionais ao Poder de Tributar',
+  'isenção e imunidade':'Limitações Constitucionais ao Poder de Tributar',
+  'isenção heterônoma':'Limitações Constitucionais ao Poder de Tributar',
+  'extrafiscalidade':'Limitações Constitucionais ao Poder de Tributar',
+  'garantias tributárias':'Limitações Constitucionais ao Poder de Tributar',
+  'conceito de tributo':'Conceito e Espécies Tributárias',
+  'espécies tributárias':'Conceito e Espécies Tributárias',
+  'classificação dos tributos':'Conceito e Espécies Tributárias',
+  'conceito de imposto':'Conceito e Espécies Tributárias',
+  'natureza jurídica':'Conceito e Espécies Tributárias',
+  'impostos em espécie':'Conceito e Espécies Tributárias',
+  'impostos federais':'Impostos em Espécie',
+  'impostos da união':'Impostos em Espécie',
+  'impostos estaduais':'Impostos em Espécie',
+  'impostos municipais':'Impostos em Espécie',
+  'imposto de renda':'Impostos em Espécie',
+  'imposto sobre a renda':'Impostos em Espécie',
+  'imposto sobre produtos industrializados':'Impostos em Espécie',
+  'imposto sobre produtos industrializados - ipi':'Impostos em Espécie',
+  'itr':'Impostos em Espécie',
+  'imposto territorial rural - itr':'Impostos em Espécie',
+  'iptu':'Impostos em Espécie',
+  'imposto predial e territorial urbano':'Impostos em Espécie',
+  'ipva':'Impostos em Espécie',
+  'itcmd':'Impostos em Espécie',
+  'imposto sobre transmissão':'Impostos em Espécie',
+  'icms e iss':'Impostos em Espécie',
+  'icms e combustíveis':'Impostos em Espécie',
+  'icms e difal':'Impostos em Espécie',
+  'icms de importação':'Impostos em Espécie',
+  'fato gerador do icms':'Impostos em Espécie',
+  'imposto sobre circulação de mercadorias e serviços - icms':'Impostos em Espécie',
+  'imposto sobre serviços':'Impostos em Espécie',
+  'imposto seletivo':'Impostos em Espécie',
+  'imposto extraordinário de guerra':'Impostos em Espécie',
+  'taxas':'Taxas e Contribuição de Melhoria',
+  'taxas e certidões':'Taxas e Contribuição de Melhoria',
+  'contribuição de melhoria':'Taxas e Contribuição de Melhoria',
+  'contribuições especiais':'Contribuições Especiais',
+  'contribuições sociais':'Contribuições Especiais',
+  'contribuições previdenciárias':'Contribuições Especiais',
+  'cide':'Contribuições Especiais',
+  'cide-combustíveis':'Contribuições Especiais',
+  'pis e cofins':'Contribuições Especiais',
+  'cosip':'Contribuições Especiais',
+  'contribuição de iluminação pública':'Contribuições Especiais',
+  'empréstimo compulsório':'Contribuições Especiais',
+  'empréstimos compulsórios':'Contribuições Especiais',
+  'simples nacional':'Contribuições Especiais',
+  'repartição de receitas':'Repartição de Receitas Tributárias',
+  'vinculação de receitas':'Repartição de Receitas Tributárias',
+  'sujeição passiva':'Obrigação Tributária',
+  'sujeitos da obrigação':'Obrigação Tributária',
+  'reforma tributária':'Reforma Tributária (IBS/CBS)',
+  'ibs e cbs na administração':'Reforma Tributária (IBS/CBS)',
+  'cgibs':'Reforma Tributária (IBS/CBS)',
+};
+function classifyTemaPorFonte(fonteTexto){
+  if(!fonteTexto) return null;
+  const topico = fonteTexto.split('—')[0].trim().toLowerCase();
+  return FONTE_TOPICO_PARA_TEMA[topico] || null;
+}
 function classifyTema(enunciado, escopoKey){
   if(escopoKey === 'fora') return 'Fora do Edital';
   const firstLine = (enunciado||'').split('\n')[0];
@@ -1615,7 +1718,16 @@ async function carregarQuizSalvo(materiaKey){
 }
 async function verificarQuizSalvo(materiaKey){
   const q = await carregarQuizSalvo(materiaKey);
-  STATE.quizzesEmAndamento[materiaKey] = q;
+  const atual = STATE.quizzesEmAndamento[materiaKey];
+  // CORREÇÃO: antes, essa leitura local sobrescrevia SEM checar nada — se a busca
+  // na nuvem (mais recente) já tivesse resolvido primeiro, essa leitura local
+  // (mais lenta em alguns aparelhos) apagava o progresso correto com uma cópia
+  // desatualizada só porque terminou depois. Agora só sobrescreve se não houver
+  // nada em memória ainda, ou se o que veio do armazenamento local for de fato
+  // mais recente que o que já está lá (mesma regra usada no merge com a nuvem).
+  if(!atual || !q || (q.ultimoSalvamento||0) >= (atual.ultimoSalvamento||0)){
+    STATE.quizzesEmAndamento[materiaKey] = q;
+  }
   render();
 }
 function formatarDataHoraSalvamento(ts){
@@ -2310,6 +2422,7 @@ function getSetup(materiaKey){
       cargosExcluidos: new Set(),
       tendenciasExcluidas: new Set(),
       cargoMenuAberto: false,
+      incluirIneditas: true, // questões sintéticas (geradas por IA) entram por padrão
     };
   }
   return STATE.setupByMateria[materiaKey];
@@ -2356,7 +2469,9 @@ function anosDisponiveis(){
 }
 function bancasDisponiveis(){
   const set = new Set();
-  scoreableFiltradas().forEach(q=>set.add(bancaCurta(q.bc)));
+  // inéditas nunca entram na lista de bancas — elas têm filtro próprio
+  // ("Incluir questões inéditas"), pra não aparecerem disfarçadas de banca real
+  scoreableFiltradas().forEach(q=>{ if(!isInedita(q)) set.add(bancaCurta(q.bc)); });
   return Array.from(set).sort();
 }
 function cargosDisponiveis(){
@@ -2479,7 +2594,20 @@ function bancaCargoAnoLine(q){
   const ano = q.ar || (q.an && q.an.length ? Math.max(...q.an) : null);
   return `<span class="lbl-inline">Banca:</span> ${esc(banca)}`
     + (cargo ? ` &nbsp;·&nbsp; <span class="lbl-inline">Cargo:</span> ${esc(cargo)}` : '')
-    + (ano ? ` &nbsp;·&nbsp; <span class="lbl-inline">Ano:</span> ${ano}` : '');
+    + (ano ? ` &nbsp;·&nbsp; <span class="lbl-inline">Ano:</span> ${ano}` : '')
+    + incidenciaSimbolo(q);
+}
+// padrão banca-cargo-ano-incidência: a incidência histórica entra aqui em forma
+// compacta de símbolo (📊 total ×, 🕐 recentes nos últimos 5 anos), em vez do
+// texto completo — que continua disponível por extenso no badge/tooltip
+function incidenciaSimbolo(q){
+  if(!q.fr || isInedita(q)) return '';
+  const mTotal = q.fr.match(/(\d+)\s*concursos?\s*distint/i);
+  if(!mTotal) return '';
+  const mRecentes = q.fr.match(/\((\d+)\s*nos? [úu]ltimos\s*5\s*anos\)/i);
+  const total = mTotal[1];
+  const recentes = mRecentes ? mRecentes[1] : null;
+  return ` &nbsp;·&nbsp; <span class="lbl-inline" title="${esc(q.fr)}">📊 ${total}×${recentes!==null ? `&nbsp;<span style="opacity:.7;">(🕐${recentes} recentes)</span>` : ''}</span>`;
 }
 
 // ano mais recente entre todas as questões da matéria atual, usado como referência
@@ -2503,7 +2631,9 @@ function alertaTendenciaTag(q){
 // prefixo "INÉDITA" no campo de banca — robusto a variações de vírgula/espaço,
 // já que o prompt de geração pode formatar o texto de formas ligeiramente diferentes
 function isInedita(q){
-  return !!(q.bc && /^\s*inédita\b/i.test(q.bc));
+  // duas convenções em uso nas listas geradas até aqui: "INÉDITA, ..." e
+  // "Elaboração própria — ...". Ambas indicam questão sintética, não de banca real.
+  return !!(q.bc && /^\s*(inédita\b|elabora[çc][ãa]o pr[óo]pria\b)/i.test(q.bc));
 }
 function ineditaBadge(q){
   if(!isInedita(q)) return '';
@@ -2814,7 +2944,7 @@ function renderLanding(){
 
   return `
   <div class="landing-hero">
-    <div class="section-eyebrow">Matéria: ${esc(STATE.materia || '—')} · Assunto: ${STATE.tema!=='todos' ? esc(STATE.tema) : 'Todos os assuntos'} ${qtdSimuladosGerados>0 ? `<span class="sim-count-badge">${qtdSimuladosGerados} simulado(s) gerado(s)</span>` : ''}</div>
+    <div class="materia-assunto-label">${esc(STATE.materia || '—')} · ${STATE.tema!=='todos' ? esc(STATE.tema) : 'Todos os assuntos'} ${qtdSimuladosGerados>0 ? `<span class="sim-count-badge">${qtdSimuladosGerados} simulado(s) gerado(s)</span>` : ''}</div>
     <h2 class="section-title">Painel do candidato</h2>
     <p class="section-desc">Configure o nível de incidência e a quantidade de questões e clique em "Iniciar simulado" para começar.</p>
     <div class="big-stats">
@@ -2858,6 +2988,7 @@ function renderCamposFiltro(idPrefix){
   const bancas = bancasDisponiveis();
   const cargos = cargosDisponiveis();
   const tendencias = tendenciasDisponiveis();
+  const qtdIneditas = scoreableFiltradas().filter(isInedita).length;
   return `
     <div class="setup-mini-field">
       <label>Nível de incidência</label>
@@ -2881,6 +3012,12 @@ function renderCamposFiltro(idPrefix){
       <label>Banca</label>
       <div class="chip-row" id="chip-banca">
         ${bancas.map(b=>`<span class="chip ${!setup.bancasExcluidas.has(b)?'selected':''}" data-banca="${esc(b)}">${esc(b)}</span>`).join('')}
+      </div>
+    </div>` : ''}
+    ${qtdIneditas>0 ? `<div class="setup-mini-field">
+      <label>Origem</label>
+      <div class="chip-row" id="chip-ineditas">
+        <span class="chip ${setup.incluirIneditas?'selected':''}" data-toggle-ineditas="1" title="Questões geradas por IA para completar o banco, não pertencem a nenhuma banca real">🟥🟨 Incluir inéditas (${qtdIneditas})</span>
       </div>
     </div>` : ''}
     ${cargos.length>1 ? `<div class="setup-mini-field">
@@ -2939,7 +3076,8 @@ function pool(){
     !setup.anosExcluidos.has(String(q.ar||'')) &&
     !setup.bancasExcluidas.has(bancaCurta(q.bc)) &&
     !setup.cargosExcluidos.has(cargoCurto(q.bc)) &&
-    !setup.tendenciasExcluidas.has(tendenciaCurta(q.td))
+    !setup.tendenciasExcluidas.has(tendenciaCurta(q.td)) &&
+    (setup.incluirIneditas || !isInedita(q))
   );
 }
 
@@ -4090,13 +4228,35 @@ function parseTxtQuestions(content){
     const status = lineField(/\[Status\]:\s*(.+)/, b);
     const escopoRaw = lineField(/\[Escopo\]:\s*(.+)/, b);
     const fonte = lineField(/\[Fonte\]:\s*(.+)/, b);
-    const freq = lineField(/Frequ[êe]ncia hist[óo]rica\s*\|\s*(.+?)\s*\|/, b);
-    const nivelRaw = lineField(/N[íi]vel de incid[êe]ncia\s*\|\s*(.+?)\s*\|/, b);
-    const tendencia = lineField(/Tend[êe]ncia\s*\|\s*(.+?)\s*\|/, b);
+    const freqTabela = lineField(/Frequ[êe]ncia hist[óo]rica\s*\|\s*(.+?)\s*\|/, b);
+    let nivelRaw = lineField(/N[íi]vel de incid[êe]ncia\s*\|\s*(.+?)\s*\|/, b);
+    let tendencia = lineField(/Tend[êe]ncia\s*\|\s*(.+?)\s*\|/, b);
+    // formato alternativo visto em listas mais recentes: linha solta "📊 Incidência
+    // histórica: N concursos distintos (M nos últimos 5 anos) — período: AAAA-AAAA",
+    // sem tabela de barras. Sem isso, nível/tendência/ano ficavam todos vazios/no
+    // padrão, perdendo um dado real e valioso que já vinha pronto no material.
+    const incidenciaLinha = lineField(/📊\s*Incid[êe]ncia hist[óo]rica:\s*(.+)/, b);
+    let freq = freqTabela || incidenciaLinha || '';
+    if(!freqTabela && incidenciaLinha){
+      const mTotal = incidenciaLinha.match(/(\d+)\s*concursos?\s*distint/i);
+      const mRecentes = incidenciaLinha.match(/\((\d+)\s*nos? [úu]ltimos\s*5\s*anos\)/i);
+      const totalConcursos = mTotal ? parseInt(mTotal[1],10) : null;
+      const recentes5anos = mRecentes ? parseInt(mRecentes[1],10) : null;
+      if(!nivelRaw && totalConcursos!==null){
+        nivelRaw = totalConcursos>=15 ? 'alta' : totalConcursos>=5 ? 'média' : 'baixa';
+      }
+      if(!tendencia && totalConcursos!==null && recentes5anos!==null){
+        tendencia = recentes5anos===0 ? '↓ Em declínio' : (recentes5anos>=totalConcursos*0.6 ? '↑ Crescente' : '→ Estável');
+      }
+    }
 
     let enunciado = blockField('Enunciado', b);
-    const resolucao = blockField('Resolu[çc][ãa]o', b) || blockField('Resolução', b);
+    let resolucao = blockField('Resolu[çc][ãa]o', b) || blockField('Resolução', b);
     const resumo = blockField('Resumo Flash', b);
+    // a linha "📊 Incidência histórica: ..." vem dentro do próprio texto da
+    // Resolução no arquivo-fonte, mas já é extraída à parte (linhas acima) e
+    // exibida como badge visual — removida daqui pra não aparecer duplicada
+    if(resolucao) resolucao = resolucao.replace(/\n?\s*📊\s*Incid[êe]ncia hist[óo]rica:.*$/im, '').trim();
 
     if(status && status.trim() !== 'Válida'){ ignoradas++; return; }
     if(!enunciado){ ignoradas++; return; }
@@ -4162,7 +4322,7 @@ async function processImportedText(content, sugestaoNome){
       let suffix = 1;
       while(existingUids.has(uid)){ uid = `${slug}-${r.n}-${suffix++}`; }
       existingUids.add(uid);
-      const temaAuto = r.tema || classifyTema(r.q, r.es);
+      const temaAuto = r.tema || classifyTemaPorFonte(r.ft) || classifyTema(r.q, r.es);
       ALL_QUESTIONS.push({ ...r, materia: materiaNome, tema: temaAuto || 'Geral', uid, origem:'importado' });
       added++;
     });
@@ -4428,6 +4588,13 @@ function attachHandlers(){
       render();
     });
   });
+  root.querySelectorAll('[data-toggle-ineditas]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const setup = getSetup(STATE.materia);
+      setup.incluirIneditas = !setup.incluirIneditas;
+      render();
+    });
+  });
   const qtyMinus = document.getElementById('qty-minus');
   const qtyPlus = document.getElementById('qty-plus');
   const qtyVal = document.getElementById('qty-val');
@@ -4479,6 +4646,7 @@ function attachHandlers(){
     setup.bancasExcluidas = new Set();
     setup.cargosExcluidos = new Set();
     setup.tendenciasExcluidas = new Set();
+    setup.incluirIneditas = true;
     setup.qtd = 20;
     render();
   });
