@@ -2644,13 +2644,24 @@ function periodoDeQ(q){
 }
 function narrativaBanca(q){
   if(isInedita(q)) return null;
-  const periodo = periodoDeQ(q);
+  let periodo = periodoDeQ(q);
   const mTotal = (q.fr||'').match(/(\d+)\s*concursos?\s*distint/i);
   const mRecentes = (q.fr||'').match(/\((\d+)\s*nos? [úu]ltimos\s*5\s*anos\)/i);
-  if(!periodo || !mTotal) return null;
-  const total = parseInt(mTotal[1],10);
-  const recentes = mRecentes ? parseInt(mRecentes[1],10) : 0;
-  const anoRef = anoMaisRecente(q.materia) || periodo.fim;
+  let total, recentes;
+  const anoRef = anoMaisRecente(q.materia) || (periodo && periodo.fim) || (q.an && q.an.length ? Math.max(...q.an) : null);
+  if(periodo && mTotal){
+    // formato "N concursos distintos (M nos últimos 5 anos) — período: AAAA-AAAA"
+    total = parseInt(mTotal[1],10);
+    recentes = mRecentes ? parseInt(mRecentes[1],10) : 0;
+  } else if(q.an && q.an.length && anoRef){
+    // fallback pra formato nativo "AAAA (N questão(ões)), AAAA (N questão(ões))",
+    // onde só temos os anos em que o assunto caiu — usa a lista de anos direto
+    periodo = { inicio: Math.min(...q.an), fim: Math.max(...q.an) };
+    total = q.an.length;
+    recentes = q.an.filter(a => a >= anoRef-4).length;
+  } else {
+    return null;
+  }
   const idade = anoRef - periodo.inicio;
   const desdeUltima = anoRef - periodo.fim;
   const proporcaoRecente = total>0 ? recentes/total : 0;
