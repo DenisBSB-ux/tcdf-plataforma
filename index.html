@@ -658,6 +658,14 @@ body:not(.theme-light) .kw-decisivo{ color:#ff8a7a; border-bottom-color:#ff8a7a;
   font-family:var(--font-mono); font-size:13px; cursor:pointer; border-radius:5px;
   border:1px solid var(--paper-line); background:#fff; padding:4px 10px;
 }
+.editor-toolbar-sep{ width:1px; background:var(--paper-line); margin:2px 2px; }
+.editor-toolbar button[class^="swatch-"]{
+  width:22px; height:22px; padding:0; border-radius:5px;
+}
+.swatch-amarelo{ background:#fff3b0 !important; }
+.swatch-verde{ background:#c8e6c9 !important; }
+.swatch-azul{ background:#bbdefb !important; }
+.swatch-rosa{ background:#f8bbd0 !important; }
 .btn-salvar-edicao{ background:var(--stamp-green) !important; color:#fff; border:none !important; margin-left:auto; }
 .btn-cancelar-edicao{ color:var(--stamp-red); }
 .campo-editavel-conteudo[contenteditable="true"]{
@@ -3496,8 +3504,16 @@ function campoEditavel(q, campo, htmlAuto, labelVisivel){
       </span>
     </div>
     ${emEdicao ? `<div class="editor-toolbar">
-      <button data-editar-acao="bold" title="Negrito">𝐁</button>
-      <button data-editar-acao="highlight" title="Grifar em amarelo">🖍️</button>
+      <button data-editar-acao="bold" title="Negrito"><b>B</b></button>
+      <button data-editar-acao="italic" title="Itálico"><i>I</i></button>
+      <button data-editar-acao="strike" title="Tachado"><s>S</s></button>
+      <span class="editor-toolbar-sep"></span>
+      <button data-editar-acao="highlight" data-cor="#fff3b0" class="swatch-amarelo" title="Grifar em amarelo"></button>
+      <button data-editar-acao="highlight" data-cor="#c8e6c9" class="swatch-verde" title="Grifar em verde"></button>
+      <button data-editar-acao="highlight" data-cor="#bbdefb" class="swatch-azul" title="Grifar em azul"></button>
+      <button data-editar-acao="highlight" data-cor="#f8bbd0" class="swatch-rosa" title="Grifar em rosa"></button>
+      <span class="editor-toolbar-sep"></span>
+      <button data-editar-acao="limpar" title="Limpar formatação da seleção">🧹</button>
       <button data-editar-acao="salvar" data-uid="${esc(uid)}" data-campo="${campo}" class="btn-salvar-edicao">💾 Salvar</button>
       <button data-editar-acao="cancelar" class="btn-cancelar-edicao">✕ Cancelar</button>
     </div>` : ''}
@@ -4899,11 +4915,15 @@ function attachHandlers(){
     el.addEventListener('click', ()=>{
       const acao = el.dataset.editarAcao;
       if(acao==='bold'){ document.execCommand('bold'); return; }
+      if(acao==='italic'){ document.execCommand('italic'); return; }
+      if(acao==='strike'){ document.execCommand('strikeThrough'); return; }
       if(acao==='highlight'){
-        try{ document.execCommand('hiliteColor', false, '#fff3b0'); }
-        catch(e){ document.execCommand('backColor', false, '#fff3b0'); }
+        const cor = el.dataset.cor || '#fff3b0';
+        try{ document.execCommand('hiliteColor', false, cor); }
+        catch(e){ document.execCommand('backColor', false, cor); }
         return;
       }
+      if(acao==='limpar'){ document.execCommand('removeFormat'); return; }
       if(acao==='cancelar'){ edicaoAtual = null; render(); return; }
       if(acao==='salvar'){
         const uid = el.dataset.uid, campo = el.dataset.campo;
