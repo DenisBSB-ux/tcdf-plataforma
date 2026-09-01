@@ -375,6 +375,27 @@ h2.section-title{
 .prob-calc.prob-alta{ background:var(--stamp-red); }
 .prob-calc.prob-media{ background:#a37a2c; }
 .prob-calc.prob-baixa{ background:#4c7a5c; }
+.narr-banner{
+  display:flex; align-items:center; gap:10px;
+  margin-top:10px; padding:9px 14px; border-radius:8px;
+  font-size:13px; line-height:1.4;
+}
+.narr-icone{ font-size:20px; flex:0 0 auto; }
+.narr-texto{ color:#3a352c; }
+.narr-texto b{ font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.03em; font-size:12px; }
+.narr-novo{ background:#e3f0fa; border:1px solid #a9cfe8; }
+.narr-classico{ background:#f2e9d8; border:1px solid #cbb47e; }
+.narr-alta{ background:#fbeeec; border:1px solid #e0b3ab; }
+.narr-esfriou{ background:#eaeef2; border:1px solid #c3cbd4; }
+.narr-estavel{ background:#eef6f0; border:1px solid #b9d9c2; }
+.narr-raro{ background:#f3eefa; border:1px solid #cdb8e8; }
+body:not(.theme-light) .narr-texto{ color:#e8e4da; }
+body:not(.theme-light) .narr-novo{ background:rgba(169,207,232,0.12); border-color:rgba(169,207,232,0.35); }
+body:not(.theme-light) .narr-classico{ background:rgba(203,180,126,0.12); border-color:rgba(203,180,126,0.35); }
+body:not(.theme-light) .narr-alta{ background:rgba(224,179,171,0.12); border-color:rgba(224,179,171,0.35); }
+body:not(.theme-light) .narr-esfriou{ background:rgba(195,203,212,0.12); border-color:rgba(195,203,212,0.35); }
+body:not(.theme-light) .narr-estavel{ background:rgba(185,217,194,0.12); border-color:rgba(185,217,194,0.35); }
+body:not(.theme-light) .narr-raro{ background:rgba(205,184,232,0.12); border-color:rgba(205,184,232,0.35); }
 .trend-badge{
   font-family:var(--font-mono);
   font-size:14px;
@@ -2611,6 +2632,54 @@ function probabilidadeCalculadaBadge(q){
   const cor = p==='Alta' ? 'prob-alta' : p==='Média' ? 'prob-media' : 'prob-baixa';
   return `<span class="prob-badge prob-calc ${cor}" title="Estimativa combinando nível de incidência histórica e tendência recente — não é um campo direto da fonte">🎯 ${p} probabilidade</span>`;
 }
+
+// "Como a banca pensa": lê o período de aparições (início-fim), o total de
+// concursos e quantos foram recentes, e monta uma leitura narrativa do
+// comportamento do assunto — não só um nível, mas um padrão reconhecível.
+function periodoDeQ(q){
+  if(!q.fr) return null;
+  const m = q.fr.match(/per[íi]odo:\s*(\d{4})-(\d{4})/i);
+  if(!m) return null;
+  return { inicio: parseInt(m[1],10), fim: parseInt(m[2],10) };
+}
+function narrativaBanca(q){
+  if(isInedita(q)) return null;
+  const periodo = periodoDeQ(q);
+  const mTotal = (q.fr||'').match(/(\d+)\s*concursos?\s*distint/i);
+  const mRecentes = (q.fr||'').match(/\((\d+)\s*nos? [úu]ltimos\s*5\s*anos\)/i);
+  if(!periodo || !mTotal) return null;
+  const total = parseInt(mTotal[1],10);
+  const recentes = mRecentes ? parseInt(mRecentes[1],10) : 0;
+  const anoRef = anoMaisRecente(q.materia) || periodo.fim;
+  const idade = anoRef - periodo.inicio;
+  const desdeUltima = anoRef - periodo.fim;
+  const proporcaoRecente = total>0 ? recentes/total : 0;
+
+  if(total<=2){
+    return { icone:'🎲', cor:'narr-raro', titulo:'Assunto raro', texto:`Caiu só ${total} ${total===1?'vez':'vezes'} até hoje — difícil prever quando volta a cair.` };
+  }
+  if(idade<=3){
+    return { icone:'🆕', cor:'narr-novo', titulo:'Assunto novo', texto:`Começou a ser cobrado há ${idade||'menos de 1'} ano(s) (desde ${periodo.inicio}) — a banca começou a testar isso recentemente.` };
+  }
+  if(desdeUltima>=3){
+    return { icone:'🧊', cor:'narr-esfriou', titulo:'Esfriou', texto:`Não aparece há ${desdeUltima} anos (última vez em ${periodo.fim}) — pode ter saído de moda nessa banca.` };
+  }
+  if(idade>=10 && proporcaoRecente>=0.5 && desdeUltima<=1){
+    return { icone:'🏛️', cor:'narr-classico', titulo:'Clássico e atual', texto:`Testado há ${idade} anos (desde ${periodo.inicio}) e continua caindo com frequência — favorito antigo da banca.` };
+  }
+  if(proporcaoRecente>=0.7){
+    return { icone:'📈', cor:'narr-alta', titulo:'Ganhando força', texto:`${recentes} das ${total} vezes que caiu foram nos últimos 5 anos — a banca tem intensificado a cobrança.` };
+  }
+  return { icone:'⚖️', cor:'narr-estavel', titulo:'Estável', texto:`Cai com regularidade desde ${periodo.inicio} (${total} vezes ao todo), sem grande variação recente.` };
+}
+function narrativaBancaBanner(q){
+  const n = narrativaBanca(q);
+  if(!n) return '';
+  return `<div class="narr-banner ${n.cor}">
+    <span class="narr-icone">${n.icone}</span>
+    <span class="narr-texto"><b>${esc(n.titulo)}</b> — ${esc(n.texto)}</span>
+  </div>`;
+}
 function freqHistLine(fr){
   if(!fr) return '';
   return `<div class="freq-hist"><span class="lbl-inline">Frequência por ano:</span> ${esc(fr)}</div>`;
@@ -3270,6 +3339,7 @@ function renderQuiz(){
         ${ineditaBadge(q)}
         ${renderZoomControl()}
       </div>
+      ${narrativaBancaBanner(q)}
     </div>
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
