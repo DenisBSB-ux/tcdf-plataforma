@@ -638,6 +638,33 @@ body:not(.theme-light) .narr-raro{ background:rgba(205,184,232,0.12); border-col
 .resolucao-box p:last-child, .resumo-flash-box p:last-child, .rf-text p:last-child{ margin-bottom:0; }
 .kw-gabarito{ font-weight:700; }
 body:not(.theme-light) .kw-gabarito{ color:var(--gold-bright); }
+.kw-decisivo{
+  text-decoration:none; font-weight:700; color:var(--stamp-red);
+  border-bottom:2px solid var(--stamp-red); padding-bottom:1px;
+}
+body:not(.theme-light) .kw-decisivo{ color:#ff8a7a; border-bottom-color:#ff8a7a; }
+.campo-editavel-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.campo-editavel-acoes{ display:flex; gap:6px; }
+.btn-editar-campo, .btn-restaurar-campo{
+  font-family:var(--font-mono); font-size:11px; background:none; cursor:pointer;
+  border:1px solid var(--paper-line); border-radius:6px; padding:3px 8px; color:var(--ink-soft);
+}
+.btn-editar-campo:hover, .btn-restaurar-campo:hover{ background:var(--paper-dim); }
+.editor-toolbar{
+  display:flex; gap:6px; margin-bottom:8px; padding:6px; border-radius:6px;
+  background:var(--paper-dim); border:1px dashed var(--paper-line);
+}
+.editor-toolbar button{
+  font-family:var(--font-mono); font-size:13px; cursor:pointer; border-radius:5px;
+  border:1px solid var(--paper-line); background:#fff; padding:4px 10px;
+}
+.btn-salvar-edicao{ background:var(--stamp-green) !important; color:#fff; border:none !important; margin-left:auto; }
+.btn-cancelar-edicao{ color:var(--stamp-red); }
+.campo-editavel-conteudo[contenteditable="true"]{
+  outline:2px solid var(--gold); outline-offset:2px; border-radius:4px;
+  padding:6px; background:#fffef8; cursor:text;
+}
+.campo-editavel-conteudo mark{ background:#fff3b0; padding:0 2px; border-radius:2px; }
 .resumo-flash-box .lbl{
   font-family:var(--font-mono);
   font-size:10px;
@@ -1639,6 +1666,17 @@ function temasDisponiveis(materia){
 
 /* ================= storage ================= */
 const STORAGE_KEY = 'sim-progresso-v3';
+const EDICOES_KEY = 'tcdf-edicoes-usuario-v1';
+let EDICOES_USUARIO = {}; // { [uid]: { r: 'html editado', rf: 'html editado' } }
+let edicaoAtual = null; // { uid, campo } — qual campo está em modo de edição agora
+let saveEdicoesTimer = null;
+function salvarEdicoesUsuario(){
+  clearTimeout(saveEdicoesTimer);
+  saveEdicoesTimer = setTimeout(async ()=>{
+    try{ await storageSet(EDICOES_KEY, JSON.stringify(EDICOES_USUARIO)); }
+    catch(e){ console.error('Falha ao salvar edições do usuário', e); }
+  }, 300);
+}
 const CUSTOM_KEY = 'sim-questoes-importadas-v3';
 let PROGRESS = {}; // { [materia]: { perguntas:{}, flash:{}, sessoes:[] } }
 
@@ -2099,6 +2137,11 @@ async function loadProgress(){
   }catch(e){ /* usa o padrão escuro */ }
   aplicarTema();
 
+  try{
+    const resEd = await storageGet(EDICOES_KEY);
+    if(resEd && resEd.value) EDICOES_USUARIO = JSON.parse(resEd.value);
+  }catch(e){ /* nenhuma edição manual salva ainda */ }
+
   if(STATE.syncCode){
     try{
       const res6 = await storageGet(LAST_SYNC_KEY);
@@ -2355,9 +2398,33 @@ function palavrasChaveDaRespostaCorreta(q){
   return [];
 }
 
+// termos decisivos clássicos de banca (CEBRASPE em especial): palavras restritivas
+// ou absolutas que costumam ser o ponto de virada de uma assertiva Certo/Errado.
+// Estilo visual PRÓPRIO (sublinhado + cor), diferente do negrito de gabarito,
+// pra não confundir as duas fontes de destaque.
+const TERMOS_DECISIVOS = [
+  'exclusivamente','unicamente','tão somente','tão-somente','somente','apenas',
+  'sempre','nunca','jamais','todo','toda','todos','todas','nenhum','nenhuma',
+  'absolutamente','obrigatoriamente','necessariamente','impreterivelmente',
+  'incondicionalmente','indistintamente','invariavelmente','qualquer',
+  'em qualquer hipótese','sob nenhuma hipótese','de forma alguma','sim','não',
+];
+// recebe HTML JÁ ESCAPADO (esc(texto)) e injeta o sublinhado sem tocar o que
+// já é tag — mesmo cuidado usado em destacarPalavrasChave, pra combinar as duas
+function destacarTermosDecisivos(htmlEscapado){
+  if(!htmlEscapado) return '';
+  let html = htmlEscapado;
+  const ordenados = [...TERMOS_DECISIVOS].sort((a,b)=>b.length-a.length);
+  ordenados.forEach(termo=>{
+    const escapado = termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g,'\\s+');
+    const re = new RegExp(`\\b(${escapado})\\b`, 'gi');
+    html = html.replace(re, (m, offset) => /<[^>]*$/.test(html.slice(0, offset)) ? m : `<u class="kw-decisivo">${m}</u>`);
+  });
+  return html;
+}
 function destacarPalavrasChave(texto, palavrasExtras){
   if(!texto) return '';
-  let html = esc(texto);
+  let html = destacarTermosDecisivos(esc(texto));
   // negrito só nas palavras-chave extraídas estritamente da resposta correta —
   // nada de padrão genérico (referência legal, conector modal etc.) que não vem
   // diretamente do gabarito da questão
@@ -3309,7 +3376,7 @@ function renderQuiz(){
     return `
     <div class="case-file focus-simple" style="zoom:${STATE.zoomLevel};">
       <div class="case-body">
-        <div class="enunciado">${esc(limparEnunciado(q.q, q.t))}</div>
+        <div class="enunciado">${destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)))}</div>
       </div>
       <div class="answers">${optionsHtml}</div>
       ${revelado ? `<div class="case-body focus-justificativa">${renderResolucao(q, resposta, quiz)}</div>` : ''}
@@ -3360,7 +3427,7 @@ function renderQuiz(){
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
         <div class="case-body">
-          <div class="enunciado ${isInedita(q)?'is-inedita':''}">${esc(limparEnunciado(q.q, q.t))}</div>
+          <div class="enunciado ${isInedita(q)?'is-inedita':''}">${destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)))}</div>
         </div>
         <div class="answers">${optionsHtml}</div>
       </div>
@@ -3412,6 +3479,31 @@ function renderResolucaoPlaceholder(){
   </div>`;
 }
 
+// campo editável: se o usuário já customizou esse campo, mostra o HTML salvo
+// dele; senão, mostra a formatação automática de sempre (termos decisivos +
+// palavras-chave do gabarito). O botão de lápis alterna pro modo de edição.
+function campoEditavel(q, campo, htmlAuto, labelVisivel){
+  const uid = q.uid;
+  const custom = EDICOES_USUARIO[uid] && EDICOES_USUARIO[uid][campo];
+  const emEdicao = edicaoAtual && edicaoAtual.uid===uid && edicaoAtual.campo===campo;
+  const conteudo = emEdicao ? (custom || htmlAuto) : (custom || htmlAuto);
+  return `
+    <div class="campo-editavel-header">
+      <span class="lbl">${esc(labelVisivel)}</span>
+      <span class="campo-editavel-acoes">
+        ${emEdicao ? '' : `<button class="btn-editar-campo" data-uid="${esc(uid)}" data-campo="${campo}" title="Editar e grifar palavras-chave próprias">✏️ Editar</button>`}
+        ${(!emEdicao && custom) ? `<button class="btn-restaurar-campo" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button>` : ''}
+      </span>
+    </div>
+    ${emEdicao ? `<div class="editor-toolbar">
+      <button data-editar-acao="bold" title="Negrito">𝐁</button>
+      <button data-editar-acao="highlight" title="Grifar em amarelo">🖍️</button>
+      <button data-editar-acao="salvar" data-uid="${esc(uid)}" data-campo="${campo}" class="btn-salvar-edicao">💾 Salvar</button>
+      <button data-editar-acao="cancelar" class="btn-cancelar-edicao">✕ Cancelar</button>
+    </div>` : ''}
+    <div class="campo-editavel-conteudo" ${emEdicao ? 'contenteditable="true"' : ''} id="conteudo-${campo}-${esc(uid)}">${conteudo}</div>
+  `;
+}
 function renderResolucao(q, resposta, quiz){
   const correto = resposta.correct;
   const tintClass = correto ? 'tint-correct' : 'tint-incorrect';
@@ -3421,12 +3513,10 @@ function renderResolucao(q, resposta, quiz){
   return `
   <div class="answer-feedback ${feedbackClass}">${correto ? 'Você acertou' : 'Você errou'} — gabarito: ${esc(q.g)}</div>
   <div class="resolucao-box ${tintClass}">
-    <span class="lbl">Resolução</span>
-    ${formatarTextoComDestaque(q.r, palavrasChave)}
+    ${campoEditavel(q, 'r', formatarTextoComDestaque(q.r, palavrasChave), 'Resolução')}
   </div>
   <div class="resumo-flash-box">
-    <span class="lbl">Resumo flash</span>
-    ${formatarTextoComDestaque(q.rf, palavrasChave)}
+    ${campoEditavel(q, 'rf', formatarTextoComDestaque(q.rf, palavrasChave), 'Resumo flash')}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>` : ''}
   `;
@@ -3940,7 +4030,7 @@ function renderFlashcards(){
       <div class="flashcard-inner">
         <div class="flashcard-face flashcard-front">
           ${status ? `<span class="review-chip ${status==='sei'?'review-know':'review-study'}">${status==='sei'?'Sei':'Revisar'}</span>` : ''}
-          <div class="q-text" style="zoom:${STATE.zoomLevel};">${esc(limparEnunciado(q.q, q.t))}</div>
+          <div class="q-text" style="zoom:${STATE.zoomLevel};">${destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)))}</div>
         </div>
         <div class="flashcard-face flashcard-back">
           <span class="lbl">Resumo flash</span>
@@ -4788,6 +4878,46 @@ function attachHandlers(){
   if(btnNextArrow) btnNextArrow.addEventListener('click', goNext);
   const btnProximaRapida = document.getElementById('btn-proxima-rapida');
   if(btnProximaRapida) btnProximaRapida.addEventListener('click', goNext);
+  root.querySelectorAll('.btn-editar-campo').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      edicaoAtual = { uid: el.dataset.uid, campo: el.dataset.campo };
+      render();
+    });
+  });
+  root.querySelectorAll('.btn-restaurar-campo').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const uid = el.dataset.uid, campo = el.dataset.campo;
+      if(EDICOES_USUARIO[uid]){
+        delete EDICOES_USUARIO[uid][campo];
+        if(Object.keys(EDICOES_USUARIO[uid]).length===0) delete EDICOES_USUARIO[uid];
+        salvarEdicoesUsuario();
+      }
+      render();
+    });
+  });
+  root.querySelectorAll('[data-editar-acao]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const acao = el.dataset.editarAcao;
+      if(acao==='bold'){ document.execCommand('bold'); return; }
+      if(acao==='highlight'){
+        try{ document.execCommand('hiliteColor', false, '#fff3b0'); }
+        catch(e){ document.execCommand('backColor', false, '#fff3b0'); }
+        return;
+      }
+      if(acao==='cancelar'){ edicaoAtual = null; render(); return; }
+      if(acao==='salvar'){
+        const uid = el.dataset.uid, campo = el.dataset.campo;
+        const div = document.getElementById(`conteudo-${campo}-${uid}`);
+        if(div){
+          if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
+          EDICOES_USUARIO[uid][campo] = div.innerHTML;
+          salvarEdicoesUsuario();
+        }
+        edicaoAtual = null;
+        render();
+      }
+    });
+  });
   const btnJumpUltimaRespondida = document.getElementById('btn-jump-ultima-respondida');
   if(btnJumpUltimaRespondida) btnJumpUltimaRespondida.addEventListener('click', irParaUltimaRespondida);
   const btnJumpProximoAssunto = document.getElementById('btn-jump-proximo-assunto');
