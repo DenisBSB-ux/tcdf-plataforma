@@ -369,6 +369,12 @@ h2.section-title{
   padding:5px 10px; border-radius:6px; border:1px solid var(--paper-line); background:#fff;
   max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
+.prob-badge.prob-calc{
+  font-size:13px; font-weight:700; color:#fff; border:none; max-width:none;
+}
+.prob-calc.prob-alta{ background:var(--stamp-red); }
+.prob-calc.prob-media{ background:#a37a2c; }
+.prob-calc.prob-baixa{ background:#4c7a5c; }
 .trend-badge{
   font-family:var(--font-mono);
   font-size:14px;
@@ -2586,6 +2592,25 @@ function probabilidadeBadge(pp){
   if(!pp) return '';
   return `<span class="prob-badge" title="Probabilidade preditiva de recorrência">🎯 ${esc(pp)}</span>`;
 }
+// combina nível de incidência + tendência num único veredito direto, pra quem
+// não tem "Probabilidade Preditiva" explícita na fonte (caso das listas que só
+// trazem incidência histórica em concursos, sem esse campo pronto)
+const MATRIZ_PROBABILIDADE = {
+  alta:  { crescente:'Alta', 'estável':'Alta',   decrescente:'Média' },
+  media: { crescente:'Alta', 'estável':'Média',  decrescente:'Baixa' },
+  baixa: { crescente:'Média','estável':'Baixa',  decrescente:'Baixa' },
+};
+function probabilidadeCalculada(q){
+  if(q.pp) return null; // já existe um valor explícito da fonte, não sobrepor
+  const linha = MATRIZ_PROBABILIDADE[q.nv];
+  return linha ? (linha[tendenciaCurta(q.td)] || null) : null;
+}
+function probabilidadeCalculadaBadge(q){
+  const p = probabilidadeCalculada(q);
+  if(!p) return '';
+  const cor = p==='Alta' ? 'prob-alta' : p==='Média' ? 'prob-media' : 'prob-baixa';
+  return `<span class="prob-badge prob-calc ${cor}" title="Estimativa combinando nível de incidência histórica e tendência recente — não é um campo direto da fonte">🎯 ${p} probabilidade</span>`;
+}
 function freqHistLine(fr){
   if(!fr) return '';
   return `<div class="freq-hist"><span class="lbl-inline">Frequência por ano:</span> ${esc(fr)}</div>`;
@@ -3237,6 +3262,7 @@ function renderQuiz(){
       ${temaLinha}
       <div class="tag-row">
         ${nivelBadge(q.nv)}
+        ${probabilidadeCalculadaBadge(q)}
         ${trendBadge(q.td)}
         ${freqBadge(q.fr)}
         ${probabilidadeBadge(q.pp)}
