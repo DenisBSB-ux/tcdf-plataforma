@@ -2623,6 +2623,11 @@ const MATRIZ_PROBABILIDADE = {
 };
 function probabilidadeCalculada(q){
   if(q.pp) return null; // já existe um valor explícito da fonte, não sobrepor
+  // assunto novo (visto pela primeira vez há pouco tempo) força probabilidade
+  // Alta — a banca tende a repetir o que acabou de começar a cobrar, mais do
+  // que a matriz de nível+tendência isolada sugeriria
+  const narrativa = narrativaBanca(q);
+  if(narrativa && narrativa.forcaProbabilidade) return narrativa.forcaProbabilidade;
   const linha = MATRIZ_PROBABILIDADE[q.nv];
   return linha ? (linha[tendenciaCurta(q.td)] || null) : null;
 }
@@ -2666,11 +2671,15 @@ function narrativaBanca(q){
   const desdeUltima = anoRef - periodo.fim;
   const proporcaoRecente = total>0 ? recentes/total : 0;
 
+  if(idade<=3){
+    // assunto novo tem prioridade sobre "raro": é natural ter poucas ocorrências
+    // quando o assunto começou a cair há pouco tempo — isso não é raridade,
+    // é novidade, e costuma vir acompanhado de alta chance de repetição
+    // (a banca tende a insistir no que acabou de incluir no edital/cobrança)
+    return { icone:'🆕', cor:'narr-novo', titulo:'Assunto novo', texto:`Começou a ser cobrado há ${idade||'menos de 1'} ano(s) (desde ${periodo.inicio}) — a banca começou a testar isso recentemente.`, forcaProbabilidade:'Alta' };
+  }
   if(total<=2){
     return { icone:'🎲', cor:'narr-raro', titulo:'Assunto raro', texto:`Caiu só ${total} ${total===1?'vez':'vezes'} até hoje — difícil prever quando volta a cair.` };
-  }
-  if(idade<=3){
-    return { icone:'🆕', cor:'narr-novo', titulo:'Assunto novo', texto:`Começou a ser cobrado há ${idade||'menos de 1'} ano(s) (desde ${periodo.inicio}) — a banca começou a testar isso recentemente.` };
   }
   if(desdeUltima>=3){
     return { icone:'🧊', cor:'narr-esfriou', titulo:'Esfriou', texto:`Não aparece há ${desdeUltima} anos (última vez em ${periodo.fim}) — pode ter saído de moda nessa banca.` };
@@ -3341,12 +3350,8 @@ function renderQuiz(){
       </div>
       ${temaLinha}
       <div class="tag-row">
-        ${nivelBadge(q.nv)}
         ${probabilidadeCalculadaBadge(q)}
-        ${trendBadge(q.td)}
-        ${freqBadge(q.fr)}
         ${probabilidadeBadge(q.pp)}
-        ${alertaTendenciaTag(q)}
         ${ineditaBadge(q)}
         ${renderZoomControl()}
       </div>
