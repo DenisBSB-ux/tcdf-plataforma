@@ -2185,8 +2185,17 @@ async function loadProgress(){
   if(FIREBASE_OK){
     try{
       const docOc = await fbDb.collection('publico').doc('_materias_ocultas').get();
-      if(docOc.exists && Array.isArray(docOc.data().nomes)){
-        docOc.data().nomes.forEach(n=>MATERIAS_OCULTAS.add(n));
+      const nomesNaNuvem = (docOc.exists && Array.isArray(docOc.data().nomes)) ? docOc.data().nomes : [];
+      nomesNaNuvem.forEach(n=>MATERIAS_OCULTAS.add(n));
+      // AUTOCURA: se este aparelho tem na lista local algum nome que a nuvem
+      // ainda não tem (ex.: uma tentativa de remoção anterior que salvou local
+      // mas falhou ao gravar na nuvem por erro de permissão já corrigido),
+      // empurra a lista completa pra nuvem agora, sem precisar de novo clique
+      // em "Remover" — resolve o caso de "sumiu aqui, mas voltou no celular"
+      const faltamNaNuvem = Array.from(MATERIAS_OCULTAS).some(n => !nomesNaNuvem.includes(n));
+      if(faltamNaNuvem){
+        try{ await fbDb.collection('publico').doc('_materias_ocultas').set({ nomes: Array.from(MATERIAS_OCULTAS) }); }
+        catch(e){ console.error('Autocura da lista de matérias ocultas falhou', e); }
       }
     }catch(e){ /* segue só com a lista local, se a nuvem estiver indisponível */ }
   }
