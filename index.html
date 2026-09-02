@@ -4736,7 +4736,17 @@ async function removerMateria(materiaNome){
   const uidsRemover = new Set(ALL_QUESTIONS.filter(q=>q.materia===materiaNome).map(q=>q.uid));
   if(uidsRemover.size===0) return;
   ALL_QUESTIONS = ALL_QUESTIONS.filter(q=>!uidsRemover.has(q.uid));
+  delete TEXTOS_ORIGINAIS[materiaNome];
   reindex();
+  // CORREÇÃO: antes, a remoção só acontecia na memória local — a matéria
+  // continuava publicada em publico/{materia} no Firestore, então recarregava
+  // sozinha na próxima visita (daqui ou de qualquer outro computador). Agora
+  // também apaga o documento na nuvem e persiste a remoção localmente.
+  await saveCustomQuestions();
+  if(FIREBASE_OK){
+    try{ await fbDb.collection('publico').doc(slugify(materiaNome)).delete(); }
+    catch(e){ console.error('Falha ao remover matéria da nuvem — pode reaparecer em outro dispositivo', e); }
+  }
   // limpa também o progresso de qualquer bucket que referencie essas questões
   uidsRemover.forEach(uid=>{
     Object.values(PROGRESS).forEach(bucket=>{
