@@ -2184,7 +2184,7 @@ async function loadProgress(){
   // permanentemente num aparelho ficar removida em qualquer outro também
   if(FIREBASE_OK){
     try{
-      const docOc = await fbDb.collection('config').doc('materias-ocultas').get();
+      const docOc = await fbDb.collection('publico').doc('_materias_ocultas').get();
       if(docOc.exists && Array.isArray(docOc.data().nomes)){
         docOc.data().nomes.forEach(n=>MATERIAS_OCULTAS.add(n));
       }
@@ -4782,7 +4782,7 @@ async function removerMateria(materiaNome){
     try{ await storageSet(MATERIAS_OCULTAS_KEY, JSON.stringify(Array.from(MATERIAS_OCULTAS))); }
     catch(e){ console.error('Falha ao salvar lista de matérias ocultas localmente', e); }
     if(FIREBASE_OK){
-      try{ await fbDb.collection('config').doc('materias-ocultas').set({ nomes: Array.from(MATERIAS_OCULTAS) }); }
+      try{ await fbDb.collection('publico').doc('_materias_ocultas').set({ nomes: Array.from(MATERIAS_OCULTAS) }); }
       catch(e){ console.error('Falha ao salvar lista de matérias ocultas na nuvem — pode reaparecer em outro dispositivo', e); }
     }
   }
