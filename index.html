@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- Impede que o navegador (ou proxies intermediários) sirva uma cópia antiga
+     desta página guardada em cache — sempre revalida com o servidor antes de
+     mostrar o conteúdo, garantindo a mesma versão em qualquer dispositivo. -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
+<script>window.__TCDF_BUILD__ = { versao: 'v16', build: '2026-09-02 00:16' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -383,6 +390,7 @@ h2.section-title{
 .narr-icone{ font-size:20px; flex:0 0 auto; }
 .narr-texto{ color:#3a352c; }
 .narr-texto b{ font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.03em; font-size:12px; }
+.narr-prob{ font-family:var(--font-mono); font-size:11px; opacity:.75; font-style:italic; }
 .narr-novo{ background:#e3f0fa; border:1px solid #a9cfe8; }
 .narr-classico{ background:#f2e9d8; border:1px solid #cbb47e; }
 .narr-alta{ background:#fbeeec; border:1px solid #e0b3ab; }
@@ -2611,7 +2619,7 @@ function render(){
   root.innerHTML = `
     ${STATE.focusMode ? '' : renderLetterhead()}
     ${STATE.viewImportar || ALL_QUESTIONS.length===0 ? renderImportarPage() : renderMateriaPage()}
-    ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)}</div>`}
+    ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)} · Versão ${esc(window.__TCDF_BUILD__.versao)} (${esc(window.__TCDF_BUILD__.build)})</div>`}
   `;
   attachHandlers();
 }
@@ -2770,9 +2778,14 @@ function narrativaBanca(q){
 function narrativaBancaBanner(q){
   const n = narrativaBanca(q);
   if(!n) return '';
+  // a probabilidade calculada entra dentro da própria narrativa (em vez de um
+  // badge separado logo acima) — evita repetir o mesmo veredito duas vezes
+  // com cores parecidas, já que a narrativa por si só já entrega o "porquê"
+  const prob = n.forcaProbabilidade || probabilidadeCalculada(q);
+  const probTxt = (prob && !q.pp) ? ` <span class="narr-prob">(${esc(prob)} probabilidade)</span>` : '';
   return `<div class="narr-banner ${n.cor}">
     <span class="narr-icone">${n.icone}</span>
-    <span class="narr-texto"><b>${esc(n.titulo)}</b> — ${esc(n.texto)}</span>
+    <span class="narr-texto"><b>${esc(n.titulo)}</b>${probTxt} — ${esc(n.texto)}</span>
   </div>`;
 }
 function freqHistLine(fr){
@@ -2781,12 +2794,14 @@ function freqHistLine(fr){
 }
 function bancaCargoAnoLine(q){
   const banca = bancaCurta(q.bc);
-  const cargo = cargoCurto(q.bc);
   const ano = q.ar || (q.an && q.an.length ? Math.max(...q.an) : null);
+  // remove um ano já embutido no fim do texto do cargo (ex.: "Agente
+  // Administrativo — 2025") pra não duplicar com o campo "Ano:" logo depois
+  let cargo = cargoCurto(q.bc);
+  if(cargo && ano) cargo = cargo.replace(new RegExp(`[\\s\\u2014-]*${ano}\\s*$`), '').trim();
   return `<span class="lbl-inline">Banca:</span> ${esc(banca)}`
     + (cargo ? ` &nbsp;·&nbsp; <span class="lbl-inline">Cargo:</span> ${esc(cargo)}` : '')
-    + (ano ? ` &nbsp;·&nbsp; <span class="lbl-inline">Ano:</span> ${ano}` : '')
-    + incidenciaSimbolo(q);
+    + (ano ? ` &nbsp;·&nbsp; <span class="lbl-inline">Ano:</span> ${ano}` : '');
 }
 // padrão banca-cargo-ano-incidência: a incidência histórica entra aqui em forma
 // compacta de símbolo (📊 total ×, 🕐 recentes nos últimos 5 anos), em vez do
@@ -3425,10 +3440,8 @@ function renderQuiz(){
       </div>
       ${temaLinha}
       <div class="tag-row">
-        ${probabilidadeCalculadaBadge(q)}
-        ${probabilidadeBadge(q.pp)}
+        ${q.pp ? probabilidadeBadge(q.pp) : ''}
         ${ineditaBadge(q)}
-        ${renderZoomControl()}
       </div>
       ${narrativaBancaBanner(q)}
     </div>
@@ -3458,6 +3471,8 @@ function renderQuiz(){
         <button class="icon-btn icon-btn-gold" id="btn-finalizar" title="Finalizar simulado">✓</button>
         <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
         ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvamento automático a cada ação">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
+        <span class="toolbar-divider"></span>
+        ${renderZoomControl()}
       </div>
       <div class="toolbar-meta-row">
         <div class="progress-bar" style="max-width:220px;"><div class="fill" style="width:${progressPct}%"></div></div>
@@ -5181,6 +5196,37 @@ document.addEventListener('keydown', (e)=>{
   window.addEventListener('pagehide', flushQuizSyncPendente);
 })();
 
+</script>
+<script>
+// Verificador ativo de versão: mesmo que o navegador tenha carregado uma cópia
+// guardada em cache por algum motivo fora do nosso controle (proxy, extensão,
+// política de rede corporativa etc.), este script confere periodicamente a
+// versão REAL do servidor (com cache:'no-store', ignorando qualquer cache) e
+// avisa com um botão de atualizar se detectar uma versão mais nova no ar.
+(function(){
+  async function checarNovaVersao(){
+    try{
+      const resp = await fetch(location.pathname + (location.pathname.includes('?')?'&':'?') + '_cachebust=' + Date.now(), { cache:'no-store' });
+      if(!resp.ok) return;
+      const texto = await resp.text();
+      const m = texto.match(/versao:\s*'([^']+)',\s*build:\s*'([^']+)'/);
+      if(m && window.__TCDF_BUILD__ && (m[1]!==window.__TCDF_BUILD__.versao || m[2]!==window.__TCDF_BUILD__.build)){
+        mostrarBannerNovaVersao();
+      }
+    }catch(e){ /* sem rede no momento — tenta de novo na próxima checagem */ }
+  }
+  function mostrarBannerNovaVersao(){
+    if(document.getElementById('banner-nova-versao')) return;
+    const div = document.createElement('div');
+    div.id = 'banner-nova-versao';
+    div.innerHTML = '⚡ Existe uma versão mais nova desta página no ar. <button id="btn-atualizar-agora" style="margin-left:10px;padding:5px 14px;border-radius:6px;border:none;background:#c8a24a;color:#1c1a15;font-weight:700;cursor:pointer;">Atualizar agora</button>';
+    div.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1c1a15;color:#f3ede0;padding:12px 16px;text-align:center;z-index:99999;font-family:sans-serif;font-size:14px;box-shadow:0 -2px 10px rgba(0,0,0,0.3);';
+    document.body.appendChild(div);
+    document.getElementById('btn-atualizar-agora').addEventListener('click', ()=>{ location.reload(); });
+  }
+  setTimeout(checarNovaVersao, 3000);
+  setInterval(checarNovaVersao, 5*60*1000);
+})();
 </script>
 </body>
 </html>
