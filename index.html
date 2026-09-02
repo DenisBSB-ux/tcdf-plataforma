@@ -1685,6 +1685,10 @@ const STORAGE_KEY = 'sim-progresso-v3';
 const EDICOES_KEY = 'tcdf-edicoes-usuario-v1';
 let EDICOES_USUARIO = {}; // { [uid]: { r: 'html editado', rf: 'html editado' } }
 let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — permite reprocessar com o parser atual sem precisar reimportar manualmente
+const MATERIAS_OCULTAS_KEY = 'tcdf-materias-ocultas-v1';
+let MATERIAS_OCULTAS = new Set(); // matérias NATIVAS (embutidas no código) que o usuário removeu — como elas
+  // não vivem no Firestore nem no localStorage de questões, o único jeito de "remover de vez" uma matéria
+  // embutida é guardar o nome dela aqui e filtrar toda vez que a base nativa for recriada no carregamento
 let edicaoAtual = null; // { uid, campo } — qual campo está em modo de edição agora
 let saveEdicoesTimer = null;
 function salvarEdicoesUsuario(){
@@ -2171,6 +2175,25 @@ async function loadProgress(){
     const resEd = await storageGet(EDICOES_KEY);
     if(resEd && resEd.value) EDICOES_USUARIO = JSON.parse(resEd.value);
   }catch(e){ /* nenhuma edição manual salva ainda */ }
+
+  try{
+    const resOc = await storageGet(MATERIAS_OCULTAS_KEY);
+    if(resOc && resOc.value) MATERIAS_OCULTAS = new Set(JSON.parse(resOc.value));
+  }catch(e){ /* nenhuma matéria nativa removida ainda, neste aparelho */ }
+  // também confere a lista compartilhada na nuvem, pra uma matéria removida
+  // permanentemente num aparelho ficar removida em qualquer outro também
+  if(FIREBASE_OK){
+    try{
+      const docOc = await fbDb.collection('config').doc('materias-ocultas').get();
+      if(docOc.exists && Array.isArray(docOc.data().nomes)){
+        docOc.data().nomes.forEach(n=>MATERIAS_OCULTAS.add(n));
+      }
+    }catch(e){ /* segue só com a lista local, se a nuvem estiver indisponível */ }
+  }
+  if(MATERIAS_OCULTAS.size>0){
+    ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !(q.origem==='embutido' && MATERIAS_OCULTAS.has(q.materia)));
+    reindex();
+  }
 
   if(STATE.syncCode){
     try{
@@ -4733,8 +4756,10 @@ async function despublicarMateria(materiaNome){
 }
 
 async function removerMateria(materiaNome){
-  const uidsRemover = new Set(ALL_QUESTIONS.filter(q=>q.materia===materiaNome).map(q=>q.uid));
+  const questoesDaMateria = ALL_QUESTIONS.filter(q=>q.materia===materiaNome);
+  const uidsRemover = new Set(questoesDaMateria.map(q=>q.uid));
   if(uidsRemover.size===0) return;
+  const eraNativa = questoesDaMateria.some(q=>q.origem==='embutido');
   ALL_QUESTIONS = ALL_QUESTIONS.filter(q=>!uidsRemover.has(q.uid));
   delete TEXTOS_ORIGINAIS[materiaNome];
   reindex();
@@ -4746,6 +4771,20 @@ async function removerMateria(materiaNome){
   if(FIREBASE_OK){
     try{ await fbDb.collection('publico').doc(slugify(materiaNome)).delete(); }
     catch(e){ console.error('Falha ao remover matéria da nuvem — pode reaparecer em outro dispositivo', e); }
+  }
+  // matéria NATIVA (embutida no código, tipo "Lei Orgânica do TCDF"): apagar da
+  // memória não basta, porque ela é recriada do zero a cada carregamento a
+  // partir da constante QUESTIONS embutida no arquivo. Guardamos o nome dela
+  // numa lista de "ocultas" (local + compartilhada na nuvem) e filtramos essa
+  // lista sempre que a base nativa é recriada, em qualquer computador.
+  if(eraNativa){
+    MATERIAS_OCULTAS.add(materiaNome);
+    try{ await storageSet(MATERIAS_OCULTAS_KEY, JSON.stringify(Array.from(MATERIAS_OCULTAS))); }
+    catch(e){ console.error('Falha ao salvar lista de matérias ocultas localmente', e); }
+    if(FIREBASE_OK){
+      try{ await fbDb.collection('config').doc('materias-ocultas').set({ nomes: Array.from(MATERIAS_OCULTAS) }); }
+      catch(e){ console.error('Falha ao salvar lista de matérias ocultas na nuvem — pode reaparecer em outro dispositivo', e); }
+    }
   }
   // limpa também o progresso de qualquer bucket que referencie essas questões
   uidsRemover.forEach(uid=>{
