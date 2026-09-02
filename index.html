@@ -1684,6 +1684,7 @@ function temasDisponiveis(materia){
 const STORAGE_KEY = 'sim-progresso-v3';
 const EDICOES_KEY = 'tcdf-edicoes-usuario-v1';
 let EDICOES_USUARIO = {}; // { [uid]: { r: 'html editado', rf: 'html editado' } }
+let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — permite reprocessar com o parser atual sem precisar reimportar manualmente
 let edicaoAtual = null; // { uid, campo } — qual campo está em modo de edição agora
 let saveEdicoesTimer = null;
 function salvarEdicoesUsuario(){
@@ -2006,6 +2007,11 @@ async function carregarMateriasPublicas(){
           }
         });
       }
+      // guarda o texto original e a versão do site que o processou pela última
+      // vez — é o que permite reprocessar automaticamente sem reimportar na mão
+      if(data && data.textoOriginal && data.materia){
+        TEXTOS_ORIGINAIS[data.materia] = { texto: data.textoOriginal, versaoProcessada: data.versaoProcessada || null };
+      }
     });
     if(added>0) reindex();
   }catch(e){ console.warn('Falha ao carregar matérias públicas', e); }
@@ -2037,7 +2043,15 @@ async function publicarQuestoesNoFirestore(nomesMaterias){
           totalNovas++;
         }
       });
-      const payload = sanitizarParaFirestore({ materia: materiaNome, questoes: questoesAtuais, atualizadoEm: Date.now() });
+      const payload = sanitizarParaFirestore({
+        materia: materiaNome, questoes: questoesAtuais, atualizadoEm: Date.now(),
+        // texto bruto original + versão do site que gerou este resultado —
+        // é isso que permite reprocessar automaticamente em versões futuras,
+        // sem precisar remover e reimportar manualmente toda vez que o parser
+        // é corrigido/melhorado
+        textoOriginal: TEXTOS_ORIGINAIS[materiaNome] ? (TEXTOS_ORIGINAIS[materiaNome].texto || TEXTOS_ORIGINAIS[materiaNome]) : (doc.exists ? doc.data().textoOriginal : undefined),
+        versaoProcessada: (window.__TCDF_BUILD__ && window.__TCDF_BUILD__.versao) || null,
+      });
       await ref.set(payload);
       STATE.materiasPublicadasNestaSessao.add(materiaNome);
     }catch(e){
@@ -2171,6 +2185,7 @@ async function loadProgress(){
   // matérias públicas (publicadas pelo administrador) aparecem para TODOS os usuários,
   // conectados ou não a um código de sincronização pessoal
   await carregarMateriasPublicas();
+  await reprocessarMateriasDesatualizadas();
 }
 
 let saveTimer = null;
@@ -4537,6 +4552,52 @@ function parseTxtQuestions(content){
   return { results, ignoradas, semGabarito };
 }
 
+// núcleo de parsing+inserção, reaproveitado tanto pela importação manual quanto
+// pelo reprocessamento automático. Remove as questões antigas dessa matéria
+// antes de inserir as novas, com os MESMOS uids (materiaSlug-numero) — assim o
+// histórico de progresso do usuário (guardado por uid) não se perde ao atualizar
+function reprocessarMateriaComTexto(materiaNome, content){
+  const { results } = parseTxtQuestions(content);
+  if(results.length===0) return 0;
+  const slug = slugify(materiaNome);
+  ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !(q.materia===materiaNome && q.origem!=='embutido'));
+  const existingUids = new Set(ALL_QUESTIONS.map(q=>q.uid));
+  results.forEach(r=>{
+    let uid = `${slug}-${r.n}`;
+    let suffix = 1;
+    while(existingUids.has(uid)){ uid = `${slug}-${r.n}-${suffix++}`; }
+    existingUids.add(uid);
+    const temaAuto = r.tema || classifyTemaPorFonte(r.ft) || classifyTema(r.q, r.es);
+    ALL_QUESTIONS.push({ ...r, materia: materiaNome, tema: temaAuto || 'Geral', uid, origem:'importado' });
+  });
+  return results.length;
+}
+
+// roda uma vez a cada versão nova do site: para cada matéria cujo texto
+// original foi salvo (na nuvem, junto da publicação), confere se ela já foi
+// reprocessada com a versão atual do código — se não, reprocessa com o parser
+// de agora e republica, corrigindo automaticamente bugs antigos sem precisar
+// que ninguém remova e reimporte manualmente a matéria
+async function reprocessarMateriasDesatualizadas(){
+  const versaoAtual = window.__TCDF_BUILD__ && window.__TCDF_BUILD__.versao;
+  if(!versaoAtual) return;
+  const materiasParaReprocessar = Object.keys(TEXTOS_ORIGINAIS).filter(m => TEXTOS_ORIGINAIS[m].versaoProcessada !== versaoAtual);
+  if(materiasParaReprocessar.length===0) return;
+  let alguma = false;
+  materiasParaReprocessar.forEach(materiaNome=>{
+    const texto = TEXTOS_ORIGINAIS[materiaNome].texto;
+    if(!texto) return;
+    const n = reprocessarMateriaComTexto(materiaNome, texto);
+    if(n>0){ alguma = true; TEXTOS_ORIGINAIS[materiaNome].versaoProcessada = versaoAtual; }
+  });
+  if(alguma){
+    reindex();
+    await saveCustomQuestions();
+    await publicarQuestoesNoFirestore(materiasParaReprocessar);
+    render();
+  }
+}
+
 async function processImportedText(content, sugestaoNome){
   let materiaNome = (STATE.importDeckName||'').trim();
   if(!materiaNome) materiaNome = (sugestaoNome||'').trim();
@@ -4561,6 +4622,7 @@ async function processImportedText(content, sugestaoNome){
       ALL_QUESTIONS.push({ ...r, materia: materiaNome, tema: temaAuto || 'Geral', uid, origem:'importado' });
       added++;
     });
+    TEXTOS_ORIGINAIS[materiaNome] = { texto: content, versaoProcessada: (window.__TCDF_BUILD__ && window.__TCDF_BUILD__.versao) || null };
     reindex();
     await saveCustomQuestions();
 
