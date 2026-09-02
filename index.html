@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v27', build: '2026-09-02 17:07' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v28', build: '2026-09-02 17:12' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1691,6 +1691,7 @@ const EDICOES_KEY = 'tcdf-edicoes-usuario-v1';
 let EDICOES_USUARIO = {}; // { [uid]: { r: 'html editado', rf: 'html editado' } }
 let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — permite reprocessar com o parser atual sem precisar reimportar manualmente
 const MATERIAS_OCULTAS_KEY = 'tcdf-materias-ocultas-v1';
+let MATERIAS_REMOVIDAS_NUVEM = new Set(); // nomes de matéria marcados como removido:true em publico/{slug} — usado pra filtrar QUALQUER cópia local desatualizada (armazenamento local, outra sessão) que ainda tenha essa matéria salva
 let MATERIAS_OCULTAS = new Set(); // matérias NATIVAS (embutidas no código) que o usuário removeu — como elas
   // não vivem no Firestore nem no localStorage de questões, o único jeito de "remover de vez" uma matéria
   // embutida é guardar o nome dela aqui e filtrar toda vez que a base nativa for recriada no carregamento
@@ -2007,7 +2008,7 @@ async function carregarMateriasPublicas(){
     let added = 0;
     docs.forEach(doc=>{
       const data = doc.data();
-      if(data && data.removido) return; // matéria marcada como removida — pula por completo
+      if(data && data.removido){ if(data.materia) MATERIAS_REMOVIDAS_NUVEM.add(data.materia); return; } // matéria marcada como removida — registra e pula por completo
       if(data && Array.isArray(data.questoes)){
         data.questoes.forEach(q=>{
           if(q && q.uid && !existingUids.has(q.uid)){
@@ -2232,6 +2233,20 @@ async function loadProgress(){
   // matérias públicas (publicadas pelo administrador) aparecem para TODOS os usuários,
   // conectados ou não a um código de sincronização pessoal
   await carregarMateriasPublicas();
+  // FILTRO FINAL, ÚNICO E DEFINITIVO: remove de ALL_QUESTIONS qualquer questão
+  // (não importa a origem — embutido, importado localmente, ou público) cuja
+  // matéria esteja marcada como removida na nuvem. Isso fecha de vez a brecha
+  // de matérias "ressuscitando": não importa de onde veio a cópia antiga
+  // (armazenamento local desatualizado, outra aba, outro dispositivo), se a
+  // nuvem diz que está removida, ela nunca aparece na tela.
+  if(MATERIAS_REMOVIDAS_NUVEM.size>0){
+    const antesDoFiltro = ALL_QUESTIONS.length;
+    ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !MATERIAS_REMOVIDAS_NUVEM.has(q.materia));
+    if(ALL_QUESTIONS.length !== antesDoFiltro){
+      reindex();
+      await saveCustomQuestions(); // já aproveita e limpa o armazenamento local também
+    }
+  }
   await reprocessarMateriasDesatualizadas();
 }
 
