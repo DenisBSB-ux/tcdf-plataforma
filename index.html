@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v16', build: '2026-09-02 00:16' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v27', build: '2026-09-02 17:07' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -237,6 +237,11 @@ body.theme-light .theme-toggle-btn:hover{ background:#fdf6e8; }
   text-transform:uppercase;
   color:var(--stamp-red);
   margin-bottom:4px;
+}
+.version-tag{
+  font-family:var(--font-mono); font-size:11px; font-weight:600; vertical-align:middle;
+  background:var(--paper-dim); border:1px solid var(--paper-line); color:var(--ink-soft);
+  border-radius:5px; padding:2px 7px; margin-left:2px;
 }
 h2.section-title{
   font-family:var(--font-display);
@@ -2026,7 +2031,7 @@ async function carregarMateriasPublicas(){
 // mais um documento único compartilhado, que estourava o limite de 1MB conforme mais
 // matérias iam sendo publicadas) — sem mexer em STATE.importLog nem chamar render(),
 // usada tanto pelos botões manuais quanto pela publicação automática após importar
-async function publicarQuestoesNoFirestore(nomesMaterias){
+async function publicarQuestoesNoFirestore(nomesMaterias, force){
   if(!FIREBASE_OK) return { ok:false, motivo:'Sincronização em nuvem indisponível nesta sessão.' };
   if(!nomesMaterias || nomesMaterias.length===0) return { ok:false, motivo:'Nenhuma matéria selecionada.' };
   // cada matéria é publicada de forma INDEPENDENTE — se uma falhar (ex.: limite de
@@ -2039,6 +2044,15 @@ async function publicarQuestoesNoFirestore(nomesMaterias){
     try{
       const ref = fbDb.collection('publico').doc(slugify(materiaNome));
       const doc = await ref.get();
+      // TRAVA DE SEGURANÇA: uma matéria marcada como removida é um "túmulo" —
+      // só uma reimportação EXPLÍCITA do usuário (force=true) pode trazê-la de
+      // volta. Sem essa trava, qualquer chamada automática/em segundo plano
+      // que ainda tivesse a matéria em ALL_QUESTIONS local (armazenamento
+      // desatualizado, outra aba, reprocessamento) a ressuscitava sem querer.
+      if(doc.exists && doc.data().removido===true && !force){
+        console.warn(`Matéria "${materiaNome}" está marcada como removida — publicação ignorada (use reimportação explícita para trazê-la de volta)`);
+        continue;
+      }
       let questoesAtuais = (doc.exists && Array.isArray(doc.data().questoes)) ? doc.data().questoes : [];
       const existingUids = new Set(questoesAtuais.map(q=>q.uid));
       ALL_QUESTIONS.filter(q=>q.materia===materiaNome).forEach(q=>{
@@ -3027,7 +3041,7 @@ function renderLetterhead(){
       <div class="seal-mark">${esc(CONFIG.sealText)}</div>
       <div>
         <div class="eyebrow">${esc(CONFIG.eyebrow)}</div>
-        <h1 class="title">${esc(tituloExibido)} ${countBadge}</h1>
+        <h1 class="title">${esc(tituloExibido)} <span class="version-tag" title="Versão do código carregada agora — se tiver dúvida se está atualizado, confira aqui">${esc(window.__TCDF_BUILD__.versao)}</span> ${countBadge}</h1>
         <div class="subtitle">${totalVisivel ? `${ALL_QUESTIONS.filter(q=>!q.duplicataOculta && (q.t==='CE'||q.t==='MC')).length} pontuáveis em ${materiasDisponiveis().length} matéria(s).` : 'Nenhuma questão carregada ainda. Importe um arquivo .txt para começar.'}</div>
       </div>
     </div>
@@ -4676,7 +4690,10 @@ async function processImportedText(content, sugestaoNome){
 
     // publica automaticamente, sem precisar de clique manual, pra que qualquer
     // visitante do site já veja essa matéria assim que ela for importada
-    const pub = await publicarQuestoesNoFirestore([materiaNome]);
+    // force=true: reimportação é uma ação explícita e deliberada do usuário,
+    // então PODE sobrescrever uma marca de "removido" anterior — diferente do
+    // reprocessamento automático em segundo plano, que nunca deve fazer isso
+    const pub = await publicarQuestoesNoFirestore([materiaNome], true);
     STATE.importLog.publicadoAutomaticamente = pub.ok;
     STATE.importLog.erroPublicacao = pub.ok ? null : pub.motivo;
     render();
