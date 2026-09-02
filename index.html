@@ -2002,6 +2002,7 @@ async function carregarMateriasPublicas(){
     let added = 0;
     docs.forEach(doc=>{
       const data = doc.data();
+      if(data && data.removido) return; // matéria marcada como removida — pula por completo
       if(data && Array.isArray(data.questoes)){
         data.questoes.forEach(q=>{
           if(q && q.uid && !existingUids.has(q.uid)){
@@ -4778,8 +4779,11 @@ async function removerMateria(materiaNome){
   // também apaga o documento na nuvem e persiste a remoção localmente.
   await saveCustomQuestions();
   if(FIREBASE_OK){
-    try{ await fbDb.collection('publico').doc(slugify(materiaNome)).delete(); }
-    catch(e){ console.error('Falha ao remover matéria da nuvem — pode reaparecer em outro dispositivo', e); }
+    // usa .set() marcando como removido, em vez de .delete() — Firestore pode
+    // ter regras de segurança diferentes pra delete vs. escrita, e write já foi
+    // confirmado funcionando; delete pode estar bloqueado silenciosamente
+    try{ await fbDb.collection('publico').doc(slugify(materiaNome)).set({ materia: materiaNome, questoes: [], removido: true, atualizadoEm: Date.now() }); }
+    catch(e){ console.error('Falha ao marcar matéria como removida na nuvem — pode reaparecer em outro dispositivo', e); }
   }
   // matéria NATIVA (embutida no código, tipo "Lei Orgânica do TCDF"): apagar da
   // memória não basta, porque ela é recriada do zero a cada carregamento a
