@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v29', build: '2026-09-02 17:18' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v30', build: '2026-09-03 16:29' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -177,6 +177,19 @@ body.theme-light .theme-toggle-btn{
   box-shadow:0 2px 6px rgba(0,0,0,0.08);
 }
 body.theme-light .theme-toggle-btn:hover{ background:#fdf6e8; }
+.color-picker-wrap{ position:relative; display:inline-block; }
+.color-picker-pop{
+  position:absolute; top:44px; right:0; z-index:200;
+  background:var(--paper); border:1px solid var(--paper-line); border-radius:10px;
+  padding:8px; display:flex; gap:6px; box-shadow:0 4px 16px rgba(0,0,0,0.25);
+}
+body:not(.theme-light) .color-picker-pop{ background:#2a2620; border-color:rgba(255,255,255,0.15); }
+.color-swatch{
+  width:26px; height:26px; border-radius:50%; cursor:pointer;
+  border:2px solid rgba(255,255,255,0.5);
+}
+.color-swatch.selected{ border-color:var(--ink); box-shadow:0 0 0 2px var(--paper); }
+body:not(.theme-light) .color-swatch.selected{ border-color:#fff; box-shadow:0 0 0 2px #2a2620; }
 
 /* ---------- Tabs (dossiê) — tema claro, usadas dentro da sidebar ---------- */
 .tabs{
@@ -396,6 +409,10 @@ h2.section-title{
 .narr-texto{ color:#3a352c; }
 .narr-texto b{ font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.03em; font-size:12px; }
 .narr-prob{ font-family:var(--font-mono); font-size:11px; opacity:.75; font-style:italic; }
+.eli10-tag{
+  font-family:var(--font-mono); font-size:10px; font-weight:700; background:var(--gold); color:#1c1a15;
+  border-radius:5px; padding:1px 6px; margin-right:6px; white-space:nowrap; vertical-align:middle;
+}
 .narr-novo{ background:#e3f0fa; border:1px solid #a9cfe8; }
 .narr-classico{ background:#f2e9d8; border:1px solid #cbb47e; }
 .narr-alta{ background:#fbeeec; border:1px solid #e0b3ab; }
@@ -708,14 +725,15 @@ body:not(.theme-light) .kw-decisivo{ color:#ff8a7a; border-bottom-color:#ff8a7a;
   display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:16px;
 }
 .stat-card{
-  background:#fff; border:1px solid var(--paper-line); border-radius:9px; padding:12px 14px;
-  text-align:center;
+  background:#fff; border:1px solid var(--paper-line); border-top:3px solid var(--gold); border-radius:9px; padding:14px;
+  text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);
 }
-.stat-card .num{ font-family:var(--font-display); font-size:22px; font-weight:600; color:var(--navy-800); line-height:1; }
+.stat-card .num{ font-family:var(--font-display); font-size:30px; font-weight:700; color:var(--navy-800); line-height:1; }
 .n-certa{ color:var(--stamp-green); }
 .n-errada{ color:var(--stamp-red); }
 .n-total{ color:#2a5d8f; }
-.stat-card .lbl{ font-family:var(--font-mono); font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-soft); margin-top:5px; }
+.stat-card .lbl{ font-family:var(--font-mono); font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); margin-top:6px; font-weight:600; }
+body:not(.theme-light) .stat-card{ border-top-color:var(--gold-bright); }
 
 .bar-row{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
 .bar-row .name{ width:150px; font-size:12.5px; color:var(--ink-soft); flex-shrink:0; }
@@ -2197,6 +2215,12 @@ async function loadProgress(){
   aplicarTema();
 
   try{
+    const resCor = await storageGet(CORTEMA_KEY);
+    if(resCor && resCor.value) STATE.corTema = resCor.value;
+  }catch(e){ /* usa a paleta padrão */ }
+  aplicarCorTema();
+
+  try{
     const resEd = await storageGet(EDICOES_KEY);
     if(resEd && resEd.value) EDICOES_USUARIO = JSON.parse(resEd.value);
   }catch(e){ /* nenhuma edição manual salva ainda */ }
@@ -2391,6 +2415,35 @@ function pct(n,d){ return d ? Math.round((n/d)*100) : 0; }
 
 function aplicarTema(){
   document.body.classList.toggle('theme-light', STATE.theme==='light');
+}
+// paletas de cor pro botão 🎨 — trocam só as variáveis de destaque (--gold e
+// --gold-bright), que já são usadas em botões, bordas e realces pela interface
+// inteira, então uma única troca de variável já muda o layout todo
+const CORTEMA_KEY = 'tcdf-cor-tema-v1';
+const PALETAS_CORES = {
+  'Dourado (padrão)': { gold:'#b08d3e', goldBright:'#d1ab54' },
+  'Azul': { gold:'#3e6ab0', goldBright:'#5c8ad1' },
+  'Verde': { gold:'#3e8a5a', goldBright:'#5cad78' },
+  'Roxo': { gold:'#7a4eb0', goldBright:'#9c72d1' },
+  'Vermelho': { gold:'#b0463e', goldBright:'#d1685c' },
+};
+function aplicarCorTema(){
+  const nome = STATE.corTema && PALETAS_CORES[STATE.corTema] ? STATE.corTema : 'Dourado (padrão)';
+  const paleta = PALETAS_CORES[nome];
+  document.documentElement.style.setProperty('--gold', paleta.gold);
+  document.documentElement.style.setProperty('--gold-bright', paleta.goldBright);
+}
+function alternarCorPicker(){
+  STATE.corPickerAberto = !STATE.corPickerAberto;
+  render();
+}
+function escolherCorTema(nome){
+  if(!PALETAS_CORES[nome]) return;
+  STATE.corTema = nome;
+  STATE.corPickerAberto = false;
+  aplicarCorTema();
+  storageSet(CORTEMA_KEY, nome).catch(()=>{});
+  render();
 }
 function alternarTema(){
   STATE.theme = STATE.theme==='light' ? 'dark' : 'light';
@@ -2599,6 +2652,8 @@ let STATE = {
   showPaste: false,
   zoomLevel: 1,
   theme: 'dark',
+  corTema: 'Dourado (padrão)',
+  corPickerAberto: false,
   assuntoAberto: false,
   materiaMenuAberto: false,
   paginacaoAberta: false,
@@ -3080,6 +3135,12 @@ function renderLetterhead(){
       <div class="stat"><div class="num">${s.taxa}%</div><div class="lbl">Acerto geral</div></div>
       <div class="stat"><div class="num"><span class="n-certa">${s.ac}</span><span style="opacity:.45;">/</span><span class="n-errada">${s.tent-s.ac}</span><span style="opacity:.45;">/</span><span class="n-total">${s.totalPontuavel}</span></div><div class="lbl">Certas / erradas / total</div></div>
       <button class="theme-toggle-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro">${STATE.theme==='light'?'🌙':'☀️'}</button>
+      <div class="color-picker-wrap">
+        <button class="theme-toggle-btn" id="btn-color-picker" title="Mudar a cor do layout">🎨</button>
+        ${STATE.corPickerAberto ? `<div class="color-picker-pop">
+          ${Object.entries(PALETAS_CORES).map(([nome,cor])=>`<button class="color-swatch ${STATE.corTema===nome?'selected':''}" data-cor-tema="${nome}" style="background:${cor.gold};" title="${nome}"></button>`).join('')}
+        </div>` : ''}
+      </div>
     </div>
   </div>
   ${escopoTema}`;
@@ -3232,20 +3293,16 @@ function renderLanding(){
   const quizSalvo = STATE.quizzesEmAndamento[STATE.materia] && !STATE.quizzesEmAndamento[STATE.materia].finished
     ? STATE.quizzesEmAndamento[STATE.materia] : null;
   const continuarBloco = quizSalvo ? `<div class="landing-cta" style="border-color:var(--gold);">
-    <b>Você tem um simulado salvo</b> nesta matéria — ${Object.keys(quizSalvo.respostas||{}).length} de ${quizSalvo.queue.length} questões <u>desta tentativa específica</u> já respondidas.
-    <div style="font-size:11.5px;color:var(--ink-soft);margin-top:2px;">(diferente do painel acima, que soma o histórico completo da matéria, incluindo outros simulados)</div>
-    ${quizSalvo.ultimoSalvamento ? `<div style="font-size:12px;color:var(--ink-soft);margin-top:4px;">💾 Salvamento automático às ${formatarDataHoraSalvamento(quizSalvo.ultimoSalvamento)}</div>` : ''}
-    <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
-      <button class="btn btn-gold btn-sm" id="btn-continuar-simulado">▶ Continuar último salvo</button>
-      <button class="btn-outline btn-sm" id="btn-iniciar-novo-simulado">🆕 Iniciar um novo</button>
+    <b>Simulado salvo</b> — ${Object.keys(quizSalvo.respostas||{}).length}/${quizSalvo.queue.length} respondidas${quizSalvo.ultimoSalvamento ? ` · 💾 ${formatarDataHoraSalvamento(quizSalvo.ultimoSalvamento)}` : ''}
+    <div style="margin-top:10px; display:flex; gap:8px;">
+      <button class="btn btn-gold btn-sm" id="btn-continuar-simulado" style="flex:1;justify-content:center;">▶ Continuar</button>
+      <button class="btn-outline btn-sm" id="btn-iniciar-novo-simulado" style="flex:1;justify-content:center;">🆕 Novo</button>
     </div>
   </div>` : '';
 
   return `
   <div class="landing-hero">
-    <div class="materia-assunto-label">${esc(STATE.materia || '—')} · ${STATE.tema!=='todos' ? esc(STATE.tema) : 'Todos os assuntos'} ${qtdSimuladosGerados>0 ? `<span class="sim-count-badge">${qtdSimuladosGerados} simulado(s) gerado(s)</span>` : ''}</div>
-    <h2 class="section-title">Painel do candidato</h2>
-    <p class="section-desc">Configure o nível de incidência e a quantidade de questões e clique em "Iniciar simulado" para começar.</p>
+    <h2 class="section-title">${esc(STATE.materia || 'Painel do candidato')}${STATE.tema!=='todos' ? ` <span class="materia-assunto-label" style="font-size:14px;">· ${esc(STATE.tema)}</span>` : ''} ${qtdSimuladosGerados>0 ? `<span class="sim-count-badge">${qtdSimuladosGerados}</span>` : ''}</h2>
     <div class="big-stats">
       <div class="stat-card"><div class="num">${s.taxa}%</div><div class="lbl">Acerto geral</div></div>
       <div class="stat-card"><div class="num"><span class="n-certa">${s.ac}</span><span style="opacity:.45;">/</span><span class="n-errada">${s.tent-s.ac}</span><span style="opacity:.45;">/</span><span class="n-total">${s.totalPontuavel}</span></div><div class="lbl">Certas / erradas / total</div></div>
@@ -3503,7 +3560,6 @@ function renderQuiz(){
           <button class="icon-btn" id="btn-next-arrow" title="Próxima questão (seta → ou espaço)" ${quiz.idx===quiz.queue.length-1?'disabled':''}>→</button>
           <span class="toolbar-divider"></span>
           <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
-          <button class="icon-btn" id="btn-reset-simulado" title="Limpar todas as respostas deste simulado" ${Object.keys(quiz.respostas).length===0?'disabled':''}>⟲</button>
           <span class="toolbar-divider"></span>
           <button class="icon-btn" id="btn-focus-toggle" title="Sair do modo foco">✕</button>
           <button class="theme-toggle-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro" style="width:36px;height:36px;">${STATE.theme==='light'?'🌙':'☀️'}</button>
@@ -3517,10 +3573,7 @@ function renderQuiz(){
   const respondidas = Object.keys(quiz.respostas).length;
   const progressPct = pct(respondidas, quiz.queue.length);
   const temaLinha = q.tema && q.tema!=='Geral' ? `<div class="q-tema-line">${esc(q.tema)}</div>` : '';
-  const historicoUid = getBucket(quiz.materia).perguntas[uid];
-  const historicoHtml = (historicoUid && historicoUid.tentativas>0)
-    ? `<span class="q-historico-badge" title="Seu histórico nesta questão específica, em todas as tentativas já feitas">🔁 ${historicoUid.tentativas}× · ✓${historicoUid.acertos} · ✗${historicoUid.tentativas-historicoUid.acertos}</span>`
-    : '';
+  const historicoHtml = ''; // removido a pedido: poluía o cabeçalho sem agregar valor suficiente
   const idxUltimaRespondida = acharIdxUltimaRespondida(quiz);
   const idxProximoAssunto = acharIdxProximoAssunto(quiz);
 
@@ -3559,7 +3612,6 @@ function renderQuiz(){
         <button class="icon-btn" id="btn-jump-proximo-assunto" title="Ir para o próximo assunto" ${idxProximoAssunto<0?'disabled':''}>⏭</button>
         <span class="toolbar-divider"></span>
         <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
-        <button class="icon-btn" id="btn-reset-simulado" title="Limpar todas as respostas deste simulado" ${respondidas===0?'disabled':''}>⟲</button>
         <button class="icon-btn" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
         <button class="icon-btn icon-btn-gold" id="btn-finalizar" title="Finalizar simulado">✓</button>
         <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
@@ -4060,7 +4112,7 @@ function renderResumoRevisao(){
   return `
   <div class="section-eyebrow">${esc(STATE.materia)}</div>
   <h2 class="section-title">Resumo para revisão de véspera</h2>
-  <p class="section-desc">${lista.length} ponto(s) de atenção — resumo flash das questões que você errou${STATE.tema!=='todos'?` no assunto ${esc(STATE.tema)}`:''}, agrupados por assunto. Pensado pra ler rápido, sem precisar refazer as questões.</p>
+  <p class="section-desc">${lista.length} ponto(s) de atenção — resumo flash no método <b>ELI10</b> (<i>Explain Like I'm 10</i>: explicado de um jeito simples, como se você tivesse 10 anos) das questões que você errou${STATE.tema!=='todos'?` no assunto ${esc(STATE.tema)}`:''}, agrupados por assunto.</p>
   <button class="btn-outline" id="btn-download-resumo" style="margin-bottom:18px;">⬇ Baixar como arquivo de texto</button>
 
   ${temasOrdenados.map(tema=>`
@@ -4069,7 +4121,7 @@ function renderResumoRevisao(){
       ${porTema[tema].sort((a,b)=>a.n-b.n).map(q=>`
         <div class="resumo-revisao-item">
           <div class="num">${String(q.n).padStart(3,'0')}</div>
-          <div class="txt">${formatarTextoComDestaque(q.rf, palavrasChaveDaRespostaCorreta(q))}</div>
+          <div class="txt"><span class="eli10-tag" title="Explain Like I'm 10 — explicação simplificada">⚡ ELI10</span> ${formatarTextoComDestaque(q.rf, palavrasChaveDaRespostaCorreta(q))}</div>
         </div>
       `).join('')}
     </div>
@@ -4215,8 +4267,6 @@ function renderImportarPage(){
       <div class="panel"><div class="pad">
         <div class="section-eyebrow">Anexação de novo processo</div>
         <h2 class="section-title">Importar questões (.txt)</h2>
-        <p class="section-desc">Envie um arquivo .txt no mesmo formato exportado pela análise (blocos "QUESTÃO N" com Banca/cargo, Status, Escopo, Fonte, Enunciado, Resolução e Resumo Flash). Cada nome de matéria vira uma <b>aba macro independente</b> automaticamente, com simulado, estatísticas, caderno de erros e flashcards próprios. Apenas questões com Status "Válida" são importadas.</p>
-
         <div class="import-field">
           <label>Nome da matéria (vira o nome da aba)</label>
           <input type="text" id="input-assunto-nome" placeholder="Ex.: Regimento Interno do TCDF" value="${esc(STATE.importDeckName)}">
@@ -4233,12 +4283,6 @@ function renderImportarPage(){
         </div>
         <p class="upload-source-note">Aceita arquivos .txt, .pdf ou .md. Em PDFs, o texto é extraído automaticamente — funciona bem com PDFs de texto selecionável; PDFs que são apenas imagens escaneadas (sem camada de texto) não são suportados. Arquivos .md devem seguir o formato gerado pelo botão "⬇ Baixar" de cada matéria (útil pra editar as questões num editor de texto e reimportar depois). Se o nome da matéria ficar em branco, ele será derivado do nome do arquivo.</p>
 
-        <button type="button" class="paste-toggle" id="btn-toggle-paste">${STATE.showPaste ? '− ocultar' : '+ o seletor de arquivo não abriu? cole o texto aqui'}</button>
-        ${STATE.showPaste ? `<div class="paste-area">
-          <textarea id="paste-textarea" placeholder="Cole aqui o conteúdo completo do arquivo .txt (blocos QUESTÃO N...)">${esc(STATE.pasteText||'')}</textarea>
-          <button class="btn btn-gold btn-sm" id="btn-processar-colado" style="margin-top:10px;">Processar texto colado</button>
-        </div>` : ''}
-
         ${STATE.importLog ? renderImportLog() : ''}
 
         ${materiasImportadas.length ? `<div class="card-block" style="margin-top:24px;">
@@ -4252,13 +4296,13 @@ function renderImportarPage(){
               <div class="pct" style="margin-right:8px;">${n} questão(ões)</div>
               <button class="btn-outline" data-download-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
               <button class="btn-outline" data-inserir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">➕ Inserir</button>
+              <button class="btn-outline" data-renomear-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Muda o nome de exibição desta matéria, mantendo as questões e o progresso">✏️ Renomear</button>
               <button class="btn-outline" data-remover-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;">Remover</button>
             </div>`;
           }).join('')}
         </div>` : ''}
 
-        <button type="button" class="paste-toggle" id="btn-toggle-backup-manual">${STATE.showBackupManual ? '− ocultar backup manual' : '+ backup manual de progresso (avançado)'}</button>
-        ${STATE.showBackupManual ? `<div class="card-block" style="margin-top:10px;">
+        ${false ? `<div class="card-block" style="margin-top:10px;">
           <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">O progresso é salvo automaticamente (a cada minuto e a cada resposta). Use os botões abaixo apenas se quiser um arquivo de backup extra, ou para levar o progresso manualmente para outro computador sem usar a sincronização em nuvem.</p>
           <button class="side-action-btn" id="btn-exportar-progresso" title="Baixa um arquivo .json com todo o seu progresso">⬇ Exportar backup</button>
           <button class="side-action-btn" id="btn-importar-progresso" title="Carrega um backup .json exportado anteriormente">⬆ Importar backup</button>
@@ -4813,6 +4857,32 @@ async function despublicarMateria(materiaNome){
   }
 }
 
+async function renomearMateria(nomeAtual, nomeNovo){
+  nomeNovo = (nomeNovo||'').trim();
+  if(!nomeNovo || nomeNovo===nomeAtual) return;
+  if(ALL_QUESTIONS.some(q=>q.materia===nomeNovo)){
+    alert(`Já existe uma matéria chamada "${nomeNovo}". Escolha outro nome.`);
+    return;
+  }
+  // renomeia em tudo que referencia o nome antigo: questões, progresso, texto
+  // original guardado pra reprocessamento, e o estado atual da tela
+  ALL_QUESTIONS.forEach(q=>{ if(q.materia===nomeAtual) q.materia = nomeNovo; });
+  if(PROGRESS[nomeAtual]){ PROGRESS[nomeNovo] = PROGRESS[nomeAtual]; delete PROGRESS[nomeAtual]; }
+  if(TEXTOS_ORIGINAIS[nomeAtual]){ TEXTOS_ORIGINAIS[nomeNovo] = TEXTOS_ORIGINAIS[nomeAtual]; delete TEXTOS_ORIGINAIS[nomeAtual]; }
+  if(STATE.materia===nomeAtual) STATE.materia = nomeNovo;
+  reindex();
+  await saveCustomQuestions();
+  saveProgress();
+  if(FIREBASE_OK){
+    // publica sob o novo nome/slug, e marca o documento antigo como removido
+    // (mesma trava de segurança usada em removerMateria — nunca .delete())
+    try{ await publicarQuestoesNoFirestore([nomeNovo], true); }
+    catch(e){ console.error('Falha ao publicar matéria renomeada na nuvem', e); }
+    try{ await fbDb.collection('publico').doc(slugify(nomeAtual)).set({ materia: nomeAtual, questoes: [], removido: true, atualizadoEm: Date.now() }); }
+    catch(e){ console.error('Falha ao marcar nome antigo como removido na nuvem', e); }
+  }
+  render();
+}
 async function removerMateria(materiaNome){
   const questoesDaMateria = ALL_QUESTIONS.filter(q=>q.materia===materiaNome);
   const uidsRemover = new Set(questoesDaMateria.map(q=>q.uid));
@@ -5184,6 +5254,11 @@ function attachHandlers(){
 
   const btnThemeToggle = document.getElementById('btn-theme-toggle');
   if(btnThemeToggle) btnThemeToggle.addEventListener('click', alternarTema);
+  const btnColorPicker = document.getElementById('btn-color-picker');
+  if(btnColorPicker) btnColorPicker.addEventListener('click', alternarCorPicker);
+  root.querySelectorAll('[data-cor-tema]').forEach(el=>{
+    el.addEventListener('click', ()=> escolherCorTema(el.dataset.corTema));
+  });
   const btnFocusToggle = document.getElementById('btn-focus-toggle');
   if(btnFocusToggle) btnFocusToggle.addEventListener('click', ()=>{ STATE.focusMode = !STATE.focusMode; render(); });
 
@@ -5304,6 +5379,13 @@ function attachHandlers(){
       const nome = el.dataset.removerMateria;
       const ok = window.confirm(`Remover todas as questões e o progresso da matéria "${nome}"? Isso também remove ela da versão pública, se estiver publicada. Essa ação não afeta as demais matérias.`);
       if(ok) await removerMateria(nome);
+    });
+  });
+  root.querySelectorAll('[data-renomear-materia]').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      const nomeAtual = el.dataset.renomearMateria;
+      const nomeNovo = window.prompt(`Novo nome para "${nomeAtual}":`, nomeAtual);
+      if(nomeNovo!==null) await renomearMateria(nomeAtual, nomeNovo);
     });
   });
   const fileInputAtualizar = document.getElementById('file-input-atualizar');
