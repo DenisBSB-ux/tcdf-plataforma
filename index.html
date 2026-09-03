@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v28', build: '2026-09-02 17:12' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v29', build: '2026-09-02 17:18' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1692,6 +1692,7 @@ let EDICOES_USUARIO = {}; // { [uid]: { r: 'html editado', rf: 'html editado' } 
 let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — permite reprocessar com o parser atual sem precisar reimportar manualmente
 const MATERIAS_OCULTAS_KEY = 'tcdf-materias-ocultas-v1';
 let MATERIAS_REMOVIDAS_NUVEM = new Set(); // nomes de matéria marcados como removido:true em publico/{slug} — usado pra filtrar QUALQUER cópia local desatualizada (armazenamento local, outra sessão) que ainda tenha essa matéria salva
+let MATERIAS_VALIDAS_NUVEM = new Set(); // nomes de matéria que TÊM doc válido e não-removido em publico/{slug} — a nuvem é a fonte da verdade pra saber quais matérias importadas devem existir
 let MATERIAS_OCULTAS = new Set(); // matérias NATIVAS (embutidas no código) que o usuário removeu — como elas
   // não vivem no Firestore nem no localStorage de questões, o único jeito de "remover de vez" uma matéria
   // embutida é guardar o nome dela aqui e filtrar toda vez que a base nativa for recriada no carregamento
@@ -1997,8 +1998,11 @@ function sanitizarParaFirestore(obj){
 }
 
 /* ================= matérias públicas (visíveis para todos os usuários) ================= */
+// retorna true se conseguiu de fato consultar a nuvem (mesmo que não tenha
+// encontrado nada) — false só em caso de falha real de rede/permissão, pra
+// nunca confundir "nuvem vazia" com "nuvem inacessível" na reconciliação
 async function carregarMateriasPublicas(){
-  if(!FIREBASE_OK) return;
+  if(!FIREBASE_OK) return false;
   try{
     // cada matéria pública tem seu próprio documento (em vez de um documento gigante
     // compartilhado), pra nunca bater no limite de 1MB por documento do Firestore
@@ -2008,8 +2012,12 @@ async function carregarMateriasPublicas(){
     let added = 0;
     docs.forEach(doc=>{
       const data = doc.data();
-      if(data && data.removido){ if(data.materia) MATERIAS_REMOVIDAS_NUVEM.add(data.materia); return; } // matéria marcada como removida — registra e pula por completo
-      if(data && Array.isArray(data.questoes)){
+      if(!data || doc.id.startsWith('_')) return; // documentos de configuração interna (ex.: _materias_ocultas), não são matéria
+      if(data.removido){ if(data.materia) MATERIAS_REMOVIDAS_NUVEM.add(data.materia); return; }
+      if(Array.isArray(data.questoes) && data.questoes.length>0 && data.materia){
+        // matéria com conteúdo de verdade no documento: é a fonte da verdade —
+        // registrada aqui pra permitir reconciliar contra cópias locais obsoletas
+        MATERIAS_VALIDAS_NUVEM.add(data.materia);
         data.questoes.forEach(q=>{
           if(q && q.uid && !existingUids.has(q.uid)){
             ALL_QUESTIONS.push({ ...q, origem: 'publico' });
@@ -2020,12 +2028,13 @@ async function carregarMateriasPublicas(){
       }
       // guarda o texto original e a versão do site que o processou pela última
       // vez — é o que permite reprocessar automaticamente sem reimportar na mão
-      if(data && data.textoOriginal && data.materia){
+      if(data.textoOriginal && data.materia){
         TEXTOS_ORIGINAIS[data.materia] = { texto: data.textoOriginal, versaoProcessada: data.versaoProcessada || null };
       }
     });
     if(added>0) reindex();
-  }catch(e){ console.warn('Falha ao carregar matérias públicas', e); }
+    return true;
+  }catch(e){ console.warn('Falha ao carregar matérias públicas', e); return false; }
 }
 
 // grava cada matéria no seu próprio documento na coleção pública do Firestore (não
@@ -2232,16 +2241,23 @@ async function loadProgress(){
 
   // matérias públicas (publicadas pelo administrador) aparecem para TODOS os usuários,
   // conectados ou não a um código de sincronização pessoal
-  await carregarMateriasPublicas();
-  // FILTRO FINAL, ÚNICO E DEFINITIVO: remove de ALL_QUESTIONS qualquer questão
-  // (não importa a origem — embutido, importado localmente, ou público) cuja
-  // matéria esteja marcada como removida na nuvem. Isso fecha de vez a brecha
-  // de matérias "ressuscitando": não importa de onde veio a cópia antiga
-  // (armazenamento local desatualizado, outra aba, outro dispositivo), se a
-  // nuvem diz que está removida, ela nunca aparece na tela.
-  if(MATERIAS_REMOVIDAS_NUVEM.size>0){
+  const nuvemDisponivel = await carregarMateriasPublicas();
+  // RECONCILIAÇÃO DEFINITIVA: a nuvem é a fonte da verdade pra matérias
+  // IMPORTADAS. Cobre os dois casos possíveis de remoção — documento marcado
+  // como removido:true, OU documento simplesmente apagado/nunca existiu (o
+  // que aconteceu com matérias removidas pelo antigo .delete(), antes dessa
+  // correção existir). Em ambos os casos, se uma matéria com origem
+  // 'importado' não aparece como válida na nuvem agora, ela é descartada —
+  // não importa de onde a cópia local veio (armazenamento antigo, outra aba,
+  // outro dispositivo). Só roda se a nuvem respondeu de verdade (nuvemDisponivel),
+  // pra nunca apagar dados locais legítimos só porque a rede caiu no momento.
+  if(nuvemDisponivel){
     const antesDoFiltro = ALL_QUESTIONS.length;
-    ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !MATERIAS_REMOVIDAS_NUVEM.has(q.materia));
+    ALL_QUESTIONS = ALL_QUESTIONS.filter(q => {
+      if(MATERIAS_REMOVIDAS_NUVEM.has(q.materia)) return false;
+      if(q.origem==='importado' && !MATERIAS_VALIDAS_NUVEM.has(q.materia)) return false;
+      return true;
+    });
     if(ALL_QUESTIONS.length !== antesDoFiltro){
       reindex();
       await saveCustomQuestions(); // já aproveita e limpa o armazenamento local também
