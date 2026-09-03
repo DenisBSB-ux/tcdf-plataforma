@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v30', build: '2026-09-03 16:29' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v32', build: '2026-09-03 16:54' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -55,8 +55,9 @@ body{
 body.theme-light{
   /* tom quente e de baixo contraste (mesma família do papel cor-de-creme do
      conteúdo), pensado pra reduzir cansaço visual em sessões longas de estudo —
-     em vez do cinza-azulado frio que destoava do papel */
-  background:#f2ecdd;
+     em vez do cinza-azulado frio que destoava do papel. Usa var(--paper-dim)
+     em vez de cor fixa pra acompanhar a paleta de cor escolhida pelo usuário. */
+  background:var(--paper-dim);
 }
 body.theme-light .eyebrow{ color:#8a6d2e; }
 body.theme-light .title{ color:#1a1610; }
@@ -910,8 +911,10 @@ body:not(.theme-light) .stat-card{ border-top-color:var(--gold-bright); }
 }
 .materia-tab-btn{ flex-direction:column; align-items:stretch; }
 .materia-tab-row1{ display:flex; justify-content:space-between; gap:8px; }
-.materia-tab-stats{ font-size:9.5px; opacity:.65; margin-top:4px; letter-spacing:.01em; }
-.subject-tab.active .materia-tab-stats{ opacity:.85; }
+/* mesmo tamanho de fonte da linha do nome da matéria (11.5px, era 9.5px) e
+   opacidade plena — antes ficava pequeno e apagado demais pra bater o olho */
+.materia-tab-stats{ font-size:11.5px; opacity:1; margin-top:4px; letter-spacing:.01em; font-weight:600; color:var(--ink); }
+.subject-tab.active .materia-tab-stats{ color:#2a1f08; }
 
 /* ---------- quiz toolbar (navegação) ---------- */
 /* ---------- controle de zoom (tamanho do texto) ---------- */
@@ -1711,6 +1714,8 @@ let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — permite 
 const MATERIAS_OCULTAS_KEY = 'tcdf-materias-ocultas-v1';
 let MATERIAS_REMOVIDAS_NUVEM = new Set(); // nomes de matéria marcados como removido:true em publico/{slug} — usado pra filtrar QUALQUER cópia local desatualizada (armazenamento local, outra sessão) que ainda tenha essa matéria salva
 let MATERIAS_VALIDAS_NUVEM = new Set(); // nomes de matéria que TÊM doc válido e não-removido em publico/{slug} — a nuvem é a fonte da verdade pra saber quais matérias importadas devem existir
+let SLUGS_VALIDOS_NUVEM = new Set(); // ids de documento (slugs) com conteúdo válido — segunda camada de checagem, independente do campo "materia" de cada questão
+let SLUGS_REMOVIDOS_NUVEM = new Set();
 let MATERIAS_OCULTAS = new Set(); // matérias NATIVAS (embutidas no código) que o usuário removeu — como elas
   // não vivem no Firestore nem no localStorage de questões, o único jeito de "remover de vez" uma matéria
   // embutida é guardar o nome dela aqui e filtrar toda vez que a base nativa for recriada no carregamento
@@ -2031,11 +2036,29 @@ async function carregarMateriasPublicas(){
     docs.forEach(doc=>{
       const data = doc.data();
       if(!data || doc.id.startsWith('_')) return; // documentos de configuração interna (ex.: _materias_ocultas), não são matéria
-      if(data.removido){ if(data.materia) MATERIAS_REMOVIDAS_NUVEM.add(data.materia); return; }
-      if(Array.isArray(data.questoes) && data.questoes.length>0 && data.materia){
-        // matéria com conteúdo de verdade no documento: é a fonte da verdade —
-        // registrada aqui pra permitir reconciliar contra cópias locais obsoletas
-        MATERIAS_VALIDAS_NUVEM.add(data.materia);
+      if(data.removido){
+        // registra tanto pelo campo do documento quanto pelo id do slug, já que
+        // documentos antigos podem não ter o campo "materia" preenchido —
+        // depender só dele já causou perda de dados por falso positivo (ver nota abaixo)
+        if(data.materia) MATERIAS_REMOVIDAS_NUVEM.add(data.materia);
+        SLUGS_REMOVIDOS_NUVEM.add(doc.id);
+        return;
+      }
+      if(Array.isArray(data.questoes) && data.questoes.length>0){
+        // CORREÇÃO CRÍTICA: antes, a validade da matéria inteira dependia do
+        // campo data.materia (nível do documento) bater exatamente. Documentos
+        // publicados por versões antigas do código podiam não ter esse campo,
+        // e a reconciliação (item novo, adicionado na v29) tratava isso como
+        // "matéria não existe de verdade na nuvem" e APAGAVA a cópia local —
+        // gerando a perda de estatísticas relatada. Agora a validade é
+        // registrada por QUESTÃO individual (cada uma já carrega seu próprio
+        // campo .materia) e também pelo slug do documento, nunca só pelo campo
+        // solto do nível de fora.
+        SLUGS_VALIDOS_NUVEM.add(doc.id);
+        data.questoes.forEach(q=>{
+          if(q && q.materia) MATERIAS_VALIDAS_NUVEM.add(q.materia);
+        });
+        if(data.materia) MATERIAS_VALIDAS_NUVEM.add(data.materia);
         data.questoes.forEach(q=>{
           if(q && q.uid && !existingUids.has(q.uid)){
             ALL_QUESTIONS.push({ ...q, origem: 'publico' });
@@ -2278,8 +2301,12 @@ async function loadProgress(){
   if(nuvemDisponivel){
     const antesDoFiltro = ALL_QUESTIONS.length;
     ALL_QUESTIONS = ALL_QUESTIONS.filter(q => {
-      if(MATERIAS_REMOVIDAS_NUVEM.has(q.materia)) return false;
-      if(q.origem==='importado' && !MATERIAS_VALIDAS_NUVEM.has(q.materia)) return false;
+      const slug = slugify(q.materia||'');
+      // dupla checagem (nome E slug) nos dois sentidos, pra nunca apagar dado
+      // legítimo por um único sinal falho — só remove se as DUAS confirmarem
+      // remoção, e só invalida se as DUAS não encontrarem nada válido
+      if(MATERIAS_REMOVIDAS_NUVEM.has(q.materia) || SLUGS_REMOVIDOS_NUVEM.has(slug)) return false;
+      if(q.origem==='importado' && !MATERIAS_VALIDAS_NUVEM.has(q.materia) && !SLUGS_VALIDOS_NUVEM.has(slug)) return false;
       return true;
     });
     if(ALL_QUESTIONS.length !== antesDoFiltro){
@@ -2421,17 +2448,23 @@ function aplicarTema(){
 // inteira, então uma única troca de variável já muda o layout todo
 const CORTEMA_KEY = 'tcdf-cor-tema-v1';
 const PALETAS_CORES = {
-  'Dourado (padrão)': { gold:'#b08d3e', goldBright:'#d1ab54' },
-  'Azul': { gold:'#3e6ab0', goldBright:'#5c8ad1' },
-  'Verde': { gold:'#3e8a5a', goldBright:'#5cad78' },
-  'Roxo': { gold:'#7a4eb0', goldBright:'#9c72d1' },
-  'Vermelho': { gold:'#b0463e', goldBright:'#d1685c' },
+  'Dourado (padrão)': { gold:'#b08d3e', goldBright:'#d1ab54', paper:'#f6f1e4', paperDim:'#ece4d0', paperLine:'#d8cba9' },
+  'Azul':              { gold:'#3e6ab0', goldBright:'#5c8ad1', paper:'#eef2f8', paperDim:'#dde6f1', paperLine:'#c3d3e6' },
+  'Verde':             { gold:'#3e8a5a', goldBright:'#5cad78', paper:'#eef6ef', paperDim:'#dcebde', paperLine:'#bdd9c1' },
+  'Roxo':              { gold:'#7a4eb0', goldBright:'#9c72d1', paper:'#f3eef8', paperDim:'#e6dcf1', paperLine:'#d0bde6' },
+  'Vermelho':          { gold:'#b0463e', goldBright:'#d1685c', paper:'#f8eeee', paperDim:'#f1dcdc', paperLine:'#e6bdbd' },
 };
+// tinge o layout inteiro: fundo (--paper e variações), não só o destaque
+// dourado — antes só os botões/bordas mudavam, o fundo bege ficava sempre igual
 function aplicarCorTema(){
   const nome = STATE.corTema && PALETAS_CORES[STATE.corTema] ? STATE.corTema : 'Dourado (padrão)';
   const paleta = PALETAS_CORES[nome];
-  document.documentElement.style.setProperty('--gold', paleta.gold);
-  document.documentElement.style.setProperty('--gold-bright', paleta.goldBright);
+  const raiz = document.documentElement.style;
+  raiz.setProperty('--gold', paleta.gold);
+  raiz.setProperty('--gold-bright', paleta.goldBright);
+  raiz.setProperty('--paper', paleta.paper);
+  raiz.setProperty('--paper-dim', paleta.paperDim);
+  raiz.setProperty('--paper-line', paleta.paperLine);
 }
 function alternarCorPicker(){
   STATE.corPickerAberto = !STATE.corPickerAberto;
@@ -3292,13 +3325,16 @@ function renderLanding(){
   }
   const quizSalvo = STATE.quizzesEmAndamento[STATE.materia] && !STATE.quizzesEmAndamento[STATE.materia].finished
     ? STATE.quizzesEmAndamento[STATE.materia] : null;
-  const continuarBloco = quizSalvo ? `<div class="landing-cta" style="border-color:var(--gold);">
-    <b>Simulado salvo</b> — ${Object.keys(quizSalvo.respostas||{}).length}/${quizSalvo.queue.length} respondidas${quizSalvo.ultimoSalvamento ? ` · 💾 ${formatarDataHoraSalvamento(quizSalvo.ultimoSalvamento)}` : ''}
-    <div style="margin-top:10px; display:flex; gap:8px;">
-      <button class="btn btn-gold btn-sm" id="btn-continuar-simulado" style="flex:1;justify-content:center;">▶ Continuar</button>
-      <button class="btn-outline btn-sm" id="btn-iniciar-novo-simulado" style="flex:1;justify-content:center;">🆕 Novo</button>
-    </div>
+  const infoSalvo = quizSalvo ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">
+    <b>Simulado salvo:</b> ${Object.keys(quizSalvo.respostas||{}).length}/${quizSalvo.queue.length} respondidas${quizSalvo.ultimoSalvamento ? ` · 💾 ${formatarDataHoraSalvamento(quizSalvo.ultimoSalvamento)}` : ''}
   </div>` : '';
+  // os três botões (Configurar / Continuar / Novo) seguem o MESMO padrão visual
+  // e ficam lado a lado, em vez de "Configurar" isolado embaixo dos outros dois
+  const botoesAcao = `<div style="display:flex; gap:8px; flex-wrap:wrap;">
+    <button class="btn btn-primary btn-sm" id="btn-abrir-config" style="flex:1;justify-content:center;min-width:140px;">⚙ Configurar</button>
+    ${quizSalvo ? `<button class="btn btn-gold btn-sm" id="btn-continuar-simulado" style="flex:1;justify-content:center;min-width:140px;">▶ Continuar</button>
+    <button class="btn-outline btn-sm" id="btn-iniciar-novo-simulado" style="flex:1;justify-content:center;min-width:140px;">🆕 Novo</button>` : ''}
+  </div>`;
 
   return `
   <div class="landing-hero">
@@ -3308,9 +3344,9 @@ function renderLanding(){
       <div class="stat-card"><div class="num"><span class="n-certa">${s.ac}</span><span style="opacity:.45;">/</span><span class="n-errada">${s.tent-s.ac}</span><span style="opacity:.45;">/</span><span class="n-total">${s.totalPontuavel}</span></div><div class="lbl">Certas / erradas / total</div></div>
       <div class="stat-card"><div class="num">${s.erros}</div><div class="lbl">No caderno de erros</div></div>
     </div>
-    ${continuarBloco}
-    ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin:10px 0 0;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
-    <button class="btn btn-primary" id="btn-abrir-config">⚙ Configurar simulado →</button>
+    ${infoSalvo}
+    ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin-bottom:8px;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
+    ${botoesAcao}
   </div>
   ${renderDashboardAnalitico()}
   ${renderSimuladosSalvosBlock()}
