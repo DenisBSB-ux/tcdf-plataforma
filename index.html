@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v33', build: '2026-09-03 17:03' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v34', build: '2026-09-04 10:53' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -159,7 +159,7 @@ body.theme-light .title-count-badge{ color:#3a2c08; }
 }
 .snapshot .stat{ text-align:center; min-width:70px; }
 .snapshot .stat .num{
-  font-size:18px; font-weight:600; color:var(--gold-bright); line-height:1;
+  font-size:19px; font-weight:600; color:var(--gold-bright); line-height:1;
 }
 .snapshot .stat .lbl{
   font-size:9px; letter-spacing:.04em; text-transform:uppercase; color:#8b98b0; margin-top:3px; white-space:nowrap;
@@ -729,7 +729,7 @@ body:not(.theme-light) .kw-decisivo{ color:#ff8a7a; border-bottom-color:#ff8a7a;
   background:#fff; border:1px solid var(--paper-line); border-top:3px solid var(--gold); border-radius:9px; padding:14px;
   text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.04);
 }
-.stat-card .num{ font-family:var(--font-display); font-size:30px; font-weight:700; color:var(--navy-800); line-height:1; }
+.stat-card .num{ font-family:var(--font-display); font-size:19px; font-weight:700; color:var(--navy-800); line-height:1; }
 .n-certa{ color:var(--stamp-green); }
 .n-errada{ color:var(--stamp-red); }
 .n-total{ color:#2a5d8f; }
@@ -2057,11 +2057,6 @@ async function carregarMateriasPublicas(){
         // registrada por QUESTÃO individual (cada uma já carrega seu próprio
         // campo .materia) e também pelo slug do documento, nunca só pelo campo
         // solto do nível de fora.
-        SLUGS_VALIDOS_NUVEM.add(doc.id);
-        data.questoes.forEach(q=>{
-          if(q && q.materia) MATERIAS_VALIDAS_NUVEM.add(q.materia);
-        });
-        if(data.materia) MATERIAS_VALIDAS_NUVEM.add(data.materia);
         data.questoes.forEach(q=>{
           if(q && q.uid && !existingUids.has(q.uid)){
             ALL_QUESTIONS.push({ ...q, origem: 'publico' });
