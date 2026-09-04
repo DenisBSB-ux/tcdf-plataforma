@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v37', build: '2026-09-04 17:15' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v38', build: '2026-09-04 18:20' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1727,6 +1727,21 @@ const STORAGE_KEY = 'sim-progresso-v3';
 const EDICOES_KEY = 'tcdf-edicoes-usuario-v1';
 let EDICOES_USUARIO = {}; // { [uid]: { r: 'html editado', rf: 'html editado' } }
 let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — permite reprocessar com o parser atual sem precisar reimportar manualmente
+// CORREÇÃO (v37): antes, isso só existia em memória (se populado nesta sessão) ou
+// vindo da nuvem (campo textoOriginal do documento publico/{slug}). Matérias
+// grandes (ver publicarQuestoesNoFirestore) não cabem mais inteiras na nuvem, então
+// agora também é salvo localmente — IndexedDB não tem o teto de tamanho que o
+// Firestore tem, então isso continua funcionando mesmo pra matérias enormes,
+// pelo menos neste aparelho (outros dispositivos ainda dependem da nuvem, que só
+// tem o texto de matérias pequenas o suficiente pra caber).
+const TEXTOS_ORIGINAIS_KEY = 'tcdf-textos-originais-v1';
+let salvarTextosOriginaisTimer = null;
+function salvarTextosOriginaisLocalmente(){
+  clearTimeout(salvarTextosOriginaisTimer);
+  salvarTextosOriginaisTimer = setTimeout(()=>{
+    storageSet(TEXTOS_ORIGINAIS_KEY, JSON.stringify(TEXTOS_ORIGINAIS)).catch(e=>console.error('Falha ao salvar textos originais localmente', e));
+  }, 300);
+}
 const MATERIAS_OCULTAS_KEY = 'tcdf-materias-ocultas-v1';
 let MATERIAS_REMOVIDAS_NUVEM = new Set(); // nomes de matéria marcados como removido:true em publico/{slug} — usado pra filtrar QUALQUER cópia local desatualizada (armazenamento local, outra sessão) que ainda tenha essa matéria salva
 let MATERIAS_VALIDAS_NUVEM = new Set(); // nomes de matéria que TÊM doc válido e não-removido em publico/{slug} — a nuvem é a fonte da verdade pra saber quais matérias importadas devem existir
@@ -2107,22 +2122,42 @@ async function carregarMateriasPublicas(){
   if(!FIREBASE_OK) return false;
   try{
     // cada matéria pública tem seu próprio documento (em vez de um documento gigante
-    // compartilhado), pra nunca bater no limite de 1MB por documento do Firestore
+    // compartilhado), pra nunca bater no limite de 1MB por documento do Firestore.
+    // CORREÇÃO (v37): mesmo assim, uma matéria grande sozinha (ex.: 774 questões)
+    // ultrapassa esse 1MB — agora ela pode estar dividida em vários documentos
+    // "pedaço" com id "{slug}__p0", "{slug}__p1", etc, todos com o mesmo campo
+    // .materia. O documento "{slug}" (sem sufixo) é o manifesto: guarda os metadados
+    // e, pra matérias antigas/pequenas que nunca precisaram dividir, pode ainda
+    // conter o array "questoes" completo direto nele (formato legado, ainda lido).
     const snapshot = await fbDb.collection('publico').get();
     const docs = snapshot.docs || [];
     const existingUids = new Set(ALL_QUESTIONS.map(q=>q.uid));
     let added = 0;
+
+    // 1ª passada: descobre quais matérias (pelo slug BASE, sem sufixo de pedaço)
+    // estão marcadas como removidas — precisa vir antes da 2ª passada porque a
+    // ordem de leitura dos documentos do Firestore não é garantida, e um pedaço
+    // não tem campo "removido" próprio (só o manifesto tem)
     docs.forEach(doc=>{
       const data = doc.data();
-      if(!data || doc.id.startsWith('_')) return; // documentos de configuração interna (ex.: _materias_ocultas), não são matéria
+      if(!data || doc.id.startsWith('_')) return;
       if(data.removido){
         // registra tanto pelo campo do documento quanto pelo id do slug, já que
         // documentos antigos podem não ter o campo "materia" preenchido —
         // depender só dele já causou perda de dados por falso positivo (ver nota abaixo)
         if(data.materia) MATERIAS_REMOVIDAS_NUVEM.add(data.materia);
-        SLUGS_REMOVIDOS_NUVEM.add(doc.id);
-        return;
+        SLUGS_REMOVIDOS_NUVEM.add(doc.id.replace(/__p\d+$/, ''));
       }
+    });
+
+    // 2ª passada: carrega as questões de qualquer documento (manifesto legado
+    // com array embutido, OU pedaço), pulando qualquer slug já identificado
+    // como removido acima
+    docs.forEach(doc=>{
+      const data = doc.data();
+      if(!data || doc.id.startsWith('_') || data.removido) return;
+      const slugBase = doc.id.replace(/__p\d+$/, '');
+      if(SLUGS_REMOVIDOS_NUVEM.has(slugBase)) return;
       if(Array.isArray(data.questoes) && data.questoes.length>0){
         // CORREÇÃO CRÍTICA: antes, a validade da matéria inteira dependia do
         // campo data.materia (nível do documento) bater exatamente. Documentos
@@ -2142,7 +2177,10 @@ async function carregarMateriasPublicas(){
         });
       }
       // guarda o texto original e a versão do site que o processou pela última
-      // vez — é o que permite reprocessar automaticamente sem reimportar na mão
+      // vez — é o que permite reprocessar automaticamente sem reimportar na mão.
+      // Só existe na nuvem pra matérias pequenas o bastante pra caber (ver
+      // publicarQuestoesNoFirestore); pra matérias grandes, o texto original
+      // ainda fica disponível localmente neste aparelho (TEXTOS_ORIGINAIS_KEY).
       if(data.textoOriginal && data.materia){
         TEXTOS_ORIGINAIS[data.materia] = { texto: data.textoOriginal, versaoProcessada: data.versaoProcessada || null };
       }
@@ -2152,33 +2190,54 @@ async function carregarMateriasPublicas(){
   }catch(e){ console.warn('Falha ao carregar matérias públicas', e); return false; }
 }
 
-// grava cada matéria no seu próprio documento na coleção pública do Firestore (não
-// mais um documento único compartilhado, que estourava o limite de 1MB conforme mais
-// matérias iam sendo publicadas) — sem mexer em STATE.importLog nem chamar render(),
-// usada tanto pelos botões manuais quanto pela publicação automática após importar
+// grava uma matéria na coleção pública do Firestore. CORREÇÃO (v37): antes, cada
+// matéria virava UM documento só — funcionava até o limite de 1MB do Firestore,
+// mas uma matéria grande (ex.: 774 questões, ~1,2MB em JSON) sozinha já estoura
+// esse teto. Agora a matéria é dividida em documentos "pedaço" por tamanho em
+// bytes (não por quantidade de questões, já que o tamanho varia muito questão a
+// questão), com um documento "manifesto" separado (sem o array de questões)
+// guardando só metadados + quantos pedaços existem. Sem mexer em STATE.importLog
+// nem chamar render() — usada tanto pelos botões manuais quanto pela publicação
+// automática após importar.
+const LIMITE_BYTES_POR_CHUNK = 700000; // margem de segurança abaixo do limite de campo indexado do Firestore (~1.048.487 bytes)
+function tamanhoUtf8(str){
+  return new TextEncoder().encode(str).length;
+}
 async function publicarQuestoesNoFirestore(nomesMaterias, force){
   if(!FIREBASE_OK) return { ok:false, motivo:'Sincronização em nuvem indisponível nesta sessão.' };
   if(!nomesMaterias || nomesMaterias.length===0) return { ok:false, motivo:'Nenhuma matéria selecionada.' };
-  // cada matéria é publicada de forma INDEPENDENTE — se uma falhar (ex.: limite de
-  // tamanho do documento no Firestore), as demais continuam sendo processadas
-  // normalmente, e o retorno indica exatamente quais falharam, em vez de abortar o
-  // lote inteiro silenciosamente na primeira matéria problemática
+  // cada matéria é publicada de forma INDEPENDENTE — se uma falhar, as demais
+  // continuam sendo processadas normalmente, e o retorno indica exatamente quais
+  // falharam, em vez de abortar o lote inteiro silenciosamente na primeira
+  // matéria problemática
   let totalNovas = 0;
   const falhas = [];
   for(const materiaNome of nomesMaterias){
     try{
-      const ref = fbDb.collection('publico').doc(slugify(materiaNome));
-      const doc = await ref.get();
+      const slug = slugify(materiaNome);
+      const manifestRef = fbDb.collection('publico').doc(slug);
+      const manifestDoc = await manifestRef.get();
       // TRAVA DE SEGURANÇA: uma matéria marcada como removida é um "túmulo" —
       // só uma reimportação EXPLÍCITA do usuário (force=true) pode trazê-la de
       // volta. Sem essa trava, qualquer chamada automática/em segundo plano
       // que ainda tivesse a matéria em ALL_QUESTIONS local (armazenamento
       // desatualizado, outra aba, reprocessamento) a ressuscitava sem querer.
-      if(doc.exists && doc.data().removido===true && !force){
+      if(manifestDoc.exists && manifestDoc.data().removido===true && !force){
         console.warn(`Matéria "${materiaNome}" está marcada como removida — publicação ignorada (use reimportação explícita para trazê-la de volta)`);
         continue;
       }
-      let questoesAtuais = (doc.exists && Array.isArray(doc.data().questoes)) ? doc.data().questoes : [];
+
+      // recolhe as questões já publicadas — formato legado (array embutido direto
+      // no manifesto) e/ou pedaços numerados, se existirem
+      let questoesAtuais = [];
+      const manifestData = manifestDoc.exists ? manifestDoc.data() : null;
+      if(manifestData && Array.isArray(manifestData.questoes)) questoesAtuais = manifestData.questoes.slice();
+      const numChunksAntigo = (manifestData && manifestData.numChunks) || 0;
+      for(let i=0;i<numChunksAntigo;i++){
+        const chunkDoc = await fbDb.collection('publico').doc(`${slug}__p${i}`).get();
+        if(chunkDoc.exists && Array.isArray(chunkDoc.data().questoes)) questoesAtuais = questoesAtuais.concat(chunkDoc.data().questoes);
+      }
+
       const existingUids = new Set(questoesAtuais.map(q=>q.uid));
       ALL_QUESTIONS.filter(q=>q.materia===materiaNome).forEach(q=>{
         if(!existingUids.has(q.uid)){
@@ -2187,16 +2246,59 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
           totalNovas++;
         }
       });
-      const payload = sanitizarParaFirestore({
-        materia: materiaNome, questoes: questoesAtuais, atualizadoEm: Date.now(),
-        // texto bruto original + versão do site que gerou este resultado —
-        // é isso que permite reprocessar automaticamente em versões futuras,
-        // sem precisar remover e reimportar manualmente toda vez que o parser
-        // é corrigido/melhorado
-        textoOriginal: TEXTOS_ORIGINAIS[materiaNome] ? (TEXTOS_ORIGINAIS[materiaNome].texto || TEXTOS_ORIGINAIS[materiaNome]) : (doc.exists ? doc.data().textoOriginal : undefined),
-        versaoProcessada: (window.__TCDF_BUILD__ && window.__TCDF_BUILD__.versao) || null,
+
+      // divide em pedaços por tamanho em bytes (acumula questões até chegar perto
+      // do limite, então começa um pedaço novo)
+      const chunks = [];
+      let chunkAtual = [];
+      let tamanhoAtual = 0;
+      questoesAtuais.forEach(q=>{
+        const tamanhoQ = tamanhoUtf8(JSON.stringify(q));
+        if(chunkAtual.length>0 && tamanhoAtual + tamanhoQ > LIMITE_BYTES_POR_CHUNK){
+          chunks.push(chunkAtual);
+          chunkAtual = [];
+          tamanhoAtual = 0;
+        }
+        chunkAtual.push(q);
+        tamanhoAtual += tamanhoQ;
       });
-      await ref.set(payload);
+      if(chunkAtual.length>0 || chunks.length===0) chunks.push(chunkAtual); // matéria vazia ainda precisa de um manifesto válido
+
+      // texto original: só vai pra nuvem se couber com folga (matérias pequenas).
+      // Matérias grandes perdem o reprocessamento automático em OUTROS
+      // dispositivos, mas o texto continua disponível neste aparelho (salvo
+      // localmente à parte, sem limite de tamanho — ver TEXTOS_ORIGINAIS_KEY)
+      const textoOriginalAtual = TEXTOS_ORIGINAIS[materiaNome] ? (TEXTOS_ORIGINAIS[materiaNome].texto || TEXTOS_ORIGINAIS[materiaNome]) : (manifestData ? manifestData.textoOriginal : undefined);
+      const cabeTextoOriginal = textoOriginalAtual && tamanhoUtf8(textoOriginalAtual) < LIMITE_BYTES_POR_CHUNK;
+
+      const manifestPayload = sanitizarParaFirestore({
+        materia: materiaNome,
+        atualizadoEm: Date.now(),
+        numChunks: chunks.length,
+        versaoProcessada: (window.__TCDF_BUILD__ && window.__TCDF_BUILD__.versao) || null,
+        ...(cabeTextoOriginal ? { textoOriginal: textoOriginalAtual } : {}),
+      });
+      // sobrescreve o documento inteiro (.set sem merge) — isso também remove
+      // de propósito qualquer "removido:true" ou array "questoes" legado de
+      // versões anteriores, já que uma reimportação explícita (force=true) deve
+      // mesmo substituir esse estado
+      await manifestRef.set(manifestPayload);
+
+      for(let i=0;i<chunks.length;i++){
+        await fbDb.collection('publico').doc(`${slug}__p${i}`).set(sanitizarParaFirestore({
+          materia: materiaNome,
+          chunkIndex: i,
+          questoes: chunks[i],
+        }));
+      }
+      // se a matéria encolheu (menos pedaços que antes), limpa os pedaços que
+      // sobraram — best-effort: se falhar, o pior caso é um pedaço órfão com
+      // questões que já existem em uid duplicado em outro pedaço (não causa
+      // perda de dado, só desperdiça um pouco de espaço na nuvem)
+      for(let i=chunks.length;i<numChunksAntigo;i++){
+        try{ await fbDb.collection('publico').doc(`${slug}__p${i}`).delete(); }catch(e){ /* best-effort */ }
+      }
+
       STATE.materiasPublicadasNestaSessao.add(materiaNome);
     }catch(e){
       console.error('Falha ao publicar a matéria "'+materiaNome+'"', e);
@@ -2208,6 +2310,7 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
   // sucesso parcial: publicou algumas, outras falharam — reporta os dois lados
   return { ok:true, parcial:true, totalNovas, falhas };
 }
+
 
 async function pushToCloud(){
   if(!FIREBASE_OK || !STATE.syncCode) return;
@@ -2321,6 +2424,11 @@ async function loadProgress(){
     const resEd = await storageGet(EDICOES_KEY);
     if(resEd && resEd.value) EDICOES_USUARIO = JSON.parse(resEd.value);
   }catch(e){ /* nenhuma edição manual salva ainda */ }
+
+  try{
+    const resTx = await storageGet(TEXTOS_ORIGINAIS_KEY);
+    if(resTx && resTx.value) TEXTOS_ORIGINAIS = JSON.parse(resTx.value) || {};
+  }catch(e){ /* nenhum texto original salvo localmente ainda */ }
 
   try{
     const resOc = await storageGet(MATERIAS_OCULTAS_KEY);
@@ -4877,6 +4985,7 @@ async function reprocessarMateriasDesatualizadas(){
   });
   if(alguma){
     reindex();
+    salvarTextosOriginaisLocalmente();
     await saveCustomQuestions();
     await publicarQuestoesNoFirestore(materiasParaReprocessar);
     render();
@@ -4913,6 +5022,7 @@ async function processImportedText(content, sugestaoNome){
       added++;
     });
     TEXTOS_ORIGINAIS[materiaNome] = { texto: content, versaoProcessada: (window.__TCDF_BUILD__ && window.__TCDF_BUILD__.versao) || null };
+    salvarTextosOriginaisLocalmente();
     reindex();
     await saveCustomQuestions();
 
@@ -5052,7 +5162,7 @@ async function renomearMateria(nomeAtual, nomeNovo){
   // original guardado pra reprocessamento, e o estado atual da tela
   ALL_QUESTIONS.forEach(q=>{ if(q.materia===nomeAtual) q.materia = nomeNovo; });
   if(PROGRESS[nomeAtual]){ PROGRESS[nomeNovo] = PROGRESS[nomeAtual]; delete PROGRESS[nomeAtual]; }
-  if(TEXTOS_ORIGINAIS[nomeAtual]){ TEXTOS_ORIGINAIS[nomeNovo] = TEXTOS_ORIGINAIS[nomeAtual]; delete TEXTOS_ORIGINAIS[nomeAtual]; }
+  if(TEXTOS_ORIGINAIS[nomeAtual]){ TEXTOS_ORIGINAIS[nomeNovo] = TEXTOS_ORIGINAIS[nomeAtual]; delete TEXTOS_ORIGINAIS[nomeAtual]; salvarTextosOriginaisLocalmente(); }
   if(STATE.materia===nomeAtual) STATE.materia = nomeNovo;
   reindex();
   await saveCustomQuestions();
@@ -5074,6 +5184,7 @@ async function removerMateria(materiaNome){
   const eraNativa = questoesDaMateria.some(q=>q.origem==='embutido');
   ALL_QUESTIONS = ALL_QUESTIONS.filter(q=>!uidsRemover.has(q.uid));
   delete TEXTOS_ORIGINAIS[materiaNome];
+  salvarTextosOriginaisLocalmente();
   reindex();
   // CORREÇÃO: antes, a remoção só acontecia na memória local — a matéria
   // continuava publicada em publico/{materia} no Firestore, então recarregava
@@ -5084,7 +5195,18 @@ async function removerMateria(materiaNome){
     // usa .set() marcando como removido, em vez de .delete() — Firestore pode
     // ter regras de segurança diferentes pra delete vs. escrita, e write já foi
     // confirmado funcionando; delete pode estar bloqueado silenciosamente
-    try{ await fbDb.collection('publico').doc(slugify(materiaNome)).set({ materia: materiaNome, questoes: [], removido: true, atualizadoEm: Date.now() }); }
+    const slug = slugify(materiaNome);
+    try{
+      const manifestDoc = await fbDb.collection('publico').doc(slug).get();
+      const numChunks = (manifestDoc.exists && manifestDoc.data().numChunks) || 0;
+      await fbDb.collection('publico').doc(slug).set({ materia: materiaNome, questoes: [], removido: true, atualizadoEm: Date.now() });
+      // limpa também os documentos-pedaço (v37: matérias grandes ficam divididas
+      // em vários documentos) — mesmo padrão .set() com array vazio, nunca .delete()
+      for(let i=0;i<numChunks;i++){
+        try{ await fbDb.collection('publico').doc(`${slug}__p${i}`).set({ materia: materiaNome, chunkIndex: i, questoes: [] }); }
+        catch(e){ console.error(`Falha ao limpar o pedaço ${i} da matéria na nuvem`, e); }
+      }
+    }
     catch(e){ console.error('Falha ao marcar matéria como removida na nuvem — pode reaparecer em outro dispositivo', e); }
   }
   // matéria NATIVA (embutida no código, tipo "Lei Orgânica do TCDF"): apagar da
