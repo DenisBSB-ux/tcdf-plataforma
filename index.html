@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v34', build: '2026-09-04 10:53' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v35', build: '2026-09-04 12:00' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1503,14 +1503,27 @@ function classifyTema(enunciado, escopoKey){
   return null;
 }
 
+// CORREÇÃO (v35): o fallback antigo usava ordem alfabética (localeCompare) pra
+// qualquer tema fora da curadoria manual de TEMA_ORDER — que só cobre Lei Orgânica
+// do TCDF (e, via FONTE_TOPICO_PARA_TEMA, Direito Tributário). Pra qualquer matéria
+// nova (ex.: AFO), TODOS os temas caíam nesse fallback e apareciam em ordem
+// alfabética, não na sequência do Edital. Agora o fallback preserva a ordem de
+// PRIMEIRA APARIÇÃO no array recebido — que reflete a ordem de primeira aparição no
+// texto importado (já que os blocos QUESTÃO/[Fonte] são processados sequencialmente
+// pelo parser), a qual por sua vez deve refletir a sequência do Edital (é assim que
+// o material de origem é gerado). TEMA_ORDER continua tendo prioridade quando existe
+// curadoria manual para o tema.
 function ordenarTemas(lista){
-  return lista.slice().sort((a,b)=>{
-    const ia = TEMA_ORDER.indexOf(a), ib = TEMA_ORDER.indexOf(b);
-    if(ia===-1 && ib===-1) return a.localeCompare(b,'pt-BR');
-    if(ia===-1) return 1;
-    if(ib===-1) return -1;
-    return ia-ib;
-  });
+  return lista
+    .map((tema, idx) => ({ tema, idx }))
+    .sort((a,b)=>{
+      const ia = TEMA_ORDER.indexOf(a.tema), ib = TEMA_ORDER.indexOf(b.tema);
+      if(ia!==-1 && ib!==-1) return ia-ib;
+      if(ia!==-1) return -1;
+      if(ib!==-1) return 1;
+      return a.idx - b.idx; // sem curadoria manual: mantém ordem de 1ª aparição (= sequência do Edital)
+    })
+    .map(x => x.tema);
 }
 
 function slugify(str){
@@ -4708,9 +4721,29 @@ function parseTxtQuestions(content){
 // pelo reprocessamento automático. Remove as questões antigas dessa matéria
 // antes de inserir as novas, com os MESMOS uids (materiaSlug-numero) — assim o
 // histórico de progresso do usuário (guardado por uid) não se perde ao atualizar
+// registra reprocessamentos automáticos que FORAM BLOQUEADOS por segurança (ver
+// abaixo) — usado só pra avisar o usuário depois do boot, nunca apaga nada sozinho
+let REPROCESSAMENTOS_BLOQUEADOS = [];
 function reprocessarMateriaComTexto(materiaNome, content){
   const { results } = parseTxtQuestions(content);
   if(results.length===0) return 0;
+  // CORREÇÃO (v35): antes, este reprocessamento automático (disparado sozinho a
+  // cada versão nova, sem ação do usuário) substituía TODAS as questões antigas da
+  // matéria pelo resultado do parser atual, sem checar se esse resultado era
+  // sequer razoável. Se o parser mudou entre a versão que importou o material e a
+  // versão atual (comum, dado o ritmo de mudanças no parser) e passou a reconhecer
+  // MENOS questões daquele formato específico, isso apagava dado local e da nuvem
+  // válido de forma automática e silenciosa — exatamente o padrão de "apagar por
+  // dedução" que a regra de segurança do projeto proíbe. Agora, se o resultado novo
+  // tiver menos questões que o estado atual, o reprocessamento automático é
+  // BLOQUEADO (nada é alterado) e fica registrado pra avisar o usuário — só uma
+  // reimportação manual explícita (processImportedText, ação deliberada) pode de
+  // fato substituir o conteúdo de uma matéria.
+  const atuais = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido').length;
+  if(atuais>0 && results.length < atuais){
+    REPROCESSAMENTOS_BLOQUEADOS.push({ materia: materiaNome, antes: atuais, depois: results.length });
+    return 0;
+  }
   const slug = slugify(materiaNome);
   ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !(q.materia===materiaNome && q.origem!=='embutido'));
   const existingUids = new Set(ALL_QUESTIONS.map(q=>q.uid));
@@ -4747,6 +4780,11 @@ async function reprocessarMateriasDesatualizadas(){
     await saveCustomQuestions();
     await publicarQuestoesNoFirestore(materiasParaReprocessar);
     render();
+  }
+  if(REPROCESSAMENTOS_BLOQUEADOS.length>0){
+    const lista = REPROCESSAMENTOS_BLOQUEADOS.map(r=>`• ${r.materia}: tinha ${r.antes}, o parser atual só reconheceu ${r.depois}`).join('\n');
+    alert(`⚠️ Reprocessamento automático bloqueado por segurança em ${REPROCESSAMENTOS_BLOQUEADOS.length} matéria(s) — o parser atual reconheceria MENOS questões do que já existem, então nada foi apagado:\n\n${lista}\n\nSe isso for esperado (ex.: mudança legítima de formato), reimporte manualmente essa matéria pra atualizar de propósito.`);
+    REPROCESSAMENTOS_BLOQUEADOS = [];
   }
 }
 
@@ -4876,17 +4914,6 @@ async function extrairTextoDePdf(file, sugestaoNome){
   }
 }
 
-async function despublicarMateria(materiaNome){
-  if(!FIREBASE_OK || !materiaNome) return;
-  try{
-    // agora cada matéria tem seu próprio documento — despublicar é simplesmente
-    // apagar o documento dela inteiro, sem precisar reler/reescrever nada mais
-    await fbDb.collection('publico').doc(slugify(materiaNome)).delete();
-  }catch(e){
-    console.error('Falha ao remover da versão pública', e);
-  }
-}
-
 async function renomearMateria(nomeAtual, nomeNovo){
   nomeNovo = (nomeNovo||'').trim();
   if(!nomeNovo || nomeNovo===nomeAtual) return;
@@ -4970,9 +4997,17 @@ async function removerMateria(materiaNome){
   await saveCustomQuestions();
   try{ await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS)); }catch(e){ console.error('Falha ao salvar progresso', e); }
   await pushToCloud();
-  // se essa matéria tinha sido publicada, remove também da cópia pública —
-  // senão ela reaparece pra todo mundo (inclusive você) no próximo carregamento
-  await despublicarMateria(materiaNome);
+  // CORREÇÃO (v35): esta função chamava despublicarMateria() aqui, que faz um
+  // .delete() no documento inteiro — exatamente o `.delete()` que o comentário
+  // logo acima (bloco do `.set({...removido:true})`) explica que NÃO deve ser
+  // usado, porque pode estar bloqueado silenciosamente pelas regras do Firestore.
+  // Pior: se o delete tivesse sucesso, ele apagava o próprio tombstone
+  // `removido:true` gravado poucas linhas acima — a marcação explícita de
+  // remoção deixava de existir, e qualquer leitura futura da coleção "publico"
+  // não tinha mais como distinguir "nunca existiu" de "foi removido de propósito".
+  // Isso é exatamente o padrão de perda de dado que a regra de segurança do
+  // projeto proíbe. Removida — o `.set({...removido:true})` acima já é, sozinho,
+  // a fonte de verdade da remoção.
 }
 
 // substitui todo o conteúdo de uma matéria por um arquivo novo, mantendo o mesmo nome —
