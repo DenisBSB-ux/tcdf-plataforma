@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v35', build: '2026-09-04 12:00' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v36', build: '2026-09-04 16:30' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -2328,16 +2328,30 @@ let saveTimer = null;
 function saveProgress(){
   clearTimeout(saveTimer);
   saveTimer = setTimeout(async ()=>{
-    try{ await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS)); }
-    catch(e){ console.error('Falha ao salvar progresso', e); }
+    try{
+      await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS));
+    }
+    catch(e){
+      console.error('Falha ao salvar progresso', e);
+      STATE.avisoStorage = 'Não foi possível salvar seu progresso neste dispositivo (' + (e && e.message ? e.message : 'erro desconhecido') + '). Se você atualizar a página agora, pode perder o que fez.';
+      render();
+    }
     pushToCloud();
   }, 300);
 }
 
 async function saveCustomQuestions(){
   const custom = ALL_QUESTIONS.filter(q => q.origem === 'importado');
-  try{ await storageSet(CUSTOM_KEY, JSON.stringify(custom)); }
-  catch(e){ console.error('Falha ao salvar questões importadas', e); }
+  try{
+    await storageSet(CUSTOM_KEY, JSON.stringify(custom));
+    return true;
+  }
+  catch(e){
+    console.error('Falha ao salvar questões importadas', e);
+    STATE.avisoStorage = 'Não foi possível salvar as questões importadas neste dispositivo (' + (e && e.message ? e.message : 'erro desconhecido') + '). Se você atualizar a página agora, a lista importada pode sumir.';
+    render();
+    return false; // não relança: os demais pontos que chamam esta função não esperam exceção
+  }
 }
 
 /* ================= exportar / importar progresso (backup manual entre computadores) ================= */
@@ -2710,6 +2724,11 @@ let STATE = {
   importProgressoLog: null,
   syncCode: '',
   syncStatus: null,
+  salvandoMateria: null,
+  ultimoSalvamentoManual: null,
+  salvandoTudo: false,
+  ultimoSalvamentoGeral: null,
+  avisoStorage: null,
 };
 
 function getSetup(materiaKey){
@@ -2806,10 +2825,24 @@ function render(){
   document.body.classList.toggle('focus-mode', !!STATE.focusMode);
   root.innerHTML = `
     ${STATE.focusMode ? '' : renderLetterhead()}
+    ${STATE.avisoStorage ? renderAvisoStorage() : ''}
     ${STATE.viewImportar || ALL_QUESTIONS.length===0 ? renderImportarPage() : renderMateriaPage()}
-    ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)} · Versão ${esc(window.__TCDF_BUILD__.versao)} (${esc(window.__TCDF_BUILD__.build)})</div>`}
+    ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)} · Versão ${esc(window.__TCDF_BUILD__.versao)} (${esc(window.__TCDF_BUILD__.build)}) · armazenamento: ${esc(STORAGE_MODE)}</div>`}
   `;
   attachHandlers();
+}
+
+// CORREÇÃO (v35): antes, falhas de storageSet/storageGet (armazenamento local
+// cheio, indisponível, bloqueado pelo navegador etc.) só iam pro console.error —
+// completamente invisíveis pro usuário, que só descobria o problema depois de
+// atualizar a página e ver dado sumido. Agora aparece este banner fixo, com opção
+// de tentar salvar tudo de novo na hora.
+function renderAvisoStorage(){
+  return `<div style="position:sticky;top:0;z-index:500;background:var(--stamp-red);color:#fff;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span>⚠️ ${esc(STATE.avisoStorage)}</span>
+    <button id="btn-tentar-salvar-de-novo" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer;font-size:12px;">Tentar salvar de novo</button>
+    <button id="btn-dispensar-aviso-storage" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer;font-size:12px;">Dispensar</button>
+  </div>`;
 }
 
 function questoesFiltradas(){
@@ -4334,13 +4367,17 @@ function renderImportarPage(){
           <input type="file" id="file-input-atualizar" accept=".txt,text/plain,.pdf,application/pdf,.md,text/markdown" style="display:none;">
           ${materiasImportadas.map(m=>{
             const n = ALL_QUESTIONS.filter(q=>q.materia===m).length;
+            const salvando = STATE.salvandoMateria===m;
+            const ultimo = STATE.ultimoSalvamentoManual && STATE.ultimoSalvamentoManual.materia===m ? STATE.ultimoSalvamentoManual : null;
             return `<div class="bar-row" style="flex-wrap:wrap;">
               <div class="name">${esc(m)}</div>
               <div class="pct" style="margin-right:8px;">${n} questão(ões)</div>
               <button class="btn-outline" data-download-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
               <button class="btn-outline" data-inserir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">➕ Inserir</button>
+              <button class="btn-outline" data-salvar-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Força salvar agora (local + nuvem) e avisa se der certo ou não — use depois de importar, antes de atualizar a página" ${salvando?'disabled':''}>${salvando?'⏳ Salvando…':'💾 Salvar'}</button>
               <button class="btn-outline" data-renomear-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Muda o nome de exibição desta matéria, mantendo as questões e o progresso">✏️ Renomear</button>
               <button class="btn-outline" data-remover-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;">Remover</button>
+              ${ultimo ? `<div style="flex-basis:100%;font-size:11px;margin-top:4px;color:${ultimo.ok?'var(--stamp-green, #3a9d5c)':'var(--stamp-red)'};">${ultimo.ok?'✅ Salvo com sucesso ('+new Date(ultimo.ts).toLocaleTimeString('pt-BR')+') — pode atualizar a página com segurança.':'❌ Falha ao salvar: '+esc(ultimo.motivo||'motivo desconhecido')}</div>` : ''}
             </div>`;
           }).join('')}
         </div>` : ''}
@@ -4914,6 +4951,33 @@ async function extrairTextoDePdf(file, sugestaoNome){
   }
 }
 
+// Salvamento MANUAL e explícito, disparado pelo botão "💾 Salvar" — existe porque
+// o salvamento automático (a cada importação/ação) é silencioso: se algo falhar
+// (armazenamento local cheio, nuvem indisponível, documento grande demais pro
+// Firestore etc.), o usuário não tem hoje nenhum jeito de saber e nenhum jeito de
+// tentar de novo manualmente. Esta função sempre reporta o resultado (sucesso OU
+// motivo da falha) em vez de falhar silenciosamente.
+async function salvarMateriaAgora(materiaNome){
+  STATE.salvandoMateria = materiaNome;
+  STATE.ultimoSalvamentoManual = null;
+  render();
+  const okLocal = await saveCustomQuestions();
+  let okNuvem = true, motivoNuvem = null;
+  if(okLocal && FIREBASE_OK){
+    const pub = await publicarQuestoesNoFirestore([materiaNome], true);
+    okNuvem = !!pub.ok;
+    motivoNuvem = pub.ok ? null : pub.motivo;
+  }
+  STATE.salvandoMateria = null;
+  STATE.ultimoSalvamentoManual = {
+    materia: materiaNome,
+    ok: okLocal && okNuvem,
+    ts: Date.now(),
+    motivo: !okLocal ? 'falha ao salvar localmente (ver aviso acima)' : (!okNuvem ? ('falha ao publicar na nuvem: ' + motivoNuvem) : null),
+  };
+  render();
+}
+
 async function renomearMateria(nomeAtual, nomeNovo){
   nomeNovo = (nomeNovo||'').trim();
   if(!nomeNovo || nomeNovo===nomeAtual) return;
@@ -5030,6 +5094,18 @@ function emptyState(glyph,title,desc){
 
 /* ================= event delegation ================= */
 function attachHandlers(){
+  const btnTentarSalvar = document.getElementById('btn-tentar-salvar-de-novo');
+  if(btnTentarSalvar) btnTentarSalvar.addEventListener('click', async ()=>{
+    STATE.avisoStorage = null;
+    const okCustom = await saveCustomQuestions();
+    let okProgress = true;
+    try{ await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS)); }
+    catch(e){ okProgress = false; STATE.avisoStorage = 'Ainda não foi possível salvar (' + (e && e.message ? e.message : 'erro desconhecido') + '). Pode ser espaço de armazenamento do navegador cheio, ou modo de navegação privada.'; }
+    if(okCustom && okProgress) pushToCloud();
+    render();
+  });
+  const btnDispensarAviso = document.getElementById('btn-dispensar-aviso-storage');
+  if(btnDispensarAviso) btnDispensarAviso.addEventListener('click', ()=>{ STATE.avisoStorage = null; render(); });
   const btnToggleMateriaMenu = document.getElementById('btn-toggle-materia-menu');
   if(btnToggleMateriaMenu) btnToggleMateriaMenu.addEventListener('click', ()=>{ STATE.materiaMenuAberto = !STATE.materiaMenuAberto; render(); });
   root.querySelectorAll('[data-macro-materia]').forEach(el=>{
@@ -5445,6 +5521,9 @@ function attachHandlers(){
       const ok = window.confirm(`Remover todas as questões e o progresso da matéria "${nome}"? Isso também remove ela da versão pública, se estiver publicada. Essa ação não afeta as demais matérias.`);
       if(ok) await removerMateria(nome);
     });
+  });
+  root.querySelectorAll('[data-salvar-materia]').forEach(el=>{
+    el.addEventListener('click', ()=> salvarMateriaAgora(el.dataset.salvarMateria));
   });
   root.querySelectorAll('[data-renomear-materia]').forEach(el=>{
     el.addEventListener('click', async ()=>{
