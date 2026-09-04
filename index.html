@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v36', build: '2026-09-04 16:30' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v37', build: '2026-09-04 17:15' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1748,10 +1748,58 @@ const CUSTOM_KEY = 'sim-questoes-importadas-v3';
 let PROGRESS = {}; // { [materia]: { perguntas:{}, flash:{}, sessoes:[] } }
 
 // Camada de armazenamento: usa window.storage (Claude.ai artifact) quando disponível;
-// se o arquivo for aberto fora do Claude.ai (ex.: baixado e aberto direto no navegador),
-// cai automaticamente para localStorage, que funciona normalmente nesse cenário.
+// se o arquivo for aberto fora do Claude.ai (ex.: baixado e aberto direto no navegador,
+// ou publicado no GitHub Pages), cai automaticamente pra IndexedDB.
 const CLAUDE_STORAGE_OK = (typeof window !== 'undefined') && window.storage && typeof window.storage.get === 'function' && typeof window.storage.set === 'function';
 let STORAGE_MODE = CLAUDE_STORAGE_OK ? 'claude' : 'local';
+
+// CORREÇÃO CRÍTICA (v37): o modo 'local' usava localStorage.setItem/getItem
+// diretamente. localStorage tem uma cota rígida de ~5-10MB por origem,
+// COMPARTILHADA entre todas as chaves do site inteiro. Com 19+ matérias
+// importadas (cada uma com dezenas/centenas de questões, cada questão com
+// enunciado+resolução+resumo em texto longo), essa cota estourava de verdade —
+// confirmado em produção pelo erro "Failed to execute 'setItem' on 'Storage':
+// Setting the value of 'sim-questoes-importadas-v3' exceeded the quota.". Quando
+// isso acontece, o storageSet falha SILENCIOSAMENTE (sem o banner de aviso da
+// v36, ninguém percebia) e a última lista importada nunca chega a ser salva —
+// some ao atualizar a página. Como localStorage e o progresso (sim-progresso-v3)
+// dividem a MESMA cota da mesma origem, uma vez perto do teto qualquer uma das
+// duas chaves pode falhar ao salvar, o que também explica perda de estatísticas.
+// IndexedDB não tem esse teto baixo (na prática, dezenas/centenas de MB — uma
+// fração do espaço livre em disco), então agora é a camada usada por padrão no
+// modo 'local'. A migração é automática e NUNCA destrutiva: dado já existente no
+// localStorage (de uma versão anterior do site) é lido normalmente na primeira
+// vez e copiado pro IndexedDB — o localStorage original não é apagado.
+const IDB_NAME = 'tcdf-plataforma-db';
+const IDB_STORE = 'kv';
+let idbPromise = null;
+function idbOpen(){
+  if(idbPromise) return idbPromise;
+  idbPromise = new Promise((resolve, reject)=>{
+    if(typeof indexedDB === 'undefined'){ reject(new Error('IndexedDB indisponível neste navegador')); return; }
+    const req = indexedDB.open(IDB_NAME, 1);
+    req.onupgradeneeded = ()=>{ req.result.createObjectStore(IDB_STORE); };
+    req.onsuccess = ()=> resolve(req.result);
+    req.onerror = ()=> reject(req.error);
+  });
+  return idbPromise;
+}
+function idbGet(key){
+  return idbOpen().then(db => new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const req = tx.objectStore(IDB_STORE).get(key);
+    req.onsuccess = ()=> resolve(req.result); // undefined se a chave não existir
+    req.onerror = ()=> reject(req.error);
+  }));
+}
+function idbSet(key, value){
+  return idbOpen().then(db => new Promise((resolve, reject)=>{
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put(value, key);
+    tx.oncomplete = ()=> resolve();
+    tx.onerror = ()=> reject(tx.error);
+  }));
+}
 
 async function storageGet(key){
   if(STORAGE_MODE === 'claude'){
@@ -1759,21 +1807,36 @@ async function storageGet(key){
     // portanto não alternamos de modo por causa de um storageGet — só storageSet decide isso.
     return await window.storage.get(key, false);
   }
-  const v = window.localStorage.getItem(key);
-  if(v === null){ const err = new Error('not found'); throw err; }
-  return { key, value: v };
+  try{
+    const v = await idbGet(key);
+    if(v !== undefined) return { key, value: v };
+  }catch(e){ /* IndexedDB indisponível nesta sessão — segue pro fallback de localStorage abaixo */ }
+  // ainda não migrado pro IndexedDB (ou IndexedDB indisponível): tenta localStorage;
+  // se achar, migra silenciosamente pro IndexedDB pra não estourar cota de novo depois
+  const vLocal = window.localStorage.getItem(key);
+  if(vLocal === null){ const err = new Error('not found'); throw err; }
+  idbSet(key, vLocal).catch(()=>{});
+  return { key, value: vLocal };
 }
 async function storageSet(key, value){
   if(STORAGE_MODE === 'claude'){
     try{
       return await window.storage.set(key, value, false);
     }catch(e){
-      console.warn('window.storage indisponível, alternando para localStorage neste navegador.', e);
+      console.warn('window.storage indisponível, alternando para IndexedDB/localStorage neste navegador.', e);
       STORAGE_MODE = 'local';
     }
   }
-  window.localStorage.setItem(key, value);
-  return { key, value };
+  try{
+    await idbSet(key, value);
+    return { key, value };
+  }catch(e){
+    // último recurso, só se o próprio IndexedDB estiver indisponível/bloqueado
+    // (ex.: alguns modos de navegação privada mais antigos) — nesse caso volta
+    // a valer a cota pequena de localStorage, mas pelo menos não quebra tudo
+    window.localStorage.setItem(key, value);
+    return { key, value };
+  }
 }
 
 function getBucket(materiaKey){
@@ -2827,7 +2890,7 @@ function render(){
     ${STATE.focusMode ? '' : renderLetterhead()}
     ${STATE.avisoStorage ? renderAvisoStorage() : ''}
     ${STATE.viewImportar || ALL_QUESTIONS.length===0 ? renderImportarPage() : renderMateriaPage()}
-    ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)} · Versão ${esc(window.__TCDF_BUILD__.versao)} (${esc(window.__TCDF_BUILD__.build)}) · armazenamento: ${esc(STORAGE_MODE)}</div>`}
+    ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)} · Versão ${esc(window.__TCDF_BUILD__.versao)} (${esc(window.__TCDF_BUILD__.build)}) · armazenamento: ${esc(STORAGE_MODE==='local' ? 'IndexedDB' : STORAGE_MODE)}</div>`}
   `;
   attachHandlers();
 }
