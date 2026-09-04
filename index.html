@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v38', build: '2026-09-04 18:20' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v39', build: '2026-09-04 19:05' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -2917,15 +2917,33 @@ function getSetup(materiaKey){
   }
   return STATE.setupByMateria[materiaKey];
 }
-// extrai banca/cargo de q.bc, aceitando dois formatos:
+// extrai banca/cargo de q.bc, aceitando três formatos:
 // 1) clássico "BANCA, cargo (órgão)" — usado no material embutido e no parser padrão
-// 2) alternativo "cargo abrev (órgão)/ÓRGÃO/área/cargo completo/ano" — visto em
-//    matérias importadas cujo texto de origem não usa vírgula; nesse caso o campo
-//    logo após a primeira barra costuma ser a sigla do órgão/concurso, que é o que
-//    dá pra usar como "banca" pra fins de filtro
+// 2) "BANCA - cargo_abrev (ÓRGÃO)/ÓRGÃO/formação/ano" — visto em matérias como a
+//    AFO. PRECISA ser checado ANTES dos outros dois formatos, por dois motivos
+//    encontrados na prática: (a) a lista de formação do cargo às vezes tem
+//    vírgulas no meio (ex.: "Administração, Economia ou Direito"), o que fazia o
+//    formato clássico (que corta na PRIMEIRA vírgula do texto inteiro) cortar no
+//    lugar errado e virar uma "banca" gigante e sem sentido; (b) sem esse
+//    formato dedicado, o formato alternativo abaixo pegava a SIGLA DO ÓRGÃO
+//    (ex.: "ANM", "UDESC") como se fosse banca, descartando a banca real
+//    (ex.: "CEBRASPE (CESPE)") — que nem aparecia como opção de filtro.
+// 3) alternativo "cargo abrev (órgão)/ÓRGÃO/área/cargo completo/ano" — visto em
+//    matérias importadas cujo texto de origem não usa vírgula nem " - "; nesse
+//    caso o campo logo após a primeira barra costuma ser a sigla do órgão/concurso,
+//    que é o que dá pra usar como "banca" pra fins de filtro
 function extrairBancaECargo(bc){
   if(!bc) return { banca:'—', cargo:'' };
   const txt = String(bc).trim();
+
+  const mHifen = txt.match(/^([^,\/]+?)\s+-\s+(.+\/.+)$/);
+  if(mHifen){
+    const banca = mHifen[1].trim() || '—';
+    const partes = mHifen[2].trim().split('/').map(p=>p.trim()).filter(Boolean);
+    const semAno = (partes.length>1 && /^\d{4}$/.test(partes[partes.length-1])) ? partes.slice(0,-1) : partes.slice();
+    const cargo = semAno.join(' — ');
+    return { banca, cargo };
+  }
   if(txt.indexOf(',') !== -1){
     const idx = txt.indexOf(',');
     return { banca: txt.slice(0, idx).trim() || '—', cargo: txt.slice(idx+1).trim() };
