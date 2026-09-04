@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v32', build: '2026-09-03 16:54' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v33', build: '2026-09-03 17:03' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1488,8 +1488,11 @@ const FONTE_TOPICO_PARA_TEMA = {
 };
 function classifyTemaPorFonte(fonteTexto){
   if(!fonteTexto) return null;
-  const topico = fonteTexto.split('—')[0].trim().toLowerCase();
-  return FONTE_TOPICO_PARA_TEMA[topico] || null;
+  const topico = fonteTexto.split('—')[0].trim();
+  if(!topico) return null;
+  const mapeado = FONTE_TOPICO_PARA_TEMA[topico.toLowerCase()];
+  if(mapeado) return mapeado;
+  return topico.charAt(0).toUpperCase() + topico.slice(1);
 }
 function classifyTema(enunciado, escopoKey){
   if(escopoKey === 'fora') return 'Fora do Edital';
@@ -2289,29 +2292,25 @@ async function loadProgress(){
   // matérias públicas (publicadas pelo administrador) aparecem para TODOS os usuários,
   // conectados ou não a um código de sincronização pessoal
   const nuvemDisponivel = await carregarMateriasPublicas();
-  // RECONCILIAÇÃO DEFINITIVA: a nuvem é a fonte da verdade pra matérias
-  // IMPORTADAS. Cobre os dois casos possíveis de remoção — documento marcado
-  // como removido:true, OU documento simplesmente apagado/nunca existiu (o
-  // que aconteceu com matérias removidas pelo antigo .delete(), antes dessa
-  // correção existir). Em ambos os casos, se uma matéria com origem
-  // 'importado' não aparece como válida na nuvem agora, ela é descartada —
-  // não importa de onde a cópia local veio (armazenamento antigo, outra aba,
-  // outro dispositivo). Só roda se a nuvem respondeu de verdade (nuvemDisponivel),
-  // pra nunca apagar dados locais legítimos só porque a rede caiu no momento.
+  // POLÍTICA DE SEGURANÇA (revista após perda real de dados causada pela
+  // versão anterior desta função): NUNCA apagar uma matéria local só por
+  // "não encontrei confirmação de que ela é válida na nuvem". Esse tipo de
+  // checagem por ausência é frágil demais — qualquer inconsistência na leitura
+  // (campo faltando num doc antigo, timing, paginação) vira perda de dado real,
+  // como já aconteceu duas vezes. A partir de agora, uma matéria só é removida
+  // por um sinal EXPLÍCITO e positivo de que o usuário pediu a remoção
+  // (documento marcado removido:true, escrito pelo próprio botão "Remover").
+  // Nunca por dedução de ausência.
   if(nuvemDisponivel){
     const antesDoFiltro = ALL_QUESTIONS.length;
     ALL_QUESTIONS = ALL_QUESTIONS.filter(q => {
       const slug = slugify(q.materia||'');
-      // dupla checagem (nome E slug) nos dois sentidos, pra nunca apagar dado
-      // legítimo por um único sinal falho — só remove se as DUAS confirmarem
-      // remoção, e só invalida se as DUAS não encontrarem nada válido
       if(MATERIAS_REMOVIDAS_NUVEM.has(q.materia) || SLUGS_REMOVIDOS_NUVEM.has(slug)) return false;
-      if(q.origem==='importado' && !MATERIAS_VALIDAS_NUVEM.has(q.materia) && !SLUGS_VALIDOS_NUVEM.has(slug)) return false;
       return true;
     });
     if(ALL_QUESTIONS.length !== antesDoFiltro){
       reindex();
-      await saveCustomQuestions(); // já aproveita e limpa o armazenamento local também
+      await saveCustomQuestions();
     }
   }
   await reprocessarMateriasDesatualizadas();
