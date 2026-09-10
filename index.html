@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v43', build: '2026-09-10 11:45' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v44', build: '2026-09-10 13:20' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -5329,6 +5329,24 @@ async function renomearMateria(nomeAtual, nomeNovo){
   ALL_QUESTIONS.forEach(q=>{ if(q.materia===nomeAtual) q.materia = nomeNovo; });
   if(PROGRESS[nomeAtual]){ PROGRESS[nomeNovo] = PROGRESS[nomeAtual]; delete PROGRESS[nomeAtual]; }
   if(TEXTOS_ORIGINAIS[nomeAtual]){ TEXTOS_ORIGINAIS[nomeNovo] = TEXTOS_ORIGINAIS[nomeAtual]; delete TEXTOS_ORIGINAIS[nomeAtual]; salvarTextosOriginaisLocalmente(); }
+  // CORREÇÃO (v44): renomear não movia o simulado EM ANDAMENTO — ele ficava
+  // salvo (memória, armazenamento local e nuvem) sob o nome ANTIGO, então depois
+  // de renomear a matéria o botão "▶ Continuar" desaparecia (o app procurava por
+  // um simulado salvo com o nome NOVO, que não existia) e obrigava a reconfigurar
+  // e recomeçar do zero — bug real de produção, reportado depois de renomear
+  // matérias com o sufixo "(rev)".
+  if(STATE.quizzesEmAndamento[nomeAtual]){
+    STATE.quizzesEmAndamento[nomeNovo] = STATE.quizzesEmAndamento[nomeAtual];
+    delete STATE.quizzesEmAndamento[nomeAtual];
+  }
+  STATE.quizzesVerificados.delete(nomeNovo); // força reconferir o storage local sob o novo nome
+  try{
+    const quizSalvoLocal = await carregarQuizSalvo(nomeAtual);
+    if(quizSalvoLocal){
+      await storageSet(quizStorageKey(nomeNovo), JSON.stringify(quizSalvoLocal));
+      await storageSet(quizStorageKey(nomeAtual), '');
+    }
+  }catch(e){ console.error('Falha ao mover o simulado em andamento (armazenamento local) pro novo nome', e); }
   if(STATE.materia===nomeAtual) STATE.materia = nomeNovo;
   reindex();
   await saveCustomQuestions();
@@ -5340,6 +5358,21 @@ async function renomearMateria(nomeAtual, nomeNovo){
     catch(e){ console.error('Falha ao publicar matéria renomeada na nuvem', e); }
     try{ await fbDb.collection('publico').doc(slugify(nomeAtual)).set({ materia: nomeAtual, questoes: [], removido: true, atualizadoEm: Date.now() }); }
     catch(e){ console.error('Falha ao marcar nome antigo como removido na nuvem', e); }
+    // move o simulado em andamento também na nuvem (mesmo raciocínio do
+    // armazenamento local acima) — lê o documento principal, move a chave do
+    // nome antigo pro novo dentro do JSON de quizzesEmAndamento, e regrava
+    if(STATE.syncCode){
+      try{
+        const ref = fbDb.collection('progresso').doc(STATE.syncCode);
+        const doc = await ref.get();
+        const atual = (doc.exists && doc.data().quizzesEmAndamento) ? (typeof doc.data().quizzesEmAndamento==='string' ? JSON.parse(doc.data().quizzesEmAndamento) : doc.data().quizzesEmAndamento) : {};
+        if(atual[nomeAtual]){
+          atual[nomeNovo] = atual[nomeAtual];
+          delete atual[nomeAtual];
+          await ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true });
+        }
+      }catch(e){ console.error('Falha ao mover o simulado em andamento (nuvem) pro novo nome', e); }
+    }
   }
   render();
 }
