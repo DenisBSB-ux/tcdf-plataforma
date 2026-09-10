@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v42', build: '2026-09-10 09:30' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v43', build: '2026-09-10 11:45' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -2259,21 +2259,39 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
       // no manifesto) e/ou pedaços numerados, se existirem
       let questoesAtuais = [];
       const manifestData = manifestDoc.exists ? manifestDoc.data() : null;
-      if(manifestData && Array.isArray(manifestData.questoes)) questoesAtuais = manifestData.questoes.slice();
       const numChunksAntigo = (manifestData && manifestData.numChunks) || 0;
-      for(let i=0;i<numChunksAntigo;i++){
-        const chunkDoc = await fbDb.collection('publico').doc(`${slug}__p${i}`).get();
-        if(chunkDoc.exists && Array.isArray(chunkDoc.data().questoes)) questoesAtuais = questoesAtuais.concat(chunkDoc.data().questoes);
-      }
 
-      const existingUids = new Set(questoesAtuais.map(q=>q.uid));
-      ALL_QUESTIONS.filter(q=>q.materia===materiaNome).forEach(q=>{
-        if(!existingUids.has(q.uid)){
-          questoesAtuais.push({ ...q, origem:'publico' });
-          existingUids.add(q.uid);
-          totalNovas++;
+      // CORREÇÃO CRÍTICA (v43): quando force=true, esta função é sempre chamada
+      // por uma ação EXPLÍCITA e deliberada do usuário — reimportar (inclusive
+      // "🔁 Substituir tudo"), salvar manualmente, ou renomear. Em todos esses
+      // casos o array local (ALL_QUESTIONS) já É a versão correta e completa; a
+      // nuvem deve refletir exatamente ele, não ser mesclada com o que havia
+      // antes. Antes, mesclar aqui SEMPRE (mesmo com force=true) desfazia
+      // silenciosamente qualquer "Substituir tudo": o merge por uid trazia de
+      // volta as questões antigas/duplicadas que ainda estavam nos pedaços
+      // velhos da nuvem (cujos uids não colidiam com os novos, recém-gerados
+      // sem sufixo), fazendo a AFO voltar a dobrar de tamanho no próximo
+      // carregamento — bug real de produção. Sem force (reprocessamento
+      // automático em segundo plano), o comportamento de mesclar com a nuvem é
+      // mantido, por segurança.
+      if(force){
+        questoesAtuais = ALL_QUESTIONS.filter(q=>q.materia===materiaNome).map(q=>({ ...q, origem:'publico' }));
+        totalNovas += questoesAtuais.length;
+      } else {
+        if(manifestData && Array.isArray(manifestData.questoes)) questoesAtuais = manifestData.questoes.slice();
+        for(let i=0;i<numChunksAntigo;i++){
+          const chunkDoc = await fbDb.collection('publico').doc(`${slug}__p${i}`).get();
+          if(chunkDoc.exists && Array.isArray(chunkDoc.data().questoes)) questoesAtuais = questoesAtuais.concat(chunkDoc.data().questoes);
         }
-      });
+        const existingUids = new Set(questoesAtuais.map(q=>q.uid));
+        ALL_QUESTIONS.filter(q=>q.materia===materiaNome).forEach(q=>{
+          if(!existingUids.has(q.uid)){
+            questoesAtuais.push({ ...q, origem:'publico' });
+            existingUids.add(q.uid);
+            totalNovas++;
+          }
+        });
+      }
 
       // divide em pedaços por tamanho em bytes (acumula questões até chegar perto
       // do limite, então começa um pedaço novo)
