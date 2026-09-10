@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v40', build: '2026-09-04 20:10' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v42', build: '2026-09-10 09:30' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1895,14 +1895,21 @@ function flushQuizSyncPendente(){
   quizSyncPendente = null;
   sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz);
 }
-// grava só o campo desta matéria (merge), sem tocar no progresso nem nos
-// simulados em andamento de outras matérias que possam estar salvos na nuvem
+// grava só o campo desta matéria dentro do quizzesEmAndamento — lê o estado
+// atual, atualiza só essa chave e regrava tudo como uma única string JSON.
+// CORREÇÃO (v42): antes usava merge:true num campo aninhado nativo do
+// Firestore, que soma entradas de índice por chave/elemento (mesmo problema
+// que afetou 'progress' — ver pushToCloud). Como isso não é mais um merge de
+// campo do Firestore, agora precisa ler o documento primeiro pra não perder o
+// que já estava salvo pra outras matérias.
 async function sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz){
   if(!FIREBASE_OK || !STATE.syncCode) return;
   try{
-    await fbDb.collection('progresso').doc(STATE.syncCode).set({
-      quizzesEmAndamento: { [materiaKey]: sanitizarParaFirestore(quiz) }
-    }, { merge: true });
+    const ref = fbDb.collection('progresso').doc(STATE.syncCode);
+    const doc = await ref.get();
+    const atual = (doc.exists && doc.data().quizzesEmAndamento) ? (typeof doc.data().quizzesEmAndamento==='string' ? JSON.parse(doc.data().quizzesEmAndamento) : doc.data().quizzesEmAndamento) : {};
+    atual[materiaKey] = sanitizarParaFirestore(quiz);
+    await ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true });
   }catch(e){ console.warn('Falha ao sincronizar simulado em andamento na nuvem', e); }
 }
 function limparQuizSalvo(materiaKey){
@@ -1913,9 +1920,12 @@ function limparQuizSalvo(materiaKey){
     quizSyncPendente = null;
   }
   if(FIREBASE_OK && STATE.syncCode){
-    fbDb.collection('progresso').doc(STATE.syncCode).set({
-      quizzesEmAndamento: { [materiaKey]: null }
-    }, { merge: true }).catch(e=>console.warn('Falha ao limpar simulado em andamento na nuvem', e));
+    const ref = fbDb.collection('progresso').doc(STATE.syncCode);
+    ref.get().then(doc=>{
+      const atual = (doc.exists && doc.data().quizzesEmAndamento) ? (typeof doc.data().quizzesEmAndamento==='string' ? JSON.parse(doc.data().quizzesEmAndamento) : doc.data().quizzesEmAndamento) : {};
+      atual[materiaKey] = null;
+      return ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true });
+    }).catch(e=>console.warn('Falha ao limpar simulado em andamento na nuvem', e));
   }
 }
 async function carregarQuizSalvo(materiaKey){
@@ -2087,11 +2097,29 @@ async function pullFromCloud({silent} = {}){
     const doc = await fbDb.collection('progresso').doc(STATE.syncCode).get();
     if(doc.exists){
       const data = doc.data();
-      if(data.progress) mergeRemoteProgressoNaMemoria(data.progress);
+      // retrocompatibilidade: documentos gravados antes da v42 podem ter
+      // 'progress' direto no manifesto (objeto nativo ou string) — a partir da
+      // v42, cada matéria tem seu próprio documento (ver pushToCloud)
+      if(data.progress){
+        const progressoAntigo = typeof data.progress === 'string' ? JSON.parse(data.progress) : data.progress;
+        mergeRemoteProgressoNaMemoria(progressoAntigo);
+      }
+      const materiasComProgresso = Array.isArray(data.materiasComProgresso) ? data.materiasComProgresso : [];
+      for(const materiaNome of materiasComProgresso){
+        try{
+          const docMateria = await fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugify(materiaNome)}`).get();
+          if(docMateria.exists && docMateria.data().progress){
+            mergeRemoteProgressoNaMemoria({ [materiaNome]: JSON.parse(docMateria.data().progress) });
+          }
+        }catch(e){ console.warn('Falha ao buscar o progresso da matéria "'+materiaNome+'" na nuvem', e); }
+      }
       // matérias/questões em si não vêm mais daqui — elas já chegam via
       // carregarMateriasPublicas() (coleção publico/{materia}), evitando duplicar
       // o banco inteiro de questões dentro do documento pessoal de progresso
-      if(data.quizzesEmAndamento) mergeRemoteQuizzesEmAndamentoNaMemoria(data.quizzesEmAndamento);
+      if(data.quizzesEmAndamento){
+        const quizzesRemotos = typeof data.quizzesEmAndamento === 'string' ? JSON.parse(data.quizzesEmAndamento) : data.quizzesEmAndamento;
+        mergeRemoteQuizzesEmAndamentoNaMemoria(quizzesRemotos);
+      }
       saveProgress();
       marcarUltimoSyncOk();
       return true;
@@ -2315,19 +2343,31 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
 async function pushToCloud(){
   if(!FIREBASE_OK || !STATE.syncCode) return;
   try{
-    // Só o progresso pessoal vai pro documento do usuário — as questões em si já
-    // vivem em publico/{materia} (carregadas por qualquer visitante em
-    // carregarMateriasPublicas()). Reenviar o banco de questões aqui duplicava
-    // dezenas de milhares de caracteres a cada sync e estourava o limite de 1MB
-    // por documento do Firestore conforme mais matérias eram importadas.
-    const payload = sanitizarParaFirestore({
-      progress: PROGRESS,
-      updatedAt: Date.now(),
-    });
+    // CORREÇÃO CRÍTICA (v42): 'progress' de TODAS as matérias somadas numa
+    // única string já passa de 1MB na escala real de uso (muitas matérias,
+    // cada uma com centenas de questões respondidas e histórico) — o mesmo
+    // limite de tamanho de documento do Firestore já resolvido antes pra
+    // publico/{slug}. Agora cada matéria grava o próprio progresso no seu
+    // próprio documento (como string JSON — 1 entrada de índice só, resolvendo
+    // também o erro real de produção "too many index entries"), e o documento
+    // principal só guarda a LISTA de quais matérias têm progresso salvo, pra
+    // saber quais documentos buscar na leitura.
+    const materias = Object.keys(PROGRESS);
+    for(const materiaNome of materias){
+      const slugM = slugify(materiaNome);
+      await fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugM}`).set(sanitizarParaFirestore({
+        materia: materiaNome,
+        progress: JSON.stringify(PROGRESS[materiaNome]),
+        updatedAt: Date.now(),
+      }));
+    }
     // merge:true é essencial aqui: sem isso, cada vez que o progresso é salvo
     // (a cada resposta) o documento inteiro seria sobrescrito, apagando o campo
     // quizzesEmAndamento gravado separadamente por sincronizarQuizEmAndamentoNaNuvem
-    await fbDb.collection('progresso').doc(STATE.syncCode).set(payload, { merge: true });
+    await fbDb.collection('progresso').doc(STATE.syncCode).set(sanitizarParaFirestore({
+      materiasComProgresso: materias,
+      updatedAt: Date.now(),
+    }), { merge: true });
     marcarUltimoSyncOk();
   }catch(e){
     console.error('Falha ao enviar para a nuvem', e);
@@ -4675,8 +4715,26 @@ function parseMarkdownQuestoes(content){
     const resolucao = blockFieldMd('Resolu[çc][ãa]o', bloco);
     const resumo = blockFieldMd('Resumo Flash', bloco);
 
-    const altMatches = [...bloco.matchAll(/-\s*\*\*([A-E])\)\*\*\s*(.+)/gi)];
-    const alternativas = altMatches.length ? altMatches.map(m => ({ letra: m[1], texto: m[2].trim() })) : null;
+    // CORREÇÃO (v41): antes, (.+) sem limite explícito só parava no fim da
+    // LINHA — funcionava quando cada alternativa está isolada na sua própria
+    // linha, mas se o arquivo de origem tiver qualquer coisa repetida/colada
+    // depois da última alternativa (ex.: uma seção "### Alternativas"
+    // duplicada, visto em produção na matéria de Direito Previdenciário — a
+    // alternativa E acabava com o enunciado de A-E inteiro colado atrás dela),
+    // esse texto extra ia direto pro campo da última alternativa sem barreira
+    // nenhuma. Agora a captura para explicitamente na próxima alternativa, no
+    // campo Gabarito, numa linha vazia, ou no fim do bloco — o que vier
+    // primeiro — e cada letra só é aceita uma vez (a primeira ocorrência),
+    // descartando qualquer repetição de uma mesma letra mais adiante no texto.
+    const altMatches = [...bloco.matchAll(/-\s*\*\*([A-E])\)\*\*\s*([\s\S]+?)(?=\s*-\s*\*\*[A-E]\)\*\*|\s*###\s*Alternativas|\s*\*\*Gabarito:\*\*|\n\s*\n|$)/gi)];
+    const letrasVistas = new Set();
+    const altMatchesUnicas = altMatches.filter(m=>{
+      const letra = m[1].toUpperCase();
+      if(letrasVistas.has(letra)) return false;
+      letrasVistas.add(letra);
+      return true;
+    });
+    const alternativas = altMatchesUnicas.length ? altMatchesUnicas.map(m => ({ letra: m[1], texto: m[2].trim() })) : null;
 
     const gabaritoMatch = bloco.match(/\*\*Gabarito:\*\*\s*([^\n]+)/i);
     let gabarito = gabaritoMatch ? gabaritoMatch[1].trim() : null;
