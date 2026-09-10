@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v45', build: '2026-09-10 15:00' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v46', build: '2026-09-10 16:45' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -2542,12 +2542,27 @@ async function loadProgress(){
         STATE.syncStatus = { type:'ok', msg: formatarUltimoSync(parseInt(res6.value,10)) };
       }
     }catch(e){ /* nunca sincronizou ainda neste dispositivo */ }
-    await pullFromCloud({ silent: true });
+    // CORREÇÃO CRÍTICA (v46): erro real de produção — com a cota diária do
+    // Firestore excedida, o SDK entra em "backoff máximo" e uma chamada como
+    // esta pode ficar tentando de novo por muito tempo sem nunca resolver. Como
+    // essa chamada era aguardada (await) ANTES do primeiro render(), a página
+    // inteira ficava presa em "Carregando processo…" — não é a rede que estava
+    // lenta, é a inicialização que nunca deveria ter dependido da nuvem pra
+    // mostrar a interface. Um limite de 8s garante que, na pior das hipóteses, a
+    // página sempre abre com os dados locais; o que vier da nuvem depois só
+    // enriquece, nunca bloqueia.
+    try{ await comLimiteDeTempo(pullFromCloud({ silent: true }), 8000, 'tempo esgotado ao sincronizar progresso'); }
+    catch(e){ console.warn('Sincronização de progresso não respondeu a tempo — seguindo com os dados locais.', e); }
   }
 
   // matérias públicas (publicadas pelo administrador) aparecem para TODOS os usuários,
   // conectados ou não a um código de sincronização pessoal
-  const nuvemDisponivel = await carregarMateriasPublicas();
+  let nuvemDisponivel = false;
+  try{
+    nuvemDisponivel = await comLimiteDeTempo(carregarMateriasPublicas(), 8000, 'tempo esgotado ao carregar matérias públicas');
+  }catch(e){
+    console.warn('Carregamento de matérias públicas não respondeu a tempo — seguindo com os dados locais.', e);
+  }
   // POLÍTICA DE SEGURANÇA (revista após perda real de dados causada pela
   // versão anterior desta função): NUNCA apagar uma matéria local só por
   // "não encontrei confirmação de que ela é válida na nuvem". Esse tipo de
@@ -2569,7 +2584,8 @@ async function loadProgress(){
       await saveCustomQuestions();
     }
   }
-  await reprocessarMateriasDesatualizadas();
+  try{ await comLimiteDeTempo(reprocessarMateriasDesatualizadas(), 8000, 'tempo esgotado ao reprocessar matérias'); }
+  catch(e){ console.warn('Reprocessamento automático não respondeu a tempo — tenta de novo na próxima abertura.', e); }
 }
 
 let saveTimer = null;
