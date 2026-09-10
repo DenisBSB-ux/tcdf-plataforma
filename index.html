@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v44', build: '2026-09-10 13:20' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v45', build: '2026-09-10 15:00' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1727,6 +1727,20 @@ const STORAGE_KEY = 'sim-progresso-v3';
 const EDICOES_KEY = 'tcdf-edicoes-usuario-v1';
 let EDICOES_USUARIO = {}; // { [uid]: { r: 'html editado', rf: 'html editado' } }
 let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — permite reprocessar com o parser atual sem precisar reimportar manualmente
+// data/hora da última atualização de cada matéria (importação, reimportação, ou
+// salvamento manual) — só informativo pro usuário, mostrado ao lado do nome da
+// matéria na tela de gerenciamento (pedido explícito: "indique ao lado de cada
+// matéria o dia e a hora da última atualização")
+let MATERIA_ULTIMA_ATUALIZACAO = {}; // { [materiaNome]: timestamp }
+const MATERIA_ULTIMA_ATUALIZACAO_KEY = 'tcdf-materia-ultima-atualizacao-v1';
+let salvarUltimaAtualizacaoTimer = null;
+function marcarMateriaAtualizada(materiaNome){
+  MATERIA_ULTIMA_ATUALIZACAO[materiaNome] = Date.now();
+  clearTimeout(salvarUltimaAtualizacaoTimer);
+  salvarUltimaAtualizacaoTimer = setTimeout(()=>{
+    storageSet(MATERIA_ULTIMA_ATUALIZACAO_KEY, JSON.stringify(MATERIA_ULTIMA_ATUALIZACAO)).catch(e=>console.error('Falha ao salvar data de atualização das matérias', e));
+  }, 300);
+}
 // CORREÇÃO (v37): antes, isso só existia em memória (se populado nesta sessão) ou
 // vindo da nuvem (campo textoOriginal do documento publico/{slug}). Matérias
 // grandes (ver publicarQuestoesNoFirestore) não cabem mais inteiras na nuvem, então
@@ -2487,6 +2501,11 @@ async function loadProgress(){
     const resTx = await storageGet(TEXTOS_ORIGINAIS_KEY);
     if(resTx && resTx.value) TEXTOS_ORIGINAIS = JSON.parse(resTx.value) || {};
   }catch(e){ /* nenhum texto original salvo localmente ainda */ }
+
+  try{
+    const resUa = await storageGet(MATERIA_ULTIMA_ATUALIZACAO_KEY);
+    if(resUa && resUa.value) MATERIA_ULTIMA_ATUALIZACAO = JSON.parse(resUa.value) || {};
+  }catch(e){ /* nenhuma data de atualização salva localmente ainda */ }
 
   try{
     const resOc = await storageGet(MATERIAS_OCULTAS_KEY);
@@ -3910,7 +3929,10 @@ function renderQuiz(){
       </div>
       ${temaLinha}
       <div class="tag-row">
-        ${q.pp ? probabilidadeBadge(q.pp) : ''}
+        ${q.pp ? probabilidadeBadge(q.pp) : probabilidadeCalculadaBadge(q)}
+        ${nivelBadge(q.nv)}
+        ${trendBadge(q.td)}
+        ${freqBadge(q.fr)}
         ${ineditaBadge(q)}
       </div>
       ${narrativaBancaBanner(q)}
@@ -4618,9 +4640,11 @@ function renderImportarPage(){
             const n = ALL_QUESTIONS.filter(q=>q.materia===m).length;
             const salvando = STATE.salvandoMateria===m;
             const ultimo = STATE.ultimoSalvamentoManual && STATE.ultimoSalvamentoManual.materia===m ? STATE.ultimoSalvamentoManual : null;
+            const ultimaAtualizacao = MATERIA_ULTIMA_ATUALIZACAO[m];
             return `<div class="bar-row" style="flex-wrap:wrap;">
               <div class="name">${esc(m)}</div>
               <div class="pct" style="margin-right:8px;">${n} questão(ões)</div>
+              ${ultimaAtualizacao ? `<div style="font-size:11px;color:var(--ink-soft);margin-right:8px;" title="Última atualização desta matéria">🕒 ${formatarDataHoraSalvamento(ultimaAtualizacao)}</div>` : ''}
               <button class="btn-outline" data-download-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
               <button class="btn-outline" data-inserir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">➕ Inserir</button>
               <button class="btn-outline" data-salvar-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Força salvar agora (local + nuvem) e avisa se der certo ou não — use depois de importar, antes de atualizar a página" ${salvando?'disabled':''}>${salvando?'⏳ Salvando…':'💾 Salvar'}</button>
@@ -5099,6 +5123,7 @@ async function reprocessarMateriasDesatualizadas(){
   if(alguma){
     reindex();
     salvarTextosOriginaisLocalmente();
+    materiasParaReprocessar.forEach(m=>{ if(TEXTOS_ORIGINAIS[m] && TEXTOS_ORIGINAIS[m].versaoProcessada===versaoAtual) marcarMateriaAtualizada(m); });
     await saveCustomQuestions();
     await publicarQuestoesNoFirestore(materiasParaReprocessar);
     render();
@@ -5179,6 +5204,7 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   });
   TEXTOS_ORIGINAIS[materiaNome] = { texto: content, versaoProcessada: (window.__TCDF_BUILD__ && window.__TCDF_BUILD__.versao) || null };
   salvarTextosOriginaisLocalmente();
+  marcarMateriaAtualizada(materiaNome);
   reindex();
   await saveCustomQuestions();
 
@@ -5296,23 +5322,45 @@ async function extrairTextoDePdf(file, sugestaoNome, modoForcado){
 // Firestore etc.), o usuário não tem hoje nenhum jeito de saber e nenhum jeito de
 // tentar de novo manualmente. Esta função sempre reporta o resultado (sucesso OU
 // motivo da falha) em vez de falhar silenciosamente.
+// corre uma Promise contra um cronômetro — se a Promise não resolver a tempo,
+// rejeita com uma mensagem clara em vez de deixar quem chamou esperando pra
+// sempre. Existe porque salvarMateriaAgora ficou com o botão "Salvando..."
+// preso indefinidamente na prática (bug real relatado) sem nenhum jeito de
+// saber o motivo nem tentar de novo — agora, na pior das hipóteses, aparece um
+// erro de tempo esgotado depois de 25s, nunca mais um travamento silencioso.
+function comLimiteDeTempo(promise, ms, mensagemTimeout){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(mensagemTimeout||'Tempo esgotado.')), ms)),
+  ]);
+}
 async function salvarMateriaAgora(materiaNome){
   STATE.salvandoMateria = materiaNome;
   STATE.ultimoSalvamentoManual = null;
   render();
-  const okLocal = await saveCustomQuestions();
-  let okNuvem = true, motivoNuvem = null;
+  let okLocal = false, okNuvem = true, motivoNuvem = null, motivoLocal = null;
+  try{
+    okLocal = await comLimiteDeTempo(saveCustomQuestions(), 25000, 'Tempo esgotado ao salvar localmente (25s). Confira sua conexão ou o espaço de armazenamento do navegador.');
+  }catch(e){
+    motivoLocal = e && e.message ? e.message : 'erro desconhecido';
+  }
   if(okLocal && FIREBASE_OK){
-    const pub = await publicarQuestoesNoFirestore([materiaNome], true);
-    okNuvem = !!pub.ok;
-    motivoNuvem = pub.ok ? null : pub.motivo;
+    try{
+      const pub = await comLimiteDeTempo(publicarQuestoesNoFirestore([materiaNome], true), 25000, 'Tempo esgotado ao publicar na nuvem (25s). Confira sua conexão — os dados já estão salvos neste dispositivo.');
+      okNuvem = !!pub.ok;
+      motivoNuvem = pub.ok ? null : pub.motivo;
+    }catch(e){
+      okNuvem = false;
+      motivoNuvem = e && e.message ? e.message : 'erro desconhecido';
+    }
   }
   STATE.salvandoMateria = null;
+  if(okLocal && okNuvem) marcarMateriaAtualizada(materiaNome);
   STATE.ultimoSalvamentoManual = {
     materia: materiaNome,
     ok: okLocal && okNuvem,
     ts: Date.now(),
-    motivo: !okLocal ? 'falha ao salvar localmente (ver aviso acima)' : (!okNuvem ? ('falha ao publicar na nuvem: ' + motivoNuvem) : null),
+    motivo: motivoLocal ? ('falha ao salvar localmente: ' + motivoLocal) : (!okNuvem ? ('falha ao publicar na nuvem: ' + motivoNuvem) : null),
   };
   render();
 }
@@ -5329,6 +5377,7 @@ async function renomearMateria(nomeAtual, nomeNovo){
   ALL_QUESTIONS.forEach(q=>{ if(q.materia===nomeAtual) q.materia = nomeNovo; });
   if(PROGRESS[nomeAtual]){ PROGRESS[nomeNovo] = PROGRESS[nomeAtual]; delete PROGRESS[nomeAtual]; }
   if(TEXTOS_ORIGINAIS[nomeAtual]){ TEXTOS_ORIGINAIS[nomeNovo] = TEXTOS_ORIGINAIS[nomeAtual]; delete TEXTOS_ORIGINAIS[nomeAtual]; salvarTextosOriginaisLocalmente(); }
+  if(MATERIA_ULTIMA_ATUALIZACAO[nomeAtual]){ marcarMateriaAtualizada(nomeNovo); delete MATERIA_ULTIMA_ATUALIZACAO[nomeAtual]; }
   // CORREÇÃO (v44): renomear não movia o simulado EM ANDAMENTO — ele ficava
   // salvo (memória, armazenamento local e nuvem) sob o nome ANTIGO, então depois
   // de renomear a matéria o botão "▶ Continuar" desaparecia (o app procurava por
@@ -5384,6 +5433,7 @@ async function removerMateria(materiaNome){
   ALL_QUESTIONS = ALL_QUESTIONS.filter(q=>!uidsRemover.has(q.uid));
   delete TEXTOS_ORIGINAIS[materiaNome];
   salvarTextosOriginaisLocalmente();
+  delete MATERIA_ULTIMA_ATUALIZACAO[materiaNome];
   reindex();
   // CORREÇÃO: antes, a remoção só acontecia na memória local — a matéria
   // continuava publicada em publico/{materia} no Firestore, então recarregava
