@@ -5039,6 +5039,8 @@ function parseTxtQuestions(content){
 
     const anos = (freq||'').match(/20\d{2}/g);
     const anosNum = anos ? anos.map(Number) : [];
+    const anoIndividualMatch = (banca||'').match(/(\d{4})\s*$/);
+    const arIndividual = anoIndividualMatch ? parseInt(anoIndividualMatch[1], 10) : (anosNum.length ? Math.max(...anosNum) : null);
 
     let nivel = 'media';
     if(nivelRaw){
@@ -5061,15 +5063,31 @@ function parseTxtQuestions(content){
 
     let alternativas = null;
     if(tipo==='MC'){
-      const altMatches = [...enunciado.matchAll(/([a-e]\))\s*([\s\S]+?)(?=\n[a-e]\)|$)/g)];
-      if(altMatches.length){
-        alternativas = altMatches.map(m=>({ letra:m[1].replace(')','').trim(), texto:m[2].trim() }));
+      const candidatas = [...enunciado.matchAll(/(?:^|\s)([a-e])\)\s/g)];
+      const ordemLetras = ['a','b','c','d','e'];
+      let esperado = 0;
+      const validas = [];
+      for(const m of candidatas){
+        const letra = m[1];
+        if(letra === ordemLetras[esperado]){
+          validas.push({ letra, index: m.index + m[0].indexOf(letra) });
+          esperado++;
+          if(esperado >= ordemLetras.length) break;
+        }
+      }
+      if(validas.length >= 2){
+        alternativas = validas.map((v,i)=>{
+          const inicio = v.index;
+          const fim = (i+1 < validas.length) ? validas[i+1].index : enunciado.length;
+          const texto = enunciado.slice(inicio, fim).replace(/^[a-e]\)\s*/, '').trim();
+          return { letra: v.letra, texto };
+        });
       }
     }
 
     results.push({
       n:num, bc:banca||'—', es:escopo, ft:fonte||'', nv:nivel, td:tendencia||'', fr:freq||'',
-      an:anosNum, ar:anosNum.length?Math.max(...anosNum):null,
+      an:anosNum, ar:arIndividual,
       q:enunciado, r:resolucao||'', rf:resumo||'', g:gabarito, t:tipo,
       alt: alternativas || null,
     });
