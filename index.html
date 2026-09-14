@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v47', build: '2026-09-11 17:20' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v48', build: '2026-09-14 17:40' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1920,10 +1920,10 @@ async function sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz){
   if(!FIREBASE_OK || !STATE.syncCode) return;
   try{
     const ref = fbDb.collection('progresso').doc(STATE.syncCode);
-    const doc = await ref.get();
+    const doc = await comLimiteDeTempo(ref.get(), 15000, 'tempo esgotado ao consultar simulado em andamento');
     const atual = (doc.exists && doc.data().quizzesEmAndamento) ? (typeof doc.data().quizzesEmAndamento==='string' ? JSON.parse(doc.data().quizzesEmAndamento) : doc.data().quizzesEmAndamento) : {};
     atual[materiaKey] = sanitizarParaFirestore(quiz);
-    await ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true });
+    await comLimiteDeTempo(ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true }), 15000, 'tempo esgotado ao salvar simulado em andamento');
   }catch(e){ console.warn('Falha ao sincronizar simulado em andamento na nuvem', e); }
 }
 function limparQuizSalvo(materiaKey){
@@ -1935,10 +1935,10 @@ function limparQuizSalvo(materiaKey){
   }
   if(FIREBASE_OK && STATE.syncCode){
     const ref = fbDb.collection('progresso').doc(STATE.syncCode);
-    ref.get().then(doc=>{
+    comLimiteDeTempo(ref.get(), 15000, 'tempo esgotado ao consultar simulado em andamento').then(doc=>{
       const atual = (doc.exists && doc.data().quizzesEmAndamento) ? (typeof doc.data().quizzesEmAndamento==='string' ? JSON.parse(doc.data().quizzesEmAndamento) : doc.data().quizzesEmAndamento) : {};
       atual[materiaKey] = null;
-      return ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true });
+      return comLimiteDeTempo(ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true }), 15000, 'tempo esgotado ao limpar simulado em andamento');
     }).catch(e=>console.warn('Falha ao limpar simulado em andamento na nuvem', e));
   }
 }
@@ -2258,7 +2258,7 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
     try{
       const slug = slugify(materiaNome);
       const manifestRef = fbDb.collection('publico').doc(slug);
-      const manifestDoc = await manifestRef.get();
+      const manifestDoc = await comLimiteDeTempo(manifestRef.get(), 15000, 'tempo esgotado ao consultar manifesto de "'+materiaNome+'"');
       // TRAVA DE SEGURANÇA: uma matéria marcada como removida é um "túmulo" —
       // só uma reimportação EXPLÍCITA do usuário (force=true) pode trazê-la de
       // volta. Sem essa trava, qualquer chamada automática/em segundo plano
@@ -2294,7 +2294,7 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
       } else {
         if(manifestData && Array.isArray(manifestData.questoes)) questoesAtuais = manifestData.questoes.slice();
         for(let i=0;i<numChunksAntigo;i++){
-          const chunkDoc = await fbDb.collection('publico').doc(`${slug}__p${i}`).get();
+          const chunkDoc = await comLimiteDeTempo(fbDb.collection('publico').doc(`${slug}__p${i}`).get(), 15000, 'tempo esgotado ao consultar pedaço '+i+' de "'+materiaNome+'"');
           if(chunkDoc.exists && Array.isArray(chunkDoc.data().questoes)) questoesAtuais = questoesAtuais.concat(chunkDoc.data().questoes);
         }
         const existingUids = new Set(questoesAtuais.map(q=>q.uid));
@@ -2342,21 +2342,21 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
       // de propósito qualquer "removido:true" ou array "questoes" legado de
       // versões anteriores, já que uma reimportação explícita (force=true) deve
       // mesmo substituir esse estado
-      await manifestRef.set(manifestPayload);
+      await comLimiteDeTempo(manifestRef.set(manifestPayload), 15000, 'tempo esgotado ao publicar manifesto de "'+materiaNome+'"');
 
       for(let i=0;i<chunks.length;i++){
-        await fbDb.collection('publico').doc(`${slug}__p${i}`).set(sanitizarParaFirestore({
+        await comLimiteDeTempo(fbDb.collection('publico').doc(`${slug}__p${i}`).set(sanitizarParaFirestore({
           materia: materiaNome,
           chunkIndex: i,
           questoes: chunks[i],
-        }));
+        })), 15000, 'tempo esgotado ao publicar pedaço '+i+' de "'+materiaNome+'"');
       }
       // se a matéria encolheu (menos pedaços que antes), limpa os pedaços que
       // sobraram — best-effort: se falhar, o pior caso é um pedaço órfão com
       // questões que já existem em uid duplicado em outro pedaço (não causa
       // perda de dado, só desperdiça um pouco de espaço na nuvem)
       for(let i=chunks.length;i<numChunksAntigo;i++){
-        try{ await fbDb.collection('publico').doc(`${slug}__p${i}`).delete(); }catch(e){ /* best-effort */ }
+        try{ await comLimiteDeTempo(fbDb.collection('publico').doc(`${slug}__p${i}`).delete(), 15000, 'tempo esgotado ao limpar pedaço órfão'); }catch(e){ /* best-effort */ }
       }
 
       STATE.materiasPublicadasNestaSessao.add(materiaNome);
@@ -2384,22 +2384,34 @@ async function pushToCloud(){
     // também o erro real de produção "too many index entries"), e o documento
     // principal só guarda a LISTA de quais matérias têm progresso salvo, pra
     // saber quais documentos buscar na leitura.
+    // CORREÇÃO (v48): cada escrita agora tem limite de 15s e falhas de uma
+    // matéria não impedem as outras de serem salvas — antes, com o Firestore
+    // em backoff (cota excedida), a PRIMEIRA chamada travada já bloqueava o
+    // laço inteiro (e essa função é chamada a cada resposta E ao remover
+    // matéria), deixando ações simples como "Remover" parecendo travadas.
     const materias = Object.keys(PROGRESS);
+    let algumaFalhou = false;
     for(const materiaNome of materias){
       const slugM = slugify(materiaNome);
-      await fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugM}`).set(sanitizarParaFirestore({
-        materia: materiaNome,
-        progress: JSON.stringify(PROGRESS[materiaNome]),
-        updatedAt: Date.now(),
-      }));
+      try{
+        await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugM}`).set(sanitizarParaFirestore({
+          materia: materiaNome,
+          progress: JSON.stringify(PROGRESS[materiaNome]),
+          updatedAt: Date.now(),
+        })), 15000, 'tempo esgotado ao salvar progresso da matéria "'+materiaNome+'"');
+      }catch(e){
+        algumaFalhou = true;
+        console.warn('Falha ao salvar progresso de uma matéria na nuvem — as demais continuam sendo tentadas', e);
+      }
     }
     // merge:true é essencial aqui: sem isso, cada vez que o progresso é salvo
     // (a cada resposta) o documento inteiro seria sobrescrito, apagando o campo
     // quizzesEmAndamento gravado separadamente por sincronizarQuizEmAndamentoNaNuvem
-    await fbDb.collection('progresso').doc(STATE.syncCode).set(sanitizarParaFirestore({
+    await comLimiteDeTempo(fbDb.collection('progresso').doc(STATE.syncCode).set(sanitizarParaFirestore({
       materiasComProgresso: materias,
       updatedAt: Date.now(),
-    }), { merge: true });
+    }), { merge: true }), 15000, 'tempo esgotado ao salvar o manifesto de progresso');
+    if(algumaFalhou) throw new Error('uma ou mais matérias não sincronizaram (ver avisos acima) — os dados já estão salvos neste dispositivo');
     marcarUltimoSyncOk();
   }catch(e){
     console.error('Falha ao enviar para a nuvem', e);
@@ -5439,7 +5451,7 @@ async function renomearMateria(nomeAtual, nomeNovo){
     // (mesma trava de segurança usada em removerMateria — nunca .delete())
     try{ await publicarQuestoesNoFirestore([nomeNovo], true); }
     catch(e){ console.error('Falha ao publicar matéria renomeada na nuvem', e); }
-    try{ await fbDb.collection('publico').doc(slugify(nomeAtual)).set({ materia: nomeAtual, questoes: [], removido: true, atualizadoEm: Date.now() }); }
+    try{ await comLimiteDeTempo(fbDb.collection('publico').doc(slugify(nomeAtual)).set({ materia: nomeAtual, questoes: [], removido: true, atualizadoEm: Date.now() }), 15000, 'tempo esgotado ao marcar nome antigo como removido'); }
     catch(e){ console.error('Falha ao marcar nome antigo como removido na nuvem', e); }
     // move o simulado em andamento também na nuvem (mesmo raciocínio do
     // armazenamento local acima) — lê o documento principal, move a chave do
@@ -5447,12 +5459,12 @@ async function renomearMateria(nomeAtual, nomeNovo){
     if(STATE.syncCode){
       try{
         const ref = fbDb.collection('progresso').doc(STATE.syncCode);
-        const doc = await ref.get();
+        const doc = await comLimiteDeTempo(ref.get(), 15000, 'tempo esgotado ao consultar simulado em andamento na nuvem');
         const atual = (doc.exists && doc.data().quizzesEmAndamento) ? (typeof doc.data().quizzesEmAndamento==='string' ? JSON.parse(doc.data().quizzesEmAndamento) : doc.data().quizzesEmAndamento) : {};
         if(atual[nomeAtual]){
           atual[nomeNovo] = atual[nomeAtual];
           delete atual[nomeAtual];
-          await ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true });
+          await comLimiteDeTempo(ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true }), 15000, 'tempo esgotado ao mover simulado em andamento na nuvem');
         }
       }catch(e){ console.error('Falha ao mover o simulado em andamento (nuvem) pro novo nome', e); }
     }
@@ -5474,19 +5486,41 @@ async function removerMateria(materiaNome){
   // sozinha na próxima visita (daqui ou de qualquer outro computador). Agora
   // também apaga o documento na nuvem e persiste a remoção localmente.
   await saveCustomQuestions();
+  // CORREÇÃO (v48): a tela só atualizava DEPOIS de toda a tentativa de
+  // sincronizar a remoção com a nuvem (manifesto + cada pedaço). Mesmo com o
+  // limite de 15s por chamada, uma matéria com vários pedaços (ex.: a AFO, com
+  // 5) podia somar mais de 1 minuto de espera até a matéria desaparecer da
+  // tela — mesmo a remoção LOCAL já tendo acontecido nas linhas acima. Agora a
+  // tela atualiza IMEDIATAMENTE aqui; a tentativa de refletir a remoção na
+  // nuvem continua rodando depois, sem bloquear a percepção de "removido".
+  STATE.materiasPublicadasNestaSessao.delete(materiaNome);
+  STATE.importLog = null;
+  if(STATE.quiz && STATE.quiz.materia===materiaNome) STATE.quiz = null;
+  if(STATE.flashDeck && STATE.flashDeck.materia===materiaNome) STATE.flashDeck = null;
+  if(STATE.materia===materiaNome) STATE.materia = null;
+  render();
   if(FIREBASE_OK){
     // usa .set() marcando como removido, em vez de .delete() — Firestore pode
     // ter regras de segurança diferentes pra delete vs. escrita, e write já foi
     // confirmado funcionando; delete pode estar bloqueado silenciosamente
     const slug = slugify(materiaNome);
     try{
-      const manifestDoc = await fbDb.collection('publico').doc(slug).get();
+      // CORREÇÃO CRÍTICA (v48): igual ao que já foi corrigido em loadProgress e
+      // salvarMateriaAgora — com a cota do Firestore excedida (erro real de
+      // produção: "resource-exhausted: Quota exceeded"), essas chamadas podiam
+      // ficar em backoff máximo e nunca resolver, deixando o botão "Remover"
+      // parado pra sempre. A remoção LOCAL já aconteceu acima (ALL_QUESTIONS
+      // filtrado e salvo); a partir daqui é só a tentativa de refletir isso na
+      // nuvem também, com um limite de 15s por chamada — se esgotar, a matéria
+      // já está removida neste dispositivo mesmo assim, e a tentativa de
+      // marcar como removida na nuvem fica pra próxima vez que a rede permitir.
+      const manifestDoc = await comLimiteDeTempo(fbDb.collection('publico').doc(slug).get(), 15000, 'tempo esgotado ao consultar a matéria na nuvem');
       const numChunks = (manifestDoc.exists && manifestDoc.data().numChunks) || 0;
-      await fbDb.collection('publico').doc(slug).set({ materia: materiaNome, questoes: [], removido: true, atualizadoEm: Date.now() });
+      await comLimiteDeTempo(fbDb.collection('publico').doc(slug).set({ materia: materiaNome, questoes: [], removido: true, atualizadoEm: Date.now() }), 15000, 'tempo esgotado ao marcar a matéria como removida na nuvem');
       // limpa também os documentos-pedaço (v37: matérias grandes ficam divididas
       // em vários documentos) — mesmo padrão .set() com array vazio, nunca .delete()
       for(let i=0;i<numChunks;i++){
-        try{ await fbDb.collection('publico').doc(`${slug}__p${i}`).set({ materia: materiaNome, chunkIndex: i, questoes: [] }); }
+        try{ await comLimiteDeTempo(fbDb.collection('publico').doc(`${slug}__p${i}`).set({ materia: materiaNome, chunkIndex: i, questoes: [] }), 15000, 'tempo esgotado ao limpar pedaço na nuvem'); }
         catch(e){ console.error(`Falha ao limpar o pedaço ${i} da matéria na nuvem`, e); }
       }
     }
@@ -5502,7 +5536,7 @@ async function removerMateria(materiaNome){
     try{ await storageSet(MATERIAS_OCULTAS_KEY, JSON.stringify(Array.from(MATERIAS_OCULTAS))); }
     catch(e){ console.error('Falha ao salvar lista de matérias ocultas localmente', e); }
     if(FIREBASE_OK){
-      try{ await fbDb.collection('publico').doc('_materias_ocultas').set({ nomes: Array.from(MATERIAS_OCULTAS) }); }
+      try{ await comLimiteDeTempo(fbDb.collection('publico').doc('_materias_ocultas').set({ nomes: Array.from(MATERIAS_OCULTAS) }), 15000, 'tempo esgotado ao salvar matérias ocultas na nuvem'); }
       catch(e){ console.error('Falha ao salvar lista de matérias ocultas na nuvem — pode reaparecer em outro dispositivo', e); }
     }
   }
@@ -5514,14 +5548,6 @@ async function removerMateria(materiaNome){
     });
   });
   delete PROGRESS[materiaNome];
-  STATE.materiasPublicadasNestaSessao.delete(materiaNome);
-  STATE.importLog = null;
-  // se havia um simulado/modo leitura aberto justamente nessa matéria, ele ficaria
-  // com referências a questões que não existem mais — descarta pra evitar quebrar a tela
-  if(STATE.quiz && STATE.quiz.materia===materiaNome) STATE.quiz = null;
-  if(STATE.flashDeck && STATE.flashDeck.materia===materiaNome) STATE.flashDeck = null;
-  if(STATE.materia===materiaNome) STATE.materia = null;
-  render();
 
   // salva e envia pra nuvem IMEDIATAMENTE (sem esperar o debounce), pra evitar que uma
   // sincronização automática logo em seguida "restaure" a matéria removida a partir
