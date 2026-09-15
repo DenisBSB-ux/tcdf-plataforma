@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v52', build: '2026-09-15 17:00' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v53', build: '2026-09-15 17:20' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -3462,10 +3462,10 @@ function analisarTemasDaMateria(materiaKey){
 // faixa de cor pastel pro percentual, conforme pedido: 90-100 verde claro,
 // 70-89 amarelo claro, 0-69 vermelho claro; sem tentativas = neutro
 function faixaCorPct(pct, respondidas){
-  if(!respondidas) return { bg:'#eceae4', fg:'#7a7566' };
-  if(pct>=90) return { bg:'#dcf3e3', fg:'#1e7d43' };
-  if(pct>=70) return { bg:'#fdf1cf', fg:'#8a6416' };
-  return { bg:'#fbe1df', fg:'#a3352c' };
+  if(!respondidas) return { bg:'#f3f1ea', fg:'#7a7566', fgForte:'#7a7566' };
+  if(pct>=90) return { bg:'#e3f6e9', fg:'#1e7d43', fgForte:'#166534' };
+  if(pct>=70) return { bg:'#fdf4d9', fg:'#8a6416', fgForte:'#7a5a10' };
+  return { bg:'#fce6e4', fg:'#a3352c', fgForte:'#8f2a22' };
 }
 function renderEstatisticasPorMateria(){
   const materias = materiasDisponiveis();
@@ -3479,21 +3479,25 @@ function renderEstatisticasPorMateria(){
   return `
   <div class="card-block" style="margin-top:22px;">
     <h3>📈 Estatísticas por matéria</h3>
-    <div style="display:flex;gap:10px;${estiloCelula}color:var(--ink-soft);padding:0 4px 6px;border-bottom:1px solid var(--line-soft, #e4dfd2);margin-bottom:2px;">
+    <div style="display:flex;gap:10px;${estiloCelula}color:var(--ink-soft);padding:0 8px 6px;border-bottom:1px solid var(--line-soft, #e4dfd2);margin-bottom:2px;">
       <div style="width:26px;">#</div>
       <div style="flex:1;">Matéria</div>
       <div style="width:56px;text-align:right;">Total</div>
-      <div style="width:110px;text-align:right;">Acertos × Erros</div>
+      <div style="width:76px;text-align:right;">Respondidas</div>
+      <div style="width:60px;text-align:right;">Acerto</div>
+      <div style="width:52px;text-align:right;">Erro</div>
       <div style="width:56px;text-align:right;">%</div>
     </div>
     ${linhas.map((l,i)=>{
       const cor = faixaCorPct(l.pct, l.respondidas);
-      return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;">
-        <div style="width:26px;${estiloCelula}color:var(--ink-soft);">${i+1}</div>
-        <div class="name" style="cursor:pointer;flex:1;${estiloCelula}" data-macro-materia="${esc(l.nome)}">${esc(l.nome)}</div>
-        <div style="width:56px;text-align:right;${estiloCelula}">${l.total}</div>
-        <div style="width:110px;text-align:right;${estiloCelula}">${l.respondidas ? `<span style="color:var(--stamp-green);">${l.acertos}</span> × <span style="color:var(--stamp-red);">${l.erros}</span>` : '—'}</div>
-        <div style="width:56px;text-align:right;">${l.respondidas ? `<span style="${estiloCelula}display:inline-block;min-width:44px;padding:2px 6px;border-radius:5px;background:${cor.bg};color:${cor.fg};text-align:center;">${l.pct}%</span>` : `<span style="${estiloCelula}color:var(--ink-soft);">—</span>`}</div>
+      return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${cor.bg};border-radius:6px;padding:6px 8px;margin-bottom:4px;">
+        <div style="width:26px;${estiloCelula}color:${cor.fg};">${i+1}</div>
+        <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:${cor.fgForte};font-weight:600;" data-macro-materia="${esc(l.nome)}">${esc(l.nome)}</div>
+        <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fg};">${l.total}</div>
+        <div style="width:76px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas || '—'}</div>
+        <div style="width:60px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas ? l.acertos : '—'}</div>
+        <div style="width:52px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas ? l.erros : '—'}</div>
+        <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fgForte};font-weight:700;">${l.respondidas ? l.pct+'%' : '—'}</div>
       </div>`;
     }).join('')}
   </div>
