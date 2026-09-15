@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v48', build: '2026-09-14 17:40' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v50', build: '2026-09-14 20:50' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1775,6 +1775,16 @@ function salvarEdicoesUsuario(){
 }
 const CUSTOM_KEY = 'sim-questoes-importadas-v3';
 let PROGRESS = {}; // { [materia]: { perguntas:{}, flash:{}, sessoes:[] } }
+// CORREÇÃO DEFINITIVA DE COTA (v49): pushToCloud() reescrevia TODAS as
+// matérias no Firestore a cada chamada — mesmo que só UMA tivesse mudado — e
+// era chamada a cada resposta E a cada 60s (setInterval), sempre, mesmo sem
+// nada ter mudado. Com ~20 matérias, isso era ~20 escritas por resposta e ~20
+// escritas por minuto ocioso, o que sozinho estourava a cota diária gratuita
+// do Firestore repetidamente (erro real de produção, recorrente). Agora só a(s)
+// matéria(s) que de fato mudaram desde a última sincronização bem-sucedida são
+// reenviadas — as demais não são tocadas — e nada é enviado se nada mudou.
+let MATERIAS_PROGRESSO_SUJAS = new Set();
+function marcarProgressoSujo(materiaKey){ MATERIAS_PROGRESSO_SUJAS.add(materiaKey); }
 
 // Camada de armazenamento: usa window.storage (Claude.ai artifact) quando disponível;
 // se o arquivo for aberto fora do Claude.ai (ex.: baixado e aberto direto no navegador,
@@ -2374,6 +2384,12 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
 
 async function pushToCloud(){
   if(!FIREBASE_OK || !STATE.syncCode) return;
+  // CORREÇÃO DEFINITIVA DE COTA (v49): nada a sincronizar — nenhuma chamada à
+  // nuvem é feita. Antes, esta função reescrevia TODAS as matérias a cada
+  // chamada (inclusive as 60 chamadas/hora do timer de fundo, mesmo sem
+  // nenhuma resposta nova), o que sozinho já se aproximava do limite diário
+  // gratuito do Firestore.
+  if(MATERIAS_PROGRESSO_SUJAS.size===0) return;
   try{
     // CORREÇÃO CRÍTICA (v42): 'progress' de TODAS as matérias somadas numa
     // única string já passa de 1MB na escala real de uso (muitas matérias,
@@ -2389,9 +2405,15 @@ async function pushToCloud(){
     // em backoff (cota excedida), a PRIMEIRA chamada travada já bloqueava o
     // laço inteiro (e essa função é chamada a cada resposta E ao remover
     // matéria), deixando ações simples como "Remover" parecendo travadas.
-    const materias = Object.keys(PROGRESS);
+    // CORREÇÃO (v49): só percorre as matérias marcadas como "sujas"
+    // (registrarResposta/registrarFlash/registrarSessao/etc. marcam a matéria
+    // correspondente) — as outras 19 matérias que não mudaram não são
+    // reescritas de novo. Cada matéria só sai da lista de "sujas" se a escrita
+    // dela funcionar; se falhar, continua marcada e é tentada de novo na
+    // próxima chamada.
+    const materiasSujas = Array.from(MATERIAS_PROGRESSO_SUJAS);
     let algumaFalhou = false;
-    for(const materiaNome of materias){
+    for(const materiaNome of materiasSujas){
       const slugM = slugify(materiaNome);
       try{
         await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugM}`).set(sanitizarParaFirestore({
@@ -2399,6 +2421,7 @@ async function pushToCloud(){
           progress: JSON.stringify(PROGRESS[materiaNome]),
           updatedAt: Date.now(),
         })), 15000, 'tempo esgotado ao salvar progresso da matéria "'+materiaNome+'"');
+        MATERIAS_PROGRESSO_SUJAS.delete(materiaNome);
       }catch(e){
         algumaFalhou = true;
         console.warn('Falha ao salvar progresso de uma matéria na nuvem — as demais continuam sendo tentadas', e);
@@ -2408,7 +2431,7 @@ async function pushToCloud(){
     // (a cada resposta) o documento inteiro seria sobrescrito, apagando o campo
     // quizzesEmAndamento gravado separadamente por sincronizarQuizEmAndamentoNaNuvem
     await comLimiteDeTempo(fbDb.collection('progresso').doc(STATE.syncCode).set(sanitizarParaFirestore({
-      materiasComProgresso: materias,
+      materiasComProgresso: Object.keys(PROGRESS),
       updatedAt: Date.now(),
     }), { merge: true }), 15000, 'tempo esgotado ao salvar o manifesto de progresso');
     if(algumaFalhou) throw new Error('uma ou mais matérias não sincronizaram (ver avisos acima) — os dados já estão salvos neste dispositivo');
@@ -2425,6 +2448,9 @@ async function conectarSincronizacao(codigo){
   STATE.syncCode = codigo;
   try{ await storageSet(SYNC_CODE_KEY, codigo); }catch(e){ /* ignora */ }
   const encontrouDados = await pullFromCloud();
+  // força um envio completo na conexão inicial — depois disso, só o que
+  // realmente mudar é reenviado (ver marcarProgressoSujo)
+  Object.keys(PROGRESS).forEach(m => marcarProgressoSujo(m));
   await pushToCloud();
   if(encontrouDados === false){
     // evita que a mensagem de sucesso do push (que roda logo em seguida, criando o
@@ -2565,6 +2591,13 @@ async function loadProgress(){
     // enriquece, nunca bloqueia.
     try{ await comLimiteDeTempo(pullFromCloud({ silent: true }), 8000, 'tempo esgotado ao sincronizar progresso'); }
     catch(e){ console.warn('Sincronização de progresso não respondeu a tempo — seguindo com os dados locais.', e); }
+    // rede de segurança (v49): MATERIAS_PROGRESSO_SUJAS só existe em memória —
+    // se um envio anterior falhou (ex.: cota excedida) e a página foi recarregada
+    // antes de tentar de novo, aquela matéria ficaria sem sincronizar pra sempre.
+    // Marcar tudo como pendente uma vez aqui (só na abertura da página, não a
+    // cada resposta/minuto) garante consistência eventual sem voltar ao consumo
+    // excessivo de cota que motivou a correção.
+    Object.keys(PROGRESS).forEach(m => marcarProgressoSujo(m));
   }
 
   // matérias públicas (publicadas pelo administrador) aparecem para TODOS os usuários,
@@ -2692,6 +2725,7 @@ function registrarResposta(materiaKey, uid, acertou){
   p.historico.push({ ts: Date.now(), c: acertou });
   if(p.historico.length > 20) p.historico = p.historico.slice(-20);
   bucket.perguntas[uid] = p;
+  marcarProgressoSujo(materiaKey);
   saveProgress();
 }
 
@@ -2704,11 +2738,13 @@ function undoRegistro(materiaKey, uid){
   if(last.c) p.acertos = Math.max(0, p.acertos-1);
   p.ultimoResultado = p.historico.length ? p.historico[p.historico.length-1].c : null;
   if(p.tentativas===0){ delete bucket.perguntas[uid]; } else { bucket.perguntas[uid] = p; }
+  marcarProgressoSujo(materiaKey);
   saveProgress();
 }
 
 function registrarFlash(materiaKey, uid, status){
   getBucket(materiaKey).flash[uid] = { status, ts: Date.now() };
+  marcarProgressoSujo(materiaKey);
   saveProgress();
 }
 
@@ -2718,11 +2754,13 @@ function registrarSessao(materiaKey, total, acertos, tema, queue, respostas){
   // depois a partir do histórico "Últimos simulados", não só dos salvos manualmente
   bucket.sessoes.push({ ts: Date.now(), total, acertos, tema: tema || 'todos', queue: queue||null, respostas: respostas||null });
   if(bucket.sessoes.length > 50) bucket.sessoes = bucket.sessoes.slice(-50);
+  marcarProgressoSujo(materiaKey);
   saveProgress();
 }
 
 function resetProgressoMateria(materiaKey){
   PROGRESS[materiaKey] = { perguntas:{}, flash:{}, sessoes:[] };
+  marcarProgressoSujo(materiaKey);
   saveProgress();
 }
 
@@ -3418,6 +3456,34 @@ function analisarTemasDaMateria(materiaKey){
 // dashboard analítico por matéria: mapeia os temas centrais mais recorrentes de
 // cada assunto (item 2) e destaca os de maior probabilidade de cobrança futura
 // (item 3) — pensado pra aparecer logo abaixo de "Configurar simulado"
+// nome, acertos, erros e percentual de CADA matéria (não só a selecionada) —
+// pedido explícito do usuário, exibido na página principal (renderLanding)
+function renderEstatisticasPorMateria(){
+  const materias = materiasDisponiveis();
+  if(materias.length<2) return ''; // com 1 matéria só, isso duplicaria o card grande de cima
+  const linhas = materias.map(m=>{
+    const s = computeSnapshotMateria(m);
+    const respondidas = s.ac + s.erradas;
+    return { nome: m, acertos: s.ac, erros: s.erradas, pct: s.taxa, respondidas, total: s.totalPontuavel, ativa: m===STATE.materia };
+  }).sort((a,b)=> b.respondidas - a.respondidas || a.nome.localeCompare(b.nome,'pt-BR'));
+  return `
+  <div class="card-block" style="margin-top:22px;">
+    <h3>📈 Estatísticas por matéria</h3>
+    <div class="assunto-analise-header" style="display:flex;gap:10px;font-size:11px;color:var(--ink-soft);padding:0 4px 6px;">
+      <div style="flex:1;">Matéria</div><div style="width:70px;text-align:right;">Acertos</div><div style="width:70px;text-align:right;">Erros</div><div style="width:60px;text-align:right;">%</div>
+    </div>
+    ${linhas.map(l=>{
+      const cor = l.respondidas===0 ? 'var(--ink-soft)' : (l.pct>=70 ? 'var(--stamp-green)' : l.pct>=40 ? 'var(--gold)' : 'var(--stamp-red)');
+      return `<div class="bar-row" style="flex-wrap:wrap;${l.ativa?'font-weight:700;':''}">
+        <div class="name" style="cursor:pointer;" data-macro-materia="${esc(l.nome)}">${esc(l.nome)}${l.ativa?' •':''}</div>
+        <div style="width:70px;text-align:right;color:var(--stamp-green);">${l.respondidas?l.acertos:'—'}</div>
+        <div style="width:70px;text-align:right;color:var(--stamp-red);">${l.respondidas?l.erros:'—'}</div>
+        <div style="width:60px;text-align:right;font-weight:700;color:${cor};">${l.respondidas?l.pct+'%':'—'}</div>
+      </div>`;
+    }).join('')}
+  </div>
+  `;
+}
 function renderDashboardAnalitico(){
   if(!STATE.materia) return '';
   const analise = analisarTemasDaMateria(STATE.materia);
@@ -3458,7 +3524,7 @@ function renderDashboardAnalitico(){
           <div class="stacked-bar">
             ${tt ? `<div class="stacked-seg stacked-green" style="width:${pctAcerto}%;"></div><div class="stacked-seg stacked-red" style="width:${pctErro}%;"></div>` : `<div class="stacked-seg stacked-empty" style="width:100%;"></div>`}
           </div>
-          <span class="stacked-pct">${tt ? `${pctAcerto}%` : '—'}</span>
+          <span class="stacked-pct">${tt ? `${ac} acertos · ${tt-ac} erros · ${pctAcerto}%` : '—'}</span>
         </div>
         <div class="assunto-analise-score" title="% de questões de alta incidência + tendência de alta recente neste assunto">${Math.round(a.score*100)}%</div>
       </div>
@@ -3683,6 +3749,7 @@ function renderLanding(){
     ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin-bottom:8px;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
     ${botoesAcao}
   </div>
+  ${renderEstatisticasPorMateria()}
   ${renderDashboardAnalitico()}
   ${renderSimuladosSalvosBlock()}
   ${ultimaSessoes.length ? `<div class="card-block" style="margin-top:22px;">
