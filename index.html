@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v53', build: '2026-09-15 17:20' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v54', build: '2026-09-16 18:30' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -3261,13 +3261,14 @@ const MATRIZ_PROBABILIDADE = {
 };
 function probabilidadeCalculada(q){
   if(q.pp) return null; // já existe um valor explícito da fonte, não sobrepor
-  // assunto novo (visto pela primeira vez há pouco tempo) força probabilidade
-  // Alta — a banca tende a repetir o que acabou de começar a cobrar, mais do
-  // que a matriz de nível+tendência isolada sugeriria
   const narrativa = narrativaBanca(q);
-  if(narrativa && narrativa.forcaProbabilidade) return narrativa.forcaProbabilidade;
-  const linha = MATRIZ_PROBABILIDADE[q.nv];
-  return linha ? (linha[tendenciaCurta(q.td)] || null) : null;
+  // CORREÇÃO (v54): antes, se narrativaBanca não tivesse veredito, caía de
+  // volta na MATRIZ_PROBABILIDADE (q.nv/q.td) — os mesmos campos fabricados
+  // por questão que causam o bug relatado ("Assunto novo, Alta
+  // probabilidade" numa questão de Interpretação de Textos). Removido: sem
+  // dado real suficiente (poucas provas na base), o correto é não afirmar
+  // nada, não inventar uma probabilidade com base num palpite por questão.
+  return (narrativa && narrativa.forcaProbabilidade) || null;
 }
 function probabilidadeCalculadaBadge(q){
   const p = probabilidadeCalculada(q);
@@ -3276,59 +3277,45 @@ function probabilidadeCalculadaBadge(q){
   return `<span class="prob-badge prob-calc ${cor}" title="Estimativa combinando nível de incidência histórica e tendência recente — não é um campo direto da fonte">🎯 ${p} probabilidade</span>`;
 }
 
-// "Como a banca pensa": lê o período de aparições (início-fim), o total de
-// concursos e quantos foram recentes, e monta uma leitura narrativa do
-// comportamento do assunto — não só um nível, mas um padrão reconhecível.
-function periodoDeQ(q){
-  if(!q.fr) return null;
-  const m = q.fr.match(/per[íi]odo:\s*(\d{4})-(\d{4})/i);
-  if(!m) return null;
-  return { inicio: parseInt(m[1],10), fim: parseInt(m[2],10) };
-}
+// CORREÇÃO (v54): a versão antiga lia q.fr — o texto "📊 Incidência
+// histórica: N concursos distintos..." que o Gemini FABRICA por questão no
+// momento da geração, sem de fato contar provas. Pra Português (e qualquer
+// matéria com texto-base único por questão), isso é sempre ~1, fazendo toda
+// questão parecer "assunto novo" com probabilidade forçada Alta — o bug
+// relatado. A versão nova usa analisarTemasDaMateria, que conta PROVAS REAIS
+// DISTINTAS (valores únicos de q.bc) na base inteira daquela matéria, não um
+// palpite por questão. "Como a banca pensa" agora reflete o que de fato está
+// importado, e avisa explicitamente quando a amostra ainda é pequena, em vez
+// de travestir "poucos dados" de "assunto novo e quente".
 function narrativaBanca(q){
   if(isInedita(q)) return null;
-  let periodo = periodoDeQ(q);
-  const mTotal = (q.fr||'').match(/(\d+)\s*concursos?\s*distint/i);
-  const mRecentes = (q.fr||'').match(/\((\d+)\s*nos? [úu]ltimos\s*5\s*anos\)/i);
-  let total, recentes;
-  const anoRef = anoMaisRecente(q.materia) || (periodo && periodo.fim) || (q.an && q.an.length ? Math.max(...q.an) : null);
-  if(periodo && mTotal){
-    // formato "N concursos distintos (M nos últimos 5 anos) — período: AAAA-AAAA"
-    total = parseInt(mTotal[1],10);
-    recentes = mRecentes ? parseInt(mRecentes[1],10) : 0;
-  } else if(q.an && q.an.length && anoRef){
-    // fallback pra formato nativo "AAAA (N questão(ões)), AAAA (N questão(ões))",
-    // onde só temos os anos em que o assunto caiu — usa a lista de anos direto
-    periodo = { inicio: Math.min(...q.an), fim: Math.max(...q.an) };
-    total = q.an.length;
-    recentes = q.an.filter(a => a >= anoRef-4).length;
-  } else {
-    return null;
-  }
-  const idade = anoRef - periodo.inicio;
-  const desdeUltima = anoRef - periodo.fim;
-  const proporcaoRecente = total>0 ? recentes/total : 0;
+  if(!q.tema || !q.materia) return null;
+  const analise = analisarTemasDaMateriaCached(q.materia);
+  const dados = analise.find(a => a.tema===q.tema);
+  if(!dados) return null;
 
-  if(idade<=3){
-    // assunto novo tem prioridade sobre "raro": é natural ter poucas ocorrências
-    // quando o assunto começou a cair há pouco tempo — isso não é raridade,
-    // é novidade, e costuma vir acompanhado de alta chance de repetição
-    // (a banca tende a insistir no que acabou de incluir no edital/cobrança)
-    return { icone:'🆕', cor:'narr-novo', titulo:'Assunto novo', texto:`Começou a ser cobrado há ${idade||'menos de 1'} ano(s) (desde ${periodo.inicio}) — a banca começou a testar isso recentemente.`, forcaProbabilidade:'Alta' };
+  const { faixa, confianca, tendenciaTxt, nProvasComTema, totalProvas, provasRecentesComTema, totalProvasRecentes, score } = dados;
+
+  if(confianca==='baixa'){
+    return { icone:'❔', cor:'narr-raro', titulo:'Poucos dados ainda',
+      texto:`Só ${totalProvas} prova${totalProvas===1?'':'s'} ${totalProvas===1?'real':'reais'} dessa matéria na base até agora — ainda não dá pra estimar com confiança a probabilidade deste assunto. Isso não quer dizer que ele é raro na banca, só que a base ainda é pequena.`,
+      forcaProbabilidade: null };
   }
-  if(total<=2){
-    return { icone:'🎲', cor:'narr-raro', titulo:'Assunto raro', texto:`Caiu só ${total} ${total===1?'vez':'vezes'} até hoje — difícil prever quando volta a cair.` };
+
+  const detalheRecente = totalProvasRecentes>0 ? ` Nos últimos 5 anos: ${provasRecentesComTema} de ${totalProvasRecentes} provas.` : '';
+  if(faixa==='alta'){
+    return { icone:'🔥', cor:'narr-alta', titulo:'Alta probabilidade',
+      texto:`Apareceu em ${nProvasComTema} das ${totalProvas} provas reais já vistas dessa matéria (${Math.round(score*100)}%). Tendência: ${tendenciaTxt}.${detalheRecente}`,
+      forcaProbabilidade:'Alta' };
   }
-  if(desdeUltima>=3){
-    return { icone:'🧊', cor:'narr-esfriou', titulo:'Esfriou', texto:`Não aparece há ${desdeUltima} anos (última vez em ${periodo.fim}) — pode ter saído de moda nessa banca.` };
+  if(faixa==='media'){
+    return { icone:'⚖️', cor:'narr-estavel', titulo:'Média probabilidade',
+      texto:`Apareceu em ${nProvasComTema} das ${totalProvas} provas reais já vistas dessa matéria (${Math.round(score*100)}%). Tendência: ${tendenciaTxt}.${detalheRecente}`,
+      forcaProbabilidade:'Média' };
   }
-  if(idade>=10 && proporcaoRecente>=0.5 && desdeUltima<=1){
-    return { icone:'🏛️', cor:'narr-classico', titulo:'Clássico e atual', texto:`Testado há ${idade} anos (desde ${periodo.inicio}) e continua caindo com frequência — favorito antigo da banca.` };
-  }
-  if(proporcaoRecente>=0.7){
-    return { icone:'📈', cor:'narr-alta', titulo:'Ganhando força', texto:`${recentes} das ${total} vezes que caiu foram nos últimos 5 anos — a banca tem intensificado a cobrança.` };
-  }
-  return { icone:'⚖️', cor:'narr-estavel', titulo:'Estável', texto:`Cai com regularidade desde ${periodo.inicio} (${total} vezes ao todo), sem grande variação recente.` };
+  return { icone:'🎲', cor:'narr-raro', titulo:'Baixa probabilidade',
+    texto:`Apareceu em só ${nProvasComTema} das ${totalProvas} provas reais já vistas dessa matéria (${Math.round(score*100)}%). Tendência: ${tendenciaTxt}.${detalheRecente}`,
+    forcaProbabilidade:'Baixa' };
 }
 function narrativaBancaBanner(q){
   const n = narrativaBanca(q);
@@ -3431,11 +3418,62 @@ function ehQuestaoDeBancaReal(q){
   const b = bancaCurta(q.bc);
   return !!b && b !== '—';
 }
+// CORREÇÃO (v54): o cálculo antigo tratava altaCount/quenteCount por QUESTÃO,
+// usando q.nv/q.td — campos preenchidos a partir da "📊 Incidência histórica"
+// que o Gemini fabrica POR QUESTÃO no momento da geração (sem contar exames
+// de verdade, é só um palpite do texto). Isso mistura duas coisas diferentes:
+// "quantas questões dessa matéria eu tenho na minha base" (tamanho da minha
+// coleção) com "quão comum é esse assunto nas provas reais" (o que a pessoa
+// de fato quer saber). Um assunto clássico e onipresente (ex.: Interpretação
+// de Textos) pode ter só 1-2 questões na base agora e ainda assim aparecer
+// como "assunto novo, alta probabilidade" — exatamente o bug relatado.
+//
+// A métrica nova conta PROVAS REAIS DISTINTAS (cada valor único de q.bc —
+// banca+cargo+ano — é 1 prova), não questões. "Score" = % de provas da minha
+// base que cobraram esse assunto, ponderando mais o comportamento recente
+// (últimos 5 anos) do que o histórico total, porque bancas mudam ênfase.
+// Sample size pequeno (poucas provas na base) reduz a CONFIANÇA da
+// estimativa, mas nunca é convertido em "score forçado alto" como antes —
+// preferimos avisar "poucos dados" a inventar um veredito.
+function contarProvasDistintas(qs){
+  const set = new Set();
+  qs.forEach(q => { if(q.bc) set.add(q.bc); });
+  return set;
+}
+// cache simples por matéria — narrativaBanca/probabilidadeCalculada chamam
+// isso por QUESTÃO renderizada, e recalcular analisarTemasDaMateria (que
+// percorre a base toda) a cada card seria caro. Invalidação: comparamos o
+// tamanho atual de ALL_QUESTIONS com o tamanho no momento do cache; qualquer
+// import/remoção/reprocessamento muda esse número quase sempre. Não é 100%
+// à prova de um replace que mantenha exatamente a mesma contagem, mas esse
+// caso é raro e o próximo import/edição já corrige.
+let _analiseTemasCache = {};
+function analisarTemasDaMateriaCached(materiaKey){
+  const qtdAtual = ALL_QUESTIONS.length;
+  const hit = _analiseTemasCache[materiaKey||''];
+  if(hit && hit.qtdAtual===qtdAtual) return hit.dados;
+  const dados = analisarTemasDaMateria(materiaKey);
+  _analiseTemasCache[materiaKey||''] = { qtdAtual, dados };
+  return dados;
+}
 function analisarTemasDaMateria(materiaKey){
+  const todasQs = ALL_QUESTIONS.filter(q => q.materia===materiaKey && !q.duplicataOculta && (q.t==='CE'||q.t==='MC') && ehQuestaoDeBancaReal(q));
+  const provasTotais = contarProvasDistintas(todasQs);
+  const totalProvas = provasTotais.size;
+  if(totalProvas===0) return [];
+
+  const anoRef = anoMaisRecente(materiaKey);
+  const JANELA_RECENTE_ANOS = 5;
+  const provasRecentesSet = new Set(
+    [...todasQs].filter(q => q.ar && anoRef && q.ar >= anoRef-(JANELA_RECENTE_ANOS-1)).map(q=>q.bc).filter(Boolean)
+  );
+  const totalProvasRecentes = provasRecentesSet.size;
+
   const temas = temasDisponiveis(materiaKey).filter(t => t && t!=='Fora do Edital');
   return temas.map(tema=>{
-    const qs = ALL_QUESTIONS.filter(q => q.materia===materiaKey && q.tema===tema && !q.duplicataOculta && (q.t==='CE'||q.t==='MC') && ehQuestaoDeBancaReal(q));
+    const qs = todasQs.filter(q => q.tema===tema);
     if(qs.length===0) return null;
+
     const refsMap = {};
     qs.forEach(q=>{
       // dedup por questão: se o mesmo artigo aparece no enunciado E na resolução
@@ -3445,12 +3483,33 @@ function analisarTemasDaMateria(materiaKey){
       refsUnicas.forEach(ref=>{ refsMap[ref] = (refsMap[ref]||0) + 1; });
     });
     const refsOrdenadas = Object.entries(refsMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
-    const altaCount = qs.filter(q=>q.nv==='alta').length;
-    const mediaCount = qs.filter(q=>q.nv==='media').length;
-    const baixaCount = qs.filter(q=>q.nv==='baixa').length;
-    const quenteCount = qs.filter(q=>tendenciaQuente(q)).length;
-    const score = (altaCount/qs.length)*0.6 + (quenteCount/qs.length)*0.4;
-    return { tema, total: qs.length, refsOrdenadas, altaCount, mediaCount, baixaCount, quenteCount, score };
+
+    const provasComTema = contarProvasDistintas(qs);
+    const nProvasComTema = provasComTema.size;
+    const provasRecentesComTema = [...provasComTema].filter(bc => provasRecentesSet.has(bc)).length;
+
+    const incidenciaGeral = nProvasComTema/totalProvas;
+    const incidenciaRecente = totalProvasRecentes>0 ? (provasRecentesComTema/totalProvasRecentes) : incidenciaGeral;
+    const score = incidenciaGeral*0.4 + incidenciaRecente*0.6;
+
+    // confiança da estimativa = quantas provas distintas embasam o cálculo
+    // nessa matéria (não é por-tema — é a base toda). Poucas provas na base
+    // = qualquer percentual aqui é pouco confiável, seja ele alto ou baixo.
+    const confianca = totalProvas>=15 ? 'alta' : (totalProvas>=5 ? 'media' : 'baixa');
+
+    let faixa;
+    if(score>=0.66) faixa='alta';
+    else if(score>=0.33) faixa='media';
+    else faixa='baixa';
+
+    const delta = incidenciaRecente - incidenciaGeral;
+    const tendenciaTxt = delta>0.15 ? '↑ Crescente' : (delta<-0.15 ? '↓ Decrescente' : '→ Estável');
+
+    return {
+      tema, total: qs.length, refsOrdenadas,
+      nProvasComTema, totalProvas, provasRecentesComTema, totalProvasRecentes,
+      incidenciaGeral, incidenciaRecente, score, faixa, confianca, tendenciaTxt,
+    };
   }).filter(Boolean).sort((a,b)=>b.score-a.score || b.total-a.total);
 }
 
@@ -3463,6 +3522,7 @@ function analisarTemasDaMateria(materiaKey){
 // 70-89 amarelo claro, 0-69 vermelho claro; sem tentativas = neutro
 function faixaCorPct(pct, respondidas){
   if(!respondidas) return { bg:'#f3f1ea', fg:'#7a7566', fgForte:'#7a7566' };
+  if(pct>=100) return { bg:'#e3eefb', fg:'#1e5f9d', fgForte:'#134a80' };
   if(pct>=90) return { bg:'#e3f6e9', fg:'#1e7d43', fgForte:'#166534' };
   if(pct>=70) return { bg:'#fdf4d9', fg:'#8a6416', fgForte:'#7a5a10' };
   return { bg:'#fce6e4', fg:'#a3352c', fgForte:'#8f2a22' };
@@ -3490,9 +3550,10 @@ function renderEstatisticasPorMateria(){
     </div>
     ${linhas.map((l,i)=>{
       const cor = faixaCorPct(l.pct, l.respondidas);
-      return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${cor.bg};border-radius:6px;padding:6px 8px;margin-bottom:4px;">
-        <div style="width:26px;${estiloCelula}color:${cor.fg};">${i+1}</div>
-        <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:${cor.fgForte};font-weight:600;" data-macro-materia="${esc(l.nome)}">${esc(l.nome)}</div>
+      const destaque = l.ativa ? `border:2px solid ${cor.fgForte};` : 'border:2px solid transparent;';
+      return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${cor.bg};border-radius:6px;padding:6px 8px;margin-bottom:4px;${destaque}">
+        <div style="width:26px;${estiloCelula}color:${cor.fg};">${l.ativa?'▸':i+1}</div>
+        <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:${cor.fgForte};font-weight:${l.ativa?800:600};" data-macro-materia="${esc(l.nome)}">${esc(l.nome)}${l.ativa?' <span style="font-size:10px;font-weight:600;opacity:.75;">(selecionada)</span>':''}</div>
         <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fg};">${l.total}</div>
         <div style="width:76px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas || '—'}</div>
         <div style="width:60px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas ? l.acertos : '—'}</div>
@@ -3507,7 +3568,7 @@ function renderDashboardAnalitico(){
   if(!STATE.materia) return '';
   const analise = analisarTemasDaMateria(STATE.materia);
   if(analise.length===0) return '';
-  const destaques = analise.filter(a=>a.score>0).slice(0,3);
+  const destaques = analise.filter(a=>a.faixa==='alta' && a.confianca!=='baixa').slice(0,3);
 
   // desempenho (certas/erradas) por assunto, pra desenhar a barra verde/vermelha
   // na mesma linha do assunto — não filtra por banca real, reflete o desempenho
@@ -3520,24 +3581,30 @@ function renderDashboardAnalitico(){
     acertosPorTema[q.tema][0]+=p.acertos; acertosPorTema[q.tema][1]+=p.tentativas;
   });
 
+  const confiancaGeral = analise.length ? analise[0].confianca : 'baixa';
+  const avisoConfianca = confiancaGeral!=='alta' ? `<p style="font-size:12px;color:var(--stamp-red, #a3352c);margin:-6px 0 14px;">⚠ Base ainda pequena (${analise[0].totalProvas} prova${analise[0].totalProvas===1?'':'s'} distinta${analise[0].totalProvas===1?'':'s'} identificada${analise[0].totalProvas===1?'':'s'} nessa matéria) — os percentuais abaixo tendem a ficar mais precisos à medida que mais provas reais forem importadas. Poucas provas na base não significa que o assunto é raro na banca, só que ainda vimos pouco dele.</p>` : '';
   return `
   <div class="card-block dashboard-analitico" style="margin-top:24px;">
     <h3>📊 Análise por assunto</h3>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;">Levantamento automático a partir de questões reais de bancas (questões inéditas não entram nesta análise) — distribuição por nível de incidência e seu desempenho (acertos/erros) em cada assunto. Quanto maior o percentual, maior a probabilidade de cobrança em provas futuras.</p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;">Levantamento automático a partir de questões reais de bancas (questões inéditas não entram nesta análise) — % de provas distintas, dentre as já importadas dessa matéria, que cobraram cada assunto (ponderando mais o comportamento dos últimos 5 anos que o histórico total). Quanto maior o percentual, maior a probabilidade estimada de cobrança em provas futuras.</p>
+    ${avisoConfianca}
     ${destaques.length ? `<div class="tendencia-alerta">
-      <b>⚠ Maior probabilidade de cobrança agora:</b> ${destaques.map(a=>esc(a.tema)).join(', ')} — assuntos com mais questões de alta incidência e tendência de alta recente.
+      <b>⚠ Maior probabilidade de cobrança agora:</b> ${destaques.map(a=>esc(a.tema)).join(', ')} — assuntos presentes na maioria das provas reais já vistas, com base numa amostra razoável.
     </div>` : ''}
     ${analise.map(a=>{
       const [ac,tt] = acertosPorTema[a.tema] || [0,0];
       const pctAcerto = tt ? Math.round((ac/tt)*100) : 0;
       const pctErro = tt ? 100-pctAcerto : 0;
+      const incClasse = a.faixa==='alta' ? 'inc-alta' : (a.faixa==='media' ? 'inc-media' : 'inc-baixa');
+      const incLabel = a.faixa==='alta' ? 'Alta' : (a.faixa==='media' ? 'Média' : 'Baixa');
+      const tituloIncidencia = `${a.nProvasComTema} de ${a.totalProvas} provas reais já vistas cobraram este assunto (${Math.round(a.incidenciaGeral*100)}% do histórico)`
+        + (a.totalProvasRecentes>0 ? `; nos últimos 5 anos: ${a.provasRecentesComTema} de ${a.totalProvasRecentes} (${Math.round(a.incidenciaRecente*100)}%)` : '');
       return `
       <div class="assunto-analise-row">
         <div class="assunto-analise-nome">${esc(a.tema)} <span class="cnt">(${a.total})</span></div>
-        <div class="assunto-analise-incidencia" title="Distribuição por nível de incidência neste assunto: alta / média / baixa">
-          ${a.altaCount ? `<span class="inc-badge inc-alta">★${a.altaCount} alta</span>` : ''}
-          ${a.mediaCount ? `<span class="inc-badge inc-media">★${a.mediaCount} média</span>` : ''}
-          ${a.baixaCount ? `<span class="inc-badge inc-baixa">★${a.baixaCount} baixa</span>` : ''}
+        <div class="assunto-analise-incidencia" title="${esc(tituloIncidencia)}">
+          <span class="inc-badge ${incClasse}">${incLabel} · ${a.nProvasComTema}/${a.totalProvas} provas</span>
+          <span class="inc-badge" style="background:transparent;color:var(--ink-soft);font-weight:400;">${a.tendenciaTxt}</span>
         </div>
         <div class="assunto-analise-bar" title="${tt? `${ac} certas / ${tt-ac} erradas de ${tt} tentativas` : 'ainda não respondida'}">
           <div class="stacked-bar">
@@ -3545,7 +3612,7 @@ function renderDashboardAnalitico(){
           </div>
           <span class="stacked-pct">${tt ? `${ac} acertos · ${tt-ac} erros · ${pctAcerto}%` : '—'}</span>
         </div>
-        <div class="assunto-analise-score" title="% de questões de alta incidência + tendência de alta recente neste assunto">${Math.round(a.score*100)}%</div>
+        <div class="assunto-analise-score" title="Score = 40% incidência histórica geral + 60% incidência nos últimos 5 anos, medida em provas distintas">${Math.round(a.score*100)}%</div>
       </div>
     `;}).join('')}
   </div>
@@ -3611,6 +3678,7 @@ function renderMateriaTopStrip(){
     </button>
     <div class="assunto-atual-label">${esc(labelAtual)}</div>
     ${aberto ? `<div class="subject-tabs" style="margin-top:10px;">
+      <button class="subject-tab ${STATE.viewImportar?'active':''}" data-macro-importar="1">+ Importar questões</button>
       ${materias.map(m=>{
         const n = ALL_QUESTIONS.filter(q=>q.materia===m && !q.duplicataOculta).length;
         const ativo = !STATE.viewImportar && STATE.materia===m;
@@ -3621,7 +3689,6 @@ function renderMateriaTopStrip(){
           <span class="materia-tab-stats">${statsTxt}</span>
         </button>`;
       }).join('')}
-      <button class="subject-tab ${STATE.viewImportar?'active':''}" data-macro-importar="1">+ Importar questões</button>
     </div>` : ''}
   </div></div>`;
 }
@@ -4752,25 +4819,24 @@ function renderImportarPage(){
           <input type="file" id="file-input-atualizar" accept=".txt,text/plain,.pdf,application/pdf,.md,text/markdown" style="display:none;">
           ${materiasImportadas.map(m=>{
             const n = ALL_QUESTIONS.filter(q=>q.materia===m).length;
-            const salvando = STATE.salvandoMateria===m;
-            const ultimo = STATE.ultimoSalvamentoManual && STATE.ultimoSalvamentoManual.materia===m ? STATE.ultimoSalvamentoManual : null;
             const ultimaAtualizacao = MATERIA_ULTIMA_ATUALIZACAO[m];
             const numDuplicatas = detectarDuplicatasDaMateria(m).reduce((soma,g)=>soma + (g.length-1), 0);
             const dedupInfo = STATE.dedupInfo && STATE.dedupInfo.materia===m ? STATE.dedupInfo : null;
-            return `<div class="bar-row" style="flex-wrap:wrap;">
-              <div class="name">${esc(m)}</div>
+            const ativa = m===STATE.materia;
+            return `<div class="bar-row" style="flex-wrap:wrap;${ativa?'background:var(--gold-soft, #fdf1de);border:1px solid var(--gold-bright, #c9a227);':''}">
+              <div class="name" style="${ativa?'font-weight:700;':''}">${ativa?'▸ ':''}${esc(m)}</div>
               <div class="pct" style="margin-right:8px;">${n} questão(ões)</div>
               ${ultimaAtualizacao ? `<div style="font-size:11px;color:var(--ink-soft);margin-right:8px;" title="Última atualização desta matéria">🕒 ${formatarDataHoraSalvamento(ultimaAtualizacao)}</div>` : ''}
               <button class="btn-outline" data-download-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
               <button class="btn-outline" data-inserir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">➕ Inserir</button>
-              <button class="btn-outline" data-salvar-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Força salvar agora (local + nuvem) e avisa se der certo ou não — use depois de importar, antes de atualizar a página" ${salvando?'disabled':''}>${salvando?'⏳ Salvando…':'💾 Salvar'}</button>
               ${numDuplicatas>0 ? `<button class="btn-outline" data-remover-duplicatas="${esc(m)}" style="padding:4px 10px;font-size:11px;border-color:var(--stamp-red);color:var(--stamp-red);" title="Detectadas questões repetidas (mesmo enunciado) dentro desta matéria — remove as cópias extras, mantendo o histórico de progresso">🧹 ${numDuplicatas} duplicata(s)</button>` : ''}
               <button class="btn-outline" data-renomear-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Muda o nome de exibição desta matéria, mantendo as questões e o progresso">✏️ Renomear</button>
               <button class="btn-outline" data-remover-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;">Remover</button>
-              ${ultimo ? `<div style="flex-basis:100%;font-size:11px;margin-top:4px;color:${ultimo.ok?'var(--stamp-green, #3a9d5c)':'var(--stamp-red)'};">${ultimo.ok?'✅ Salvo com sucesso ('+new Date(ultimo.ts).toLocaleTimeString('pt-BR')+') — pode atualizar a página com segurança.':'❌ Falha ao salvar: '+esc(ultimo.motivo||'motivo desconhecido')}</div>` : ''}
               ${dedupInfo ? `<div style="flex-basis:100%;font-size:11px;margin-top:4px;color:var(--stamp-green, #3a9d5c);">✅ ${dedupInfo.removidas} questão(ões) duplicada(s) removida(s)${dedupInfo.publicadoOk===false?' (falha ao publicar na nuvem: '+esc(dedupInfo.motivoPublicacao||'')+' — já está salvo neste dispositivo)':''}.</div>` : ''}
             </div>`;
           }).join('')}
+          <button class="btn-outline" id="btn-salvar-tudo" style="margin-top:10px;padding:6px 14px;font-size:12px;font-weight:600;" title="Força salvar TODAS as matérias agora (local + nuvem) numa vez só — use depois de importar, antes de atualizar a página" ${STATE.salvandoTudo?'disabled':''}>${STATE.salvandoTudo?'⏳ Salvando tudo…':'💾 Salvar tudo'}</button>
+          ${STATE.ultimoSalvamentoGeral ? `<div style="font-size:11px;margin-top:4px;color:${STATE.ultimoSalvamentoGeral.ok?'var(--stamp-green, #3a9d5c)':'var(--stamp-red)'};">${STATE.ultimoSalvamentoGeral.ok?'✅ '+STATE.ultimoSalvamentoGeral.qtdMaterias+' matéria(s) salva(s) com sucesso ('+new Date(STATE.ultimoSalvamentoGeral.ts).toLocaleTimeString('pt-BR')+') — pode atualizar a página com segurança.':'❌ Falha ao salvar: '+esc(STATE.ultimoSalvamentoGeral.motivo||'motivo desconhecido')}</div>` : ''}
         </div>` : ''}
 
         ${false ? `<div class="card-block" style="margin-top:10px;">
@@ -5558,6 +5624,44 @@ async function salvarMateriaAgora(materiaNome){
   render();
 }
 
+// botão único de salvar (pedido explícito: um só botão pra todas as matérias,
+// em vez de precisar clicar "Salvar" matéria por matéria depois de um lote de
+// importações). saveCustomQuestions() já salva TUDO localmente numa chamada
+// só (nunca foi por matéria); a única parte que valia a pena fazer em lote era
+// a publicação na nuvem, que aceita a lista inteira de matérias de uma vez.
+async function salvarTudoAgora(){
+  const materias = materiasGerenciaveis();
+  if(materias.length===0) return;
+  STATE.salvandoTudo = true;
+  STATE.ultimoSalvamentoGeral = null;
+  render();
+  let okLocal = false, okNuvem = true, motivoNuvem = null, motivoLocal = null;
+  try{
+    okLocal = await comLimiteDeTempo(saveCustomQuestions(), 25000, 'Tempo esgotado ao salvar localmente (25s). Confira sua conexão ou o espaço de armazenamento do navegador.');
+  }catch(e){
+    motivoLocal = e && e.message ? e.message : 'erro desconhecido';
+  }
+  if(okLocal && FIREBASE_OK){
+    try{
+      const pub = await comLimiteDeTempo(publicarQuestoesNoFirestore(materias, true), 25000, 'Tempo esgotado ao publicar na nuvem (25s). Confira sua conexão — os dados já estão salvos neste dispositivo.');
+      okNuvem = !!pub.ok;
+      motivoNuvem = pub.ok ? null : pub.motivo;
+    }catch(e){
+      okNuvem = false;
+      motivoNuvem = e && e.message ? e.message : 'erro desconhecido';
+    }
+  }
+  STATE.salvandoTudo = false;
+  if(okLocal && okNuvem) materias.forEach(marcarMateriaAtualizada);
+  STATE.ultimoSalvamentoGeral = {
+    ok: okLocal && okNuvem,
+    qtdMaterias: materias.length,
+    ts: Date.now(),
+    motivo: motivoLocal ? ('falha ao salvar localmente: ' + motivoLocal) : (!okNuvem ? ('falha ao publicar na nuvem: ' + motivoNuvem) : null),
+  };
+  render();
+}
+
 async function renomearMateria(nomeAtual, nomeNovo){
   nomeNovo = (nomeNovo||'').trim();
   if(!nomeNovo || nomeNovo===nomeAtual) return;
@@ -6187,6 +6291,8 @@ function attachHandlers(){
   root.querySelectorAll('[data-salvar-materia]').forEach(el=>{
     el.addEventListener('click', ()=> salvarMateriaAgora(el.dataset.salvarMateria));
   });
+  const btnSalvarTudo = root.querySelector('#btn-salvar-tudo');
+  if(btnSalvarTudo) btnSalvarTudo.addEventListener('click', ()=> salvarTudoAgora());
   root.querySelectorAll('[data-renomear-materia]').forEach(el=>{
     el.addEventListener('click', async ()=>{
       const nomeAtual = el.dataset.renomearMateria;
