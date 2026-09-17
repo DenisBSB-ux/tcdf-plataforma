@@ -1893,6 +1893,16 @@ const LAST_SYNC_KEY = 'sim-ultimo-sync';
 function quizStorageKey(materiaKey){
   return 'quiz-atual-' + slugify(materiaKey);
 }
+// CORREÇÃO: refazerQuestao/refazerTodasErros usavam a MESMA chave
+// (quiz.materia) que o simulado geral em quizzesEmAndamento — a primeira
+// resposta dentro de uma sessão de "caderno de erros" sobrescrevia o
+// progresso do simulado geral daquela matéria, tornando impossível voltar
+// pra ele depois (mesmo com o aviso de confirmação, o dado já tinha sido
+// substituído). Sessões de refazer erros agora usam uma chave própria
+// ('materia::erros'), nunca tocando no slot do simulado geral.
+function chaveEmAndamento(quiz){
+  return quiz.materia + (quiz.origemErros ? '::erros' : '');
+}
 let syncQuizEmAndamentoTimer = null;
 let quizSyncPendente = null; // { materiaKey, quiz } — usado pra garantir envio mesmo se a aba fechar antes do debounce
 // salva automaticamente o simulado em andamento a cada ação do usuário — tanto
@@ -1903,9 +1913,10 @@ function salvarQuizEmAndamento(){
   const quiz = STATE.quiz;
   if(!quiz || quiz.finished) return;
   quiz.ultimoSalvamento = Date.now();
-  storageSet(quizStorageKey(quiz.materia), JSON.stringify(quiz)).catch(()=>{});
-  STATE.quizzesEmAndamento[quiz.materia] = quiz;
-  quizSyncPendente = { materiaKey: quiz.materia, quiz };
+  const chave = chaveEmAndamento(quiz);
+  storageSet(quizStorageKey(chave), JSON.stringify(quiz)).catch(()=>{});
+  STATE.quizzesEmAndamento[chave] = quiz;
+  quizSyncPendente = { materiaKey: chave, quiz };
   clearTimeout(syncQuizEmAndamentoTimer);
   // debounce curto (250ms): junta cliques em sequência rápida num só envio, mas
   // sem deixar passar tempo demais até chegar na nuvem — se a aba fechar antes
@@ -4140,11 +4151,11 @@ function renderQuiz(){
         <span class="toolbar-divider"></span>
         <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
         <button class="icon-btn" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
-        <button class="icon-btn icon-btn-gold" id="btn-finalizar" title="Finalizar simulado">✓</button>
         <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
-        ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvamento automático a cada ação">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
         <span class="toolbar-divider"></span>
         ${renderZoomControl()}
+        <button class="icon-btn icon-btn-gold" id="btn-finalizar" title="Finalizar simulado">✓</button>
+        ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvamento automático a cada ação">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
       </div>
       <div class="toolbar-meta-row">
         <div class="progress-bar" style="max-width:220px;"><div class="fill" style="width:${progressPct}%"></div></div>
@@ -4323,7 +4334,7 @@ function finalizarQuiz(){
   const total = quiz.queue.length;
   const acertos = Object.values(quiz.respostas).filter(r=>r.correct).length;
   registrarSessao(quiz.materia, total, acertos, quiz.tema, quiz.queue, quiz.respostas);
-  limparQuizSalvo(quiz.materia);
+  limparQuizSalvo(chaveEmAndamento(quiz));
   STATE.simuladoSalvoMsg = false;
   render();
 }
@@ -4667,18 +4678,18 @@ function avisarSeForPerderProgresso(){
   return window.confirm(`Você tem um simulado salvo nesta matéria com ${qtdRespondidas} de ${salvo.queue.length} questões já respondidas nesta tentativa específica. Continuar agora vai substituir esse progresso salvo assim que você responder algo aqui — o histórico de acertos/erros já registrado continua contando normalmente nas suas estatísticas, só a opção de "continuar de onde parou" nessa fila específica é perdida. Deseja continuar mesmo assim?`);
 }
 function refazerQuestao(uid){
-  if(!avisarSeForPerderProgresso()) return;
   setLocalTab(STATE.materia, 'simulado');
-  STATE.quiz = { queue:[uid], idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema };
+  STATE.quiz = { queue:[uid], idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, origemErros:true };
+  salvarQuizEmAndamento();
   render();
 }
 
 function refazerTodasErros(){
   const uids = getCadernoErros().map(e=>e.uid);
   if(uids.length===0) return;
-  if(!avisarSeForPerderProgresso()) return;
   setLocalTab(STATE.materia, 'simulado');
-  STATE.quiz = { queue: shuffle(uids), idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema };
+  STATE.quiz = { queue: shuffle(uids), idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, origemErros:true };
+  salvarQuizEmAndamento();
   render();
 }
 
@@ -6353,6 +6364,21 @@ document.addEventListener('keydown', (e)=>{
   // salvamento automático silencioso a cada minuto, além do salvamento
   // já disparado a cada resposta/ação
   setInterval(()=>{ saveProgress(); }, 60000);
+  // "Salvar tudo" automático a cada 5 minutos (pedido explícito): cobre o
+  // banco de questões (local + nuvem), não só o progresso de respostas —
+  // reduz a chance de perder um lote de importação por esquecer de clicar
+  // no botão manual. Silencioso: não atualiza STATE.salvandoTudo/
+  // ultimoSalvamentoGeral (que são os campos que acionam o texto/spinner do
+  // botão manual) pra não fazer o botão parecer "salvando..." sem o usuário
+  // ter clicado nada; e pula o ciclo se um salvamento manual já estiver rolando.
+  setInterval(()=>{
+    if(STATE.salvandoTudo) return;
+    const materias = materiasGerenciaveis();
+    if(materias.length===0) return;
+    saveCustomQuestions().then(ok=>{
+      if(ok && FIREBASE_OK) publicarQuestoesNoFirestore(materias, true).catch(()=>{});
+    }).catch(()=>{});
+  }, 5*60*1000);
   // garante que o simulado em andamento chegue na nuvem mesmo se a aba for
   // fechada/minimizada antes do debounce de 250ms disparar sozinho — essencial
   // pro "Continuar" aparecer certo em outro dispositivo depois
