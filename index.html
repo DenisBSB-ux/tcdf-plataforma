@@ -676,11 +676,11 @@ body:not(.theme-light) .kw-gabarito{ color:var(--gold-bright); }
 body:not(.theme-light) .kw-decisivo{ color:#ff8a7a; border-bottom-color:#ff8a7a; }
 .campo-editavel-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
 .campo-editavel-acoes{ display:flex; gap:6px; }
-.btn-editar-campo, .btn-restaurar-campo{
+.btn-editar-campo, .btn-restaurar-campo, .btn-corrigir-gabarito{
   font-family:var(--font-mono); font-size:11px; background:none; cursor:pointer;
   border:1px solid var(--paper-line); border-radius:6px; padding:3px 8px; color:var(--ink-soft);
 }
-.btn-editar-campo:hover, .btn-restaurar-campo:hover{ background:var(--paper-dim); }
+.btn-editar-campo:hover, .btn-restaurar-campo:hover, .btn-corrigir-gabarito:hover{ background:var(--paper-dim); }
 .editor-toolbar{
   display:flex; gap:6px; margin-bottom:8px; padding:6px; border-radius:6px;
   background:var(--paper-dim); border:1px dashed var(--paper-line);
@@ -1773,6 +1773,49 @@ function salvarEdicoesUsuario(){
     catch(e){ console.error('Falha ao salvar edições do usuário', e); }
   }, 300);
 }
+// Gabaritos corrigidos manualmente pelo usuário, com justificativa — pra
+// casos em que a banca publica gabarito definitivo diferente do preliminar,
+// ou quando o gabarito extraído do PDF/import está simplesmente errado.
+// { [uid]: { novo:'Certo'|'A'..., motivo:'texto', original:'Errado', ts } }
+// Não corrige retroativamente tentativas já registradas (não guardamos qual
+// alternativa foi escolhida em tentativas antigas, só se foi certo/errado
+// contra o gabarito da época) — vale a partir de agora, pra próximas respostas.
+const GABARITOS_ALTERADOS_KEY = 'tcdf-gabaritos-alterados-v1';
+let GABARITOS_ALTERADOS = {};
+let salvarGabaritosAlteradosTimer = null;
+function salvarGabaritosAlterados(){
+  clearTimeout(salvarGabaritosAlteradosTimer);
+  salvarGabaritosAlteradosTimer = setTimeout(async ()=>{
+    try{ await storageSet(GABARITOS_ALTERADOS_KEY, JSON.stringify(GABARITOS_ALTERADOS)); }
+    catch(e){ console.error('Falha ao salvar gabaritos alterados', e); }
+  }, 300);
+}
+function gabaritoEfetivo(q){
+  const alt = GABARITOS_ALTERADOS[q.uid];
+  return alt ? alt.novo : q.g;
+}
+function alterarGabarito(uid){
+  const q = BY_UID[uid];
+  if(!q) return;
+  const atual = gabaritoEfetivo(q);
+  const opcoesValidas = q.t==='CE' ? ['Certo','Errado'] : (q.alt||[]).map(a=>a.letra.toUpperCase());
+  const novo = window.prompt(`Novo gabarito para esta questão (atual: ${atual}).\nOpções válidas: ${opcoesValidas.join(', ')}`, atual);
+  if(novo===null) return;
+  const novoLimpo = q.t==='CE' ? (novo.trim().toLowerCase().startsWith('c') ? 'Certo' : 'Errado') : novo.trim().toUpperCase();
+  if(!opcoesValidas.includes(novoLimpo)){
+    window.alert('Gabarito inválido. Use uma destas opções: ' + opcoesValidas.join(', '));
+    return;
+  }
+  if(novoLimpo===q.g){
+    delete GABARITOS_ALTERADOS[uid];
+  } else {
+    const motivo = window.prompt('Justificativa da mudança (ex.: "Gabarito definitivo da banca divergiu do preliminar", "Erro de extração do PDF"):', (GABARITOS_ALTERADOS[uid]&&GABARITOS_ALTERADOS[uid].motivo)||'');
+    if(motivo===null) return;
+    GABARITOS_ALTERADOS[uid] = { novo: novoLimpo, motivo: motivo.trim(), original: q.g, ts: Date.now() };
+  }
+  salvarGabaritosAlterados();
+  render();
+}
 const CUSTOM_KEY = 'sim-questoes-importadas-v3';
 let PROGRESS = {}; // { [materia]: { perguntas:{}, flash:{}, sessoes:[] } }
 // CORREÇÃO DEFINITIVA DE COTA (v49): pushToCloud() reescrevia TODAS as
@@ -2547,6 +2590,11 @@ async function loadProgress(){
   }catch(e){ /* nenhuma edição manual salva ainda */ }
 
   try{
+    const resGab = await storageGet(GABARITOS_ALTERADOS_KEY);
+    if(resGab && resGab.value) GABARITOS_ALTERADOS = JSON.parse(resGab.value);
+  }catch(e){ /* nenhum gabarito alterado salvo ainda */ }
+
+  try{
     const resTx = await storageGet(TEXTOS_ORIGINAIS_KEY);
     if(resTx && resTx.value) TEXTOS_ORIGINAIS = JSON.parse(resTx.value) || {};
   }catch(e){ /* nenhum texto original salvo localmente ainda */ }
@@ -2743,11 +2791,26 @@ function registrarResposta(materiaKey, uid, acertou){
 function undoRegistro(materiaKey, uid){
   const bucket = getBucket(materiaKey);
   const p = bucket.perguntas[uid];
-  if(!p || !p.historico || p.historico.length===0) return;
-  const last = p.historico.pop();
-  p.tentativas = Math.max(0, p.tentativas-1);
-  if(last.c) p.acertos = Math.max(0, p.acertos-1);
-  p.ultimoResultado = p.historico.length ? p.historico[p.historico.length-1].c : null;
+  if(!p || !p.tentativas) return;
+  // CORREÇÃO: o histórico por tentativa é truncado em 20 entradas (por
+  // espaço), mas p.tentativas nunca é truncado — numa questão respondida/
+  // resetada mais de 20 vezes (ou após um merge de duplicatas que soma
+  // tentativas sem garantir histórico equivalente), o histórico podia
+  // esgotar antes das tentativas chegarem a zero. O código antigo dependia
+  // 100% do histórico e simplesmente não fazia nada nesse caso — "Limpar
+  // resposta" parecia não ter efeito nenhum na estatística. Sem histórico
+  // detalhado pra essa tentativa, usa a única informação que ainda temos
+  // (o ultimoResultado atual) como a tentativa sendo desfeita.
+  if(p.historico && p.historico.length){
+    const last = p.historico.pop();
+    p.tentativas = Math.max(0, p.tentativas-1);
+    if(last.c) p.acertos = Math.max(0, p.acertos-1);
+    p.ultimoResultado = p.historico.length ? p.historico[p.historico.length-1].c : null;
+  } else {
+    p.tentativas = Math.max(0, p.tentativas-1);
+    if(p.ultimoResultado===true) p.acertos = Math.max(0, p.acertos-1);
+    p.ultimoResultado = null;
+  }
   if(p.tentativas===0){ delete bucket.perguntas[uid]; } else { bucket.perguntas[uid] = p; }
   marcarProgressoSujo(materiaKey);
   saveProgress();
@@ -2928,8 +2991,9 @@ function extrairPalavrasSignificativas(texto){
 // está sendo julgada certa ou errada)
 function palavrasChaveDaRespostaCorreta(q){
   if(q.t==='MC'){
-    if(!q.alt || !q.g) return [];
-    const correta = q.alt.find(a=>a.letra.toUpperCase()===q.g.toUpperCase());
+    const g = gabaritoEfetivo(q);
+    if(!q.alt || !g) return [];
+    const correta = q.alt.find(a=>a.letra.toUpperCase()===g.toUpperCase());
     if(!correta || !correta.texto) return [];
     return extrairPalavrasSignificativas(correta.texto);
   }
@@ -4005,7 +4069,7 @@ function gerarImpressao(){
         <h4>Questão ${i+1} (nº original ${q.n})</h4>
         <div class="print-tags">${esc(q.bc)} · ${NIVEL_STARS[q.nv]} · ${esc(q.td||'')}</div>
         <div class="print-enun">${esc(limparEnunciado(q.q, q.t))}</div>
-        <div class="print-gab">Gabarito: ${esc(q.g||'—')}</div>
+        <div class="print-gab">Gabarito: ${esc(gabaritoEfetivo(q)||'—')}</div>
         <div class="print-res"><b>Resolução:</b> ${esc(q.r)}</div>
         <div class="print-res" style="margin-top:4px;"><b>Resumo flash:</b> ${esc(q.rf)}</div>
       </div>
@@ -4055,12 +4119,13 @@ function renderQuiz(){
   let optionsHtml = '';
   const uidAtual = uid;
   const riscadas = (STATE.quiz.riscadas && STATE.quiz.riscadas[uidAtual]) || [];
+  const gEfetivo = gabaritoEfetivo(q);
   if(q.t === 'CE'){
     optionsHtml = `<div class="ce-buttons-row">` + ['Certo','Errado'].map(opt=>{
       let cls='answer-opt ce-btn ' + (opt==='Certo' ? 'ce-certo' : 'ce-errado');
       if(revelado){
         const isPicked = opt===resposta.picked;
-        const isCorrect = opt===q.g;
+        const isCorrect = opt===gEfetivo;
         if(isPicked) cls+=' picked';
         if(isCorrect) cls+=' correct';
         else if(isPicked) cls+=' incorrect';
@@ -4077,7 +4142,7 @@ function renderQuiz(){
       let cls='answer-opt';
       if(revelado){
         const isPicked = letraUp===resposta.picked;
-        const isCorrect = letraUp===q.g;
+        const isCorrect = letraUp===gEfetivo;
         if(isPicked) cls+=' picked';
         if(isCorrect) cls+=' correct';
         else if(isPicked) cls+=' incorrect';
@@ -4148,7 +4213,7 @@ function renderQuiz(){
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
         <div class="case-body">
-          <div class="enunciado ${isInedita(q)?'is-inedita':''}">${destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)))}</div>
+          <div class="enunciado ${isInedita(q)?'is-inedita':''}">${campoEditavel(q, 'q', destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t))), 'Enunciado')}</div>
         </div>
         <div class="answers">${optionsHtml}</div>
       </div>
@@ -4240,8 +4305,13 @@ function renderResolucao(q, resposta, quiz){
   const feedbackClass = correto ? 'correct' : 'incorrect';
   const temProxima = quiz && quiz.idx < quiz.queue.length-1;
   const palavrasChave = palavrasChaveDaRespostaCorreta(q);
+  const gAlterado = GABARITOS_ALTERADOS[q.uid];
   return `
-  <div class="answer-feedback ${feedbackClass}">${correto ? 'Você acertou' : 'Você errou'} — gabarito: ${esc(q.g)}</div>
+  <div class="answer-feedback ${feedbackClass}">
+    ${correto ? 'Você acertou' : 'Você errou'} — gabarito: ${esc(gabaritoEfetivo(q))}
+    <button class="btn-corrigir-gabarito" data-alterar-gabarito="${esc(q.uid)}" title="Corrigir o gabarito desta questão (com justificativa) — não muda tentativas já registradas" style="margin-left:8px;">✏️ Corrigir gabarito</button>
+  </div>
+  ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   <div class="resolucao-box ${tintClass}">
     ${campoEditavel(q, 'r', formatarTextoComDestaque(q.r, palavrasChave), 'Resolução')}
   </div>
@@ -4258,7 +4328,7 @@ function pickAnswer(opt){
   const uid = quiz.queue[quiz.idx];
   if(quiz.respostas[uid]) return;
   const q = BY_UID[uid];
-  const correct = opt === q.g;
+  const correct = opt === gabaritoEfetivo(q);
   quiz.respostas[uid] = { picked: opt, correct };
   registrarResposta(quiz.materia, uid, correct);
   salvarQuizEmAndamento();
@@ -4586,9 +4656,9 @@ function gerarMarkdownDaMateria(materiaKey){
     if(q.t==='MC' && q.alt){
       md += `### Alternativas\n`;
       q.alt.forEach(a=>{ md += `- **${a.letra.toUpperCase()})** ${a.texto}\n`; });
-      md += `\n**Gabarito:** ${q.g}\n\n`;
+      md += `\n**Gabarito:** ${gabaritoEfetivo(q)}\n\n`;
     } else {
-      md += `**Gabarito:** ${q.g}\n\n`;
+      md += `**Gabarito:** ${gabaritoEfetivo(q)}\n\n`;
     }
     md += `### Resolução\n${q.r||''}\n\n`;
     md += `### Resumo Flash\n${q.rf||''}\n\n`;
@@ -4765,7 +4835,7 @@ function renderFlashcards(){
         <div class="flashcard-face flashcard-back">
           <span class="lbl">Resumo flash</span>
           <div class="rf-text" style="zoom:${STATE.zoomLevel};">${formatarTextoComDestaque(q.rf, palavrasChaveDaRespostaCorreta(q))}</div>
-          <div class="gab-line">Gabarito: ${gabaritoDestacado(q.g)} · ${esc(q.td||'')} ${tendenciaQuente(q)?'⚠ alta recente':''}</div>
+          <div class="gab-line">Gabarito: ${gabaritoDestacado(gabaritoEfetivo(q))} · ${esc(q.td||'')} ${tendenciaQuente(q)?'⚠ alta recente':''}</div>
         </div>
       </div>
     </div>
@@ -6081,6 +6151,9 @@ function attachHandlers(){
       render();
     });
   });
+  root.querySelectorAll('[data-alterar-gabarito]').forEach(el=>{
+    el.addEventListener('click', ()=> alterarGabarito(el.dataset.alterarGabarito));
+  });
   root.querySelectorAll('.btn-restaurar-campo').forEach(el=>{
     el.addEventListener('click', ()=>{
       const uid = el.dataset.uid, campo = el.dataset.campo;
@@ -6383,16 +6456,26 @@ document.addEventListener('keydown', (e)=>{
   // "Salvar tudo" automático a cada 5 minutos (pedido explícito): cobre o
   // banco de questões (local + nuvem), não só o progresso de respostas —
   // reduz a chance de perder um lote de importação por esquecer de clicar
-  // no botão manual. Silencioso: não atualiza STATE.salvandoTudo/
-  // ultimoSalvamentoGeral (que são os campos que acionam o texto/spinner do
-  // botão manual) pra não fazer o botão parecer "salvando..." sem o usuário
-  // ter clicado nada; e pula o ciclo se um salvamento manual já estiver rolando.
+  // no botão manual.
+  // REVISADO: a primeira versão publicava TODAS as matérias na nuvem a cada
+  // ciclo, mesmo sem nenhuma mudança — isso gasta cota diária de escrita do
+  // Firestore (que é limitada, ver notas do projeto) só repetindo o mesmo
+  // conteúdo. Agora só publica na nuvem as matérias cujo MATERIA_ULTIMA_
+  // ATUALIZACAO avançou desde o ciclo anterior (import, renomear, dedup,
+  // salvar manual). O salvamento LOCAL continua incondicional a cada ciclo
+  // (IndexedDB não tem cota diária, é só disco do próprio navegador).
+  let ultimoAutoSaveGeralTs = Date.now();
   setInterval(()=>{
     if(STATE.salvandoTudo) return;
     const materias = materiasGerenciaveis();
     if(materias.length===0) return;
+    const desdeUltimoCiclo = ultimoAutoSaveGeralTs;
     saveCustomQuestions().then(ok=>{
-      if(ok && FIREBASE_OK) publicarQuestoesNoFirestore(materias, true).catch(()=>{});
+      if(!ok || !FIREBASE_OK) return;
+      const alteradas = materias.filter(m => (MATERIA_ULTIMA_ATUALIZACAO[m]||0) > desdeUltimoCiclo);
+      ultimoAutoSaveGeralTs = Date.now();
+      if(alteradas.length===0) return; // nada mudou — não gasta cota da nuvem
+      publicarQuestoesNoFirestore(alteradas, true).catch(()=>{});
     }).catch(()=>{});
   }, 5*60*1000);
   // garante que o simulado em andamento chegue na nuvem mesmo se a aba for
@@ -6430,7 +6513,14 @@ document.addEventListener('keydown', (e)=>{
     div.innerHTML = '⚡ Existe uma versão mais nova desta página no ar. <button id="btn-atualizar-agora" style="margin-left:10px;padding:5px 14px;border-radius:6px;border:none;background:#c8a24a;color:#1c1a15;font-weight:700;cursor:pointer;">Atualizar agora</button>';
     div.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#1c1a15;color:#f3ede0;padding:12px 16px;text-align:center;z-index:99999;font-family:sans-serif;font-size:14px;box-shadow:0 -2px 10px rgba(0,0,0,0.3);';
     document.body.appendChild(div);
-    document.getElementById('btn-atualizar-agora').addEventListener('click', ()=>{ location.reload(); });
+    document.getElementById('btn-atualizar-agora').addEventListener('click', ()=>{
+      // location.reload() sozinho pode ainda receber uma cópia em cache do
+      // CDN do GitHub Pages (o Cache-Control da resposta do servidor manda
+      // mais que qualquer meta tag ou opção do fetch do lado do cliente).
+      // Um parâmetro de query novo força uma URL nunca vista antes, que o
+      // CDN não tem em cache — é isso que de fato garante pegar a versão nova.
+      location.href = location.pathname + '?_v=' + Date.now();
+    });
   }
   setTimeout(checarNovaVersao, 3000);
   setInterval(checarNovaVersao, 5*60*1000);
