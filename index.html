@@ -3212,15 +3212,28 @@ function scoreableFiltradas(){
   return questoesFiltradas().filter(q => q.t==='CE' || q.t==='MC');
 }
 
+// CORREÇÃO: "certas/erradas" antes somava TODAS as tentativas históricas
+// (p.tentativas/p.acertos) — uma questão errada uma vez e depois corrigida
+// numa tentativa posterior continuava contando como "errada" pra sempre
+// nesse total, mesmo já tendo desaparecido do Caderno de erros (que sempre
+// olha só o ÚLTIMO resultado, via p.ultimoResultado). Isso fazia "Erradas"
+// no cabeçalho nunca bater com a quantidade real no Caderno de erros — o
+// usuário via, por ex., "10 erradas" no topo e o Caderno de erros vazio.
+// Agora os dois usam exatamente a mesma definição (resultado atual por
+// questão), então "Erradas" aqui sempre é igual a getCadernoErros().length.
 function computeSnapshot(){
   if(!STATE.materia) return { respondidas:0, tent:0, ac:0, taxa:0, erros:0, totalPontuavel:0 };
   const bucket = getBucket(STATE.materia);
   const scopeUids = scopeUidsComHistorico();
   const nums = Object.keys(bucket.perguntas).filter(u=>scopeUids.has(u));
-  let tent=0, ac=0;
-  nums.forEach(u=>{ tent += bucket.perguntas[u].tentativas; ac += bucket.perguntas[u].acertos; });
-  const erros = getCadernoErros().length;
-  return { respondidas: nums.length, tent, ac, taxa: pct(ac,tent), erros, totalPontuavel: scoreableFiltradas().length };
+  let ac=0, erradas=0;
+  nums.forEach(u=>{
+    const r = bucket.perguntas[u].ultimoResultado;
+    if(r===true) ac++;
+    else if(r===false) erradas++;
+  });
+  const tent = ac + erradas;
+  return { respondidas: nums.length, tent, ac, taxa: pct(ac,tent), erros: erradas, totalPontuavel: scoreableFiltradas().length };
 }
 
 // mesma métrica de computeSnapshot, mas pra QUALQUER matéria (não só a atualmente
@@ -3228,10 +3241,13 @@ function computeSnapshot(){
 // errado | total" ao lado do nome de cada disciplina no menu
 function computeSnapshotMateria(materiaKey){
   const bucket = getBucket(materiaKey);
-  let tent=0, ac=0;
-  Object.values(bucket.perguntas).forEach(p=>{ tent += p.tentativas; ac += p.acertos; });
+  let ac=0, erradas=0;
+  Object.values(bucket.perguntas).forEach(p=>{
+    if(p.ultimoResultado===true) ac++;
+    else if(p.ultimoResultado===false) erradas++;
+  });
   const totalPontuavel = ALL_QUESTIONS.filter(q=>q.materia===materiaKey && !q.duplicataOculta && (q.t==='CE'||q.t==='MC')).length;
-  return { taxa: pct(ac,tent), ac, erradas: tent-ac, totalPontuavel };
+  return { taxa: pct(ac, ac+erradas), ac, erradas, totalPontuavel };
 }
 
 function trendTag(td){
