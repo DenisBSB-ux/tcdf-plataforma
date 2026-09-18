@@ -1764,7 +1764,7 @@ let SLUGS_REMOVIDOS_NUVEM = new Set();
 let MATERIAS_OCULTAS = new Set(); // matérias NATIVAS (embutidas no código) que o usuário removeu — como elas
   // não vivem no Firestore nem no localStorage de questões, o único jeito de "remover de vez" uma matéria
   // embutida é guardar o nome dela aqui e filtrar toda vez que a base nativa for recriada no carregamento
-let edicaoAtual = null; // { uid, campo } — qual campo está em modo de edição agora
+let edicaoAtual = null; // uid da questão em modo de edição agora (todos os campos — enunciado, resolução, resumo flash — ficam editáveis juntos)
 let saveEdicoesTimer = null;
 function salvarEdicoesUsuario(){
   clearTimeout(saveEdicoesTimer);
@@ -2661,6 +2661,19 @@ async function loadProgress(){
 
   // matérias públicas (publicadas pelo administrador) aparecem para TODOS os usuários,
   // conectados ou não a um código de sincronização pessoal
+  await sincronizarMateriasPublicas();
+}
+
+// CORREÇÃO (pedido do usuário): esse bloco só rodava UMA VEZ, na abertura da
+// página — se outro dispositivo publicasse uma matéria nova ou questões
+// adicionais enquanto esta aba já estava aberta, elas nunca apareciam aqui
+// sem um reload completo da página. Extraído em função própria pra poder
+// rodar de novo periodicamente (ver setInterval no init), além da chamada
+// original na abertura. É seguro repetir: carregarMateriasPublicas() só
+// ADICIONA uids que ainda não existem localmente, e a reconciliação de
+// remoção só age sobre um sinal explícito (removido:true), nunca por
+// ausência — rodar de novo não é mais arriscado que a chamada original.
+async function sincronizarMateriasPublicas(){
   let nuvemDisponivel = false;
   try{
     nuvemDisponivel = await comLimiteDeTempo(carregarMateriasPublicas(), 8000, 'tempo esgotado ao carregar matérias públicas');
@@ -4165,7 +4178,7 @@ function renderQuiz(){
     return `
     <div class="case-file focus-simple" style="zoom:${STATE.zoomLevel};">
       <div class="case-body">
-        <div class="enunciado">${destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)))}</div>
+        <div class="enunciado">${blocoEnunciadoEditavel(q)}</div>
       </div>
       <div class="answers">${optionsHtml}</div>
       ${revelado ? `<div class="case-body focus-justificativa">${renderResolucao(q, resposta, quiz)}</div>` : ''}
@@ -4213,7 +4226,7 @@ function renderQuiz(){
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
         <div class="case-body">
-          <div class="enunciado ${isInedita(q)?'is-inedita':''}">${campoEditavel(q, 'q', destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t))), 'Enunciado')}</div>
+          <div class="enunciado ${isInedita(q)?'is-inedita':''}">${blocoEnunciadoEditavel(q)}</div>
         </div>
         <div class="answers">${optionsHtml}</div>
       </div>
@@ -4269,33 +4282,59 @@ function renderResolucaoPlaceholder(){
 // campo editável: se o usuário já customizou esse campo, mostra o HTML salvo
 // dele; senão, mostra a formatação automática de sempre (termos decisivos +
 // palavras-chave do gabarito). O botão de lápis alterna pro modo de edição.
-function campoEditavel(q, campo, htmlAuto, labelVisivel){
+// CORREÇÃO (pedido do usuário): antes cada campo (Enunciado/Resolução/Resumo
+// Flash) tinha seu próprio rótulo + botão "Editar" independente, e só um
+// campo por vez entrava em modo de edição (edicaoAtual = {uid, campo}). Isso
+// também só existia no modo Normal — o modo Foco renderizava o enunciado com
+// HTML fixo, sem checar EDICOES_USUARIO nem oferecer edição, então uma edição
+// feita no modo Normal não aparecia no modo Foco. Agora é um único botão
+// "Editar questão" por questão (edicaoAtual = uid), que põe os três campos em
+// modo de edição juntos, com uma barra de ferramentas e um "Salvar" únicos —
+// e o mesmo bloco de enunciado é usado nos dois modos.
+function editorToolbarHtml(uid){
+  return `<div class="editor-toolbar">
+    <button data-editar-acao="bold" title="Negrito"><b>B</b></button>
+    <button data-editar-acao="italic" title="Itálico"><i>I</i></button>
+    <button data-editar-acao="strike" title="Tachado"><s>S</s></button>
+    <span class="editor-toolbar-sep"></span>
+    <button data-editar-acao="highlight" data-cor="#fff3b0" class="swatch-amarelo" title="Grifar em amarelo"></button>
+    <button data-editar-acao="highlight" data-cor="#c8e6c9" class="swatch-verde" title="Grifar em verde"></button>
+    <button data-editar-acao="highlight" data-cor="#bbdefb" class="swatch-azul" title="Grifar em azul"></button>
+    <button data-editar-acao="highlight" data-cor="#f8bbd0" class="swatch-rosa" title="Grifar em rosa"></button>
+    <span class="editor-toolbar-sep"></span>
+    <button data-editar-acao="limpar" title="Limpar formatação da seleção">🧹</button>
+    <button data-editar-acao="salvar" data-uid="${esc(uid)}" class="btn-salvar-edicao">💾 Salvar</button>
+    <button data-editar-acao="cancelar" class="btn-cancelar-edicao">✕ Cancelar</button>
+  </div>`;
+}
+// bloco do enunciado: traz o único botão que ativa o modo de edição da
+// questão inteira (usado igual no modo Normal e no modo Foco)
+function blocoEnunciadoEditavel(q){
   const uid = q.uid;
-  const custom = EDICOES_USUARIO[uid] && EDICOES_USUARIO[uid][campo];
-  const emEdicao = edicaoAtual && edicaoAtual.uid===uid && edicaoAtual.campo===campo;
-  const conteudo = emEdicao ? (custom || htmlAuto) : (custom || htmlAuto);
+  const custom = EDICOES_USUARIO[uid] && EDICOES_USUARIO[uid]['q'];
+  const emEdicao = edicaoAtual === uid;
+  const htmlAuto = destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)));
+  const conteudo = custom || htmlAuto;
   return `
-    <div class="campo-editavel-header">
-      <span class="lbl">${esc(labelVisivel)}</span>
+    <div class="campo-editavel-header" style="justify-content:flex-end;">
       <span class="campo-editavel-acoes">
-        ${emEdicao ? '' : `<button class="btn-editar-campo" data-uid="${esc(uid)}" data-campo="${campo}" title="Editar e grifar palavras-chave próprias">✏️ Editar</button>`}
-        ${(!emEdicao && custom) ? `<button class="btn-restaurar-campo" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button>` : ''}
+        ${emEdicao ? '' : `<button class="btn-editar-campo" data-uid="${esc(uid)}" title="Editar enunciado, resolução e resumo flash desta questão">✏️ Editar questão</button>`}
+        ${(!emEdicao && custom) ? `<button class="btn-restaurar-campo" data-uid="${esc(uid)}" data-campo="q" title="Descartar edição do enunciado e voltar ao texto automático">↺ Restaurar enunciado</button>` : ''}
       </span>
     </div>
-    ${emEdicao ? `<div class="editor-toolbar">
-      <button data-editar-acao="bold" title="Negrito"><b>B</b></button>
-      <button data-editar-acao="italic" title="Itálico"><i>I</i></button>
-      <button data-editar-acao="strike" title="Tachado"><s>S</s></button>
-      <span class="editor-toolbar-sep"></span>
-      <button data-editar-acao="highlight" data-cor="#fff3b0" class="swatch-amarelo" title="Grifar em amarelo"></button>
-      <button data-editar-acao="highlight" data-cor="#c8e6c9" class="swatch-verde" title="Grifar em verde"></button>
-      <button data-editar-acao="highlight" data-cor="#bbdefb" class="swatch-azul" title="Grifar em azul"></button>
-      <button data-editar-acao="highlight" data-cor="#f8bbd0" class="swatch-rosa" title="Grifar em rosa"></button>
-      <span class="editor-toolbar-sep"></span>
-      <button data-editar-acao="limpar" title="Limpar formatação da seleção">🧹</button>
-      <button data-editar-acao="salvar" data-uid="${esc(uid)}" data-campo="${campo}" class="btn-salvar-edicao">💾 Salvar</button>
-      <button data-editar-acao="cancelar" class="btn-cancelar-edicao">✕ Cancelar</button>
-    </div>` : ''}
+    ${emEdicao ? editorToolbarHtml(uid) : ''}
+    <div class="campo-editavel-conteudo" ${emEdicao ? 'contenteditable="true"' : ''} id="conteudo-q-${esc(uid)}">${conteudo}</div>
+  `;
+}
+// bloco de resolução/resumo flash: sem rótulo nem botão próprios — só entra
+// em edição junto quando a questão inteira está em edição (edicaoAtual===uid)
+function campoEditavelSimples(q, campo, htmlAuto){
+  const uid = q.uid;
+  const custom = EDICOES_USUARIO[uid] && EDICOES_USUARIO[uid][campo];
+  const emEdicao = edicaoAtual === uid;
+  const conteudo = custom || htmlAuto;
+  return `
+    ${(!emEdicao && custom) ? `<div class="campo-editavel-header" style="justify-content:flex-end;"><button class="btn-restaurar-campo" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button></div>` : ''}
     <div class="campo-editavel-conteudo" ${emEdicao ? 'contenteditable="true"' : ''} id="conteudo-${campo}-${esc(uid)}">${conteudo}</div>
   `;
 }
@@ -4313,10 +4352,10 @@ function renderResolucao(q, resposta, quiz){
   </div>
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   <div class="resolucao-box ${tintClass}">
-    ${campoEditavel(q, 'r', formatarTextoComDestaque(q.r, palavrasChave), 'Resolução')}
+    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(q.r, palavrasChave))}
   </div>
   <div class="resumo-flash-box">
-    ${campoEditavel(q, 'rf', formatarTextoComDestaque(q.rf, palavrasChave), 'Resumo flash')}
+    ${campoEditavelSimples(q, 'rf', formatarTextoComDestaque(q.rf, palavrasChave))}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>` : ''}
   `;
@@ -6147,7 +6186,7 @@ function attachHandlers(){
   if(btnProximaRapida) btnProximaRapida.addEventListener('click', goNext);
   root.querySelectorAll('.btn-editar-campo').forEach(el=>{
     el.addEventListener('click', ()=>{
-      edicaoAtual = { uid: el.dataset.uid, campo: el.dataset.campo };
+      edicaoAtual = el.dataset.uid;
       render();
     });
   });
@@ -6180,13 +6219,15 @@ function attachHandlers(){
       if(acao==='limpar'){ document.execCommand('removeFormat'); return; }
       if(acao==='cancelar'){ edicaoAtual = null; render(); return; }
       if(acao==='salvar'){
-        const uid = el.dataset.uid, campo = el.dataset.campo;
-        const div = document.getElementById(`conteudo-${campo}-${uid}`);
-        if(div){
-          if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
-          EDICOES_USUARIO[uid][campo] = div.innerHTML;
-          salvarEdicoesUsuario();
-        }
+        const uid = el.dataset.uid;
+        ['q','r','rf'].forEach(campo=>{
+          const div = document.getElementById(`conteudo-${campo}-${uid}`);
+          if(div){
+            if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
+            EDICOES_USUARIO[uid][campo] = div.innerHTML;
+          }
+        });
+        salvarEdicoesUsuario();
         edicaoAtual = null;
         render();
       }
@@ -6477,6 +6518,15 @@ document.addEventListener('keydown', (e)=>{
       if(alteradas.length===0) return; // nada mudou — não gasta cota da nuvem
       publicarQuestoesNoFirestore(alteradas, true).catch(()=>{});
     }).catch(()=>{});
+  }, 5*60*1000);
+  // busca periódica de matérias/questões publicadas por OUTRO dispositivo
+  // (pedido explícito): antes só rodava uma vez, na abertura da página — uma
+  // aba já aberta nunca via um import feito em outro aparelho sem reload
+  // manual. Não roda com um simulado em andamento pra não arriscar re-renderizar
+  // no meio de uma resposta; a próxima troca de tela já pega o resultado.
+  setInterval(()=>{
+    if(STATE.quiz) return;
+    sincronizarMateriasPublicas().then(()=> render()).catch(()=>{});
   }, 5*60*1000);
   // garante que o simulado em andamento chegue na nuvem mesmo se a aba for
   // fechada/minimizada antes do debounce de 250ms disparar sozinho — essencial
