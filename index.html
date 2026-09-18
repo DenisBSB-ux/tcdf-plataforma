@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v54', build: '2026-09-16 18:30' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v55', build: '2026-09-18 21:40' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -3679,10 +3679,14 @@ function renderDashboardAnalitico(){
   // de fato nas tentativas do candidato, incluindo inéditas respondidas
   const bucket = getBucket(STATE.materia);
   const acertosPorTema = {};
+  // mesma correção das outras estatísticas: conta pelo resultado ATUAL de
+  // cada questão (1 vez cada), não pela soma histórica de tentativas — senão
+  // essa barra verde/vermelha não bate com o resto da página.
   Object.entries(bucket.perguntas||{}).forEach(([uid,p])=>{
     const q = BY_UID[uid]; if(!q || q.materia!==STATE.materia) return;
+    if(p.ultimoResultado!==true && p.ultimoResultado!==false) return;
     if(!acertosPorTema[q.tema]) acertosPorTema[q.tema]=[0,0];
-    acertosPorTema[q.tema][0]+=p.acertos; acertosPorTema[q.tema][1]+=p.tentativas;
+    acertosPorTema[q.tema][0]+=(p.ultimoResultado===true?1:0); acertosPorTema[q.tema][1]+=1;
   });
 
   const confiancaGeral = analise.length ? analise[0].confianca : 'baixa';
@@ -4248,7 +4252,6 @@ function renderQuiz(){
         <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
         <span class="toolbar-divider"></span>
         ${renderZoomControl()}
-        <button class="icon-btn icon-btn-gold" id="btn-finalizar" title="Finalizar simulado">✓</button>
         ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvamento automático a cada ação">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
       </div>
       <div class="toolbar-meta-row">
@@ -4357,7 +4360,7 @@ function renderResolucao(q, resposta, quiz){
   <div class="resumo-flash-box">
     ${campoEditavelSimples(q, 'rf', formatarTextoComDestaque(q.rf, palavrasChave))}
   </div>
-  ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>` : ''}
+  ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>` : `<button class="btn btn-gold btn-sm" id="btn-finalizar" style="margin-top:16px;width:100%;justify-content:center;">✓ Finalizar e ver resultado</button>`}
   `;
 }
 
@@ -4574,12 +4577,20 @@ function renderStats(){
   const bucket = getBucket(STATE.materia);
   const niveis = { alta:[0,0], media:[0,0], baixa:[0,0] };
   const byTema = {};
+  // CORREÇÃO: aqui embaixo ainda somava p.acertos/p.tentativas (histórico
+  // cumulativo de TODAS as tentativas já dadas), enquanto o "Acerto geral" no
+  // topo desta mesma página já tinha sido corrigido pra usar o resultado
+  // ATUAL de cada questão (ultimoResultado) — os dois nunca batiam entre si
+  // (ex.: Direito Civil, Contratos). Agora os dois usam exatamente a mesma
+  // definição: cada questão conta 1 vez, pelo seu resultado mais recente.
   Object.entries(bucket.perguntas).forEach(([uid,p])=>{
     const q = BY_UID[uid]; if(!q || q.materia!==STATE.materia) return;
     if(STATE.tema!=='todos' && q.tema!==STATE.tema) return;
-    if(niveis[q.nv]){ niveis[q.nv][0]+=p.acertos; niveis[q.nv][1]+=p.tentativas; }
+    if(p.ultimoResultado!==true && p.ultimoResultado!==false) return;
+    const acertou = p.ultimoResultado===true ? 1 : 0;
+    if(niveis[q.nv]){ niveis[q.nv][0]+=acertou; niveis[q.nv][1]+=1; }
     if(!byTema[q.tema]) byTema[q.tema]=[0,0];
-    byTema[q.tema][0]+=p.acertos; byTema[q.tema][1]+=p.tentativas;
+    byTema[q.tema][0]+=acertou; byTema[q.tema][1]+=1;
   });
 
   const ultimaSessoes = bucket.sessoes.slice(-8).reverse();
@@ -4967,6 +4978,7 @@ function renderImportarPage(){
               <button class="btn-outline" data-inserir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">➕ Inserir</button>
               ${numDuplicatas>0 ? `<button class="btn-outline" data-remover-duplicatas="${esc(m)}" style="padding:4px 10px;font-size:11px;border-color:var(--stamp-red);color:var(--stamp-red);" title="Detectadas questões repetidas (mesmo enunciado) dentro desta matéria — remove as cópias extras, mantendo o histórico de progresso">🧹 ${numDuplicatas} duplicata(s)</button>` : ''}
               <button class="btn-outline" data-renomear-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Muda o nome de exibição desta matéria, mantendo as questões e o progresso">✏️ Renomear</button>
+              <button class="btn-outline" data-buscar-substituir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Corrige um texto/artefato que se repete em várias questões desta matéria (ex.: uma palavra ou trecho colado por engano na geração)">🔍 Buscar e substituir</button>
               <button class="btn-outline" data-remover-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;">Remover</button>
               ${dedupInfo ? `<div style="flex-basis:100%;font-size:11px;margin-top:4px;color:var(--stamp-green, #3a9d5c);">✅ ${dedupInfo.removidas} questão(ões) duplicada(s) removida(s)${dedupInfo.publicadoOk===false?' (falha ao publicar na nuvem: '+esc(dedupInfo.motivoPublicacao||'')+' — já está salvo neste dispositivo)':''}.</div>` : ''}
             </div>`;
@@ -5729,6 +5741,65 @@ async function removerDuplicatasDaMateria(materiaNome){
   return { removidas: uidsRemover.size, publicadoOk: pub.ok, motivoPublicacao: pub.ok?null:pub.motivo };
 }
 
+async function buscarSubstituirMateria(materiaNome){
+  const busca = window.prompt(`Texto a procurar em "${materiaNome}" (Enunciado, Resolução e Resumo Flash):`, '');
+  if(busca===null || busca.trim()==='') return;
+
+  const qs = ALL_QUESTIONS.filter(q=>q.materia===materiaNome);
+  const CAMPOS = ['q','r','rf'];
+  let ocorrencias = 0;
+  let questoesAfetadas = 0;
+  let exemplo = null;
+  qs.forEach(q=>{
+    let achouNesta = false;
+    CAMPOS.forEach(campo=>{
+      const valorOriginal = q[campo] || '';
+      const valorEditado = (EDICOES_USUARIO[q.uid] && EDICOES_USUARIO[q.uid][campo]) || '';
+      const c1 = valorOriginal.split(busca).length - 1;
+      const c2 = valorEditado.split(busca).length - 1;
+      if(c1>0 || c2>0){
+        achouNesta = true;
+        ocorrencias += c1 + c2;
+        if(!exemplo) exemplo = `Q${q.n}: "…${(valorOriginal||valorEditado).slice(Math.max(0,(valorOriginal||valorEditado).indexOf(busca)-30), (valorOriginal||valorEditado).indexOf(busca)+busca.length+30)}…"`;
+      }
+    });
+    if(achouNesta) questoesAfetadas++;
+  });
+
+  if(ocorrencias===0){
+    window.alert(`Nenhuma ocorrência de "${busca}" encontrada em "${materiaNome}".`);
+    return;
+  }
+
+  const confirmMsg = `Encontrei ${ocorrencias} ocorrência(s) em ${questoesAfetadas} questão(ões).\n\nExemplo:\n${exemplo}\n\nDigite o texto de substituição (deixe em branco pra apenas REMOVER o texto encontrado):`;
+  const substituto = window.prompt(confirmMsg, '');
+  if(substituto===null) return; // cancelou
+
+  qs.forEach(q=>{
+    CAMPOS.forEach(campo=>{
+      if(q[campo] && q[campo].includes(busca)){
+        q[campo] = q[campo].split(busca).join(substituto);
+      }
+      if(EDICOES_USUARIO[q.uid] && EDICOES_USUARIO[q.uid][campo] && EDICOES_USUARIO[q.uid][campo].includes(busca)){
+        EDICOES_USUARIO[q.uid][campo] = EDICOES_USUARIO[q.uid][campo].split(busca).join(substituto);
+      }
+    });
+  });
+
+  marcarMateriaAtualizada(materiaNome);
+  salvarEdicoesUsuario();
+  const okLocal = await saveCustomQuestions();
+  let okNuvem = true;
+  if(okLocal && FIREBASE_OK){
+    const pub = await publicarQuestoesNoFirestore([materiaNome], true);
+    okNuvem = !!pub.ok;
+  }
+  render();
+  window.alert(okLocal && okNuvem
+    ? `Pronto — ${ocorrencias} ocorrência(s) substituída(s) em ${questoesAfetadas} questão(ões), salvo local e na nuvem.`
+    : `Substituído localmente, mas houve falha ao salvar${!okLocal?' neste dispositivo':' na nuvem'}. Tente de novo em "Salvar tudo".`);
+}
+
 async function salvarMateriaAgora(materiaNome){
   STATE.salvandoMateria = materiaNome;
   STATE.ultimoSalvamentoManual = null;
@@ -6432,6 +6503,9 @@ function attachHandlers(){
   root.querySelectorAll('[data-salvar-materia]').forEach(el=>{
     el.addEventListener('click', ()=> salvarMateriaAgora(el.dataset.salvarMateria));
   });
+  root.querySelectorAll('[data-buscar-substituir-materia]').forEach(el=>{
+    el.addEventListener('click', ()=> buscarSubstituirMateria(el.dataset.buscarSubstituirMateria));
+  });
   const btnSalvarTudo = root.querySelector('#btn-salvar-tudo');
   if(btnSalvarTudo) btnSalvarTudo.addEventListener('click', ()=> salvarTudoAgora());
   root.querySelectorAll('[data-renomear-materia]').forEach(el=>{
@@ -6511,12 +6585,32 @@ document.addEventListener('keydown', (e)=>{
     const materias = materiasGerenciaveis();
     if(materias.length===0) return;
     const desdeUltimoCiclo = ultimoAutoSaveGeralTs;
-    saveCustomQuestions().then(ok=>{
-      if(!ok || !FIREBASE_OK) return;
-      const alteradas = materias.filter(m => (MATERIA_ULTIMA_ATUALIZACAO[m]||0) > desdeUltimoCiclo);
+    saveCustomQuestions().then(async ok=>{
+      let okNuvem = true, motivoNuvem = null;
+      if(ok && FIREBASE_OK){
+        const alteradas = materias.filter(m => (MATERIA_ULTIMA_ATUALIZACAO[m]||0) > desdeUltimoCiclo);
+        if(alteradas.length>0){
+          try{
+            const pub = await publicarQuestoesNoFirestore(alteradas, true);
+            okNuvem = !!pub.ok;
+            motivoNuvem = pub.ok ? null : pub.motivo;
+            if(pub.ok) alteradas.forEach(marcarMateriaAtualizada);
+          }catch(e){ okNuvem=false; motivoNuvem = e && e.message ? e.message : 'erro desconhecido'; }
+        }
+      }
       ultimoAutoSaveGeralTs = Date.now();
-      if(alteradas.length===0) return; // nada mudou — não gasta cota da nuvem
-      publicarQuestoesNoFirestore(alteradas, true).catch(()=>{});
+      // CORREÇÃO: essa rotina rodava 100% silenciosa — nunca chamava render()
+      // nem atualizava nenhum indicador. Funcionando ou não, nada aparecia na
+      // tela, então parecia simplesmente não estar acontecendo. Agora usa o
+      // mesmo indicador do botão manual "Salvar tudo", pra sempre haver uma
+      // prova visível (hora do último salvamento automático bem-sucedido).
+      STATE.ultimoSalvamentoGeral = {
+        ok: ok && okNuvem,
+        qtdMaterias: materias.length,
+        ts: Date.now(),
+        motivo: !ok ? 'falha ao salvar localmente' : (!okNuvem ? ('falha ao publicar na nuvem: '+motivoNuvem) : null),
+      };
+      render();
     }).catch(()=>{});
   }, 5*60*1000);
   // busca periódica de matérias/questões publicadas por OUTRO dispositivo
