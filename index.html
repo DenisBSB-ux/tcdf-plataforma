@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v71', build: '2026-09-20 09:45' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v73', build: '2026-09-21 17:00' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -1732,6 +1732,34 @@ let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — permite 
 // matéria na tela de gerenciamento (pedido explícito: "indique ao lado de cada
 // matéria o dia e a hora da última atualização")
 let MATERIA_ULTIMA_ATUALIZACAO = {}; // { [materiaNome]: timestamp }
+// (item 5) registra o "atualizadoEm" mais recente que ESTE dispositivo já viu
+// na nuvem pra cada matéria — permite detectar quando outro dispositivo
+// publicou algo mais novo entre a última sincronização daqui e uma tentativa
+// de publicar agora, o que indicaria uma sobrescrita indevida prestes a
+// acontecer (ver aviso em publicarQuestoesNoFirestore)
+let MATERIA_ATUALIZADOEM_NUVEM_VISTO = {};
+// (item 5) alertas de sobrescrita detectada — ver publicarQuestoesNoFirestore
+let ALERTAS_SOBRESCRITA_NUVEM = [];
+// CORREÇÃO (v73): existiam dois setInterval de 5 minutos rodando sem nenhuma
+// sincronia entre si — um publicando mudanças locais na nuvem, outro puxando
+// da nuvem e SUBSTITUINDO o local por inteiro (ver carregarMateriasPublicas,
+// v57). Se o segundo disparasse bem no meio do primeiro (ou de qualquer
+// operação manual que mexe em dados locais e depois publica — deduplicar,
+// importar, renomear, remover, salvar), ele lia uma versão da nuvem ainda não
+// atualizada e revertia a limpeza local silenciosamente; a publicação que
+// viesse em seguida então mandava essa versão revertida (suja) de volta pra
+// nuvem, permanentemente. Relatado em produção: duplicatas removidas
+// reaparecendo, matérias voltando mesmo depois de removidas — os horários
+// batiam exatamente com o intervalo de 5 minutos. Esta trava (um contador, não
+// um booleano, pra suportar chamadas aninhadas sem destravar cedo demais)
+// impede a leitura da nuvem de rodar enquanto qualquer escrita estiver em
+// andamento — ver comTravaDeEscrita() e sincronizarMateriasPublicas().
+let TRAVAS_ESCRITA_ATIVAS = 0;
+async function comTravaDeEscrita(fn){
+  TRAVAS_ESCRITA_ATIVAS++;
+  try{ return await fn(); }
+  finally{ TRAVAS_ESCRITA_ATIVAS--; }
+}
 const MATERIA_ULTIMA_ATUALIZACAO_KEY = 'tcdf-materia-ultima-atualizacao-v1';
 let salvarUltimaAtualizacaoTimer = null;
 function marcarMateriaAtualizada(materiaNome){
@@ -2328,6 +2356,9 @@ async function carregarMateriasPublicas(){
       if(data.textoOriginal && data.materia){
         TEXTOS_ORIGINAIS[data.materia] = { texto: data.textoOriginal, versaoProcessada: data.versaoProcessada || null };
       }
+      if(data.materia && typeof data.atualizadoEm === 'number'){
+        MATERIA_ATUALIZADOEM_NUVEM_VISTO[data.materia] = data.atualizadoEm;
+      }
     });
 
     // CORREÇÃO CRÍTICA (v57): antes, só ADICIONAVA questões cujo uid ainda não
@@ -2399,6 +2430,21 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
       const manifestData = manifestDoc.exists ? manifestDoc.data() : null;
       const numChunksAntigo = (manifestData && manifestData.numChunks) || 0;
 
+      // (item 5) se a nuvem tem um atualizadoEm mais novo do que o último que
+      // ESTE dispositivo viu (registrado em carregarMateriasPublicas), outro
+      // dispositivo/aba publicou algo aqui nesse meio tempo — sobrescrever
+      // agora descartaria esse trabalho sem aviso nenhum. Não bloqueia (quem
+      // chamou publicarQuestoesNoFirestore já tomou uma decisão deliberada),
+      // mas fica registrado como um alerta visível, não só um log escondido.
+      if(manifestData && typeof manifestData.atualizadoEm === 'number'){
+        const ultimoVisto = MATERIA_ATUALIZADOEM_NUVEM_VISTO[materiaNome];
+        if(ultimoVisto && manifestData.atualizadoEm > ultimoVisto){
+          const detalhe = `"${materiaNome}" foi atualizada na nuvem (${formatarDataHoraSalvamento(manifestData.atualizadoEm)}) por outro dispositivo/aba depois da última vez que este aparelho sincronizou — publicar agora vai sobrescrever essa versão mais nova.`;
+          console.warn(detalhe);
+          ALERTAS_SOBRESCRITA_NUVEM.push({ materia: materiaNome, ts: Date.now(), detalhe });
+        }
+      }
+
       // CORREÇÃO CRÍTICA (v43, unificada na v58): o array local (ALL_QUESTIONS)
       // é SEMPRE tratado como a versão correta e completa a publicar — nunca
       // mesclado com o que já estava na nuvem antes, com ou sem force. Isso já
@@ -2459,6 +2505,7 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
       // versões anteriores, já que uma reimportação explícita (force=true) deve
       // mesmo substituir esse estado
       await comLimiteDeTempo(manifestRef.set(manifestPayload), 15000, 'tempo esgotado ao publicar manifesto de "'+materiaNome+'"');
+      MATERIA_ATUALIZADOEM_NUVEM_VISTO[materiaNome] = manifestPayload.atualizadoEm;
 
       for(let i=0;i<chunks.length;i++){
         await comLimiteDeTempo(fbDb.collection('publico').doc(`${slug}__p${i}`).set(sanitizarParaFirestore({
@@ -2735,6 +2782,10 @@ async function loadProgress(){
 // remoção só age sobre um sinal explícito (removido:true), nunca por
 // ausência — rodar de novo não é mais arriscado que a chamada original.
 async function sincronizarMateriasPublicas(){
+  // CORREÇÃO (v73): nunca lê/substitui o local enquanto alguma escrita local
+  // estiver em andamento (ver TRAVAS_ESCRITA_ATIVAS acima) — essa é a proteção
+  // central contra a corrida entre os dois setInterval de 5 minutos.
+  if(TRAVAS_ESCRITA_ATIVAS>0) return false;
   let nuvemDisponivel = false;
   try{
     nuvemDisponivel = await comLimiteDeTempo(carregarMateriasPublicas(), 8000, 'tempo esgotado ao carregar matérias públicas');
@@ -3407,14 +3458,21 @@ function computeSnapshot(){
 // mais "respondidas" que o cabeçalho, pra mesma matéria).
 function computeSnapshotMateria(materiaKey){
   const bucket = getBucket(materiaKey);
-  let ac=0, erradas=0;
+  let ac=0, erradas=0, ultimaRespostaTs=null;
   Object.entries(bucket.perguntas).forEach(([uid,p])=>{
     if(!BY_UID[uid]) return; // órfã: questão não existe mais na base atual
     if(p.ultimoResultado===true) ac++;
     else if(p.ultimoResultado===false) erradas++;
+    // (item 3) última resposta dada nesta matéria — o último item do histórico
+    // de cada questão tem o timestamp mais recente PRA AQUELA questão; pega o
+    // maior entre todas as questões da matéria
+    if(p.historico && p.historico.length>0){
+      const tsDaQuestao = p.historico[p.historico.length-1].ts;
+      if(tsDaQuestao && (!ultimaRespostaTs || tsDaQuestao>ultimaRespostaTs)) ultimaRespostaTs = tsDaQuestao;
+    }
   });
   const totalPontuavel = ALL_QUESTIONS.filter(q=>q.materia===materiaKey && !q.duplicataOculta && (q.t==='CE'||q.t==='MC')).length;
-  return { taxa: pct(ac, ac+erradas), ac, erradas, totalPontuavel };
+  return { taxa: pct(ac, ac+erradas), ac, erradas, totalPontuavel, ultimaRespostaTs };
 }
 
 function trendTag(td){
@@ -3729,7 +3787,7 @@ function renderEstatisticasPorMateria(){
     const respondidas = s.ac + s.erradas;
     const q = STATE.quizzesEmAndamento[m];
     const temSimuladoEmAndamento = q && !q.finished;
-    return { nome: m, acertos: s.ac, erros: s.erradas, pct: s.taxa, respondidas, total: s.totalPontuavel, ativa: m===STATE.materia, temSimuladoEmAndamento };
+    return { nome: m, acertos: s.ac, erros: s.erradas, pct: s.taxa, respondidas, total: s.totalPontuavel, ativa: m===STATE.materia, temSimuladoEmAndamento, ultimaRespostaTs: s.ultimaRespostaTs };
   }).sort((a,b)=> a.nome.localeCompare(b.nome,'pt-BR') || b.respondidas - a.respondidas || b.pct - a.pct);
   const estiloCelula = 'font-size:13px;font-weight:400;font-family:inherit;line-height:1.4;';
   return `
@@ -3743,6 +3801,7 @@ function renderEstatisticasPorMateria(){
       <div style="width:60px;text-align:right;">Acerto</div>
       <div style="width:52px;text-align:right;">Erro</div>
       <div style="width:56px;text-align:right;">%</div>
+      <div style="width:90px;text-align:right;">Última resposta</div>
     </div>
     ${linhas.map((l,i)=>{
       const cor = faixaCorPct(l.pct, l.respondidas);
@@ -3758,6 +3817,7 @@ function renderEstatisticasPorMateria(){
         <div style="width:60px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas ? l.acertos : '—'}</div>
         <div style="width:52px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas ? l.erros : '—'}</div>
         <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fgForte};font-weight:700;">${l.respondidas ? l.pct+'%' : '—'}</div>
+        <div style="width:90px;text-align:right;${estiloCelula}color:${cor.fg};font-size:11px;" title="${l.ultimaRespostaTs ? new Date(l.ultimaRespostaTs).toLocaleString('pt-BR') : ''}">${l.ultimaRespostaTs ? formatarDataHoraSalvamento(l.ultimaRespostaTs) : '—'}</div>
       </div>`;
     }).join('')}
   </div>
@@ -3921,6 +3981,11 @@ function renderSyncSidebarBlock(){
     <div class="side-status ${statusClass}" id="sync-status-el">${esc(statusMsg)}</div>
     ${statusHorario ? `<div class="side-status detail">última atualização: ${esc(statusHorario)}</div>` : ''}
     ${statusDetalhe ? `<div class="side-status detail">${esc(statusDetalhe)}</div>` : ''}
+    ${ALERTAS_SOBRESCRITA_NUVEM.length>0 ? `<div class="side-status err" style="margin-top:6px;">
+      ⚠ ${ALERTAS_SOBRESCRITA_NUVEM.length} possível sobrescrita detectada — outro dispositivo publicou depois da sua última sincronização.
+      <button class="side-action-btn compact" id="btn-ver-alertas-sobrescrita" style="margin-top:4px;">Ver detalhes</button>
+      <button class="side-action-btn compact" id="btn-dispensar-alertas-sobrescrita" style="margin-top:4px;">Dispensar</button>
+    </div>` : ''}
     <button class="side-action-btn compact" id="btn-desconectar-sync">Desconectar</button>
   </div></div>`;
 }
@@ -5748,6 +5813,20 @@ async function reprocessarMateriasDesatualizadas(){
 
 async function processImportedText(content, sugestaoNome, modoForcado){
   let materiaNome = (STATE.importDeckName||'').trim();
+  // CORREÇÃO: se o texto começar com "# Nome da Matéria" (é o que a própria
+  // plataforma escreve ao exportar via "⬇ Baixar" — ver gerarMarkdownDaMateria),
+  // usa esse título como sugestão, com prioridade sobre o nome do ARQUIVO
+  // baixado (que vem carimbado com "questoes-" e a data, ex.:
+  // "questoes-reg-interno-rev-2026-09-21.md" — nada a ver com o nome de
+  // exibição real da matéria). Sem isso, reimportar um arquivo baixado da
+  // própria plataforma sem digitar o nome manualmente criava uma matéria NOVA
+  // com o nome do arquivo, desconectando o progresso já registrado nas mesmas
+  // questões (que é identificado por matéria+número, não por um marcador
+  // escondido no arquivo).
+  if(!materiaNome){
+    const tituloDoArquivo = content.match(/^#\s+(.+?)\s*$/m);
+    if(tituloDoArquivo) materiaNome = tituloDoArquivo[1].trim();
+  }
   if(!materiaNome) materiaNome = (sugestaoNome||'').trim();
   if(!materiaNome) materiaNome = 'Módulo importado';
 
@@ -5793,6 +5872,7 @@ async function processImportedText(content, sugestaoNome, modoForcado){
 //   matéria são tratadas como a mesma questão sendo reimportada e são puladas
 //   (em vez de duplicadas com um uid renomeado, que era o bug).
 async function aplicarImportacao(materiaNome, content, results, ignoradas, semGabarito, modo){
+  return comTravaDeEscrita(async ()=>{
   if(modo === 'substituir'){
     ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !(q.materia===materiaNome && q.origem!=='embutido'));
   }
@@ -5847,6 +5927,7 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   STATE.importLog.publicadoAutomaticamente = pub.ok;
   STATE.importLog.erroPublicacao = pub.ok ? null : pub.motivo;
   render();
+  });
 }
 
 async function confirmarImportPendente(modo){
@@ -5992,14 +6073,16 @@ async function removerDuplicatasDaMateria(materiaNome){
       uidsRemover.add(dup.uid);
     });
   });
-  ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !uidsRemover.has(q.uid));
-  reindex();
-  marcarProgressoSujo(materiaNome);
-  await saveCustomQuestions();
-  saveProgress();
-  marcarMateriaAtualizada(materiaNome);
-  const pub = await publicarQuestoesNoFirestore([materiaNome], true);
-  return { removidas: uidsRemover.size, publicadoOk: pub.ok, motivoPublicacao: pub.ok?null:pub.motivo };
+  return comTravaDeEscrita(async ()=>{
+    ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !uidsRemover.has(q.uid));
+    reindex();
+    marcarProgressoSujo(materiaNome);
+    await saveCustomQuestions();
+    saveProgress();
+    marcarMateriaAtualizada(materiaNome);
+    const pub = await publicarQuestoesNoFirestore([materiaNome], true);
+    return { removidas: uidsRemover.size, publicadoOk: pub.ok, motivoPublicacao: pub.ok?null:pub.motivo };
+  });
 }
 
 async function buscarSubstituirMateria(materiaNome){
@@ -6036,6 +6119,7 @@ async function buscarSubstituirMateria(materiaNome){
   const substituto = window.prompt(confirmMsg, '');
   if(substituto===null) return; // cancelou
 
+  return comTravaDeEscrita(async ()=>{
   qs.forEach(q=>{
     CAMPOS.forEach(campo=>{
       if(q[campo] && q[campo].includes(busca)){
@@ -6059,9 +6143,11 @@ async function buscarSubstituirMateria(materiaNome){
   window.alert(okLocal && okNuvem
     ? `Pronto — ${ocorrencias} ocorrência(s) substituída(s) em ${questoesAfetadas} questão(ões), salvo local e na nuvem.`
     : `Substituído localmente, mas houve falha ao salvar${!okLocal?' neste dispositivo':' na nuvem'}. Tente de novo em "Salvar tudo".`);
+  });
 }
 
 async function salvarMateriaAgora(materiaNome){
+  return comTravaDeEscrita(async ()=>{
   STATE.salvandoMateria = materiaNome;
   STATE.ultimoSalvamentoManual = null;
   render();
@@ -6090,6 +6176,7 @@ async function salvarMateriaAgora(materiaNome){
     motivo: motivoLocal ? ('falha ao salvar localmente: ' + motivoLocal) : (!okNuvem ? ('falha ao publicar na nuvem: ' + motivoNuvem) : null),
   };
   render();
+  });
 }
 
 // botão único de salvar (pedido explícito: um só botão pra todas as matérias,
@@ -6100,6 +6187,7 @@ async function salvarMateriaAgora(materiaNome){
 async function salvarTudoAgora(){
   const materias = materiasGerenciaveis();
   if(materias.length===0) return;
+  return comTravaDeEscrita(async ()=>{
   STATE.salvandoTudo = true;
   STATE.ultimoSalvamentoGeral = null;
   render();
@@ -6128,6 +6216,7 @@ async function salvarTudoAgora(){
     motivo: motivoLocal ? ('falha ao salvar localmente: ' + motivoLocal) : (!okNuvem ? ('falha ao publicar na nuvem: ' + motivoNuvem) : null),
   };
   render();
+  });
 }
 
 async function renomearMateria(nomeAtual, nomeNovo){
@@ -6137,6 +6226,7 @@ async function renomearMateria(nomeAtual, nomeNovo){
     alert(`Já existe uma matéria chamada "${nomeNovo}". Escolha outro nome.`);
     return;
   }
+  return comTravaDeEscrita(async ()=>{
   // renomeia em tudo que referencia o nome antigo: questões, progresso, texto
   // original guardado pra reprocessamento, e o estado atual da tela
   ALL_QUESTIONS.forEach(q=>{ if(q.materia===nomeAtual) q.materia = nomeNovo; });
@@ -6189,11 +6279,13 @@ async function renomearMateria(nomeAtual, nomeNovo){
     }
   }
   render();
+  });
 }
 async function removerMateria(materiaNome){
   const questoesDaMateria = ALL_QUESTIONS.filter(q=>q.materia===materiaNome);
   const uidsRemover = new Set(questoesDaMateria.map(q=>q.uid));
   if(uidsRemover.size===0) return;
+  return comTravaDeEscrita(async ()=>{
   const eraNativa = questoesDaMateria.some(q=>q.origem==='embutido');
   ALL_QUESTIONS = ALL_QUESTIONS.filter(q=>!uidsRemover.has(q.uid));
   delete TEXTOS_ORIGINAIS[materiaNome];
@@ -6285,6 +6377,7 @@ async function removerMateria(materiaNome){
   // Isso é exatamente o padrão de perda de dado que a regra de segurança do
   // projeto proíbe. Removida — o `.set({...removido:true})` acima já é, sozinho,
   // a fonte de verdade da remoção.
+  });
 }
 
 // substitui todo o conteúdo de uma matéria por um arquivo novo, mantendo o mesmo nome —
@@ -6384,6 +6477,16 @@ function attachHandlers(){
   }
   const btnDesconectarSync = document.getElementById('btn-desconectar-sync');
   if(btnDesconectarSync) btnDesconectarSync.addEventListener('click', desconectarSincronizacao);
+
+  const btnVerAlertasSobrescrita = document.getElementById('btn-ver-alertas-sobrescrita');
+  if(btnVerAlertasSobrescrita) btnVerAlertasSobrescrita.addEventListener('click', ()=>{
+    window.alert(ALERTAS_SOBRESCRITA_NUVEM.map(a=>a.detalhe).join('\n\n'));
+  });
+  const btnDispensarAlertasSobrescrita = document.getElementById('btn-dispensar-alertas-sobrescrita');
+  if(btnDispensarAlertasSobrescrita) btnDispensarAlertasSobrescrita.addEventListener('click', ()=>{
+    ALERTAS_SOBRESCRITA_NUVEM = [];
+    render();
+  });
 
   const inputSyncCodeBanner = document.getElementById('input-sync-code-banner');
   const btnConectarSyncBanner = document.getElementById('btn-conectar-sync-banner');
@@ -6834,7 +6937,8 @@ document.addEventListener('keydown', (e)=>{
     const materias = materiasGerenciaveis();
     if(materias.length===0) return;
     const desdeUltimoCiclo = ultimoAutoSaveGeralTs;
-    saveCustomQuestions().then(async ok=>{
+    comTravaDeEscrita(async ()=>{
+      const ok = await saveCustomQuestions();
       let okNuvem = true, motivoNuvem = null;
       if(ok && FIREBASE_OK){
         const alteradas = materias.filter(m => (MATERIA_ULTIMA_ATUALIZACAO[m]||0) > desdeUltimoCiclo);
@@ -6847,6 +6951,8 @@ document.addEventListener('keydown', (e)=>{
           }catch(e){ okNuvem=false; motivoNuvem = e && e.message ? e.message : 'erro desconhecido'; }
         }
       }
+      return { ok, okNuvem, motivoNuvem };
+    }).then(({ok, okNuvem, motivoNuvem})=>{
       ultimoAutoSaveGeralTs = Date.now();
       // CORREÇÃO: essa rotina rodava 100% silenciosa — nunca chamava render()
       // nem atualizava nenhum indicador. Funcionando ou não, nada aparecia na
