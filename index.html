@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v55', build: '2026-09-18 21:40' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v71', build: '2026-09-20 09:45' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -2025,10 +2025,35 @@ async function verificarQuizSalvo(materiaKey){
   // desatualizada só porque terminou depois. Agora só sobrescreve se não houver
   // nada em memória ainda, ou se o que veio do armazenamento local for de fato
   // mais recente que o que já está lá (mesma regra usada no merge com a nuvem).
-  if(!atual || !q || (q.ultimoSalvamento||0) >= (atual.ultimoSalvamento||0)){
+  // CORREÇÃO REAL (v59): a condição anterior tinha "!q" como gatilho de
+  // sobrescrita — ou seja, quando NÃO havia nada salvo localmente (comum ao
+  // acessar de outro PC, onde o simulado em andamento só existe via
+  // sincronização da nuvem, trazida por pullFromCloud ANTES desta função
+  // rodar), o código ainda entrava neste bloco e SOBRESCREVIA o progresso
+  // correto (já carregado da nuvem) com null — apagando o "▶ Continuar" e
+  // forçando reconfigurar do zero. Agora só sobrescreve quando o armazenamento
+  // local realmente tem algo (q existe) E (ainda não havia nada em memória, ou
+  // o que veio do armazenamento local é de fato mais recente que o que já
+  // estava lá) — a ausência de cópia local nunca mais apaga um progresso que
+  // já estava correto.
+  if(q && (!atual || (q.ultimoSalvamento||0) >= (atual.ultimoSalvamento||0))){
     STATE.quizzesEmAndamento[materiaKey] = q;
   }
   render();
+}
+// CORREÇÃO (v62): antes, o simulado em andamento de uma matéria só era
+// conferido quando o usuário ENTRAVA nela — pedido explícito: manter o botão
+// "Continuar" disponível em todas as matérias, não só na que está aberta.
+// Chamada uma vez no boot (não em cada render), verifica TODAS de uma vez, sem
+// esperar por nenhuma — cada matéria atualiza STATE.quizzesEmAndamento assim
+// que sua própria leitura terminar, e re-renderiza. Usa a mesma função/regra
+// de "não sobrescrever com algo pior" já corrigida em verificarQuizSalvo.
+async function verificarTodosQuizzesSalvos(){
+  const materias = materiasDisponiveis();
+  await Promise.all(materias.map(m=>{
+    STATE.quizzesVerificados.add(m);
+    return verificarQuizSalvo(m);
+  }));
 }
 function formatarDataHoraSalvamento(ts){
   const d = new Date(ts);
@@ -2100,6 +2125,25 @@ function mergeRemoteProgressoNaMemoria(remoteProgress){
   Object.entries(remoteProgress||{}).forEach(([materiaKey, remoteBucket])=>{
     PROGRESS[materiaKey] = mergeBucket(PROGRESS[materiaKey], remoteBucket);
   });
+}
+
+// mescla edições manuais (enunciado/resolução/resumo flash) vindas da nuvem —
+// só PREENCHE o que ainda não existe localmente pra este uid+campo; uma edição
+// já feita neste dispositivo nunca é sobrescrita por uma versão remota, já que
+// não guardamos timestamp por edição pra decidir qual é mais recente. Retorna
+// true se alguma edição nova foi de fato incorporada (pra saber se precisa salvar).
+function mergeRemoteEdicoesNaMemoria(remoteEdicoes){
+  let mudou = false;
+  Object.entries(remoteEdicoes||{}).forEach(([uid, campos])=>{
+    Object.entries(campos||{}).forEach(([campo, html])=>{
+      if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
+      if(EDICOES_USUARIO[uid][campo] === undefined){
+        EDICOES_USUARIO[uid][campo] = html;
+        mudou = true;
+      }
+    });
+  });
+  return mudou;
 }
 
 // mescla os simulados "em andamento" vindos da nuvem com os que já estão em
@@ -2183,14 +2227,19 @@ async function pullFromCloud({silent} = {}){
         mergeRemoteProgressoNaMemoria(progressoAntigo);
       }
       const materiasComProgresso = Array.isArray(data.materiasComProgresso) ? data.materiasComProgresso : [];
+      let algumaEdicaoNova = false;
       for(const materiaNome of materiasComProgresso){
         try{
           const docMateria = await fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugify(materiaNome)}`).get();
           if(docMateria.exists && docMateria.data().progress){
             mergeRemoteProgressoNaMemoria({ [materiaNome]: JSON.parse(docMateria.data().progress) });
           }
+          if(docMateria.exists && docMateria.data().edicoes){
+            if(mergeRemoteEdicoesNaMemoria(JSON.parse(docMateria.data().edicoes))) algumaEdicaoNova = true;
+          }
         }catch(e){ console.warn('Falha ao buscar o progresso da matéria "'+materiaNome+'" na nuvem', e); }
       }
+      if(algumaEdicaoNova) salvarEdicoesUsuario();
       // matérias/questões em si não vêm mais daqui — elas já chegam via
       // carregarMateriasPublicas() (coleção publico/{materia}), evitando duplicar
       // o banco inteiro de questões dentro do documento pessoal de progresso
@@ -2237,8 +2286,6 @@ async function carregarMateriasPublicas(){
     // conter o array "questoes" completo direto nele (formato legado, ainda lido).
     const snapshot = await fbDb.collection('publico').get();
     const docs = snapshot.docs || [];
-    const existingUids = new Set(ALL_QUESTIONS.map(q=>q.uid));
-    let added = 0;
 
     // 1ª passada: descobre quais matérias (pelo slug BASE, sem sufixo de pedaço)
     // estão marcadas como removidas — precisa vir antes da 2ª passada porque a
@@ -2256,30 +2303,21 @@ async function carregarMateriasPublicas(){
       }
     });
 
-    // 2ª passada: carrega as questões de qualquer documento (manifesto legado
-    // com array embutido, OU pedaço), pulando qualquer slug já identificado
-    // como removido acima
+    // 2ª passada: agrupa as questões de cada matéria (manifesto legado com array
+    // embutido, e/ou pedaços) por nome, sem ainda tocar em ALL_QUESTIONS — só
+    // troca o conteúdo local quando já tivermos o conjunto INTEIRO e válido
+    // desta matéria em mãos, nunca aos poucos
+    const questoesPorMateria = {};
     docs.forEach(doc=>{
       const data = doc.data();
       if(!data || doc.id.startsWith('_') || data.removido) return;
       const slugBase = doc.id.replace(/__p\d+$/, '');
       if(SLUGS_REMOVIDOS_NUVEM.has(slugBase)) return;
       if(Array.isArray(data.questoes) && data.questoes.length>0){
-        // CORREÇÃO CRÍTICA: antes, a validade da matéria inteira dependia do
-        // campo data.materia (nível do documento) bater exatamente. Documentos
-        // publicados por versões antigas do código podiam não ter esse campo,
-        // e a reconciliação (item novo, adicionado na v29) tratava isso como
-        // "matéria não existe de verdade na nuvem" e APAGAVA a cópia local —
-        // gerando a perda de estatísticas relatada. Agora a validade é
-        // registrada por QUESTÃO individual (cada uma já carrega seu próprio
-        // campo .materia) e também pelo slug do documento, nunca só pelo campo
-        // solto do nível de fora.
         data.questoes.forEach(q=>{
-          if(q && q.uid && !existingUids.has(q.uid)){
-            ALL_QUESTIONS.push({ ...q, origem: 'publico' });
-            existingUids.add(q.uid);
-            added++;
-          }
+          if(!q || !q.uid || !q.materia) return;
+          if(!questoesPorMateria[q.materia]) questoesPorMateria[q.materia] = [];
+          questoesPorMateria[q.materia].push(q);
         });
       }
       // guarda o texto original e a versão do site que o processou pela última
@@ -2291,7 +2329,30 @@ async function carregarMateriasPublicas(){
         TEXTOS_ORIGINAIS[data.materia] = { texto: data.textoOriginal, versaoProcessada: data.versaoProcessada || null };
       }
     });
-    if(added>0) reindex();
+
+    // CORREÇÃO CRÍTICA (v57): antes, só ADICIONAVA questões cujo uid ainda não
+    // existia localmente — uma matéria já presente neste dispositivo (por ter
+    // sido importada ou carregada aqui em algum momento) NUNCA era atualizada
+    // com correções feitas depois em OUTRO dispositivo (deduplicação,
+    // "Substituir tudo", edição de texto), porque o uid já existia e o merge
+    // simplesmente pulava — resultado: "acessei com esse PC e estão
+    // desatualizadas", relatado em produção. Agora, pra cada matéria cujo
+    // conteúdo completo e válido veio da nuvem, o conteúdo local dela é
+    // SUBSTITUÍDO por inteiro: a nuvem é sempre a fonte de verdade do
+    // CONTEÚDO das questões, em qualquer dispositivo, a cada abertura da
+    // página. origem:'importado' (e não 'publico') de propósito — assim esse
+    // conteúdo fica salvo localmente (ver saveCustomQuestions) e continua
+    // disponível mesmo se a nuvem ficar inacessível numa abertura futura,
+    // sem deixar de ser atualizado sempre que a nuvem estiver acessível.
+    // Isso nunca apaga uma matéria só por ela não aparecer nesta leitura —
+    // só substitui quando já se tem o conteúdo novo em mãos pra pôr no lugar.
+    let mudou = false;
+    Object.entries(questoesPorMateria).forEach(([materiaNome, questoesNuvem])=>{
+      ALL_QUESTIONS = ALL_QUESTIONS.filter(q => q.materia !== materiaNome);
+      questoesNuvem.forEach(q=>{ ALL_QUESTIONS.push({ ...q, origem: 'importado' }); });
+      mudou = true;
+    });
+    if(mudou){ reindex(); await saveCustomQuestions(); }
     return true;
   }catch(e){ console.warn('Falha ao carregar matérias públicas', e); return false; }
 }
@@ -2333,43 +2394,34 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
         continue;
       }
 
-      // recolhe as questões já publicadas — formato legado (array embutido direto
-      // no manifesto) e/ou pedaços numerados, se existirem
-      let questoesAtuais = [];
+      // recolhe as questões já publicadas — só usado pra saber quantos pedaços
+      // existiam antes (pra limpar os que sobrarem, se a matéria encolheu)
       const manifestData = manifestDoc.exists ? manifestDoc.data() : null;
       const numChunksAntigo = (manifestData && manifestData.numChunks) || 0;
 
-      // CORREÇÃO CRÍTICA (v43): quando force=true, esta função é sempre chamada
-      // por uma ação EXPLÍCITA e deliberada do usuário — reimportar (inclusive
-      // "🔁 Substituir tudo"), salvar manualmente, ou renomear. Em todos esses
-      // casos o array local (ALL_QUESTIONS) já É a versão correta e completa; a
-      // nuvem deve refletir exatamente ele, não ser mesclada com o que havia
-      // antes. Antes, mesclar aqui SEMPRE (mesmo com force=true) desfazia
-      // silenciosamente qualquer "Substituir tudo": o merge por uid trazia de
-      // volta as questões antigas/duplicadas que ainda estavam nos pedaços
-      // velhos da nuvem (cujos uids não colidiam com os novos, recém-gerados
-      // sem sufixo), fazendo a AFO voltar a dobrar de tamanho no próximo
-      // carregamento — bug real de produção. Sem force (reprocessamento
-      // automático em segundo plano), o comportamento de mesclar com a nuvem é
-      // mantido, por segurança.
-      if(force){
-        questoesAtuais = ALL_QUESTIONS.filter(q=>q.materia===materiaNome).map(q=>({ ...q, origem:'publico' }));
-        totalNovas += questoesAtuais.length;
-      } else {
-        if(manifestData && Array.isArray(manifestData.questoes)) questoesAtuais = manifestData.questoes.slice();
-        for(let i=0;i<numChunksAntigo;i++){
-          const chunkDoc = await comLimiteDeTempo(fbDb.collection('publico').doc(`${slug}__p${i}`).get(), 15000, 'tempo esgotado ao consultar pedaço '+i+' de "'+materiaNome+'"');
-          if(chunkDoc.exists && Array.isArray(chunkDoc.data().questoes)) questoesAtuais = questoesAtuais.concat(chunkDoc.data().questoes);
-        }
-        const existingUids = new Set(questoesAtuais.map(q=>q.uid));
-        ALL_QUESTIONS.filter(q=>q.materia===materiaNome).forEach(q=>{
-          if(!existingUids.has(q.uid)){
-            questoesAtuais.push({ ...q, origem:'publico' });
-            existingUids.add(q.uid);
-            totalNovas++;
-          }
-        });
-      }
+      // CORREÇÃO CRÍTICA (v43, unificada na v58): o array local (ALL_QUESTIONS)
+      // é SEMPRE tratado como a versão correta e completa a publicar — nunca
+      // mesclado com o que já estava na nuvem antes, com ou sem force. Isso já
+      // valia pra force=true desde a v43 (ver histórico abaixo); até a v57,
+      // sem force (reprocessamento automático em segundo plano) ainda mesclava
+      // com o snapshot antigo da nuvem "por segurança" — mas isso podia
+      // reintroduzir silenciosamente conteúdo obsoleto/duplicado que o
+      // reprocessamento LOCAL acabara de corrigir, exatamente a mesma classe
+      // de bug já corrigida pra force=true. Essa mescla deixou de ser
+      // necessária a partir da v57: carregarMateriasPublicas() já sincroniza o
+      // local com a nuvem mais recente ANTES do reprocessamento rodar (mesma
+      // sequência de boot), então a essa altura o local já reflete a nuvem —
+      // mesclar de novo só arriscava trazer de volta dado velho.
+      // (histórico v43: force=true existe porque esta função é chamada por uma
+      // ação EXPLÍCITA e deliberada do usuário — reimportar, inclusive
+      // "🔁 Substituir tudo", salvar manualmente, ou renomear — e mesclar aqui
+      // desfazia silenciosamente qualquer "Substituir tudo": o merge por uid
+      // trazia de volta questões antigas/duplicadas dos pedaços velhos da
+      // nuvem, cujos uids não colidiam com os novos, recém-gerados sem sufixo,
+      // fazendo a AFO voltar a dobrar de tamanho no próximo carregamento —
+      // bug real de produção.)
+      const questoesAtuais = ALL_QUESTIONS.filter(q=>q.materia===materiaNome).map(q=>({ ...q, origem:'publico' }));
+      totalNovas += questoesAtuais.length;
 
       // divide em pedaços por tamanho em bytes (acumula questões até chegar perto
       // do limite, então começa um pedaço novo)
@@ -2470,9 +2522,18 @@ async function pushToCloud(){
     for(const materiaNome of materiasSujas){
       const slugM = slugify(materiaNome);
       try{
+        // edições manuais (enunciado/resolução/resumo flash) desta matéria —
+        // vão junto no mesmo documento de progresso, pra sincronizar entre
+        // dispositivos e sobreviver a uma limpeza de armazenamento local
+        const edicoesDestaMateria = {};
+        Object.keys(EDICOES_USUARIO).forEach(uid=>{
+          const q = BY_UID[uid];
+          if(q && q.materia===materiaNome) edicoesDestaMateria[uid] = EDICOES_USUARIO[uid];
+        });
         await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugM}`).set(sanitizarParaFirestore({
           materia: materiaNome,
           progress: JSON.stringify(PROGRESS[materiaNome]),
+          edicoes: JSON.stringify(edicoesDestaMateria),
           updatedAt: Date.now(),
         })), 15000, 'tempo esgotado ao salvar progresso da matéria "'+materiaNome+'"');
         MATERIAS_PROGRESSO_SUJAS.delete(materiaNome);
@@ -2703,6 +2764,8 @@ async function sincronizarMateriasPublicas(){
   }
   try{ await comLimiteDeTempo(reprocessarMateriasDesatualizadas(), 8000, 'tempo esgotado ao reprocessar matérias'); }
   catch(e){ console.warn('Reprocessamento automático não respondeu a tempo — tenta de novo na próxima abertura.', e); }
+  try{ await comLimiteDeTempo(verificarTodosQuizzesSalvos(), 8000, 'tempo esgotado ao verificar simulados em andamento'); }
+  catch(e){ console.warn('Verificação de simulados em andamento não respondeu a tempo — algumas matérias podem não mostrar "Continuar" até você entrar nelas.', e); }
 }
 
 let saveTimer = null;
@@ -3125,6 +3188,7 @@ let STATE = {
   pasteText: '',
   importProgressoLog: null,
   syncCode: '',
+  avisoSyncDispensado: false,
   syncStatus: null,
   salvandoMateria: null,
   ultimoSalvamentoManual: null,
@@ -3247,6 +3311,7 @@ function render(){
   document.body.classList.toggle('focus-mode', !!STATE.focusMode);
   root.innerHTML = `
     ${STATE.focusMode ? '' : renderLetterhead()}
+    ${STATE.focusMode ? '' : renderAvisoSyncAusente()}
     ${STATE.avisoStorage ? renderAvisoStorage() : ''}
     ${STATE.viewImportar || ALL_QUESTIONS.length===0 ? renderImportarPage() : renderMateriaPage()}
     ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)} · Versão ${esc(window.__TCDF_BUILD__.versao)} (${esc(window.__TCDF_BUILD__.build)}) · armazenamento: ${esc(STORAGE_MODE==='local' ? 'IndexedDB' : STORAGE_MODE)}</div>`}
@@ -3264,6 +3329,24 @@ function renderAvisoStorage(){
     <span>⚠️ ${esc(STATE.avisoStorage)}</span>
     <button id="btn-tentar-salvar-de-novo" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer;font-size:12px;">Tentar salvar de novo</button>
     <button id="btn-dispensar-aviso-storage" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer;font-size:12px;">Dispensar</button>
+  </div>`;
+}
+
+// CORREÇÃO (causa real de "estatísticas diferentes em outro PC"): o progresso
+// (respostas, acertos/erros) só vai pra nuvem se o dispositivo tiver um
+// "código de sincronização" configurado — e se não tiver (ou o código for
+// diferente do outro aparelho), isso falhava 100% em silêncio: nenhum erro,
+// nenhum aviso, o app continuava funcionando normalmente só que sem sincronizar
+// nada. O único aviso disso existia escondido numa caixinha pequena da barra
+// lateral, fácil de nunca notar. Agora, sem código conectado, aparece um
+// banner fixo no topo de TODA página, impossível de não ver.
+function renderAvisoSyncAusente(){
+  if(!FIREBASE_OK || STATE.syncCode || STATE.avisoSyncDispensado) return '';
+  return `<div style="position:sticky;top:0;z-index:499;background:var(--gold-bright,#c9a227);color:#1a1200;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span>⚠️ <b>Suas respostas estão sendo salvas SÓ neste aparelho</b> — sem um código de sincronização, nada vai pra nuvem, e outro PC/celular não vai ver o mesmo progresso.</span>
+    <input type="text" id="input-sync-code-banner" placeholder="nome de usuário" style="padding:4px 8px;border-radius:6px;border:1px solid #1a1200;font-size:12px;">
+    <button id="btn-conectar-sync-banner" style="padding:4px 12px;border-radius:6px;border:1px solid #1a1200;background:#1a1200;color:#fff;cursor:pointer;font-size:12px;font-weight:600;">🔗 Conectar agora</button>
+    <button id="btn-dispensar-aviso-sync" style="padding:4px 10px;border-radius:6px;border:1px solid #1a1200;background:transparent;color:#1a1200;cursor:pointer;font-size:12px;">Já uso só neste aparelho, não avisar de novo</button>
   </div>`;
 }
 
@@ -3316,10 +3399,17 @@ function computeSnapshot(){
 // mesma métrica de computeSnapshot, mas pra QUALQUER matéria (não só a atualmente
 // selecionada) e sem filtro de assunto — usada pra mostrar "% geral | certo |
 // errado | total" ao lado do nome de cada disciplina no menu
+// CORREÇÃO: contava QUALQUER registro em bucket.perguntas, mesmo de uma
+// questão que não existe mais em ALL_QUESTIONS (órfã — sobra de um reimport,
+// dedup ou remoção anterior que apagou a questão mas não o registro de
+// progresso dela). O computeSnapshot() do topo da página já ignorava órfãs;
+// esta função não, e por isso as duas nunca batiam (ex.: tabela mostrando
+// mais "respondidas" que o cabeçalho, pra mesma matéria).
 function computeSnapshotMateria(materiaKey){
   const bucket = getBucket(materiaKey);
   let ac=0, erradas=0;
-  Object.values(bucket.perguntas).forEach(p=>{
+  Object.entries(bucket.perguntas).forEach(([uid,p])=>{
+    if(!BY_UID[uid]) return; // órfã: questão não existe mais na base atual
     if(p.ultimoResultado===true) ac++;
     else if(p.ultimoResultado===false) erradas++;
   });
@@ -3637,7 +3727,9 @@ function renderEstatisticasPorMateria(){
   const linhas = materias.map(m=>{
     const s = computeSnapshotMateria(m);
     const respondidas = s.ac + s.erradas;
-    return { nome: m, acertos: s.ac, erros: s.erradas, pct: s.taxa, respondidas, total: s.totalPontuavel, ativa: m===STATE.materia };
+    const q = STATE.quizzesEmAndamento[m];
+    const temSimuladoEmAndamento = q && !q.finished;
+    return { nome: m, acertos: s.ac, erros: s.erradas, pct: s.taxa, respondidas, total: s.totalPontuavel, ativa: m===STATE.materia, temSimuladoEmAndamento };
   }).sort((a,b)=> a.nome.localeCompare(b.nome,'pt-BR') || b.respondidas - a.respondidas || b.pct - a.pct);
   const estiloCelula = 'font-size:13px;font-weight:400;font-family:inherit;line-height:1.4;';
   return `
@@ -3657,7 +3749,10 @@ function renderEstatisticasPorMateria(){
       const destaque = l.ativa ? `border:2px solid ${cor.fgForte};` : 'border:2px solid transparent;';
       return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${cor.bg};border-radius:6px;padding:6px 8px;margin-bottom:4px;${destaque}">
         <div style="width:26px;${estiloCelula}color:${cor.fg};">${l.ativa?'▸':i+1}</div>
-        <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:${cor.fgForte};font-weight:${l.ativa?800:600};" data-macro-materia="${esc(l.nome)}">${esc(l.nome)}${l.ativa?' <span style="font-size:10px;font-weight:600;opacity:.75;">(selecionada)</span>':''}</div>
+        <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:${cor.fgForte};font-weight:${l.ativa?800:600};display:flex;align-items:center;gap:6px;" data-macro-materia="${esc(l.nome)}">
+          <span>${esc(l.nome)}${l.ativa?' <span style="font-size:10px;font-weight:600;opacity:.75;">(selecionada)</span>':''}</span>
+          ${l.temSimuladoEmAndamento ? `<button data-continuar-materia="${esc(l.nome)}" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid ${cor.fgForte};background:transparent;color:${cor.fgForte};cursor:pointer;white-space:nowrap;">▶ Continuar</button>` : ''}
+        </div>
         <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fg};">${l.total}</div>
         <div style="width:76px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas || '—'}</div>
         <div style="width:60px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas ? l.acertos : '—'}</div>
@@ -3920,15 +4015,29 @@ function renderLanding(){
   }
   const quizSalvo = STATE.quizzesEmAndamento[STATE.materia] && !STATE.quizzesEmAndamento[STATE.materia].finished
     ? STATE.quizzesEmAndamento[STATE.materia] : null;
+  // CORREÇÃO (v65): antes contava só Object.keys(quizSalvo.respostas).length —
+  // as respostas dadas SÓ nesta sessão específica, que zera toda vez que
+  // "Configurar novo simulado" cria uma fila nova (mesmo cobrindo as mesmas
+  // questões de antes). Isso causava a confusão relatada: "3/200" na sessão
+  // atual vs "35/2/200" no total histórico da matéria — os dois deveriam bater,
+  // já que agora a fila sempre cobre a matéria inteira. Agora conta quantas
+  // questões da fila JÁ têm alguma tentativa registrada no histórico da
+  // matéria (bucket), não só as respondidas dentro desta sessão em memória.
+  const bucketAtual = STATE.materia ? getBucket(STATE.materia) : null;
+  const respondidasNaFila = (quizSalvo && bucketAtual)
+    ? quizSalvo.queue.filter(uid => bucketAtual.perguntas[uid] && bucketAtual.perguntas[uid].tentativas>0).length
+    : 0;
   const infoSalvo = quizSalvo ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">
-    <b>Simulado salvo:</b> ${Object.keys(quizSalvo.respostas||{}).length}/${quizSalvo.queue.length} respondidas${quizSalvo.ultimoSalvamento ? ` · 💾 ${formatarDataHoraSalvamento(quizSalvo.ultimoSalvamento)}` : ''}
+    <b>Simulado salvo:</b> ${respondidasNaFila}/${quizSalvo.queue.length} respondidas${quizSalvo.ultimoSalvamento ? ` · 💾 ${formatarDataHoraSalvamento(quizSalvo.ultimoSalvamento)}` : ''}
   </div>` : '';
-  // os três botões (Configurar / Continuar / Novo) seguem o MESMO padrão visual
-  // e ficam lado a lado, em vez de "Configurar" isolado embaixo dos outros dois
+  // CORREÇÃO (v63): "Configurar novo simulado" agora só aparece quando NÃO há
+  // nada em andamento (listas novas, de verdade) — pedido explícito. Quando já
+  // existe um simulado em andamento, os botões são "Continuar" + "Reiniciar"
+  // (do zero, mesma fila/filtros); nunca os dois grupos ao mesmo tempo.
   const botoesAcao = `<div style="display:flex; gap:8px; flex-wrap:wrap;">
-    <button class="btn btn-primary btn-sm" id="btn-abrir-config" style="flex:1;justify-content:center;min-width:140px;">⚙ Configurar</button>
-    ${quizSalvo ? `<button class="btn btn-gold btn-sm" id="btn-continuar-simulado" style="flex:1;justify-content:center;min-width:140px;">▶ Continuar</button>
-    <button class="btn-outline btn-sm" id="btn-iniciar-novo-simulado" style="flex:1;justify-content:center;min-width:140px;">🆕 Novo</button>` : ''}
+    ${quizSalvo ? `<button class="btn btn-gold btn-sm" id="btn-continuar-simulado" style="flex:1;justify-content:center;min-width:140px;">▶ Continuar da última questão</button>
+    <button class="btn-outline btn-sm" id="btn-reiniciar-simulado" style="flex:1;justify-content:center;min-width:140px;">🔄 Reiniciar simulado</button>`
+    : `<button class="btn btn-primary btn-sm" id="btn-abrir-config" style="flex:1;justify-content:center;min-width:140px;">⚙ Configurar novo simulado</button>`}
   </div>`;
 
   return `
@@ -4022,18 +4131,10 @@ function renderCamposFiltro(idPrefix){
 
 function renderBotoesAcaoSetup(){
   const erroCount = getCadernoErros().length;
-  const setup = getSetup(STATE.materia);
   const candidatos = pool();
-  const qtdEfetiva = candidatos.length>0 ? Math.min(setup.qtd, candidatos.length) : setup.qtd;
   return `
     <div class="setup-mini-field">
-      <label>Quantidade de questões</label>
-      <div class="qty-control">
-        <button id="qty-minus">−</button>
-        <input type="number" class="val" id="qty-val" value="${qtdEfetiva}" min="1" max="${Math.max(candidatos.length,1)}" inputmode="numeric" title="Digite a quantidade de questões">
-        <button id="qty-plus">+</button>
-      </div>
-      <div class="sidebar-avail">${candidatos.length} ${candidatos.length===1?'disponível':'disponíveis'} com este filtro</div>
+      <div class="sidebar-avail">${candidatos.length} ${candidatos.length===1?'questão disponível':'questões disponíveis'} com este filtro — o simulado inclui todas elas</div>
     </div>
 
     <button class="btn btn-primary" id="btn-iniciar" ${candidatos.length===0?'disabled':''}>Iniciar simulado →</button>
@@ -4096,18 +4197,60 @@ function gerarImpressao(){
   setTimeout(()=>window.print(), 100);
 }
 
+// retoma o simulado em andamento de qualquer matéria diretamente — usado tanto
+// pelo botão "Continuar" da matéria aberta quanto pelo atalho por linha na
+// tabela de Estatísticas (pedido: manter "Continuar" disponível em todas as
+// matérias, não só na que está aberta no momento)
+function continuarSimuladoDaMateria(materiaNome){
+  const q = STATE.quizzesEmAndamento[materiaNome];
+  if(!q || q.finished) return;
+  if(STATE.quiz) salvarQuizEmAndamento(); // flush do que estava em andamento antes de trocar
+  STATE.materia = materiaNome;
+  STATE.tema = 'todos';
+  STATE.viewImportar = false;
+  const last = acharIdxUltimaRespondida(q);
+  if(last>=0) q.idx = last;
+  STATE.quiz = q;
+  render();
+}
 function startQuiz(nums){
-  const candidatos = nums ? nums.map(u=>BY_UID[u]).filter(Boolean) : pool();
-  if(candidatos.length===0){
+  const candidatosTotais = nums ? nums.map(u=>BY_UID[u]).filter(Boolean) : pool();
+  if(candidatosTotais.length===0){
     const w = document.getElementById('setup-warn');
     if(w) w.textContent = 'Nenhuma questão encontrada com esses filtros. Ajuste a seleção.';
     return;
   }
-  const setup = getSetup(STATE.materia);
-  const qtd = nums ? candidatos.length : Math.min(setup.qtd, candidatos.length);
+  // CORREÇÃO (v61): antes, esse aviso só existia no botão "🆕 Novo" (removido —
+  // agora são só dois botões: Continuar / Configurar novo simulado). Iniciar um
+  // simulado novo pela tela de Configurar sobrescrevia silenciosamente um
+  // simulado em andamento, sem nenhum aviso. A proteção agora mora aqui, no
+  // ponto real onde a sobrescrita aconteceria — vale pra qualquer caminho que
+  // chegue até esta função, não só um botão específico.
+  const emAndamento = STATE.quizzesEmAndamento[STATE.materia];
+  if(emAndamento && !emAndamento.finished && !nums){
+    const ok = window.confirm('Você tem um simulado em andamento nesta matéria. Iniciar um novo vai descartar a fila dele (as respostas já dadas continuam valendo pro seu progresso geral). Deseja continuar?');
+    if(!ok) return;
+  }
+  // CORREÇÃO (v67): um simulado novo agora prioriza questões AINDA NÃO
+  // respondidas nesta matéria — evita pedir pra refazer o que você já
+  // acertou/errou antes só porque configurou de novo. Só volta a incluir TODAS
+  // (inclusive as já respondidas) quando não sobra nenhuma questão nova dentro
+  // do filtro escolhido — aí sim "configurar de novo" quer dizer revisar tudo
+  // outra vez, não avançar pro que falta.
+  const bucketAtual = (!nums && STATE.materia) ? getBucket(STATE.materia) : null;
+  const naoRespondidas = bucketAtual
+    ? candidatosTotais.filter(q => !(bucketAtual.perguntas[q.uid] && bucketAtual.perguntas[q.uid].tentativas>0))
+    : candidatosTotais;
+  const candidatos = naoRespondidas.length>0 ? naoRespondidas : candidatosTotais;
+  // CORREÇÃO (v64): antes, um simulado novo pegava só setup.qtd questões (padrão
+  // 20) do total disponível — "finalizar" passou a significar "terminei esse
+  // lote", não "terminei a matéria". Pedido explícito: manter aberto até
+  // responder TUDO que bate com o filtro. Agora sempre usa o total de
+  // candidatos, nunca um subconjunto limitado.
+  const qtd = candidatos.length;
   // ordena pelas questões mais recentes primeiro (ano de aplicação, decrescente),
   // exceto quando é um conjunto específico (refazer erros), que mantém a ordem dada
-  const ordenados = nums ? candidatos : [...candidatos].sort((a,b)=>(b.ar||0)-(a.ar||0));
+  const ordenados = nums ? candidatos : [...candidatos].sort((a,b)=>(a.n||0)-(b.n||0));
   const queue = ordenados.slice(0, qtd).map(q=>q.uid);
   STATE.quiz = { queue, idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema };
   STATE.setupDrawerOpen = false;
@@ -4122,6 +4265,58 @@ function startQuiz(nums){
 function renderQuiz(){
   const quiz = STATE.quiz;
   if(quiz.finished) return renderResults();
+
+  // CORREÇÃO (v69): remove uid duplicado da fila (mesma questão aparecendo mais
+  // de uma vez) — resíduo possível de sessões criadas antes de uma limpeza de
+  // duplicatas na matéria. Cada repetição contava a mais na grade de questões
+  // respondidas (uma questão respondida virava "2 verdes" em vez de 1). Mantém
+  // a primeira ocorrência de cada uid, remove as repetições, e ajusta a posição
+  // atual se ela tiver ficado fora dos limites depois da limpeza.
+  const uidsVistos = new Set();
+  const filaLimpa = quiz.queue.filter(u=>{
+    if(uidsVistos.has(u)) return false;
+    uidsVistos.add(u);
+    return true;
+  });
+  if(filaLimpa.length !== quiz.queue.length){
+    quiz.queue = filaLimpa;
+    if(quiz.idx >= quiz.queue.length) quiz.idx = Math.max(0, quiz.queue.length-1);
+    salvarQuizEmAndamento();
+  }
+
+  // CORREÇÃO (v70): reconcilia a fila com a base ATUAL de questões válidas da
+  // matéria — uma fila criada antes de uma limpeza de duplicatas pode ainda
+  // referenciar uids que não existem mais (órfãs) e, ao mesmo tempo, não
+  // incluir uids válidos que já foram respondidos em algum momento (porque a
+  // fila ficou "congelada" num estado anterior). Sem isso, o grid nunca
+  // conseguia bater com o "37" do topo, porque a fila em si não representava
+  // mais o conjunto completo e atual da matéria. Não mexe em filas de "refazer
+  // erros" (origemErros), que são intencionalmente um subconjunto à parte.
+  if(!quiz.origemErros && quiz.materia){
+    const poolAtual = ALL_QUESTIONS.filter(q2=>q2.materia===quiz.materia && !q2.duplicataOculta && (q2.t==='CE'||q2.t==='MC'));
+    const poolUids = new Set(poolAtual.map(q2=>q2.uid));
+    const semOrfas = quiz.queue.filter(u=>poolUids.has(u));
+    const queueUidsAtuais = new Set(semOrfas);
+    const faltando = poolAtual.filter(q2=>!queueUidsAtuais.has(q2.uid)).map(q2=>q2.uid);
+    // CORREÇÃO (v71): além de reconciliar, reordena por número sequencial da
+    // questão (em vez de deixar na ordem antiga, por ano da prova) — assim as
+    // já respondidas ficam agrupadas do início em diante, em vez de espalhadas
+    // pela fila. Preserva a posição atual pelo UID da questão que estava sendo
+    // vista, não pelo índice (que muda de lugar com a reordenação).
+    const uidAtualAntes = quiz.queue[quiz.idx];
+    const filaReconciliada = semOrfas.concat(faltando);
+    const filaOrdenada = [...filaReconciliada].sort((ua,ub)=>((BY_UID[ua]&&BY_UID[ua].n)||0)-((BY_UID[ub]&&BY_UID[ub].n)||0));
+    // reordena sempre que a sequência mudar — cobre tanto reconciliação
+    // (órfãs/faltantes) quanto sessões antigas já completas, mas que ainda
+    // estavam na ordem antiga (por ano da prova, não por número da questão)
+    const mudouAlgo = filaOrdenada.length !== quiz.queue.length || filaOrdenada.some((u,i)=>u!==quiz.queue[i]);
+    if(mudouAlgo){
+      quiz.queue = filaOrdenada;
+      const novoIdx = quiz.queue.indexOf(uidAtualAntes);
+      quiz.idx = novoIdx>=0 ? novoIdx : Math.max(0, Math.min(quiz.idx, quiz.queue.length-1));
+      salvarQuizEmAndamento();
+    }
+  }
 
   const uid = quiz.queue[quiz.idx];
   const q = BY_UID[uid];
@@ -4262,15 +4457,29 @@ function renderQuiz(){
     <button type="button" class="paginacao-toggle" id="btn-toggle-paginacao">
       <span>${STATE.paginacaoAberta?'▴ Ocultar':'▾ Ver todas as questões'} (${quiz.queue.length})</span>
     </button>
-    ${STATE.paginacaoAberta ? `<div class="pagination-strip">
-      ${quiz.queue.map((u,i)=>{
-        const r = quiz.respostas[u];
-        let cls = 'page-num';
-        if(r) cls += r.correct ? ' page-correct' : ' page-incorrect';
-        if(i===quiz.idx) cls += ' page-current';
-        return `<button class="${cls}" data-jump="${i}" title="Ir para a questão ${i+1}" aria-label="Questão ${i+1}"></button>`;
-      }).join('')}
-    </div>` : ''}` : ''}
+    ${STATE.paginacaoAberta ? (() => {
+        const bucketAtual = getBucket(quiz.materia);
+        let nCorretas=0, nErradas=0, nSemTentativa=0;
+        const celulas = quiz.queue.map((u,i)=>{
+          const r = quiz.respostas[u];
+          // mesma checagem usada em computeSnapshotMateria (o cálculo oficial do
+          // "37" no topo da tela): ignora uid órfão, que não existe mais na base
+          // atual de questões — sem essa checagem, o grid podia contar diferente
+          // do número oficial
+          const hist = (!r && BY_UID[u]) ? bucketAtual.perguntas[u] : null;
+          let cls = 'page-num';
+          if(r){ cls += r.correct ? ' page-correct' : ' page-incorrect'; r.correct ? nCorretas++ : nErradas++; }
+          else if(hist && hist.tentativas>0){ cls += hist.ultimoResultado ? ' page-correct' : ' page-incorrect'; hist.ultimoResultado ? nCorretas++ : nErradas++; }
+          else nSemTentativa++;
+          if(i===quiz.idx) cls += ' page-current';
+          return `<button class="${cls}" data-jump="${i}" title="Ir para a questão ${i+1}" aria-label="Questão ${i+1}"></button>`;
+        }).join('');
+        // contador de diagnóstico: calculado a partir dos MESMOS dados que colorem
+        // as células — número mostrado aqui e o grid abaixo nunca podem divergir
+        // entre si, já que vêm exatamente da mesma passada
+        return `<div style="font-size:11px;color:var(--ink-soft);margin-bottom:4px;">🟢 ${nCorretas} corretas · 🔴 ${nErradas} erradas · ⬜ ${nSemTentativa} sem tentativa nesta fila (${quiz.queue.length} total)</div>
+        <div class="pagination-strip">${celulas}</div>`;
+      })() : ''}` : ''}
   </div>
   `;
 }
@@ -4346,6 +4555,13 @@ function renderResolucao(q, resposta, quiz){
   const tintClass = correto ? 'tint-correct' : 'tint-incorrect';
   const feedbackClass = correto ? 'correct' : 'incorrect';
   const temProxima = quiz && quiz.idx < quiz.queue.length-1;
+  // CORREÇÃO (v63): não há mais botão manual de finalizar — a finalização é
+  // sempre automática (ver pickAnswer), assim que a última questão da fila é
+  // respondida. Se o usuário respondeu fora de ordem (pulou questões) e chegou
+  // na última posição da fila sem ainda ter respondido todas, mostra um botão
+  // pra ir direto pra primeira ainda não respondida, em vez de finalizar.
+  const proximaNaoRespondidaIdx = (!temProxima && Object.keys(quiz.respostas).length < quiz.queue.length)
+    ? quiz.queue.findIndex(uid => !quiz.respostas[uid]) : -1;
   const palavrasChave = palavrasChaveDaRespostaCorreta(q);
   const gAlterado = GABARITOS_ALTERADOS[q.uid];
   return `
@@ -4360,7 +4576,8 @@ function renderResolucao(q, resposta, quiz){
   <div class="resumo-flash-box">
     ${campoEditavelSimples(q, 'rf', formatarTextoComDestaque(q.rf, palavrasChave))}
   </div>
-  ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>` : `<button class="btn btn-gold btn-sm" id="btn-finalizar" style="margin-top:16px;width:100%;justify-content:center;">✓ Finalizar e ver resultado</button>`}
+  ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
+    : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}
   `;
 }
 
@@ -4373,6 +4590,14 @@ function pickAnswer(opt){
   const correct = opt === gabaritoEfetivo(q);
   quiz.respostas[uid] = { picked: opt, correct };
   registrarResposta(quiz.materia, uid, correct);
+  // CORREÇÃO (v63): finalização agora é SEMPRE automática, nunca manual — assim
+  // que a última questão da fila é respondida (em qualquer ordem, mesmo se o
+  // usuário pulou questões e voltou depois), o simulado se finaliza sozinho.
+  // O botão manual "Finalizar e ver resultado" foi removido de propósito.
+  if(Object.keys(quiz.respostas).length >= quiz.queue.length){
+    finalizarQuiz();
+    return;
+  }
   salvarQuizEmAndamento();
   render();
 }
@@ -4443,11 +4668,26 @@ function resetQuestaoAtual(){
 
 function resetSimuladoAtual(){
   const quiz = STATE.quiz;
+  if(!quiz) return;
+  const ok = window.confirm('Isso vai reiniciar o simulado do zero — as respostas já dadas nele serão desfeitas (seu progresso geral da matéria é ajustado de volta, questão por questão). A fila e os filtros continuam os mesmos. Deseja continuar?');
+  if(!ok) return;
   Object.keys(quiz.respostas).forEach(uid => undoRegistro(quiz.materia, uid));
   quiz.respostas = {};
   quiz.idx = 0;
+  quiz.finished = false;
   salvarQuizEmAndamento();
   render();
+}
+
+// reinicia o simulado em andamento de uma matéria diretamente da tela
+// principal (sem precisar abrir o simulado primeiro) — reaproveita
+// resetSimuladoAtual, só garantindo que STATE.quiz aponte pro simulado certo
+function reiniciarSimuladoDaMateria(materiaNome){
+  const q = STATE.quizzesEmAndamento[materiaNome];
+  if(!q || q.finished) return;
+  STATE.materia = materiaNome;
+  STATE.quiz = q;
+  resetSimuladoAtual();
 }
 
 function abandonarQuiz(){
@@ -4560,6 +4800,7 @@ function renderResults(){
     <p style="font-size:12.5px;color:var(--ink-soft);margin-top:10px;">Essas questões já estão salvas automaticamente no caderno de erros desta matéria.</p>
   </div>` : (respondidas.length>0 ? `<div class="card-block"><h3>Gabarito impecável — nenhum erro registrado nesta sessão.</h3></div>` : '')}
   <div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <button class="btn-outline" id="btn-voltar-resultado">← Voltar para "${esc(STATE.materia||'')}"</button>
     <button class="btn btn-primary" id="btn-novo-simulado">Novo simulado</button>
     ${!quiz.reaberto ? `<button class="btn-outline" id="btn-salvar-simulado">💾 Salvar para comparar depois</button>` : `<span class="side-status detail" style="align-self:center;">Visualizando um simulado salvo anteriormente</span>`}
   </div>
@@ -4694,6 +4935,26 @@ function renderErros(){
 // gera um Markdown com todas as questões de uma matéria, no mesmo formato que
 // parseMarkdownQuestoes sabe ler de volta — permite baixar, editar num editor
 // de texto/Markdown qualquer e reimportar depois (item 2 e 3)
+// converte o HTML de um campo editado (rich text, com negrito/itálico/marca-texto
+// do editor) de volta pra texto plano, preservando quebras de linha razoáveis —
+// usado no download, que é sempre texto puro, nunca HTML
+function htmlParaTextoPlano(html){
+  if(!html) return '';
+  const div = document.createElement('div');
+  div.innerHTML = html;
+  div.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));
+  div.querySelectorAll('div,p').forEach(el=>{ el.insertAdjacentText('afterend','\n'); });
+  return (div.textContent||'').replace(/\n{3,}/g,'\n\n').trim();
+}
+// texto EFETIVO de um campo — a edição manual do usuário, se existir, senão o
+// original. Usada no download pra garantir que alterações feitas na tela sejam
+// mantidas no arquivo exportado (pedido explícito: "se eu fizer o download,
+// mantenha todas as alterações").
+function textoEfetivoDoCampo(q, campo){
+  const custom = EDICOES_USUARIO[q.uid] && EDICOES_USUARIO[q.uid][campo];
+  if(custom) return htmlParaTextoPlano(custom);
+  return q[campo] || '';
+}
 function gerarMarkdownDaMateria(materiaKey){
   const qs = ALL_QUESTIONS.filter(q => q.materia===materiaKey && !q.duplicataOculta).sort((a,b)=>a.n-b.n);
   let md = `# ${materiaKey}\n\n`;
@@ -4702,7 +4963,7 @@ function gerarMarkdownDaMateria(materiaKey){
     md += `**Banca/Cargo:** ${q.bc||'—'}\n`;
     md += `**Ano:** ${q.ar||'—'} | **Nível:** ${NIVEL_LABEL[q.nv]||'Média'} | **Tendência:** ${tendenciaCurta(q.td)}\n`;
     md += `**Assunto:** ${q.tema||'Geral'}\n\n`;
-    md += `### Enunciado\n${q.q||''}\n\n`;
+    md += `### Enunciado\n${textoEfetivoDoCampo(q,'q')}\n\n`;
     if(q.t==='MC' && q.alt){
       md += `### Alternativas\n`;
       q.alt.forEach(a=>{ md += `- **${a.letra.toUpperCase()})** ${a.texto}\n`; });
@@ -4710,8 +4971,8 @@ function gerarMarkdownDaMateria(materiaKey){
     } else {
       md += `**Gabarito:** ${gabaritoEfetivo(q)}\n\n`;
     }
-    md += `### Resolução\n${q.r||''}\n\n`;
-    md += `### Resumo Flash\n${q.rf||''}\n\n`;
+    md += `### Resolução\n${textoEfetivoDoCampo(q,'r')}\n\n`;
+    md += `### Resumo Flash\n${textoEfetivoDoCampo(q,'rf')}\n\n`;
     md += `---\n\n`;
   });
   return md;
@@ -6073,7 +6334,20 @@ function attachHandlers(){
   if(btnToggleMateriaMenu) btnToggleMateriaMenu.addEventListener('click', ()=>{ STATE.materiaMenuAberto = !STATE.materiaMenuAberto; render(); });
   root.querySelectorAll('[data-macro-materia]').forEach(el=>{
     el.addEventListener('click', ()=>{
-      STATE.materia = el.dataset.macroMateria;
+      // CORREÇÃO (v60): salva explicitamente o simulado ativo (se houver) antes
+      // de trocar de matéria — antes, isso dependia só do salvamento automático
+      // já ter rodado depois da última resposta, sem nenhuma garantia explícita
+      // no exato momento da troca.
+      if(STATE.quiz) salvarQuizEmAndamento();
+      const novaMateria = el.dataset.macroMateria;
+      // força reconferir o armazenamento local desta matéria ao entrar nela de
+      // novo — antes, uma vez conferida numa sessão, nunca mais era reconferida
+      // (mesmo saindo e voltando), então qualquer dessincronia entre o que
+      // ficou em memória e o que está realmente salvo nunca se corrigia
+      // sozinha. Relatado em produção: responder, trocar de matéria, voltar —
+      // "Continuar" sumia mesmo com o progresso salvo.
+      STATE.quizzesVerificados.delete(novaMateria);
+      STATE.materia = novaMateria;
       STATE.tema = 'todos';
       STATE.viewImportar = false;
       STATE.flashDeck = null;
@@ -6110,6 +6384,15 @@ function attachHandlers(){
   }
   const btnDesconectarSync = document.getElementById('btn-desconectar-sync');
   if(btnDesconectarSync) btnDesconectarSync.addEventListener('click', desconectarSincronizacao);
+
+  const inputSyncCodeBanner = document.getElementById('input-sync-code-banner');
+  const btnConectarSyncBanner = document.getElementById('btn-conectar-sync-banner');
+  if(inputSyncCodeBanner && btnConectarSyncBanner){
+    btnConectarSyncBanner.addEventListener('click', ()=> conectarSincronizacao(inputSyncCodeBanner.value));
+    inputSyncCodeBanner.addEventListener('keydown', (e)=>{ if(e.key==='Enter') conectarSincronizacao(inputSyncCodeBanner.value); });
+  }
+  const btnDispensarAvisoSync = document.getElementById('btn-dispensar-aviso-sync');
+  if(btnDispensarAvisoSync) btnDispensarAvisoSync.addEventListener('click', ()=>{ STATE.avisoSyncDispensado = true; render(); });
 
   const btnVoltarMateria = document.getElementById('btn-voltar-materia');
   if(btnVoltarMateria) btnVoltarMateria.addEventListener('click', ()=>{ STATE.viewImportar = false; render(); });
@@ -6176,38 +6459,6 @@ function attachHandlers(){
       render();
     });
   });
-  const qtyMinus = document.getElementById('qty-minus');
-  const qtyPlus = document.getElementById('qty-plus');
-  const qtyVal = document.getElementById('qty-val');
-  if(qtyMinus) qtyMinus.addEventListener('click', ()=>{
-    const setup = getSetup(STATE.materia);
-    const candidatos = pool();
-    const atual = candidatos.length>0 ? Math.min(setup.qtd, candidatos.length) : setup.qtd;
-    setup.qtd = Math.max(5, atual-5);
-    render();
-  });
-  if(qtyPlus) qtyPlus.addEventListener('click', ()=>{
-    const setup = getSetup(STATE.materia);
-    const candidatos = pool();
-    const atual = candidatos.length>0 ? Math.min(setup.qtd, candidatos.length) : setup.qtd;
-    const max = Math.max(candidatos.length, 5);
-    setup.qtd = Math.min(max, atual+5);
-    render();
-  });
-  if(qtyVal){
-    const aplicarQtdDigitada = ()=>{
-      const setup = getSetup(STATE.materia);
-      const candidatos = pool();
-      const max = Math.max(candidatos.length, 1);
-      let v = parseInt(qtyVal.value, 10);
-      if(isNaN(v) || v<1) v = 1;
-      if(v>max) v = max;
-      setup.qtd = v;
-      render();
-    };
-    qtyVal.addEventListener('change', aplicarQtdDigitada);
-    qtyVal.addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); qtyVal.blur(); } });
-  }
 
   const btnIniciar = document.getElementById('btn-iniciar');
   if(btnIniciar) btnIniciar.addEventListener('click', ()=>{
@@ -6271,6 +6522,8 @@ function attachHandlers(){
         delete EDICOES_USUARIO[uid][campo];
         if(Object.keys(EDICOES_USUARIO[uid]).length===0) delete EDICOES_USUARIO[uid];
         salvarEdicoesUsuario();
+        const qRestaurada = BY_UID[uid];
+        if(qRestaurada){ marcarProgressoSujo(qRestaurada.materia); pushToCloud(); }
       }
       render();
     });
@@ -6299,6 +6552,12 @@ function attachHandlers(){
           }
         });
         salvarEdicoesUsuario();
+        // CORREÇÃO: edições ficavam só no armazenamento local — não sincronizavam
+        // com a nuvem. Agora, salvar a edição também marca a matéria como
+        // pendente e dispara o envio imediatamente (pedido explícito: "altere e
+        // salve imediatamente").
+        const qEditada = BY_UID[uid];
+        if(qEditada){ marcarProgressoSujo(qEditada.materia); pushToCloud(); }
         edicaoAtual = null;
         render();
       }
@@ -6315,10 +6574,10 @@ function attachHandlers(){
   if(btnResetQuestao) btnResetQuestao.addEventListener('click', resetQuestaoAtual);
   const btnResetSimulado = document.getElementById('btn-reset-simulado');
   if(btnResetSimulado) btnResetSimulado.addEventListener('click', resetSimuladoAtual);
-  const btnFinalizar = document.getElementById('btn-finalizar');
-  if(btnFinalizar) btnFinalizar.addEventListener('click', finalizarQuiz);
   const btnAbandonar = document.getElementById('btn-abandonar');
   if(btnAbandonar) btnAbandonar.addEventListener('click', abandonarQuiz);
+  const btnVoltarResultado = document.getElementById('btn-voltar-resultado');
+  if(btnVoltarResultado) btnVoltarResultado.addEventListener('click', ()=>{ STATE.quiz=null; STATE.focusMode=false; render(); });
   const btnNovoSimulado = document.getElementById('btn-novo-simulado');
   if(btnNovoSimulado) btnNovoSimulado.addEventListener('click', ()=>{ STATE.quiz=null; STATE.focusMode=false; render(); });
 
@@ -6372,24 +6631,14 @@ function attachHandlers(){
   if(btnFocusToggle) btnFocusToggle.addEventListener('click', ()=>{ STATE.focusMode = !STATE.focusMode; render(); });
 
   const btnContinuarSimulado = document.getElementById('btn-continuar-simulado');
-  if(btnContinuarSimulado) btnContinuarSimulado.addEventListener('click', ()=>{
-    const q = STATE.quizzesEmAndamento[STATE.materia];
-    if(q){
-      const last = acharIdxUltimaRespondida(q);
-      if(last>=0) q.idx = last;
-      STATE.quiz = q;
-      render();
-    }
-  });
-  const btnIniciarNovoSimulado = document.getElementById('btn-iniciar-novo-simulado');
-  if(btnIniciarNovoSimulado) btnIniciarNovoSimulado.addEventListener('click', ()=>{
-    const ok = window.confirm('Isso vai descartar o simulado salvo em andamento. As respostas já dadas continuam valendo pro seu progresso geral, só a fila deste simulado específico é perdida. Deseja continuar?');
-    if(ok){
-      limparQuizSalvo(STATE.materia);
-      STATE.quizzesEmAndamento[STATE.materia] = null;
-      STATE.mostrarConfigSimulado = true;
-      render();
-    }
+  if(btnContinuarSimulado) btnContinuarSimulado.addEventListener('click', ()=> continuarSimuladoDaMateria(STATE.materia));
+  const btnReiniciarSimulado = document.getElementById('btn-reiniciar-simulado');
+  if(btnReiniciarSimulado) btnReiniciarSimulado.addEventListener('click', ()=> reiniciarSimuladoDaMateria(STATE.materia));
+  root.querySelectorAll('[data-continuar-materia]').forEach(el=>{
+    el.addEventListener('click', (ev)=>{
+      ev.stopPropagation(); // não deixa o clique também disparar o data-macro-materia da linha por baixo
+      continuarSimuladoDaMateria(el.dataset.continuarMateria);
+    });
   });
   const btnSalvarSimulado = document.getElementById('btn-salvar-simulado');
   if(btnSalvarSimulado) btnSalvarSimulado.addEventListener('click', salvarSimuladoParaComparacao);
