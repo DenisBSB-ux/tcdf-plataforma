@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v74', build: '2026-09-22 12:00' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v76', build: '2026-09-22 14:30' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -3854,7 +3854,7 @@ function renderEstatisticasPorMateria(){
       </div>
     </div>
     <div style="height:10px;"></div>
-    ${abaAtual==='tendencias' ? renderGradeTendencias(linhas) : renderTabelaEstatisticas(linhas, estiloCelula)}
+    ${abaAtual==='tendencias' ? renderGraficoComparativoMaterias(linhas) : renderTabelaEstatisticas(linhas, estiloCelula)}
   </div>
   `;
 }
@@ -3891,6 +3891,50 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
   </div>
   `;
 }
+// paleta de cores distintas por matéria (pedido explícito: "cores diversas por
+// matéria") — cíclica, cobre qualquer quantidade de matérias sem repetir cor
+// entre vizinhas até passar de 12
+const PALETA_CORES_MATERIA = ['#2563eb','#dc2626','#059669','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#4338ca','#0d9488','#be123c'];
+
+// gráfico único (pedido explícito): todas as matérias no eixo X, % de acerto
+// no eixo Y, cada matéria com sua própria cor — diferente da grade de
+// tendências abaixo, que mostra a evolução diária de CADA matéria separada
+function renderGraficoComparativoMaterias(linhas){
+  const comResposta = linhas.filter(l=>l.respondidas>0);
+  if(comResposta.length<2){
+    return `<div style="font-size:12px;color:var(--ink-soft);padding:10px 4px;">Responda questões em pelo menos 2 matérias pra ver a comparação aqui.</div>`;
+  }
+  const largura = Math.max(360, comResposta.length*70);
+  const altura = 220, margemEsq = 34, margemDir = 14, margemTopo = 14, margemBaixo = 64;
+  const areaW = largura-margemEsq-margemDir, areaH = altura-margemTopo-margemBaixo;
+  const coords = comResposta.map((l,i)=>{
+    const x = margemEsq + (comResposta.length===1 ? areaW/2 : (i/(comResposta.length-1))*areaW);
+    const y = margemTopo + (1 - l.pct/100)*areaH;
+    const cor = PALETA_CORES_MATERIA[i % PALETA_CORES_MATERIA.length];
+    return { x, y, l, cor };
+  });
+  const linhaPontos = coords.map(c=>`${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+  const gradeY = [0,25,50,75,100].map(v=>{
+    const y = margemTopo + (1-v/100)*areaH;
+    return `<line x1="${margemEsq}" y1="${y.toFixed(1)}" x2="${largura-margemDir}" y2="${y.toFixed(1)}" stroke="currentColor" stroke-opacity=".08" />
+      <text x="${margemEsq-6}" y="${y.toFixed(1)}" font-size="10" text-anchor="end" dominant-baseline="middle" fill="currentColor" opacity=".55">${v}%</text>`;
+  }).join('');
+  const marcadores = coords.map(c=>`
+    <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="5" fill="${c.cor}" stroke="var(--paper,#fdfaf2)" stroke-width="1.5">
+      <title>${esc(c.l.nome)}: ${c.l.pct}% (${c.l.respondidas} resposta${c.l.respondidas>1?'s':''})</title>
+    </circle>
+    <text x="${c.x.toFixed(1)}" y="${(c.y-9).toFixed(1)}" font-size="10" font-weight="700" text-anchor="middle" fill="${c.cor}">${c.l.pct}%</text>
+    <text x="${c.x.toFixed(1)}" y="${(margemTopo+areaH+16).toFixed(1)}" font-size="10" text-anchor="end" fill="currentColor" opacity=".75" transform="rotate(-40 ${c.x.toFixed(1)} ${(margemTopo+areaH+16).toFixed(1)})">${esc(c.l.nome.length>18 ? c.l.nome.slice(0,17)+'…' : c.l.nome)}<title>${esc(c.l.nome)}</title></text>
+  `).join('');
+  return `<div style="overflow-x:auto;">
+    <svg viewBox="0 0 ${largura} ${altura}" width="${largura}" height="${altura}" style="display:block;min-width:${largura}px;">
+      ${gradeY}
+      <polyline points="${linhaPontos}" fill="none" stroke="currentColor" stroke-opacity=".25" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+      ${marcadores}
+    </svg>
+  </div>`;
+}
+
 function renderGradeTendencias(linhas){
   return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;">
     ${linhas.map(l=>{
