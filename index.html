@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v73', build: '2026-09-21 17:00' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v74', build: '2026-09-22 12:00' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -3227,6 +3227,7 @@ let STATE = {
   assuntoAberto: false,
   materiaMenuAberto: false,
   paginacaoAberta: false,
+  estatisticasAba: 'tabela', // 'tabela' | 'tendencias' — ver renderEstatisticasPorMateria
   showBackupManual: false,
   materiasPublicadasNestaSessao: new Set(),
   focusMode: false,
@@ -3456,6 +3457,58 @@ function computeSnapshot(){
 // progresso dela). O computeSnapshot() do topo da página já ignorava órfãs;
 // esta função não, e por isso as duas nunca batiam (ex.: tabela mostrando
 // mais "respondidas" que o cabeçalho, pra mesma matéria).
+// agrupa TODAS as respostas já dadas nesta matéria por dia (data local do
+// navegador), calculando a taxa de acerto de cada dia — base pro gráfico de
+// tendência em linha. Cada questão carrega seu próprio histórico (até 20
+// tentativas mais recentes, ver registrarResposta), então isto varre todas as
+// questões da matéria e junta os eventos numa única linha do tempo.
+function computeTendenciaDiariaMateria(materiaKey){
+  const bucket = getBucket(materiaKey);
+  const porDia = {}; // { 'AAAA-MM-DD': {acertos, total} }
+  Object.entries(bucket.perguntas).forEach(([uid,p])=>{
+    if(!BY_UID[uid] || !p.historico) return;
+    p.historico.forEach(ev=>{
+      if(!ev || !ev.ts) return;
+      const d = new Date(ev.ts);
+      const chave = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      if(!porDia[chave]) porDia[chave] = { acertos:0, total:0, ts: new Date(chave).getTime() };
+      porDia[chave].total++;
+      if(ev.c) porDia[chave].acertos++;
+    });
+  });
+  return Object.entries(porDia)
+    .map(([dia, v]) => ({ dia, ts: v.ts, total: v.total, pct: pct(v.acertos, v.total) }))
+    .sort((a,b)=> a.ts - b.ts);
+}
+
+// desenha um gráfico de linha simples em SVG inline (sem depender de nenhuma
+// biblioteca externa — mantém o arquivo autocontido) a partir dos pontos
+// {ts, pct} de computeTendenciaDiariaMateria
+function renderGraficoTendenciaSVG(pontos, corLinha){
+  const largura = 220, altura = 60, margem = 6;
+  if(pontos.length===0){
+    return `<div style="height:${altura}px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-soft);">sem respostas registradas ainda</div>`;
+  }
+  if(pontos.length===1){
+    return `<div style="height:${altura}px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-soft);">só um dia com resposta (${pontos[0].pct}%) — sem tendência ainda</div>`;
+  }
+  const minTs = pontos[0].ts, maxTs = pontos[pontos.length-1].ts;
+  const rangeTs = Math.max(1, maxTs-minTs);
+  const coords = pontos.map(p=>{
+    const x = margem + ((p.ts-minTs)/rangeTs) * (largura-2*margem);
+    const y = margem + (1 - p.pct/100) * (altura-2*margem);
+    return { x, y, p };
+  });
+  const linha = coords.map(c=>`${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
+  const pontosSvg = coords.map(c=>`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="2.3" fill="${corLinha}"><title>${esc(c.p.dia)}: ${c.p.pct}% (${c.p.total} resposta${c.p.total>1?'s':''})</title></circle>`).join('');
+  return `<svg viewBox="0 0 ${largura} ${altura}" width="100%" height="${altura}" preserveAspectRatio="none" style="display:block;overflow:visible;">
+    <line x1="${margem}" y1="${margem}" x2="${largura-margem}" y2="${margem}" stroke="currentColor" stroke-opacity=".08" />
+    <line x1="${margem}" y1="${altura-margem}" x2="${largura-margem}" y2="${altura-margem}" stroke="currentColor" stroke-opacity=".08" />
+    <polyline points="${linha}" fill="none" stroke="${corLinha}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
+    ${pontosSvg}
+  </svg>`;
+}
+
 function computeSnapshotMateria(materiaKey){
   const bucket = getBucket(materiaKey);
   let ac=0, erradas=0, ultimaRespostaTs=null;
@@ -3790,9 +3843,24 @@ function renderEstatisticasPorMateria(){
     return { nome: m, acertos: s.ac, erros: s.erradas, pct: s.taxa, respondidas, total: s.totalPontuavel, ativa: m===STATE.materia, temSimuladoEmAndamento, ultimaRespostaTs: s.ultimaRespostaTs };
   }).sort((a,b)=> a.nome.localeCompare(b.nome,'pt-BR') || b.respondidas - a.respondidas || b.pct - a.pct);
   const estiloCelula = 'font-size:13px;font-weight:400;font-family:inherit;line-height:1.4;';
+  const abaAtual = STATE.estatisticasAba || 'tabela';
   return `
   <div class="card-block" style="margin-top:22px;">
-    <h3>📈 Estatísticas por matéria</h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <h3 style="margin:0;">📈 Estatísticas por matéria</h3>
+      <div class="tabs" style="margin:0;">
+        <button class="tab-btn ${abaAtual==='tabela'?'active':''}" data-estatisticas-aba="tabela" style="padding:4px 10px;font-size:12px;">📋 Tabela</button>
+        <button class="tab-btn ${abaAtual==='tendencias'?'active':''}" data-estatisticas-aba="tendencias" style="padding:4px 10px;font-size:12px;">📈 Tendências</button>
+      </div>
+    </div>
+    <div style="height:10px;"></div>
+    ${abaAtual==='tendencias' ? renderGradeTendencias(linhas) : renderTabelaEstatisticas(linhas, estiloCelula)}
+  </div>
+  `;
+}
+
+function renderTabelaEstatisticas(linhas, estiloCelula){
+  return `
     <div style="display:flex;gap:10px;${estiloCelula}color:var(--ink-soft);padding:0 8px 6px;border-bottom:1px solid var(--line-soft, #e4dfd2);margin-bottom:2px;">
       <div style="width:26px;">#</div>
       <div style="flex:1;">Matéria</div>
@@ -3822,6 +3890,22 @@ function renderEstatisticasPorMateria(){
     }).join('')}
   </div>
   `;
+}
+function renderGradeTendencias(linhas){
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;">
+    ${linhas.map(l=>{
+      const cor = faixaCorPct(l.pct, l.respondidas);
+      const pontos = computeTendenciaDiariaMateria(l.nome);
+      return `<div style="background:${cor.bg};border-radius:8px;padding:10px 12px;${l.ativa?`border:2px solid ${cor.fgForte};`:'border:2px solid transparent;'}">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin-bottom:4px;">
+          <div class="name" style="cursor:pointer;font-size:13px;font-weight:700;color:${cor.fgForte};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" data-macro-materia="${esc(l.nome)}" title="${esc(l.nome)}">${esc(l.nome)}</div>
+          <div style="font-size:13px;font-weight:700;color:${cor.fgForte};white-space:nowrap;">${l.respondidas ? l.pct+'%' : '—'}</div>
+        </div>
+        ${renderGraficoTendenciaSVG(pontos, cor.fgForte)}
+        <div style="font-size:10px;color:var(--ink-soft);margin-top:2px;">${pontos.length>1 ? pontos.length+' dias com resposta' : ''}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
 }
 function renderDashboardAnalitico(){
   if(!STATE.materia) return '';
@@ -6504,6 +6588,13 @@ function attachHandlers(){
     el.addEventListener('click', ()=>{
       const tab = el.dataset.localTab;
       setLocalTab(STATE.materia, tab);
+      render();
+    });
+  });
+
+  root.querySelectorAll('[data-estatisticas-aba]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      STATE.estatisticasAba = el.dataset.estatisticasAba;
       render();
     });
   });
