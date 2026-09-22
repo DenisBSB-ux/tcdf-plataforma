@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v79', build: '2026-09-22 15:10' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v80', build: '2026-09-22 16:50' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -3827,8 +3827,10 @@ function analisarTemasDaMateria(materiaKey){
 // 70-89 amarelo claro, 0-69 vermelho claro; sem tentativas = neutro
 function faixaCorPct(pct, respondidas){
   if(!respondidas) return { bg:'#f3f1ea', fg:'#7a7566', fgForte:'#7a7566' };
-  if(pct>=100) return { bg:'#e3eefb', fg:'#1e5f9d', fgForte:'#134a80' };
-  if(pct>=90) return { bg:'#e3f6e9', fg:'#1e7d43', fgForte:'#166534' };
+  // faixas pedidas: 100-90% azul, 89-80% verde, 79-70% amarelo, 69-0% vermelho
+  // (cores claras, mesma família de tons já usada no resto da tela)
+  if(pct>=90) return { bg:'#e3eefb', fg:'#1e5f9d', fgForte:'#134a80' };
+  if(pct>=80) return { bg:'#e3f6e9', fg:'#1e7d43', fgForte:'#166534' };
   if(pct>=70) return { bg:'#fdf4d9', fg:'#8a6416', fgForte:'#7a5a10' };
   return { bg:'#fce6e4', fg:'#a3352c', fgForte:'#8f2a22' };
 }
@@ -3905,22 +3907,20 @@ function renderGraficoComparativoMaterias(linhas){
     return `<div style="font-size:12px;color:var(--ink-soft);padding:10px 4px;">Responda questões em pelo menos 2 matérias pra ver a comparação aqui.</div>`;
   }
   const largura = Math.max(360, comResposta.length*70);
-  const altura = 220, margemEsq = 34, margemDir = 14, margemTopo = 14, margemBaixo = 64;
-  const areaW = largura-margemEsq-margemDir, areaH = altura-margemTopo-margemBaixo;
-  // CORREÇÃO (pedido explícito): eixo Y adaptável aos valores, em vez de fixo
-  // 0-100% — assim, matérias todas entre 85% e 100% (por exemplo) usam a
-  // altura toda do gráfico pra mostrar a diferença entre elas, em vez de
-  // ficarem todas amontoadas perto do topo.
+  const margemEsq = 34, margemDir = 14, margemTopo = 14, margemBaixo = 64;
+  // CORREÇÃO (pedido explícito): limite inferior = a menor porcentagem real
+  // (arredondada pra baixo em múltiplo de 5), limite superior sempre FIXO em
+  // 100% — não mais adaptável nos dois lados. Linhas de grade a cada 5% exatos
+  // (não mais um número fixo de divisões), e a altura do gráfico cresce com a
+  // quantidade de linhas, pra aumentar o espaçamento entre elas.
   const pcts = comResposta.map(l=>l.pct);
-  let minReal = Math.min(...pcts), maxReal = Math.max(...pcts);
-  const folga = Math.max(2, Math.round((maxReal-minReal) * 0.15)) || 5;
-  let minEixo = Math.max(0, Math.floor((minReal-folga)/5)*5);
-  let maxEixo = Math.min(100, Math.ceil((maxReal+folga)/5)*5);
-  if(maxEixo - minEixo < 10){ // faixa mínima de 10 pontos, pra nunca esmagar demais
-    minEixo = Math.max(0, minEixo - (10-(maxEixo-minEixo)));
-    maxEixo = Math.min(100, minEixo + 10);
-  }
-  const rangeEixo = maxEixo - minEixo;
+  const minEixo = Math.max(0, Math.floor(Math.min(...pcts)/5)*5);
+  const maxEixo = 100;
+  const rangeEixo = Math.max(5, maxEixo - minEixo); // nunca zero, mesmo se tudo for 100%
+  const numLinhas = rangeEixo/5;
+  const areaH = Math.max(140, numLinhas*32); // mais espaço entre linhas
+  const altura = margemTopo + margemBaixo + areaH;
+  const areaW = largura-margemEsq-margemDir;
   const coords = comResposta.map((l,i)=>{
     const x = margemEsq + (comResposta.length===1 ? areaW/2 : (i/(comResposta.length-1))*areaW);
     const y = margemTopo + (1 - (l.pct-minEixo)/rangeEixo)*areaH;
@@ -3928,12 +3928,13 @@ function renderGraficoComparativoMaterias(linhas){
     return { x, y, l, cor };
   });
   const linhaPontos = coords.map(c=>`${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
-  // 5 linhas de grade espaçadas igualmente dentro da faixa adaptada
-  const passosGrade = 4;
-  const gradeY = Array.from({length:passosGrade+1}, (_,i)=> minEixo + (rangeEixo*i/passosGrade)).map(v=>{
+  // uma linha de grade a cada 5% exatos, do mínimo ao máximo
+  const valoresGrade = [];
+  for(let v=minEixo; v<=maxEixo; v+=5) valoresGrade.push(v);
+  const gradeY = valoresGrade.map(v=>{
     const y = margemTopo + (1-(v-minEixo)/rangeEixo)*areaH;
     return `<line x1="${margemEsq}" y1="${y.toFixed(1)}" x2="${largura-margemDir}" y2="${y.toFixed(1)}" stroke="currentColor" stroke-opacity=".08" />
-      <text x="${margemEsq-6}" y="${y.toFixed(1)}" font-size="10" text-anchor="end" dominant-baseline="middle" fill="currentColor" opacity=".55">${Math.round(v)}%</text>`;
+      <text x="${margemEsq-6}" y="${y.toFixed(1)}" font-size="10" text-anchor="end" dominant-baseline="middle" fill="currentColor" opacity=".55">${v}%</text>`;
   }).join('');
   const marcadores = coords.map(c=>`
     <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="5" fill="${c.cor}" stroke="var(--paper,#fdfaf2)" stroke-width="1.5">
@@ -4284,8 +4285,8 @@ function renderLanding(){
       </div>`;
     }).join('')}
   </div>` : ''}
-  `}
   ${STATE.materia ? renderDangerZone() : ''}
+  `}
   `;
 }
 
