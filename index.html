@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v80', build: '2026-09-22 16:50' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v82', build: '2026-09-23 11:15' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -2607,9 +2607,37 @@ async function pushToCloud(){
 async function conectarSincronizacao(codigo){
   codigo = (codigo||'').trim().toLowerCase();
   if(!codigo) return;
+  const codigoAnterior = STATE.syncCode;
+  const progressoAnterior = PROGRESS;
+  const quizzesAnteriores = STATE.quizzesEmAndamento;
   STATE.syncCode = codigo;
   try{ await storageSet(SYNC_CODE_KEY, codigo); }catch(e){ /* ignora */ }
+  // CORREÇÃO: cada código de sincronização deve ter um histórico
+  // INDEPENDENTE — antes, trocar de código nunca limpava o progresso local,
+  // então conectar um código novo "herdava" (e pior: publicava na nuvem sob o
+  // nome do código novo!) o progresso de quem usou este aparelho antes.
+  // Zera o progresso local ANTES de puxar da nuvem sempre que o código for
+  // DIFERENTE do anterior: se for realmente novo, fica vazio — do zero, como
+  // pedido; se já existia antes, o pull abaixo recompõe exatamente o dele, e
+  // só o dele. Reconectar no MESMO código (ex.: página recarregada) não entra
+  // aqui — isso já é tratado direto no boot, sem passar por esta função.
+  if(codigo !== codigoAnterior){
+    PROGRESS = {};
+    STATE.quizzesEmAndamento = {};
+    try{ await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS)); }catch(e){ /* ignora */ }
+  }
   const encontrouDados = await pullFromCloud();
+  if(encontrouDados === null){
+    // falha real de rede/permissão (não "código novo sem dados") — desfaz a
+    // troca por completo, pra não deixar o app zerado por causa de uma falha
+    // temporária de conexão
+    STATE.syncCode = codigoAnterior;
+    PROGRESS = progressoAnterior;
+    STATE.quizzesEmAndamento = quizzesAnteriores;
+    try{ await storageSet(SYNC_CODE_KEY, codigoAnterior); }catch(e){ /* ignora */ }
+    render();
+    return;
+  }
   // força um envio completo na conexão inicial — depois disso, só o que
   // realmente mudar é reenviado (ver marcarProgressoSujo)
   Object.keys(PROGRESS).forEach(m => marcarProgressoSujo(m));
@@ -3861,8 +3889,57 @@ function renderEstatisticasPorMateria(){
   `;
 }
 
+// agrega o histórico de respostas de TODAS as matérias, agrupado por dia —
+// usado pelos totais gerais da aba Tabela (pedido explícito: total diário e
+// média diária). O histórico de cada questão guarda só as últimas 20
+// tentativas (ver registrarResposta), então isso reflete a atividade
+// recente, não necessariamente o total histórico absoluto de sempre.
+function computeAtividadeDiariaGeral(){
+  const porDia = {};
+  Object.values(PROGRESS).forEach(bucket=>{
+    if(!bucket || !bucket.perguntas) return;
+    Object.entries(bucket.perguntas).forEach(([uid,p])=>{
+      if(!BY_UID[uid]) return; // órfã: questão não existe mais na base atual
+      (p.historico||[]).forEach(h=>{
+        if(!h || !h.ts) return;
+        const dia = new Date(h.ts).toLocaleDateString('pt-BR');
+        porDia[dia] = (porDia[dia]||0) + 1;
+      });
+    });
+  });
+  const dias = Object.keys(porDia);
+  const totalRespostas = dias.reduce((s,d)=> s+porDia[d], 0);
+  const hojeChave = new Date().toLocaleDateString('pt-BR');
+  return {
+    totalHoje: porDia[hojeChave] || 0,
+    mediaDiaria: dias.length>0 ? totalRespostas/dias.length : 0,
+    diasComAtividade: dias.length,
+  };
+}
+
 function renderTabelaEstatisticas(linhas, estiloCelula){
+  // (pedido explícito) totais gerais no topo da aba Tabela: certas x erradas x
+  // % combinando todas as matérias, total de hoje e média diária
+  const totalAcertos = linhas.reduce((s,l)=> s+l.acertos, 0);
+  const totalErros = linhas.reduce((s,l)=> s+l.erros, 0);
+  const totalRespondidasGeral = totalAcertos + totalErros;
+  const pctGeral = totalRespondidasGeral>0 ? pct(totalAcertos, totalRespondidasGeral) : null;
+  const atividade = computeAtividadeDiariaGeral();
   return `
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <div class="stat-chip" style="flex:1;min-width:160px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;">
+        <div style="font-size:11px;color:var(--ink-soft);">Total geral respondidas</div>
+        <div style="font-size:15px;font-weight:700;">${totalRespondidasGeral ? `<span style="color:#166534;">${totalAcertos} certas</span> · <span style="color:#8f2a22;">${totalErros} erradas</span> · ${pctGeral}%` : '—'}</div>
+      </div>
+      <div class="stat-chip" style="flex:1;min-width:140px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
+        <div style="font-size:11px;color:var(--ink-soft);">Total hoje</div>
+        <div style="font-size:15px;font-weight:700;">${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</div>
+      </div>
+      <div class="stat-chip" style="flex:1;min-width:140px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas) · ${atividade.diasComAtividade} dia(s) com atividade">
+        <div style="font-size:11px;color:var(--ink-soft);">Média diária</div>
+        <div style="font-size:15px;font-weight:700;">${atividade.mediaDiaria.toFixed(1)} questões/dia</div>
+      </div>
+    </div>
     <div style="display:flex;gap:10px;${estiloCelula}color:var(--ink-soft);padding:0 8px 6px;border-bottom:1px solid var(--line-soft, #e4dfd2);margin-bottom:2px;">
       <div style="width:26px;">#</div>
       <div style="flex:1;">Matéria</div>
