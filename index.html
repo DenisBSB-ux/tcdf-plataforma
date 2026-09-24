@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v82', build: '2026-09-23 11:15' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v83', build: '2026-09-24 12:30' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -3862,6 +3862,52 @@ function faixaCorPct(pct, respondidas){
   if(pct>=70) return { bg:'#fdf4d9', fg:'#8a6416', fgForte:'#7a5a10' };
   return { bg:'#fce6e4', fg:'#a3352c', fgForte:'#8f2a22' };
 }
+// gráfico dos totais gerais (pedido explícito): Total geral respondidas,
+// Total hoje e Média diária. Como "% de acerto" e "questões por dia" são
+// unidades diferentes, em vez de forçar as três num único eixo (o que
+// distorceria a leitura), uso duas peças visuais lado a lado: um anel de
+// certas x erradas pro total geral, e barras comparando hoje x média diária
+// (essas duas sim são diretamente comparáveis, mesma unidade).
+function renderGraficoResumoGeral(linhas, atividade, totalAcertos, totalErros){
+  const totalRespondidasGeral = totalAcertos + totalErros;
+  const pctGeral = totalRespondidasGeral>0 ? pct(totalAcertos, totalRespondidasGeral) : 0;
+  const r = 42, cx = 60, cy = 60, circ = 2*Math.PI*r;
+  const fatiaCertas = totalRespondidasGeral>0 ? (totalAcertos/totalRespondidasGeral)*circ : 0;
+  const anelSVG = `
+    <svg viewBox="0 0 120 120" width="120" height="120">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#fce6e4" stroke-width="14" />
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#a7d8b8" stroke-width="14"
+        stroke-dasharray="${fatiaCertas.toFixed(1)} ${(circ-fatiaCertas).toFixed(1)}"
+        stroke-dashoffset="${(circ*0.25).toFixed(1)}" stroke-linecap="butt" />
+      <text x="${cx}" y="${cy-3}" text-anchor="middle" font-size="20" font-weight="800" fill="currentColor">${totalRespondidasGeral?pctGeral+'%':'—'}</text>
+      <text x="${cx}" y="${cy+14}" text-anchor="middle" font-size="9" fill="currentColor" opacity=".6">acerto geral</text>
+    </svg>`;
+  const maxBarra = Math.max(atividade.totalHoje, atividade.mediaDiaria, 1);
+  const barraHoje = Math.round((atividade.totalHoje/maxBarra)*100);
+  const barraMedia = Math.round((atividade.mediaDiaria/maxBarra)*100);
+  return `
+    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:28px;padding:14px 4px;">
+      <div style="display:flex;align-items:center;gap:14px;">
+        ${anelSVG}
+        <div style="font-size:12px;">
+          <div style="color:#166534;font-weight:700;">${totalAcertos} certas</div>
+          <div style="color:#8f2a22;font-weight:700;">${totalErros} erradas</div>
+          <div style="color:var(--ink-soft);margin-top:2px;">${totalRespondidasGeral} respondidas no total</div>
+        </div>
+      </div>
+      <div style="flex:1;min-width:200px;display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);margin-bottom:3px;"><span>Hoje</span><b>${atividade.totalHoje} questões</b></div>
+          <div style="background:var(--paper-soft,#f0ece0);border-radius:6px;height:14px;overflow:hidden;"><div style="width:${barraHoje}%;height:100%;background:#2563eb;"></div></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--ink-soft);margin-bottom:3px;"><span>Média diária</span><b>${atividade.mediaDiaria.toFixed(1)} questões/dia</b></div>
+          <div style="background:var(--paper-soft,#f0ece0);border-radius:6px;height:14px;overflow:hidden;"><div style="width:${barraMedia}%;height:100%;background:#7c3aed;"></div></div>
+        </div>
+      </div>
+    </div>`;
+}
+
 function renderEstatisticasPorMateria(){
   const materias = materiasDisponiveis();
   if(materias.length<2) return ''; // com 1 matéria só, isso duplicaria o card grande de cima
@@ -3874,8 +3920,19 @@ function renderEstatisticasPorMateria(){
   }).sort((a,b)=> a.nome.localeCompare(b.nome,'pt-BR') || b.respondidas - a.respondidas || b.pct - a.pct);
   const estiloCelula = 'font-size:13px;font-weight:400;font-family:inherit;line-height:1.4;';
   const abaAtual = STATE.estatisticasAba || 'tabela';
+  // (pedido explícito, item 4) "Total geral respondidas" sai da linha de chips
+  // e sobe pro topo da página, como um banner cheio, acima de tudo
+  const totalAcertos = linhas.reduce((s,l)=> s+l.acertos, 0);
+  const totalErros = linhas.reduce((s,l)=> s+l.erros, 0);
+  const totalRespondidasGeral = totalAcertos + totalErros;
+  const pctGeral = totalRespondidasGeral>0 ? pct(totalAcertos, totalRespondidasGeral) : null;
+  const atividade = computeAtividadeDiariaGeral();
   return `
-  <div class="card-block" style="margin-top:22px;">
+  <div class="card-block" style="margin-top:22px;background:var(--paper-soft,#f7f3e8);border-radius:10px;padding:10px 14px;margin-bottom:10px;">
+    <div style="font-size:11px;color:var(--ink-soft);">Total geral respondidas</div>
+    <div style="font-size:18px;font-weight:700;">${totalRespondidasGeral ? `<span style="color:#166534;">${totalAcertos} certas</span> · <span style="color:#8f2a22;">${totalErros} erradas</span> · ${pctGeral}%` : '—'}</div>
+  </div>
+  <div class="card-block" style="margin-top:0;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <h3 style="margin:0;">📈 Estatísticas por matéria</h3>
       <div class="tabs" style="margin:0;">
@@ -3884,7 +3941,11 @@ function renderEstatisticasPorMateria(){
       </div>
     </div>
     <div style="height:10px;"></div>
-    ${abaAtual==='tendencias' ? renderGraficoComparativoMaterias(linhas) : renderTabelaEstatisticas(linhas, estiloCelula)}
+    ${abaAtual==='tendencias'
+      ? `${renderGraficoComparativoMaterias(linhas)}
+         <hr style="border:none;border-top:1px solid var(--line-soft,#e4dfd2);margin:18px 0;" />
+         ${renderGraficoResumoGeral(linhas, atividade, totalAcertos, totalErros)}`
+      : renderTabelaEstatisticas(linhas, estiloCelula, atividade)}
   </div>
   `;
 }
@@ -3917,29 +3978,8 @@ function computeAtividadeDiariaGeral(){
   };
 }
 
-function renderTabelaEstatisticas(linhas, estiloCelula){
-  // (pedido explícito) totais gerais no topo da aba Tabela: certas x erradas x
-  // % combinando todas as matérias, total de hoje e média diária
-  const totalAcertos = linhas.reduce((s,l)=> s+l.acertos, 0);
-  const totalErros = linhas.reduce((s,l)=> s+l.erros, 0);
-  const totalRespondidasGeral = totalAcertos + totalErros;
-  const pctGeral = totalRespondidasGeral>0 ? pct(totalAcertos, totalRespondidasGeral) : null;
-  const atividade = computeAtividadeDiariaGeral();
-  return `
-    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-      <div class="stat-chip" style="flex:1;min-width:160px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;">
-        <div style="font-size:11px;color:var(--ink-soft);">Total geral respondidas</div>
-        <div style="font-size:15px;font-weight:700;">${totalRespondidasGeral ? `<span style="color:#166534;">${totalAcertos} certas</span> · <span style="color:#8f2a22;">${totalErros} erradas</span> · ${pctGeral}%` : '—'}</div>
-      </div>
-      <div class="stat-chip" style="flex:1;min-width:140px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
-        <div style="font-size:11px;color:var(--ink-soft);">Total hoje</div>
-        <div style="font-size:15px;font-weight:700;">${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</div>
-      </div>
-      <div class="stat-chip" style="flex:1;min-width:140px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas) · ${atividade.diasComAtividade} dia(s) com atividade">
-        <div style="font-size:11px;color:var(--ink-soft);">Média diária</div>
-        <div style="font-size:15px;font-weight:700;">${atividade.mediaDiaria.toFixed(1)} questões/dia</div>
-      </div>
-    </div>
+function renderTabelaEstatisticas(linhas, estiloCelula, atividade){
+  const cabecalhoTabela = `
     <div style="display:flex;gap:10px;${estiloCelula}color:var(--ink-soft);padding:0 8px 6px;border-bottom:1px solid var(--line-soft, #e4dfd2);margin-bottom:2px;">
       <div style="width:26px;">#</div>
       <div style="flex:1;">Matéria</div>
@@ -3966,7 +4006,25 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
         <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fgForte};font-weight:700;">${l.respondidas ? l.pct+'%' : '—'}</div>
         <div style="width:90px;text-align:right;${estiloCelula}color:${cor.fg};font-size:11px;" title="${l.ultimaRespostaTs ? new Date(l.ultimaRespostaTs).toLocaleString('pt-BR') : ''}">${l.ultimaRespostaTs ? formatarDataHoraSalvamento(l.ultimaRespostaTs) : '—'}</div>
       </div>`;
-    }).join('')}
+    }).join('')}`;
+  // (pedido explícito, item 4) Total hoje e Média diária ficam numa coluna ao
+  // lado da tabela por matéria, em vez de numa linha de chips acima dela —
+  // "Total geral respondidas" já subiu pro banner no topo da página
+  return `
+  <div style="display:flex;gap:16px;flex-wrap:wrap;">
+    <div style="width:150px;display:flex;flex-direction:column;gap:8px;">
+      <div class="stat-chip" style="background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
+        <div style="font-size:11px;color:var(--ink-soft);">Total hoje</div>
+        <div style="font-size:15px;font-weight:700;">${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</div>
+      </div>
+      <div class="stat-chip" style="background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas) · ${atividade.diasComAtividade} dia(s) com atividade">
+        <div style="font-size:11px;color:var(--ink-soft);">Média diária</div>
+        <div style="font-size:15px;font-weight:700;">${atividade.mediaDiaria.toFixed(1)} questões/dia</div>
+      </div>
+    </div>
+    <div style="flex:1;min-width:260px;">
+      ${cabecalhoTabela}
+    </div>
   </div>
   `;
 }
@@ -3995,7 +4053,7 @@ function renderGraficoComparativoMaterias(linhas){
   const maxEixo = 100;
   const rangeEixo = Math.max(5, maxEixo - minEixo); // nunca zero, mesmo se tudo for 100%
   const numLinhas = rangeEixo/5;
-  const areaH = Math.max(140, numLinhas*32); // mais espaço entre linhas
+  const areaH = Math.max(140, numLinhas*32) * 2; // pedido explícito: dobrar o eixo vertical
   const altura = margemTopo + margemBaixo + areaH;
   const areaW = largura-margemEsq-margemDir;
   const coords = comResposta.map((l,i)=>{
