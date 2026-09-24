@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v85', build: '2026-09-24 14:40' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v86', build: '2026-09-24 15:20' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -2616,12 +2616,14 @@ async function conectarSincronizacao(codigo){
   // INDEPENDENTE — antes, trocar de código nunca limpava o progresso local,
   // então conectar um código novo "herdava" (e pior: publicava na nuvem sob o
   // nome do código novo!) o progresso de quem usou este aparelho antes.
-  // Zera o progresso local ANTES de puxar da nuvem sempre que o código for
-  // DIFERENTE do anterior: se for realmente novo, fica vazio — do zero, como
-  // pedido; se já existia antes, o pull abaixo recompõe exatamente o dele, e
-  // só o dele. Reconectar no MESMO código (ex.: página recarregada) não entra
-  // aqui — isso já é tratado direto no boot, sem passar por esta função.
-  if(codigo !== codigoAnterior){
+  // Zera o progresso local ANTES de puxar da nuvem, mas SÓ quando havia um
+  // código ANTERIOR de verdade e ele é diferente do novo (troca real de
+  // usuário) — se codigoAnterior estiver vazio (primeira conexão, vindo de
+  // "sem sincronização"), o progresso local NÃO é zerado: ele passa a
+  // pertencer a este usuário que está conectando agora, e é enviado pra
+  // nuvem dele mais abaixo. Zerar nesse caso também era um bug — apagava o
+  // trabalho de quem só ainda não tinha conectado nenhum código.
+  if(codigoAnterior && codigo !== codigoAnterior){
     PROGRESS = {};
     STATE.quizzesEmAndamento = {};
     try{ await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS)); }catch(e){ /* ignora */ }
@@ -3918,17 +3920,15 @@ function renderEstatisticasPorMateria(){
         <button class="tab-btn ${abaAtual==='tendencias'?'active':''}" data-estatisticas-aba="tendencias" style="padding:4px 10px;font-size:12px;">📈 Tendências</button>
       </div>
     </div>
-    ${snapshotMateriaAtual ? `<div style="display:flex;gap:10px;margin-top:14px;">
-      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;">
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
+      ${snapshotMateriaAtual ? `<div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;">
         <div style="font-size:11px;color:var(--ink-soft);">Acerto geral (${esc(STATE.materia)})</div>
         <div style="font-size:15px;font-weight:700;">${snapshotMateriaAtual.taxa}%</div>
       </div>
       <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;">
         <div style="font-size:11px;color:var(--ink-soft);">Certas / erradas / total</div>
         <div style="font-size:15px;font-weight:700;"><span style="color:#166534;">${snapshotMateriaAtual.ac}</span> / <span style="color:#8f2a22;">${snapshotMateriaAtual.tent-snapshotMateriaAtual.ac}</span> / ${snapshotMateriaAtual.totalPontuavel}</div>
-      </div>
-    </div>` : ''}
-    <div style="display:flex;gap:10px;margin-top:10px;">
+      </div>` : ''}
       <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
         <div style="font-size:11px;color:var(--ink-soft);">Total hoje</div>
         <div style="font-size:15px;font-weight:700;">${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</div>
@@ -4173,15 +4173,29 @@ function renderLetterhead(){
       <div class="stat"><div class="num">${s.taxa}%</div><div class="lbl">Acerto geral</div></div>
       <div class="stat"><div class="num"><span class="n-certa">${s.ac}</span><span style="opacity:.45;">/</span><span class="n-errada">${s.tent-s.ac}</span><span style="opacity:.45;">/</span><span class="n-total">${s.totalPontuavel}</span></div><div class="lbl">Certas / erradas / total</div></div>
       ${(()=>{
-        // (pedido explícito) total geral respondidas (todas as matérias juntas),
-        // como o anel compacto, ao lado do botão de tema claro/escuro
+        // (pedido explícito) total geral (todas as matérias juntas), no mesmo
+        // formato de texto já usado no resto do cabeçalho — Acerto geral % /
+        // Total Geral / Certas / Erradas — em vez do anel gráfico
         if(materiasDisponiveis().length<2) return '';
-        let totalAcertos=0, totalErros=0;
+        let totalAcertos=0, totalErros=0, totalGeral=0;
         materiasDisponiveis().forEach(m=>{
           const sm = computeSnapshotMateria(m);
-          totalAcertos += sm.ac; totalErros += sm.erradas;
+          totalAcertos += sm.ac; totalErros += sm.erradas; totalGeral += sm.totalPontuavel;
         });
-        return renderAnelAcertoGeral(totalAcertos, totalErros);
+        const totalRespondidas = totalAcertos+totalErros;
+        const pctGeralTodas = totalRespondidas>0 ? pct(totalAcertos,totalRespondidas) : 0;
+        return `<div class="stat" title="Total geral — todas as matérias juntas">
+            <div class="num">${totalRespondidas?pctGeralTodas+'%':'—'}</div><div class="lbl">Acerto geral (todas)</div>
+          </div>
+          <div class="stat" title="Total geral — todas as matérias juntas">
+            <div class="num">${totalGeral}</div><div class="lbl">Total geral</div>
+          </div>
+          <div class="stat" title="Total geral — todas as matérias juntas">
+            <div class="num"><span class="n-certa">${totalAcertos}</span></div><div class="lbl">Certas</div>
+          </div>
+          <div class="stat" title="Total geral — todas as matérias juntas">
+            <div class="num"><span class="n-errada">${totalErros}</span></div><div class="lbl">Erradas</div>
+          </div>`;
       })()}
       <button class="theme-toggle-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro">${STATE.theme==='light'?'🌙':'☀️'}</button>
       <div class="color-picker-wrap">
