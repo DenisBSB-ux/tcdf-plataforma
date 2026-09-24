@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v86', build: '2026-09-24 15:20' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v87', build: '2026-09-24 16:55' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -3907,10 +3907,6 @@ function renderEstatisticasPorMateria(){
   const estiloCelula = 'font-size:13px;font-weight:400;font-family:inherit;line-height:1.4;';
   const abaAtual = STATE.estatisticasAba || 'tabela';
   const atividade = computeAtividadeDiariaGeral();
-  // (pedido explícito) dados específicos da matéria selecionada no momento —
-  // mesma métrica já mostrada no cabeçalho global (computeSnapshot), repetida
-  // aqui, logo antes de Total hoje/Média diária
-  const snapshotMateriaAtual = STATE.materia ? computeSnapshot() : null;
   return `
   <div class="card-block" style="margin-top:22px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
@@ -3921,14 +3917,6 @@ function renderEstatisticasPorMateria(){
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
-      ${snapshotMateriaAtual ? `<div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;">
-        <div style="font-size:11px;color:var(--ink-soft);">Acerto geral (${esc(STATE.materia)})</div>
-        <div style="font-size:15px;font-weight:700;">${snapshotMateriaAtual.taxa}%</div>
-      </div>
-      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;">
-        <div style="font-size:11px;color:var(--ink-soft);">Certas / erradas / total</div>
-        <div style="font-size:15px;font-weight:700;"><span style="color:#166534;">${snapshotMateriaAtual.ac}</span> / <span style="color:#8f2a22;">${snapshotMateriaAtual.tent-snapshotMateriaAtual.ac}</span> / ${snapshotMateriaAtual.totalPontuavel}</div>
-      </div>` : ''}
       <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
         <div style="font-size:11px;color:var(--ink-soft);">Total hoje</div>
         <div style="font-size:15px;font-weight:700;">${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</div>
