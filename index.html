@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v87', build: '2026-09-24 16:55' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v88', build: '2026-09-24 17:10' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -4377,8 +4377,6 @@ function renderLanding(){
   <div class="landing-hero">
     <h2 class="section-title">${esc(STATE.materia || 'Painel do candidato')}${STATE.tema!=='todos' ? ` <span class="materia-assunto-label" style="font-size:14px;">· ${esc(STATE.tema)}</span>` : ''} ${qtdSimuladosGerados>0 ? `<span class="sim-count-badge">${qtdSimuladosGerados}</span>` : ''}</h2>
     <div class="big-stats">
-      <div class="stat-card"><div class="num">${s.taxa}%</div><div class="lbl">Acerto geral</div></div>
-      <div class="stat-card"><div class="num"><span class="n-certa">${s.ac}</span><span style="opacity:.45;">/</span><span class="n-errada">${s.tent-s.ac}</span><span style="opacity:.45;">/</span><span class="n-total">${s.totalPontuavel}</span></div><div class="lbl">Certas / erradas / total</div></div>
       <div class="stat-card"><div class="num">${s.erros}</div><div class="lbl">No caderno de erros</div></div>
     </div>
     ${infoSalvo}
