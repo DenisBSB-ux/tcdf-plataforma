@@ -409,11 +409,20 @@ async function carregarMateriasPublicas(){
     // troca o conteúdo local quando já tivermos o conjunto INTEIRO e válido
     // desta matéria em mãos, nunca aos poucos
     const questoesPorMateria = {};
+    // pedaços além do numChunks do manifesto são sobras de uma versão maior
+    // (ou de uma publicação interrompida) e não fazem parte da matéria
+    const numChunksPorSlug = {};
+    docs.forEach(doc=>{
+      const data = doc.data();
+      if(data && !/__p\d+$/.test(doc.id) && typeof data.numChunks==='number') numChunksPorSlug[doc.id] = data.numChunks;
+    });
     docs.forEach(doc=>{
       const data = doc.data();
       if(!data || doc.id.startsWith('_') || data.removido) return;
       const slugBase = doc.id.replace(/__p\d+$/, '');
       if(SLUGS_REMOVIDOS_NUVEM.has(slugBase)) return;
+      const mPedaco = doc.id.match(/__p(\d+)$/);
+      if(mPedaco && slugBase in numChunksPorSlug && Number(mPedaco[1]) >= numChunksPorSlug[slugBase]) return;
       if(Array.isArray(data.questoes) && data.questoes.length>0){
         data.questoes.forEach(q=>{
           if(!q || !q.uid || !q.materia) return;
@@ -442,6 +451,8 @@ async function carregarMateriasPublicas(){
     // leitura.
     let mudou = false;
     Object.entries(questoesPorMateria).forEach(([materiaNome, questoesNuvem])=>{
+      // mudança local ainda não publicada: o local é mais novo que a nuvem
+      if(PUBLICACAO_PENDENTE.has(materiaNome) && ALL_QUESTIONS.some(q => q.materia===materiaNome)) return;
       ALL_QUESTIONS = ALL_QUESTIONS.filter(q => q.materia !== materiaNome);
       questoesNuvem.forEach(q=>{ ALL_QUESTIONS.push({ ...q, origem: 'importado' }); });
       mudou = true;
@@ -548,9 +559,8 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
       // de propósito qualquer "removido:true" ou array "questoes" legado de
       // versões anteriores, já que uma reimportação explícita (force=true) deve
       // mesmo substituir esse estado
-      await comLimiteDeTempo(manifestRef.set(manifestPayload), 15000, 'tempo esgotado ao publicar manifesto de "'+materiaNome+'"');
-      MATERIA_ATUALIZADOEM_NUVEM_VISTO[materiaNome] = manifestPayload.atualizadoEm;
-
+      // pedaços primeiro, manifesto por último: se a publicação cair no meio,
+      // o manifesto antigo continua apontando pro número antigo de pedaços
       for(let i=0;i<chunks.length;i++){
         await comLimiteDeTempo(fbDb.collection('publico').doc(`${slug}__p${i}`).set(sanitizarParaFirestore({
           materia: materiaNome,
@@ -558,6 +568,9 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
           questoes: chunks[i],
         })), 15000, 'tempo esgotado ao publicar pedaço '+i+' de "'+materiaNome+'"');
       }
+      await comLimiteDeTempo(manifestRef.set(manifestPayload), 15000, 'tempo esgotado ao publicar manifesto de "'+materiaNome+'"');
+      MATERIA_ATUALIZADOEM_NUVEM_VISTO[materiaNome] = manifestPayload.atualizadoEm;
+      marcarPublicacaoPendente(materiaNome, false);
       // se a matéria encolheu (menos pedaços que antes), limpa os pedaços que
       // sobraram — best-effort: se falhar, o pior caso é um pedaço órfão com
       // questões que já existem em uid duplicado em outro pedaço (não causa
@@ -758,6 +771,10 @@ async function loadProgress(){
   }catch(e){ /* nenhum texto original salvo localmente ainda */ }
 
   try{
+    try{
+      const resPp = await storageGet(PUBLICACAO_PENDENTE_KEY);
+      if(resPp && resPp.value) PUBLICACAO_PENDENTE = new Set(JSON.parse(resPp.value) || []);
+    }catch(e){ console.warn('Falha ao ler publicações pendentes', e); }
     const resUa = await storageGet(MATERIA_ULTIMA_ATUALIZACAO_KEY);
     if(resUa && resUa.value) MATERIA_ULTIMA_ATUALIZACAO = JSON.parse(resUa.value) || {};
   }catch(e){ /* nenhuma data de atualização salva localmente ainda */ }

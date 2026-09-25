@@ -28,7 +28,25 @@ async function comTravaDeEscrita(fn){
 }
 const MATERIA_ULTIMA_ATUALIZACAO_KEY = 'tcdf-materia-ultima-atualizacao-v1';
 let salvarUltimaAtualizacaoTimer = null;
-function marcarMateriaAtualizada(materiaNome){
+// Matérias com mudança local ainda não publicada na nuvem. Enquanto estiverem
+// aqui, a leitura da nuvem não substitui o conteúdo local delas (senão uma
+// publicação que falhou — cota, rede — seria desfeita na próxima abertura), e
+// o salvamento automático tenta publicar de novo. Sai daqui só quando a
+// publicação dá certo (ver publicarQuestoesNoFirestore).
+const PUBLICACAO_PENDENTE_KEY = 'tcdf-publicacao-pendente-v1';
+let PUBLICACAO_PENDENTE = new Set();
+function salvarPublicacaoPendente(){
+  storageSet(PUBLICACAO_PENDENTE_KEY, JSON.stringify(Array.from(PUBLICACAO_PENDENTE))).catch(e=>console.error('Falha ao salvar publicações pendentes', e));
+}
+function marcarPublicacaoPendente(materiaNome, pendente){
+  const tinha = PUBLICACAO_PENDENTE.has(materiaNome);
+  if(pendente) PUBLICACAO_PENDENTE.add(materiaNome); else PUBLICACAO_PENDENTE.delete(materiaNome);
+  if(tinha!==!!pendente) salvarPublicacaoPendente();
+}
+// opcoes.publicada: a chamada vem logo depois de uma publicação que deu
+// certo — só atualiza a data, sem marcar como pendente
+function marcarMateriaAtualizada(materiaNome, opcoes){
+  if(!(opcoes && opcoes.publicada)) marcarPublicacaoPendente(materiaNome, true);
   MATERIA_ULTIMA_ATUALIZACAO[materiaNome] = Date.now();
   clearTimeout(salvarUltimaAtualizacaoTimer);
   salvarUltimaAtualizacaoTimer = setTimeout(()=>{
