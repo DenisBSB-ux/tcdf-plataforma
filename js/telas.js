@@ -638,18 +638,18 @@ function renderEstatisticasPorMateria(){
   return `
   <div class="card-block" style="margin-top:22px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-      <h3 style="margin:0;">📈 Estatísticas por matéria</h3>
+      <h3 style="margin:0;color:inherit;">📈 Estatísticas por matéria</h3>
       <div class="tabs" style="margin:0;">
         <button class="tab-btn ${abaAtual==='tabela'?'active':''}" data-estatisticas-aba="tabela" style="padding:4px 10px;font-size:12px;">📋 Tabela</button>
         <button class="tab-btn ${abaAtual==='tendencias'?'active':''}" data-estatisticas-aba="tendencias" style="padding:4px 10px;font-size:12px;">📈 Tendências</button>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
-      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
+      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);color:var(--ink);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
         <div style="font-size:11px;color:var(--ink-soft);">Total hoje</div>
         <div style="font-size:15px;font-weight:700;">${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</div>
       </div>
-      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas) · ${atividade.diasComAtividade} dia(s) com atividade">
+      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);color:var(--ink);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas) · ${atividade.diasComAtividade} dia(s) com atividade">
         <div style="font-size:11px;color:var(--ink-soft);">Média diária</div>
         <div style="font-size:15px;font-weight:700;">${atividade.mediaDiaria.toFixed(1)} questões/dia</div>
       </div>
