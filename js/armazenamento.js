@@ -3,10 +3,8 @@ const STORAGE_KEY = 'sim-progresso-v3';
 const EDICOES_KEY = 'tcdf-edicoes-usuario-v1';
 let EDICOES_USUARIO = {}; // { [uid]: { r: 'html editado', rf: 'html editado' } }
 let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — permite reprocessar com o parser atual sem precisar reimportar manualmente
-// data/hora da última atualização de cada matéria (importação, reimportação, ou
-// salvamento manual) — só informativo pro usuário, mostrado ao lado do nome da
-// matéria na tela de gerenciamento (pedido explícito: "indique ao lado de cada
-// matéria o dia e a hora da última atualização")
+// data/hora da última atualização de cada matéria (importação, reimportação,
+// salvamento manual) — mostrada ao lado do nome na tela de gerenciamento
 let MATERIA_ULTIMA_ATUALIZACAO = {}; // { [materiaNome]: timestamp }
 // (item 5) registra o "atualizadoEm" mais recente que ESTE dispositivo já viu
 // na nuvem pra cada matéria — permite detectar quando outro dispositivo
@@ -16,20 +14,12 @@ let MATERIA_ULTIMA_ATUALIZACAO = {}; // { [materiaNome]: timestamp }
 let MATERIA_ATUALIZADOEM_NUVEM_VISTO = {};
 // (item 5) alertas de sobrescrita detectada — ver publicarQuestoesNoFirestore
 let ALERTAS_SOBRESCRITA_NUVEM = [];
-// CORREÇÃO (v73): existiam dois setInterval de 5 minutos rodando sem nenhuma
-// sincronia entre si — um publicando mudanças locais na nuvem, outro puxando
-// da nuvem e SUBSTITUINDO o local por inteiro (ver carregarMateriasPublicas,
-// v57). Se o segundo disparasse bem no meio do primeiro (ou de qualquer
-// operação manual que mexe em dados locais e depois publica — deduplicar,
-// importar, renomear, remover, salvar), ele lia uma versão da nuvem ainda não
-// atualizada e revertia a limpeza local silenciosamente; a publicação que
-// viesse em seguida então mandava essa versão revertida (suja) de volta pra
-// nuvem, permanentemente. Relatado em produção: duplicatas removidas
-// reaparecendo, matérias voltando mesmo depois de removidas — os horários
-// batiam exatamente com o intervalo de 5 minutos. Esta trava (um contador, não
-// um booleano, pra suportar chamadas aninhadas sem destravar cedo demais)
-// impede a leitura da nuvem de rodar enquanto qualquer escrita estiver em
-// andamento — ver comTravaDeEscrita() e sincronizarMateriasPublicas().
+// Trava de escrita: enquanto houver alguma escrita local em andamento
+// (importar, deduplicar, renomear, remover, salvar), a leitura periódica da
+// nuvem não roda — senão ela substituiria o local por uma versão ainda não
+// atualizada, e a publicação seguinte mandaria essa versão velha de volta.
+// Contador (não booleano) pra suportar chamadas aninhadas. Ver
+// comTravaDeEscrita() e sincronizarMateriasPublicas().
 let TRAVAS_ESCRITA_ATIVAS = 0;
 async function comTravaDeEscrita(fn){
   TRAVAS_ESCRITA_ATIVAS++;
@@ -45,13 +35,8 @@ function marcarMateriaAtualizada(materiaNome){
     storageSet(MATERIA_ULTIMA_ATUALIZACAO_KEY, JSON.stringify(MATERIA_ULTIMA_ATUALIZACAO)).catch(e=>console.error('Falha ao salvar data de atualização das matérias', e));
   }, 300);
 }
-// CORREÇÃO (v37): antes, isso só existia em memória (se populado nesta sessão) ou
-// vindo da nuvem (campo textoOriginal do documento publico/{slug}). Matérias
-// grandes (ver publicarQuestoesNoFirestore) não cabem mais inteiras na nuvem, então
-// agora também é salvo localmente — IndexedDB não tem o teto de tamanho que o
-// Firestore tem, então isso continua funcionando mesmo pra matérias enormes,
-// pelo menos neste aparelho (outros dispositivos ainda dependem da nuvem, que só
-// tem o texto de matérias pequenas o suficiente pra caber).
+// Texto original de cada importação, também salvo localmente (IndexedDB): na
+// nuvem ele só cabe em matérias pequenas (ver publicarQuestoesNoFirestore).
 const TEXTOS_ORIGINAIS_KEY = 'tcdf-textos-originais-v1';
 let salvarTextosOriginaisTimer = null;
 function salvarTextosOriginaisLocalmente(){
@@ -125,14 +110,8 @@ function alterarGabarito(uid){
 }
 const CUSTOM_KEY = 'sim-questoes-importadas-v3';
 let PROGRESS = {}; // { [materia]: { perguntas:{}, flash:{}, sessoes:[] } }
-// CORREÇÃO DEFINITIVA DE COTA (v49): pushToCloud() reescrevia TODAS as
-// matérias no Firestore a cada chamada — mesmo que só UMA tivesse mudado — e
-// era chamada a cada resposta E a cada 60s (setInterval), sempre, mesmo sem
-// nada ter mudado. Com ~20 matérias, isso era ~20 escritas por resposta e ~20
-// escritas por minuto ocioso, o que sozinho estourava a cota diária gratuita
-// do Firestore repetidamente (erro real de produção, recorrente). Agora só a(s)
-// matéria(s) que de fato mudaram desde a última sincronização bem-sucedida são
-// reenviadas — as demais não são tocadas — e nada é enviado se nada mudou.
+// Matérias com progresso alterado desde o último envio bem-sucedido —
+// pushToCloud() só reenvia essas (a cota diária do Firestore é limitada).
 let MATERIAS_PROGRESSO_SUJAS = new Set();
 function marcarProgressoSujo(materiaKey){ MATERIAS_PROGRESSO_SUJAS.add(materiaKey); }
 
@@ -142,23 +121,11 @@ function marcarProgressoSujo(materiaKey){ MATERIAS_PROGRESSO_SUJAS.add(materiaKe
 const CLAUDE_STORAGE_OK = (typeof window !== 'undefined') && window.storage && typeof window.storage.get === 'function' && typeof window.storage.set === 'function';
 let STORAGE_MODE = CLAUDE_STORAGE_OK ? 'claude' : 'local';
 
-// CORREÇÃO CRÍTICA (v37): o modo 'local' usava localStorage.setItem/getItem
-// diretamente. localStorage tem uma cota rígida de ~5-10MB por origem,
-// COMPARTILHADA entre todas as chaves do site inteiro. Com 19+ matérias
-// importadas (cada uma com dezenas/centenas de questões, cada questão com
-// enunciado+resolução+resumo em texto longo), essa cota estourava de verdade —
-// confirmado em produção pelo erro "Failed to execute 'setItem' on 'Storage':
-// Setting the value of 'sim-questoes-importadas-v3' exceeded the quota.". Quando
-// isso acontece, o storageSet falha SILENCIOSAMENTE (sem o banner de aviso da
-// v36, ninguém percebia) e a última lista importada nunca chega a ser salva —
-// some ao atualizar a página. Como localStorage e o progresso (sim-progresso-v3)
-// dividem a MESMA cota da mesma origem, uma vez perto do teto qualquer uma das
-// duas chaves pode falhar ao salvar, o que também explica perda de estatísticas.
-// IndexedDB não tem esse teto baixo (na prática, dezenas/centenas de MB — uma
-// fração do espaço livre em disco), então agora é a camada usada por padrão no
-// modo 'local'. A migração é automática e NUNCA destrutiva: dado já existente no
-// localStorage (de uma versão anterior do site) é lido normalmente na primeira
-// vez e copiado pro IndexedDB — o localStorage original não é apagado.
+// Modo 'local' usa IndexedDB: o localStorage tem cota de ~5-10MB por origem,
+// compartilhada entre todas as chaves, e estourava com muitas matérias.
+// A migração é automática e não destrutiva: um valor que só exista no
+// localStorage (versões antigas) é lido e copiado pro IndexedDB, sem apagar o
+// original.
 const IDB_NAME = 'tcdf-plataforma-db';
 const IDB_STORE = 'kv';
 let idbPromise = null;

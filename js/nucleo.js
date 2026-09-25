@@ -138,16 +138,9 @@ function classifyTema(enunciado, escopoKey){
   return null;
 }
 
-// CORREÇÃO (v35): o fallback antigo usava ordem alfabética (localeCompare) pra
-// qualquer tema fora da curadoria manual de TEMA_ORDER — que só cobre Lei Orgânica
-// do TCDF (e, via FONTE_TOPICO_PARA_TEMA, Direito Tributário). Pra qualquer matéria
-// nova (ex.: AFO), TODOS os temas caíam nesse fallback e apareciam em ordem
-// alfabética, não na sequência do Edital. Agora o fallback preserva a ordem de
-// PRIMEIRA APARIÇÃO no array recebido — que reflete a ordem de primeira aparição no
-// texto importado (já que os blocos QUESTÃO/[Fonte] são processados sequencialmente
-// pelo parser), a qual por sua vez deve refletir a sequência do Edital (é assim que
-// o material de origem é gerado). TEMA_ORDER continua tendo prioridade quando existe
-// curadoria manual para o tema.
+// Temas com curadoria em TEMA_ORDER vêm primeiro, nessa ordem; os demais
+// mantêm a ordem de primeira aparição no texto importado (que segue a
+// sequência do edital), em vez de ordem alfabética.
 function ordenarTemas(lista){
   return lista
     .map((tema, idx) => ({ tema, idx }))

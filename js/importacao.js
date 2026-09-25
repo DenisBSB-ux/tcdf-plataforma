@@ -8,6 +8,7 @@ function renderImportarPage(){
       <div class="panel"><div class="pad">
         <div class="section-eyebrow">Anexação de novo processo</div>
         <h2 class="section-title">Importar questões (.txt)</h2>
+        ${fbAuth ? `<div class="import-conta" style="margin:8px 0 14px;max-width:360px;">${renderContaBlock()}</div>` : ''}
         <div class="import-field">
           <label>Nome da matéria (vira o nome da aba)</label>
           <input type="text" id="input-assunto-nome" placeholder="Ex.: Regimento Interno do TCDF" value="${esc(STATE.importDeckName)}">
@@ -178,17 +179,9 @@ function parseMarkdownQuestoes(content){
     const resolucao = blockFieldMd('Resolu[çc][ãa]o', bloco);
     const resumo = blockFieldMd('Resumo Flash', bloco);
 
-    // CORREÇÃO (v41): antes, (.+) sem limite explícito só parava no fim da
-    // LINHA — funcionava quando cada alternativa está isolada na sua própria
-    // linha, mas se o arquivo de origem tiver qualquer coisa repetida/colada
-    // depois da última alternativa (ex.: uma seção "### Alternativas"
-    // duplicada, visto em produção na matéria de Direito Previdenciário — a
-    // alternativa E acabava com o enunciado de A-E inteiro colado atrás dela),
-    // esse texto extra ia direto pro campo da última alternativa sem barreira
-    // nenhuma. Agora a captura para explicitamente na próxima alternativa, no
-    // campo Gabarito, numa linha vazia, ou no fim do bloco — o que vier
-    // primeiro — e cada letra só é aceita uma vez (a primeira ocorrência),
-    // descartando qualquer repetição de uma mesma letra mais adiante no texto.
+    // cada alternativa termina na próxima alternativa, no campo Gabarito, numa
+    // linha vazia ou no fim do bloco; cada letra só vale na primeira ocorrência
+    // (evita texto repetido/colado depois da última alternativa entrar nela)
     const altMatches = [...bloco.matchAll(/-\s*\*\*([A-E])\)\*\*\s*([\s\S]+?)(?=\s*-\s*\*\*[A-E]\)\*\*|\s*###\s*Alternativas|\s*\*\*Gabarito:\*\*|\n\s*\n|$)/gi)];
     const letrasVistas = new Set();
     const altMatchesUnicas = altMatches.filter(m=>{
@@ -511,18 +504,9 @@ let REPROCESSAMENTOS_BLOQUEADOS = [];
 function reprocessarMateriaComTexto(materiaNome, content){
   const { results } = parseTxtQuestions(content);
   if(results.length===0) return 0;
-  // CORREÇÃO (v35): antes, este reprocessamento automático (disparado sozinho a
-  // cada versão nova, sem ação do usuário) substituía TODAS as questões antigas da
-  // matéria pelo resultado do parser atual, sem checar se esse resultado era
-  // sequer razoável. Se o parser mudou entre a versão que importou o material e a
-  // versão atual (comum, dado o ritmo de mudanças no parser) e passou a reconhecer
-  // MENOS questões daquele formato específico, isso apagava dado local e da nuvem
-  // válido de forma automática e silenciosa — exatamente o padrão de "apagar por
-  // dedução" que a regra de segurança do projeto proíbe. Agora, se o resultado novo
-  // tiver menos questões que o estado atual, o reprocessamento automático é
-  // BLOQUEADO (nada é alterado) e fica registrado pra avisar o usuário — só uma
-  // reimportação manual explícita (processImportedText, ação deliberada) pode de
-  // fato substituir o conteúdo de uma matéria.
+  // Se o parser atual reconhece MENOS questões do que já existem, o
+  // reprocessamento automático é bloqueado (nada muda) e o usuário é avisado —
+  // só uma reimportação manual pode encolher uma matéria.
   const atuais = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido').length;
   if(atuais===0) return 0; // nunca cria uma matéria que não existe mais
   if(results.length < atuais){
@@ -551,10 +535,9 @@ function reprocessarMateriaComTexto(materiaNome, content){
 async function reprocessarMateriasDesatualizadas(){
   const versaoAtual = window.__TCDF_BUILD__ && window.__TCDF_BUILD__.versao;
   if(!versaoAtual) return;
-  // Reprocessar só atualiza matérias que EXISTEM agora. Um texto original
+  // Reprocessar só atualiza matérias que EXISTEM agora: um texto original
   // guardado sob um nome antigo (matéria renomeada, mesclada ou removida em
-  // outro dispositivo) não pode recriar essa matéria — era isso que fazia
-  // "LO TCDF" reaparecer ao lado de "Lei Orgânica do TCDF" a cada versão nova.
+  // outro dispositivo) não pode recriá-la como duplicata.
   const existentes = new Set(materiasDisponiveis());
   let textosOrfaos = false;
   Object.keys(TEXTOS_ORIGINAIS).forEach(m=>{
@@ -587,16 +570,9 @@ async function reprocessarMateriasDesatualizadas(){
 
 async function processImportedText(content, sugestaoNome, modoForcado){
   let materiaNome = (STATE.importDeckName||'').trim();
-  // CORREÇÃO: se o texto começar com "# Nome da Matéria" (é o que a própria
-  // plataforma escreve ao exportar via "⬇ Baixar" — ver gerarMarkdownDaMateria),
-  // usa esse título como sugestão, com prioridade sobre o nome do ARQUIVO
-  // baixado (que vem carimbado com "questoes-" e a data, ex.:
-  // "questoes-reg-interno-rev-2026-09-21.md" — nada a ver com o nome de
-  // exibição real da matéria). Sem isso, reimportar um arquivo baixado da
-  // própria plataforma sem digitar o nome manualmente criava uma matéria NOVA
-  // com o nome do arquivo, desconectando o progresso já registrado nas mesmas
-  // questões (que é identificado por matéria+número, não por um marcador
-  // escondido no arquivo).
+  // Um "# Nome da Matéria" no início (formato do "⬇ Baixar", ver
+  // gerarMarkdownDaMateria) tem prioridade sobre o nome do arquivo baixado, pra
+  // reimportar na mesma matéria e manter o progresso.
   if(!materiaNome){
     const tituloDoArquivo = content.match(/^#\s+(.+?)\s*$/m);
     if(tituloDoArquivo) materiaNome = tituloDoArquivo[1].trim();
@@ -619,15 +595,8 @@ async function processImportedText(content, sugestaoNome, modoForcado){
       return;
     }
 
-    // CORREÇÃO CRÍTICA (v40): antes, reimportar uma matéria que já existia (ex.:
-    // reenviar um arquivo corrigido pelo fluxo normal de "Importar", em vez de
-    // "➕ Inserir") não substituía nada — só ADICIONAVA por cima. Como os números
-    // das questões colidiam com os já existentes, cada uma virava uma cópia com
-    // um sufixo no uid em vez de ser reconhecida como a mesma questão sendo
-    // reimportada. Isso dobrou silenciosamente o tamanho da AFO (774→1548) e do
-    // Direito Previdenciário (199→398), sem nenhum aviso na hora. Agora, se a
-    // matéria já tem questões, o app PARA e pergunta ao usuário o que fazer —
-    // nunca mais duplica sem avisar.
+    // Matéria que já tem questões: pergunta se é pra substituir ou somar, em vez
+    // de adicionar por cima (o que duplicaria tudo com uids com sufixo).
     const existentes = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido');
     if(existentes.length>0 && !modoForcado){
       STATE.importPendente = { content, materiaNome, results, ignoradas, semGabarito, existentesCount: existentes.length };
@@ -635,13 +604,9 @@ async function processImportedText(content, sugestaoNome, modoForcado){
       return;
     }
 
-    // CORREÇÃO (v90): raiz do problema real relatado — matérias duplicadas com
-    // nomes diferentes (ex.: "LO TCDF" e "Lei Orgânica do TCDF") apareciam
-    // porque a checagem acima só compara o NOME exato; um nome levemente
-    // diferente do mesmo conteúdo passava direto e virava uma matéria nova,
-    // sem aviso algum. Agora, quando o nome é novo, o conteúdo é comparado
-    // com as matérias já existentes (por enunciado, não por nome) — se a
-    // sobreposição for forte, pergunta antes de criar uma matéria separada.
+    // Nome novo: compara o CONTEÚDO (enunciados) com as matérias existentes e, se
+    // a sobreposição for forte, pergunta antes de criar uma matéria separada com o
+    // mesmo conteúdo sob outro nome.
     if(existentes.length===0 && !modoForcado){
       const semelhante = encontrarMateriaSemelhante(materiaNome, results);
       if(semelhante){
@@ -839,18 +804,8 @@ async function extrairTextoDePdf(file, sugestaoNome, modoForcado){
   }
 }
 
-// Salvamento MANUAL e explícito, disparado pelo botão "💾 Salvar" — existe porque
-// o salvamento automático (a cada importação/ação) é silencioso: se algo falhar
-// (armazenamento local cheio, nuvem indisponível, documento grande demais pro
-// Firestore etc.), o usuário não tem hoje nenhum jeito de saber e nenhum jeito de
-// tentar de novo manualmente. Esta função sempre reporta o resultado (sucesso OU
-// motivo da falha) em vez de falhar silenciosamente.
-// corre uma Promise contra um cronômetro — se a Promise não resolver a tempo,
-// rejeita com uma mensagem clara em vez de deixar quem chamou esperando pra
-// sempre. Existe porque salvarMateriaAgora ficou com o botão "Salvando..."
-// preso indefinidamente na prática (bug real relatado) sem nenhum jeito de
-// saber o motivo nem tentar de novo — agora, na pior das hipóteses, aparece um
-// erro de tempo esgotado depois de 25s, nunca mais um travamento silencioso.
+// corre uma Promise contra um cronômetro: se não resolver a tempo, rejeita com
+// uma mensagem clara em vez de deixar o botão preso em "Salvando…"
 function comLimiteDeTempo(promise, ms, mensagemTimeout){
   return Promise.race([
     promise,
@@ -1134,7 +1089,7 @@ function renderAvisoMateriasDuplicadas(){
     <p style="font-size:12px;color:var(--ink-soft);margin-bottom:12px;">Estas matérias têm muitas questões com o mesmo enunciado. Mesclar junta tudo numa só, mantém a versão mais atual de cada questão repetida e soma o progresso.</p>
     ${pares.map(p=>`<div class="bar-row" style="flex-wrap:wrap;">
       <div class="name">"${esc(p.origem)}" ↔ "${esc(p.destino)}"</div>
-      <div class="pct" style="margin-right:8px;">${p.bateram} em comum (${Math.round(p.pct*100)}%)</div>
+      <div class="pct" style="margin-right:8px;width:auto;white-space:nowrap;">${p.bateram} em comum (${Math.round(p.pct*100)}%)</div>
       <button class="btn-outline" data-mesclar-par-origem="${esc(p.origem)}" data-mesclar-par-destino="${esc(p.destino)}" style="padding:4px 10px;font-size:11px;">🔗 Mesclar "${esc(p.origem)}" em "${esc(p.destino)}"</button>
     </div>`).join('')}
   </div>`;
@@ -1201,6 +1156,8 @@ async function buscarSubstituirMateria(materiaNome){
   });
 }
 
+// botão "💾 Salvar" de uma matéria: salva local + nuvem e sempre mostra o
+// resultado (ou o motivo da falha)
 async function salvarMateriaAgora(materiaNome){
   return comTravaDeEscrita(async ()=>{
   STATE.salvandoMateria = materiaNome;
@@ -1234,11 +1191,7 @@ async function salvarMateriaAgora(materiaNome){
   });
 }
 
-// botão único de salvar (pedido explícito: um só botão pra todas as matérias,
-// em vez de precisar clicar "Salvar" matéria por matéria depois de um lote de
-// importações). saveCustomQuestions() já salva TUDO localmente numa chamada
-// só (nunca foi por matéria); a única parte que valia a pena fazer em lote era
-// a publicação na nuvem, que aceita a lista inteira de matérias de uma vez.
+// "Salvar tudo": salva todas as matérias localmente e publica em lote na nuvem.
 async function salvarTudoAgora(){
   const materias = materiasGerenciaveis();
   if(materias.length===0) return;
@@ -1297,12 +1250,8 @@ async function renomearMateria(nomeAtual, nomeNovo){
   if(PROGRESS[nomeAtual]){ PROGRESS[nomeNovo] = PROGRESS[nomeAtual]; delete PROGRESS[nomeAtual]; }
   if(TEXTOS_ORIGINAIS[nomeAtual]){ TEXTOS_ORIGINAIS[nomeNovo] = TEXTOS_ORIGINAIS[nomeAtual]; delete TEXTOS_ORIGINAIS[nomeAtual]; salvarTextosOriginaisLocalmente(); }
   if(MATERIA_ULTIMA_ATUALIZACAO[nomeAtual]){ marcarMateriaAtualizada(nomeNovo); delete MATERIA_ULTIMA_ATUALIZACAO[nomeAtual]; }
-  // CORREÇÃO (v44): renomear não movia o simulado EM ANDAMENTO — ele ficava
-  // salvo (memória, armazenamento local e nuvem) sob o nome ANTIGO, então depois
-  // de renomear a matéria o botão "▶ Continuar" desaparecia (o app procurava por
-  // um simulado salvo com o nome NOVO, que não existia) e obrigava a reconfigurar
-  // e recomeçar do zero — bug real de produção, reportado depois de renomear
-  // matérias com o sufixo "(rev)".
+  // move também o simulado em andamento (memória, armazenamento local e nuvem)
+  // pro novo nome, senão o "Continuar" some
   if(STATE.quizzesEmAndamento[nomeAtual]){
     STATE.quizzesEmAndamento[nomeNovo] = STATE.quizzesEmAndamento[nomeAtual];
     delete STATE.quizzesEmAndamento[nomeAtual];
@@ -1360,18 +1309,10 @@ async function removerMateria(materiaNome){
   salvarTextosOriginaisLocalmente();
   delete MATERIA_ULTIMA_ATUALIZACAO[materiaNome];
   reindex();
-  // CORREÇÃO: antes, a remoção só acontecia na memória local — a matéria
-  // continuava publicada em publico/{materia} no Firestore, então recarregava
-  // sozinha na próxima visita (daqui ou de qualquer outro computador). Agora
-  // também apaga o documento na nuvem e persiste a remoção localmente.
+  // Remove localmente e marca como removida na nuvem (removido:true), pra não
+  // voltar na próxima visita de nenhum dispositivo.
   await saveCustomQuestions();
-  // CORREÇÃO (v48): a tela só atualizava DEPOIS de toda a tentativa de
-  // sincronizar a remoção com a nuvem (manifesto + cada pedaço). Mesmo com o
-  // limite de 15s por chamada, uma matéria com vários pedaços (ex.: a AFO, com
-  // 5) podia somar mais de 1 minuto de espera até a matéria desaparecer da
-  // tela — mesmo a remoção LOCAL já tendo acontecido nas linhas acima. Agora a
-  // tela atualiza IMEDIATAMENTE aqui; a tentativa de refletir a remoção na
-  // nuvem continua rodando depois, sem bloquear a percepção de "removido".
+  // atualiza a tela já; a marcação na nuvem continua depois, sem bloquear
   STATE.materiasPublicadasNestaSessao.delete(materiaNome);
   STATE.importLog = null;
   if(STATE.quiz && STATE.quiz.materia===materiaNome) STATE.quiz = null;
@@ -1384,20 +1325,13 @@ async function removerMateria(materiaNome){
     // confirmado funcionando; delete pode estar bloqueado silenciosamente
     const slug = slugify(materiaNome);
     try{
-      // CORREÇÃO CRÍTICA (v48): igual ao que já foi corrigido em loadProgress e
-      // salvarMateriaAgora — com a cota do Firestore excedida (erro real de
-      // produção: "resource-exhausted: Quota exceeded"), essas chamadas podiam
-      // ficar em backoff máximo e nunca resolver, deixando o botão "Remover"
-      // parado pra sempre. A remoção LOCAL já aconteceu acima (ALL_QUESTIONS
-      // filtrado e salvo); a partir daqui é só a tentativa de refletir isso na
-      // nuvem também, com um limite de 15s por chamada — se esgotar, a matéria
-      // já está removida neste dispositivo mesmo assim, e a tentativa de
-      // marcar como removida na nuvem fica pra próxima vez que a rede permitir.
+      // Limite de 15s por chamada (com a cota excedida o SDK pode ficar em backoff).
+      // A remoção local já aconteceu; se a nuvem falhar, fica pra próxima vez.
       const manifestDoc = await comLimiteDeTempo(fbDb.collection('publico').doc(slug).get(), 15000, 'tempo esgotado ao consultar a matéria na nuvem');
       const numChunks = (manifestDoc.exists && manifestDoc.data().numChunks) || 0;
       await comLimiteDeTempo(fbDb.collection('publico').doc(slug).set({ materia: materiaNome, questoes: [], removido: true, atualizadoEm: Date.now() }), 15000, 'tempo esgotado ao marcar a matéria como removida na nuvem');
-      // limpa também os documentos-pedaço (v37: matérias grandes ficam divididas
-      // em vários documentos) — mesmo padrão .set() com array vazio, nunca .delete()
+      // limpa também os documentos-pedaço — mesmo padrão .set() com array vazio,
+      // nunca .delete()
       for(let i=0;i<numChunks;i++){
         try{ await comLimiteDeTempo(fbDb.collection('publico').doc(`${slug}__p${i}`).set({ materia: materiaNome, chunkIndex: i, questoes: [] }), 15000, 'tempo esgotado ao limpar pedaço na nuvem'); }
         catch(e){ console.error(`Falha ao limpar o pedaço ${i} da matéria na nuvem`, e); }
@@ -1434,17 +1368,8 @@ async function removerMateria(materiaNome){
   await saveCustomQuestions();
   try{ await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS)); }catch(e){ console.error('Falha ao salvar progresso', e); }
   await pushToCloud();
-  // CORREÇÃO (v35): esta função chamava despublicarMateria() aqui, que faz um
-  // .delete() no documento inteiro — exatamente o `.delete()` que o comentário
-  // logo acima (bloco do `.set({...removido:true})`) explica que NÃO deve ser
-  // usado, porque pode estar bloqueado silenciosamente pelas regras do Firestore.
-  // Pior: se o delete tivesse sucesso, ele apagava o próprio tombstone
-  // `removido:true` gravado poucas linhas acima — a marcação explícita de
-  // remoção deixava de existir, e qualquer leitura futura da coleção "publico"
-  // não tinha mais como distinguir "nunca existiu" de "foi removido de propósito".
-  // Isso é exatamente o padrão de perda de dado que a regra de segurança do
-  // projeto proíbe. Removida — o `.set({...removido:true})` acima já é, sozinho,
-  // a fonte de verdade da remoção.
+  // Nunca .delete() aqui: o .set({removido:true}) acima é a marca explícita de
+  // remoção, e apagá-lo faria a matéria voltar de cópias antigas.
   });
 }
 

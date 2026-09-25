@@ -3,12 +3,8 @@ function renderQuiz(){
   const quiz = STATE.quiz;
   if(quiz.finished) return renderResults();
 
-  // CORREÇÃO (v69): remove uid duplicado da fila (mesma questão aparecendo mais
-  // de uma vez) — resíduo possível de sessões criadas antes de uma limpeza de
-  // duplicatas na matéria. Cada repetição contava a mais na grade de questões
-  // respondidas (uma questão respondida virava "2 verdes" em vez de 1). Mantém
-  // a primeira ocorrência de cada uid, remove as repetições, e ajusta a posição
-  // atual se ela tiver ficado fora dos limites depois da limpeza.
+  // remove uids repetidos da fila (mantém a primeira ocorrência) e ajusta a
+  // posição atual se ela ficou fora dos limites
   const uidsVistos = new Set();
   const filaLimpa = quiz.queue.filter(u=>{
     if(uidsVistos.has(u)) return false;
@@ -21,25 +17,17 @@ function renderQuiz(){
     salvarQuizEmAndamento();
   }
 
-  // CORREÇÃO (v70): reconcilia a fila com a base ATUAL de questões válidas da
-  // matéria — uma fila criada antes de uma limpeza de duplicatas pode ainda
-  // referenciar uids que não existem mais (órfãs) e, ao mesmo tempo, não
-  // incluir uids válidos que já foram respondidos em algum momento (porque a
-  // fila ficou "congelada" num estado anterior). Sem isso, o grid nunca
-  // conseguia bater com o "37" do topo, porque a fila em si não representava
-  // mais o conjunto completo e atual da matéria. Não mexe em filas de "refazer
-  // erros" (origemErros), que são intencionalmente um subconjunto à parte.
+  // reconcilia a fila com as questões válidas ATUAIS da matéria: tira uids que
+  // não existem mais e inclui os que faltam. Filas de "refazer erros"
+  // (origemErros) são um subconjunto de propósito e não são tocadas.
   if(!quiz.origemErros && quiz.materia){
     const poolAtual = ALL_QUESTIONS.filter(q2=>q2.materia===quiz.materia && !q2.duplicataOculta && (q2.t==='CE'||q2.t==='MC'));
     const poolUids = new Set(poolAtual.map(q2=>q2.uid));
     const semOrfas = quiz.queue.filter(u=>poolUids.has(u));
     const queueUidsAtuais = new Set(semOrfas);
     const faltando = poolAtual.filter(q2=>!queueUidsAtuais.has(q2.uid)).map(q2=>q2.uid);
-    // CORREÇÃO (v71): além de reconciliar, reordena por número sequencial da
-    // questão (em vez de deixar na ordem antiga, por ano da prova) — assim as
-    // já respondidas ficam agrupadas do início em diante, em vez de espalhadas
-    // pela fila. Preserva a posição atual pelo UID da questão que estava sendo
-    // vista, não pelo índice (que muda de lugar com a reordenação).
+    // ordena pelo número da questão (as já respondidas ficam agrupadas) e
+    // preserva a posição atual pelo uid, não pelo índice
     const uidAtualAntes = quiz.queue[quiz.idx];
     const filaReconciliada = semOrfas.concat(faltando);
     const filaOrdenada = [...filaReconciliada].sort((ua,ub)=>((BY_UID[ua]&&BY_UID[ua].n)||0)-((BY_UID[ub]&&BY_UID[ub].n)||0));
@@ -228,18 +216,10 @@ function renderResolucaoPlaceholder(){
   </div>`;
 }
 
-// campo editável: se o usuário já customizou esse campo, mostra o HTML salvo
-// dele; senão, mostra a formatação automática de sempre (termos decisivos +
-// palavras-chave do gabarito). O botão de lápis alterna pro modo de edição.
-// CORREÇÃO (pedido do usuário): antes cada campo (Enunciado/Resolução/Resumo
-// Flash) tinha seu próprio rótulo + botão "Editar" independente, e só um
-// campo por vez entrava em modo de edição (edicaoAtual = {uid, campo}). Isso
-// também só existia no modo Normal — o modo Foco renderizava o enunciado com
-// HTML fixo, sem checar EDICOES_USUARIO nem oferecer edição, então uma edição
-// feita no modo Normal não aparecia no modo Foco. Agora é um único botão
-// "Editar questão" por questão (edicaoAtual = uid), que põe os três campos em
-// modo de edição juntos, com uma barra de ferramentas e um "Salvar" únicos —
-// e o mesmo bloco de enunciado é usado nos dois modos.
+// campo editável: mostra o HTML salvo pelo usuário (sanitizado), senão a
+// formatação automática (termos decisivos + palavras-chave do gabarito).
+// Um único "Editar questão" (edicaoAtual = uid) põe enunciado, resolução e
+// resumo flash em edição juntos; o mesmo bloco serve aos modos Normal e Foco.
 function editorToolbarHtml(uid){
   return `<div class="editor-toolbar">
     <button data-editar-acao="bold" title="Negrito"><b>B</b></button>
@@ -292,11 +272,9 @@ function renderResolucao(q, resposta, quiz){
   const tintClass = correto ? 'tint-correct' : 'tint-incorrect';
   const feedbackClass = correto ? 'correct' : 'incorrect';
   const temProxima = quiz && quiz.idx < quiz.queue.length-1;
-  // CORREÇÃO (v63): não há mais botão manual de finalizar — a finalização é
-  // sempre automática (ver pickAnswer), assim que a última questão da fila é
-  // respondida. Se o usuário respondeu fora de ordem (pulou questões) e chegou
-  // na última posição da fila sem ainda ter respondido todas, mostra um botão
-  // pra ir direto pra primeira ainda não respondida, em vez de finalizar.
+  // A finalização é automática (ver pickAnswer). Se a última posição da fila
+  // foi respondida mas ainda há questões puladas, mostra um botão pra ir à
+  // primeira não respondida.
   const proximaNaoRespondidaIdx = (!temProxima && Object.keys(quiz.respostas).length < quiz.queue.length)
     ? quiz.queue.findIndex(uid => !quiz.respostas[uid]) : -1;
   const palavrasChave = palavrasChaveDaRespostaCorreta(q);
@@ -327,10 +305,8 @@ function pickAnswer(opt){
   const correct = opt === gabaritoEfetivo(q);
   quiz.respostas[uid] = { picked: opt, correct };
   registrarResposta(quiz.materia, uid, correct);
-  // CORREÇÃO (v63): finalização agora é SEMPRE automática, nunca manual — assim
-  // que a última questão da fila é respondida (em qualquer ordem, mesmo se o
-  // usuário pulou questões e voltou depois), o simulado se finaliza sozinho.
-  // O botão manual "Finalizar e ver resultado" foi removido de propósito.
+  // finaliza sozinho assim que todas as questões da fila foram respondidas, em
+  // qualquer ordem
   if(Object.keys(quiz.respostas).length >= quiz.queue.length){
     finalizarQuiz();
     return;
@@ -555,12 +531,8 @@ function renderStats(){
   const bucket = getBucket(STATE.materia);
   const niveis = { alta:[0,0], media:[0,0], baixa:[0,0] };
   const byTema = {};
-  // CORREÇÃO: aqui embaixo ainda somava p.acertos/p.tentativas (histórico
-  // cumulativo de TODAS as tentativas já dadas), enquanto o "Acerto geral" no
-  // topo desta mesma página já tinha sido corrigido pra usar o resultado
-  // ATUAL de cada questão (ultimoResultado) — os dois nunca batiam entre si
-  // (ex.: Direito Civil, Contratos). Agora os dois usam exatamente a mesma
-  // definição: cada questão conta 1 vez, pelo seu resultado mais recente.
+  // cada questão conta uma vez, pelo resultado mais recente — mesma definição
+  // do "Acerto geral" do topo
   Object.entries(bucket.perguntas).forEach(([uid,p])=>{
     const q = BY_UID[uid]; if(!q || q.materia!==STATE.materia) return;
     if(STATE.tema!=='todos' && q.tema!==STATE.tema) return;
@@ -682,10 +654,8 @@ function htmlParaTextoPlano(html){
   div.querySelectorAll('div,p').forEach(el=>{ el.insertAdjacentText('afterend','\n'); });
   return (div.textContent||'').replace(/\n{3,}/g,'\n\n').trim();
 }
-// texto EFETIVO de um campo — a edição manual do usuário, se existir, senão o
-// original. Usada no download pra garantir que alterações feitas na tela sejam
-// mantidas no arquivo exportado (pedido explícito: "se eu fizer o download,
-// mantenha todas as alterações").
+// texto efetivo de um campo: a edição manual do usuário, se existir, senão o
+// original — o download mantém as alterações feitas na tela
 function textoEfetivoDoCampo(q, campo){
   const custom = EDICOES_USUARIO[q.uid] && EDICOES_USUARIO[q.uid][campo];
   if(custom) return htmlParaTextoPlano(custom);

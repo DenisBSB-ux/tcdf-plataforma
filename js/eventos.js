@@ -33,18 +33,11 @@ function attachHandlers(){
   if(btnToggleMateriaMenu) btnToggleMateriaMenu.addEventListener('click', ()=>{ STATE.materiaMenuAberto = !STATE.materiaMenuAberto; render(); });
   root.querySelectorAll('[data-macro-materia]').forEach(el=>{
     el.addEventListener('click', ()=>{
-      // CORREÇÃO (v60): salva explicitamente o simulado ativo (se houver) antes
-      // de trocar de matéria — antes, isso dependia só do salvamento automático
-      // já ter rodado depois da última resposta, sem nenhuma garantia explícita
-      // no exato momento da troca.
+      // salva o simulado ativo antes de trocar de matéria
       if(STATE.quiz) salvarQuizEmAndamento();
       const novaMateria = el.dataset.macroMateria;
-      // força reconferir o armazenamento local desta matéria ao entrar nela de
-      // novo — antes, uma vez conferida numa sessão, nunca mais era reconferida
-      // (mesmo saindo e voltando), então qualquer dessincronia entre o que
-      // ficou em memória e o que está realmente salvo nunca se corrigia
-      // sozinha. Relatado em produção: responder, trocar de matéria, voltar —
-      // "Continuar" sumia mesmo com o progresso salvo.
+      // reconfere o armazenamento local desta matéria a cada entrada, pra corrigir
+      // qualquer diferença entre memória e o que está salvo (botão "Continuar")
       STATE.quizzesVerificados.delete(novaMateria);
       STATE.materia = novaMateria;
       STATE.tema = 'todos';
@@ -272,10 +265,7 @@ function attachHandlers(){
           }
         });
         salvarEdicoesUsuario();
-        // CORREÇÃO: edições ficavam só no armazenamento local — não sincronizavam
-        // com a nuvem. Agora, salvar a edição também marca a matéria como
-        // pendente e dispara o envio imediatamente (pedido explícito: "altere e
-        // salve imediatamente").
+        // salvar a edição marca a matéria como pendente e envia pra nuvem na hora
         const qEditada = BY_UID[uid];
         if(qEditada){ marcarProgressoSujo(qEditada.materia); pushToCloud(); }
         edicaoAtual = null;

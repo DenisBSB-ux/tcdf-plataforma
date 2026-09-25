@@ -161,11 +161,8 @@ function render(){
   attachHandlers();
 }
 
-// CORREÇÃO (v35): antes, falhas de storageSet/storageGet (armazenamento local
-// cheio, indisponível, bloqueado pelo navegador etc.) só iam pro console.error —
-// completamente invisíveis pro usuário, que só descobria o problema depois de
-// atualizar a página e ver dado sumido. Agora aparece este banner fixo, com opção
-// de tentar salvar tudo de novo na hora.
+// Banner fixo quando storageSet/storageGet falham (armazenamento cheio,
+// bloqueado etc.), com opção de tentar salvar tudo de novo.
 function renderAvisoStorage(){
   return `<div style="position:sticky;top:0;z-index:500;background:var(--stamp-red);color:#fff;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
     <span>⚠️ ${esc(STATE.avisoStorage)}</span>
@@ -174,14 +171,8 @@ function renderAvisoStorage(){
   </div>`;
 }
 
-// CORREÇÃO (causa real de "estatísticas diferentes em outro PC"): o progresso
-// (respostas, acertos/erros) só vai pra nuvem se o dispositivo tiver um
-// "código de sincronização" configurado — e se não tiver (ou o código for
-// diferente do outro aparelho), isso falhava 100% em silêncio: nenhum erro,
-// nenhum aviso, o app continuava funcionando normalmente só que sem sincronizar
-// nada. O único aviso disso existia escondido numa caixinha pequena da barra
-// lateral, fácil de nunca notar. Agora, sem código conectado, aparece um
-// banner fixo no topo de TODA página, impossível de não ver.
+// Sem código de sincronização o progresso não vai pra nuvem — por isso este
+// banner aparece no topo de toda página até um código ser conectado.
 function renderAvisoSyncAusente(){
   if(!FIREBASE_OK || STATE.syncCode || STATE.avisoSyncDispensado) return '';
   return `<div style="position:sticky;top:0;z-index:499;background:var(--gold-bright,#c9a227);color:#1a1200;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -214,15 +205,9 @@ function scoreableFiltradas(){
   return questoesFiltradas().filter(q => q.t==='CE' || q.t==='MC');
 }
 
-// CORREÇÃO: "certas/erradas" antes somava TODAS as tentativas históricas
-// (p.tentativas/p.acertos) — uma questão errada uma vez e depois corrigida
-// numa tentativa posterior continuava contando como "errada" pra sempre
-// nesse total, mesmo já tendo desaparecido do Caderno de erros (que sempre
-// olha só o ÚLTIMO resultado, via p.ultimoResultado). Isso fazia "Erradas"
-// no cabeçalho nunca bater com a quantidade real no Caderno de erros — o
-// usuário via, por ex., "10 erradas" no topo e o Caderno de erros vazio.
-// Agora os dois usam exatamente a mesma definição (resultado atual por
-// questão), então "Erradas" aqui sempre é igual a getCadernoErros().length.
+// "Certas/erradas" usam o resultado ATUAL de cada questão (p.ultimoResultado),
+// a mesma definição do Caderno de erros — então "Erradas" aqui é sempre igual
+// a getCadernoErros().length.
 function computeSnapshot(){
   if(!STATE.materia) return { respondidas:0, tent:0, ac:0, taxa:0, erros:0, totalPontuavel:0 };
   const bucket = getBucket(STATE.materia);
@@ -238,20 +223,9 @@ function computeSnapshot(){
   return { respondidas: nums.length, tent, ac, taxa: pct(ac,tent), erros: erradas, totalPontuavel: scoreableFiltradas().length };
 }
 
-// mesma métrica de computeSnapshot, mas pra QUALQUER matéria (não só a atualmente
-// selecionada) e sem filtro de assunto — usada pra mostrar "% geral | certo |
-// errado | total" ao lado do nome de cada disciplina no menu
-// CORREÇÃO: contava QUALQUER registro em bucket.perguntas, mesmo de uma
-// questão que não existe mais em ALL_QUESTIONS (órfã — sobra de um reimport,
-// dedup ou remoção anterior que apagou a questão mas não o registro de
-// progresso dela). O computeSnapshot() do topo da página já ignorava órfãs;
-// esta função não, e por isso as duas nunca batiam (ex.: tabela mostrando
-// mais "respondidas" que o cabeçalho, pra mesma matéria).
-// agrupa TODAS as respostas já dadas nesta matéria por dia (data local do
-// navegador), calculando a taxa de acerto de cada dia — base pro gráfico de
-// tendência em linha. Cada questão carrega seu próprio histórico (até 20
-// tentativas mais recentes, ver registrarResposta), então isto varre todas as
-// questões da matéria e junta os eventos numa única linha do tempo.
+// agrupa todas as respostas já dadas nesta matéria por dia (data local),
+// calculando a taxa de acerto de cada dia — base pro gráfico de tendência.
+// Cada questão guarda só as 20 tentativas mais recentes (ver registrarResposta).
 function computeTendenciaDiariaMateria(materiaKey){
   const bucket = getBucket(materiaKey);
   const porDia = {}; // { 'AAAA-MM-DD': {acertos, total} }
@@ -357,12 +331,9 @@ const MATRIZ_PROBABILIDADE = {
 function probabilidadeCalculada(q){
   if(q.pp) return null; // já existe um valor explícito da fonte, não sobrepor
   const narrativa = narrativaBanca(q);
-  // CORREÇÃO (v54): antes, se narrativaBanca não tivesse veredito, caía de
-  // volta na MATRIZ_PROBABILIDADE (q.nv/q.td) — os mesmos campos fabricados
-  // por questão que causam o bug relatado ("Assunto novo, Alta
-  // probabilidade" numa questão de Interpretação de Textos). Removido: sem
-  // dado real suficiente (poucas provas na base), o correto é não afirmar
-  // nada, não inventar uma probabilidade com base num palpite por questão.
+  // Sem veredito de narrativaBanca (poucas provas reais na base), não afirma
+  // nenhuma probabilidade — q.nv/q.td são palpites gerados por questão e não
+  // servem pra isso.
   return (narrativa && narrativa.forcaProbabilidade) || null;
 }
 function probabilidadeCalculadaBadge(q){
@@ -372,16 +343,10 @@ function probabilidadeCalculadaBadge(q){
   return `<span class="prob-badge prob-calc ${cor}" title="Estimativa combinando nível de incidência histórica e tendência recente — não é um campo direto da fonte">🎯 ${p} probabilidade</span>`;
 }
 
-// CORREÇÃO (v54): a versão antiga lia q.fr — o texto "📊 Incidência
-// histórica: N concursos distintos..." que o Gemini FABRICA por questão no
-// momento da geração, sem de fato contar provas. Pra Português (e qualquer
-// matéria com texto-base único por questão), isso é sempre ~1, fazendo toda
-// questão parecer "assunto novo" com probabilidade forçada Alta — o bug
-// relatado. A versão nova usa analisarTemasDaMateria, que conta PROVAS REAIS
-// DISTINTAS (valores únicos de q.bc) na base inteira daquela matéria, não um
-// palpite por questão. "Como a banca pensa" agora reflete o que de fato está
-// importado, e avisa explicitamente quando a amostra ainda é pequena, em vez
-// de travestir "poucos dados" de "assunto novo e quente".
+// "Como a banca pensa": usa analisarTemasDaMateria, que conta PROVAS REAIS
+// DISTINTAS (valores únicos de q.bc) na matéria, e não q.fr ("Incidência
+// histórica" que o gerador de questões inventa por questão). Com amostra
+// pequena, avisa que há poucos dados em vez de inventar um veredito.
 function narrativaBanca(q){
   if(isInedita(q)) return null;
   if(!q.tema || !q.materia) return null;
@@ -513,23 +478,11 @@ function ehQuestaoDeBancaReal(q){
   const b = bancaCurta(q.bc);
   return !!b && b !== '—';
 }
-// CORREÇÃO (v54): o cálculo antigo tratava altaCount/quenteCount por QUESTÃO,
-// usando q.nv/q.td — campos preenchidos a partir da "📊 Incidência histórica"
-// que o Gemini fabrica POR QUESTÃO no momento da geração (sem contar exames
-// de verdade, é só um palpite do texto). Isso mistura duas coisas diferentes:
-// "quantas questões dessa matéria eu tenho na minha base" (tamanho da minha
-// coleção) com "quão comum é esse assunto nas provas reais" (o que a pessoa
-// de fato quer saber). Um assunto clássico e onipresente (ex.: Interpretação
-// de Textos) pode ter só 1-2 questões na base agora e ainda assim aparecer
-// como "assunto novo, alta probabilidade" — exatamente o bug relatado.
-//
-// A métrica nova conta PROVAS REAIS DISTINTAS (cada valor único de q.bc —
-// banca+cargo+ano — é 1 prova), não questões. "Score" = % de provas da minha
-// base que cobraram esse assunto, ponderando mais o comportamento recente
-// (últimos 5 anos) do que o histórico total, porque bancas mudam ênfase.
-// Sample size pequeno (poucas provas na base) reduz a CONFIANÇA da
-// estimativa, mas nunca é convertido em "score forçado alto" como antes —
-// preferimos avisar "poucos dados" a inventar um veredito.
+// Incidência por assunto medida em PROVAS REAIS DISTINTAS (cada valor único de
+// q.bc — banca+cargo+ano — é uma prova), não em quantidade de questões na base
+// nem nos campos q.nv/q.td (palpites gerados por questão).
+// Score = % das provas da base que cobraram o assunto, com peso maior nos
+// últimos 5 anos. Amostra pequena reduz a confiança, nunca vira score alto.
 function contarProvasDistintas(qs){
   const set = new Set();
   qs.forEach(q => { if(q.bc) set.add(q.bc); });
@@ -608,13 +561,8 @@ function analisarTemasDaMateria(materiaKey){
   }).filter(Boolean).sort((a,b)=>b.score-a.score || b.total-a.total);
 }
 
-// dashboard analítico por matéria: mapeia os temas centrais mais recorrentes de
-// cada assunto (item 2) e destaca os de maior probabilidade de cobrança futura
-// (item 3) — pensado pra aparecer logo abaixo de "Configurar simulado"
-// nome, acertos, erros e percentual de CADA matéria (não só a selecionada) —
-// pedido explícito do usuário, exibido na página principal (renderLanding)
-// faixa de cor pastel pro percentual, conforme pedido: 90-100 verde claro,
-// 70-89 amarelo claro, 0-69 vermelho claro; sem tentativas = neutro
+// faixa de cor pastel pro percentual: 90-100 verde claro, 70-89 amarelo claro,
+// 0-69 vermelho claro; sem tentativas = neutro
 function faixaCorPct(pct, respondidas){
   if(!respondidas) return { bg:'#f3f1ea', fg:'#7a7566', fgForte:'#7a7566' };
   // faixas pedidas: 100-90% azul, 89-80% verde, 79-70% amarelo, 69-0% vermelho
@@ -624,14 +572,8 @@ function faixaCorPct(pct, respondidas){
   if(pct>=70) return { bg:'#fdf4d9', fg:'#8a6416', fgForte:'#7a5a10' };
   return { bg:'#fce6e4', fg:'#a3352c', fgForte:'#8f2a22' };
 }
-// gráfico dos totais gerais (pedido explícito): Total geral respondidas,
-// Total hoje e Média diária. Como "% de acerto" e "questões por dia" são
-// unidades diferentes, em vez de forçar as três num único eixo (o que
-// distorceria a leitura), uso duas peças visuais lado a lado: um anel de
-// certas x erradas pro total geral, e barras comparando hoje x média diária
-// (essas duas sim são diretamente comparáveis, mesma unidade).
-// anel compacto de acerto geral — canto superior direito do card (pedido
-// explícito), substitui o banner de texto "Total geral respondidas" (removido)
+// anel compacto de acerto geral (certas x erradas), no canto superior direito
+// do card
 function renderAnelAcertoGeral(totalAcertos, totalErros){
   const total = totalAcertos + totalErros;
   const pctGeral = total>0 ? pct(totalAcertos, total) : 0;
@@ -692,11 +634,9 @@ function renderEstatisticasPorMateria(){
   `;
 }
 
-// agrega o histórico de respostas de TODAS as matérias, agrupado por dia —
-// usado pelos totais gerais da aba Tabela (pedido explícito: total diário e
-// média diária). O histórico de cada questão guarda só as últimas 20
-// tentativas (ver registrarResposta), então isso reflete a atividade
-// recente, não necessariamente o total histórico absoluto de sempre.
+// agrega o histórico de respostas de TODAS as matérias por dia — totais e
+// média diária da aba Tabela. Como cada questão guarda só as últimas 20
+// tentativas, reflete a atividade recente, não o total absoluto.
 function computeAtividadeDiariaGeral(){
   const porDia = {};
   Object.values(PROGRESS).forEach(bucket=>{
@@ -751,14 +691,12 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
     }).join('')}`;
   return cabecalhoTabela;
 }
-// paleta de cores distintas por matéria (pedido explícito: "cores diversas por
-// matéria") — cíclica, cobre qualquer quantidade de matérias sem repetir cor
-// entre vizinhas até passar de 12
+// paleta de cores por matéria — cíclica; não repete cor entre vizinhas até
+// passar de 12 matérias
 const PALETA_CORES_MATERIA = ['#2563eb','#dc2626','#059669','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#4338ca','#0d9488','#be123c'];
 
-// gráfico único (pedido explícito): todas as matérias no eixo X, % de acerto
-// no eixo Y, cada matéria com sua própria cor — diferente da grade de
-// tendências abaixo, que mostra a evolução diária de CADA matéria separada
+// gráfico único: todas as matérias no eixo X, % de acerto no eixo Y, cada uma
+// com sua cor (a grade de tendências abaixo mostra a evolução de cada matéria)
 function renderGraficoComparativoMaterias(linhas){
   const comResposta = linhas.filter(l=>l.respondidas>0);
   if(comResposta.length<2){
@@ -766,11 +704,8 @@ function renderGraficoComparativoMaterias(linhas){
   }
   const largura = Math.max(360, comResposta.length*70);
   const margemEsq = 34, margemDir = 14, margemTopo = 14, margemBaixo = 64;
-  // CORREÇÃO (pedido explícito): limite inferior = a menor porcentagem real
-  // (arredondada pra baixo em múltiplo de 5), limite superior sempre FIXO em
-  // 100% — não mais adaptável nos dois lados. Linhas de grade a cada 5% exatos
-  // (não mais um número fixo de divisões), e a altura do gráfico cresce com a
-  // quantidade de linhas, pra aumentar o espaçamento entre elas.
+  // eixo Y: de a menor porcentagem real (arredondada pra baixo em múltiplo de 5)
+  // até 100% fixo, com grade a cada 5%; a altura cresce com o número de linhas
   const pcts = comResposta.map(l=>l.pct);
   const minEixo = Math.max(0, Math.floor(Math.min(...pcts)/5)*5);
   const maxEixo = 100;
@@ -919,9 +854,8 @@ function renderLetterhead(){
     </div>
     <div class="snapshot">
       ${(()=>{
-        // (pedido explícito) total geral (todas as matérias juntas), no mesmo
-        // formato de texto já usado no resto do cabeçalho — Acerto geral % /
-        // Total Geral / Certas / Erradas — em vez do anel gráfico
+        // total geral (todas as matérias juntas) no mesmo formato de texto do resto
+        // do cabeçalho
         if(materiasDisponiveis().length<2) return '';
         let totalAcertos=0, totalErros=0, totalGeral=0;
         materiasDisponiveis().forEach(m=>{
@@ -1117,14 +1051,9 @@ function renderLanding(){
   }
   const quizSalvo = STATE.quizzesEmAndamento[STATE.materia] && !STATE.quizzesEmAndamento[STATE.materia].finished
     ? STATE.quizzesEmAndamento[STATE.materia] : null;
-  // CORREÇÃO (v65): antes contava só Object.keys(quizSalvo.respostas).length —
-  // as respostas dadas SÓ nesta sessão específica, que zera toda vez que
-  // "Configurar novo simulado" cria uma fila nova (mesmo cobrindo as mesmas
-  // questões de antes). Isso causava a confusão relatada: "3/200" na sessão
-  // atual vs "35/2/200" no total histórico da matéria — os dois deveriam bater,
-  // já que agora a fila sempre cobre a matéria inteira. Agora conta quantas
-  // questões da fila JÁ têm alguma tentativa registrada no histórico da
-  // matéria (bucket), não só as respondidas dentro desta sessão em memória.
+  // Progresso do simulado salvo = questões da fila que JÁ têm tentativa no
+  // histórico da matéria (bucket), não só as respondidas nesta sessão — assim
+  // bate com o total histórico da matéria.
   const bucketAtual = STATE.materia ? getBucket(STATE.materia) : null;
   const respondidasNaFila = (quizSalvo && bucketAtual)
     ? quizSalvo.queue.filter(uid => bucketAtual.perguntas[uid] && bucketAtual.perguntas[uid].tentativas>0).length
@@ -1132,10 +1061,8 @@ function renderLanding(){
   const infoSalvo = quizSalvo ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">
     <b>Simulado salvo:</b> ${respondidasNaFila}/${quizSalvo.queue.length} respondidas${quizSalvo.ultimoSalvamento ? ` · 💾 ${formatarDataHoraSalvamento(quizSalvo.ultimoSalvamento)}` : ''}
   </div>` : '';
-  // CORREÇÃO (v63): "Configurar novo simulado" agora só aparece quando NÃO há
-  // nada em andamento (listas novas, de verdade) — pedido explícito. Quando já
-  // existe um simulado em andamento, os botões são "Continuar" + "Reiniciar"
-  // (do zero, mesma fila/filtros); nunca os dois grupos ao mesmo tempo.
+  // Sem simulado em andamento: "Configurar novo simulado". Com simulado em
+  // andamento: "Continuar" + "Reiniciar". Nunca os dois grupos juntos.
   const botoesAcao = `<div style="display:flex; gap:8px; flex-wrap:wrap;">
     ${quizSalvo ? `<button class="btn btn-gold btn-sm" id="btn-continuar-simulado" style="flex:1;justify-content:center;min-width:140px;">▶ Continuar da última questão</button>
     <button class="btn-outline btn-sm" id="btn-reiniciar-simulado" style="flex:1;justify-content:center;min-width:140px;">🔄 Reiniciar simulado</button>`
@@ -1319,33 +1246,22 @@ function startQuiz(nums){
     if(w) w.textContent = 'Nenhuma questão encontrada com esses filtros. Ajuste a seleção.';
     return;
   }
-  // CORREÇÃO (v61): antes, esse aviso só existia no botão "🆕 Novo" (removido —
-  // agora são só dois botões: Continuar / Configurar novo simulado). Iniciar um
-  // simulado novo pela tela de Configurar sobrescrevia silenciosamente um
-  // simulado em andamento, sem nenhum aviso. A proteção agora mora aqui, no
-  // ponto real onde a sobrescrita aconteceria — vale pra qualquer caminho que
-  // chegue até esta função, não só um botão específico.
+  // Iniciar um simulado novo por qualquer caminho pede confirmação se já há um
+  // em andamento nesta matéria (senão a fila dele seria descartada sem aviso).
   const emAndamento = STATE.quizzesEmAndamento[STATE.materia];
   if(emAndamento && !emAndamento.finished && !nums){
     const ok = window.confirm('Você tem um simulado em andamento nesta matéria. Iniciar um novo vai descartar a fila dele (as respostas já dadas continuam valendo pro seu progresso geral). Deseja continuar?');
     if(!ok) return;
   }
-  // CORREÇÃO (v67): um simulado novo agora prioriza questões AINDA NÃO
-  // respondidas nesta matéria — evita pedir pra refazer o que você já
-  // acertou/errou antes só porque configurou de novo. Só volta a incluir TODAS
-  // (inclusive as já respondidas) quando não sobra nenhuma questão nova dentro
-  // do filtro escolhido — aí sim "configurar de novo" quer dizer revisar tudo
-  // outra vez, não avançar pro que falta.
+  // Simulado novo prioriza questões AINDA NÃO respondidas dentro do filtro; só
+  // volta a incluir as já respondidas quando não sobra nenhuma nova.
   const bucketAtual = (!nums && STATE.materia) ? getBucket(STATE.materia) : null;
   const naoRespondidas = bucketAtual
     ? candidatosTotais.filter(q => !(bucketAtual.perguntas[q.uid] && bucketAtual.perguntas[q.uid].tentativas>0))
     : candidatosTotais;
   const candidatos = naoRespondidas.length>0 ? naoRespondidas : candidatosTotais;
-  // CORREÇÃO (v64): antes, um simulado novo pegava só setup.qtd questões (padrão
-  // 20) do total disponível — "finalizar" passou a significar "terminei esse
-  // lote", não "terminei a matéria". Pedido explícito: manter aberto até
-  // responder TUDO que bate com o filtro. Agora sempre usa o total de
-  // candidatos, nunca um subconjunto limitado.
+  // Usa todos os candidatos do filtro (nunca um lote limitado): o simulado fica
+  // aberto até responder tudo.
   const qtd = candidatos.length;
   // ordena pelas questões mais recentes primeiro (ano de aplicação, decrescente),
   // exceto quando é um conjunto específico (refazer erros), que mantém a ordem dada

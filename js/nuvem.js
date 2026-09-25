@@ -7,13 +7,8 @@ const LAST_SYNC_KEY = 'sim-ultimo-sync';
 function quizStorageKey(materiaKey){
   return 'quiz-atual-' + slugify(materiaKey);
 }
-// CORREÇÃO: refazerQuestao/refazerTodasErros usavam a MESMA chave
-// (quiz.materia) que o simulado geral em quizzesEmAndamento — a primeira
-// resposta dentro de uma sessão de "caderno de erros" sobrescrevia o
-// progresso do simulado geral daquela matéria, tornando impossível voltar
-// pra ele depois (mesmo com o aviso de confirmação, o dado já tinha sido
-// substituído). Sessões de refazer erros agora usam uma chave própria
-// ('materia::erros'), nunca tocando no slot do simulado geral.
+// Sessões de "refazer erros" usam uma chave própria ('materia::erros'),
+// pra nunca sobrescrever o simulado geral em andamento da mesma matéria.
 function chaveEmAndamento(quiz){
   return quiz.materia + (quiz.origemErros ? '::erros' : '');
 }
@@ -44,13 +39,9 @@ function flushQuizSyncPendente(){
   quizSyncPendente = null;
   sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz);
 }
-// grava só o campo desta matéria dentro do quizzesEmAndamento — lê o estado
-// atual, atualiza só essa chave e regrava tudo como uma única string JSON.
-// CORREÇÃO (v42): antes usava merge:true num campo aninhado nativo do
-// Firestore, que soma entradas de índice por chave/elemento (mesmo problema
-// que afetou 'progress' — ver pushToCloud). Como isso não é mais um merge de
-// campo do Firestore, agora precisa ler o documento primeiro pra não perder o
-// que já estava salvo pra outras matérias.
+// grava só o campo desta matéria dentro do quizzesEmAndamento: lê o estado
+// atual, atualiza essa chave e regrava tudo como uma única string JSON (um
+// campo aninhado nativo gastaria uma entrada de índice por chave).
 async function sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz){
   if(!FIREBASE_OK || !STATE.syncCode) return;
   try{
@@ -90,35 +81,18 @@ async function carregarQuizSalvo(materiaKey){
 async function verificarQuizSalvo(materiaKey){
   const q = await carregarQuizSalvo(materiaKey);
   const atual = STATE.quizzesEmAndamento[materiaKey];
-  // CORREÇÃO: antes, essa leitura local sobrescrevia SEM checar nada — se a busca
-  // na nuvem (mais recente) já tivesse resolvido primeiro, essa leitura local
-  // (mais lenta em alguns aparelhos) apagava o progresso correto com uma cópia
-  // desatualizada só porque terminou depois. Agora só sobrescreve se não houver
-  // nada em memória ainda, ou se o que veio do armazenamento local for de fato
-  // mais recente que o que já está lá (mesma regra usada no merge com a nuvem).
-  // CORREÇÃO REAL (v59): a condição anterior tinha "!q" como gatilho de
-  // sobrescrita — ou seja, quando NÃO havia nada salvo localmente (comum ao
-  // acessar de outro PC, onde o simulado em andamento só existe via
-  // sincronização da nuvem, trazida por pullFromCloud ANTES desta função
-  // rodar), o código ainda entrava neste bloco e SOBRESCREVIA o progresso
-  // correto (já carregado da nuvem) com null — apagando o "▶ Continuar" e
-  // forçando reconfigurar do zero. Agora só sobrescreve quando o armazenamento
-  // local realmente tem algo (q existe) E (ainda não havia nada em memória, ou
-  // o que veio do armazenamento local é de fato mais recente que o que já
-  // estava lá) — a ausência de cópia local nunca mais apaga um progresso que
-  // já estava correto.
+  // Só sobrescreve quando o armazenamento local tem um simulado E (não havia
+  // nada em memória, ou o local é mais recente). A ausência de cópia local nunca
+  // apaga o que já veio da nuvem por pullFromCloud.
   if(q && (!atual || (q.ultimoSalvamento||0) >= (atual.ultimoSalvamento||0))){
     STATE.quizzesEmAndamento[materiaKey] = q;
   }
   render();
 }
-// CORREÇÃO (v62): antes, o simulado em andamento de uma matéria só era
-// conferido quando o usuário ENTRAVA nela — pedido explícito: manter o botão
-// "Continuar" disponível em todas as matérias, não só na que está aberta.
-// Chamada uma vez no boot (não em cada render), verifica TODAS de uma vez, sem
-// esperar por nenhuma — cada matéria atualiza STATE.quizzesEmAndamento assim
-// que sua própria leitura terminar, e re-renderiza. Usa a mesma função/regra
-// de "não sobrescrever com algo pior" já corrigida em verificarQuizSalvo.
+// Confere o simulado em andamento de TODAS as matérias (pro botão "Continuar"
+// aparecer em todas, não só na aberta). Roda uma vez no boot, sem esperar
+// nenhuma leitura: cada matéria atualiza STATE.quizzesEmAndamento e re-renderiza
+// quando a sua termina.
 async function verificarTodosQuizzesSalvos(){
   const materias = materiasDisponiveis();
   await Promise.all(materias.map(m=>{
@@ -401,14 +375,11 @@ function sanitizarParaFirestore(obj){
 async function carregarMateriasPublicas(){
   if(!FIREBASE_OK) return false;
   try{
-    // cada matéria pública tem seu próprio documento (em vez de um documento gigante
-    // compartilhado), pra nunca bater no limite de 1MB por documento do Firestore.
-    // CORREÇÃO (v37): mesmo assim, uma matéria grande sozinha (ex.: 774 questões)
-    // ultrapassa esse 1MB — agora ela pode estar dividida em vários documentos
-    // "pedaço" com id "{slug}__p0", "{slug}__p1", etc, todos com o mesmo campo
-    // .materia. O documento "{slug}" (sem sufixo) é o manifesto: guarda os metadados
-    // e, pra matérias antigas/pequenas que nunca precisaram dividir, pode ainda
-    // conter o array "questoes" completo direto nele (formato legado, ainda lido).
+    // Cada matéria pública tem seu próprio documento. Matérias maiores que o limite
+    // de 1MB do Firestore ficam divididas em pedaços "{slug}__p0", "{slug}__p1"…,
+    // todos com o mesmo campo .materia. O documento "{slug}" é o manifesto
+    // (metadados) e, em matérias antigas/pequenas, pode ainda trazer o array
+    // "questoes" completo (formato legado, ainda lido).
     const snapshot = await fbDb.collection('publico').get();
     const docs = snapshot.docs || [];
     // recalculado a cada leitura: uma matéria reimportada depois de removida
@@ -462,22 +433,12 @@ async function carregarMateriasPublicas(){
       }
     });
 
-    // CORREÇÃO CRÍTICA (v57): antes, só ADICIONAVA questões cujo uid ainda não
-    // existia localmente — uma matéria já presente neste dispositivo (por ter
-    // sido importada ou carregada aqui em algum momento) NUNCA era atualizada
-    // com correções feitas depois em OUTRO dispositivo (deduplicação,
-    // "Substituir tudo", edição de texto), porque o uid já existia e o merge
-    // simplesmente pulava — resultado: "acessei com esse PC e estão
-    // desatualizadas", relatado em produção. Agora, pra cada matéria cujo
-    // conteúdo completo e válido veio da nuvem, o conteúdo local dela é
-    // SUBSTITUÍDO por inteiro: a nuvem é sempre a fonte de verdade do
-    // CONTEÚDO das questões, em qualquer dispositivo, a cada abertura da
-    // página. origem:'importado' (e não 'publico') de propósito — assim esse
-    // conteúdo fica salvo localmente (ver saveCustomQuestions) e continua
-    // disponível mesmo se a nuvem ficar inacessível numa abertura futura,
-    // sem deixar de ser atualizado sempre que a nuvem estiver acessível.
-    // Isso nunca apaga uma matéria só por ela não aparecer nesta leitura —
-    // só substitui quando já se tem o conteúdo novo em mãos pra pôr no lugar.
+    // A nuvem é a fonte de verdade do CONTEÚDO das questões: pra cada matéria cujo
+    // conteúdo completo veio da nuvem, o local é substituído por inteiro (senão
+    // correções feitas em outro dispositivo nunca chegariam aqui).
+    // origem:'importado' de propósito, pra ficar salvo localmente e continuar
+    // disponível sem nuvem. Nunca apaga uma matéria só por ela não aparecer nesta
+    // leitura.
     let mudou = false;
     Object.entries(questoesPorMateria).forEach(([materiaNome, questoesNuvem])=>{
       ALL_QUESTIONS = ALL_QUESTIONS.filter(q => q.materia !== materiaNome);
@@ -489,15 +450,13 @@ async function carregarMateriasPublicas(){
   }catch(e){ console.warn('Falha ao carregar matérias públicas', e); return false; }
 }
 
-// grava uma matéria na coleção pública do Firestore. CORREÇÃO (v37): antes, cada
-// matéria virava UM documento só — funcionava até o limite de 1MB do Firestore,
-// mas uma matéria grande (ex.: 774 questões, ~1,2MB em JSON) sozinha já estoura
-// esse teto. Agora a matéria é dividida em documentos "pedaço" por tamanho em
-// bytes (não por quantidade de questões, já que o tamanho varia muito questão a
-// questão), com um documento "manifesto" separado (sem o array de questões)
-// guardando só metadados + quantos pedaços existem. Sem mexer em STATE.importLog
-// nem chamar render() — usada tanto pelos botões manuais quanto pela publicação
-// automática após importar.
+// Grava uma matéria na coleção pública, dividida em pedaços por tamanho em
+// bytes (ver LIMITE_BYTES_POR_CHUNK) mais um manifesto com os metadados.
+// Não mexe em STATE.importLog nem chama render(): é usada tanto pelos botões
+// quanto pela publicação automática.
+// force=true só em ações explícitas do usuário sobre a matéria (importar,
+// salvar, renomear, mesclar, deduplicar) — é o que pode passar por cima de uma
+// marca de removida. Publicações em lote/automáticas usam force=false.
 const LIMITE_BYTES_POR_CHUNK = 700000; // margem de segurança abaixo do limite de campo indexado do Firestore (~1.048.487 bytes)
 function tamanhoUtf8(str){
   return new TextEncoder().encode(str).length;
@@ -546,27 +505,10 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
         }
       }
 
-      // CORREÇÃO CRÍTICA (v43, unificada na v58): o array local (ALL_QUESTIONS)
-      // é SEMPRE tratado como a versão correta e completa a publicar — nunca
-      // mesclado com o que já estava na nuvem antes, com ou sem force. Isso já
-      // valia pra force=true desde a v43 (ver histórico abaixo); até a v57,
-      // sem force (reprocessamento automático em segundo plano) ainda mesclava
-      // com o snapshot antigo da nuvem "por segurança" — mas isso podia
-      // reintroduzir silenciosamente conteúdo obsoleto/duplicado que o
-      // reprocessamento LOCAL acabara de corrigir, exatamente a mesma classe
-      // de bug já corrigida pra force=true. Essa mescla deixou de ser
-      // necessária a partir da v57: carregarMateriasPublicas() já sincroniza o
-      // local com a nuvem mais recente ANTES do reprocessamento rodar (mesma
-      // sequência de boot), então a essa altura o local já reflete a nuvem —
-      // mesclar de novo só arriscava trazer de volta dado velho.
-      // (histórico v43: force=true existe porque esta função é chamada por uma
-      // ação EXPLÍCITA e deliberada do usuário — reimportar, inclusive
-      // "🔁 Substituir tudo", salvar manualmente, ou renomear — e mesclar aqui
-      // desfazia silenciosamente qualquer "Substituir tudo": o merge por uid
-      // trazia de volta questões antigas/duplicadas dos pedaços velhos da
-      // nuvem, cujos uids não colidiam com os novos, recém-gerados sem sufixo,
-      // fazendo a AFO voltar a dobrar de tamanho no próximo carregamento —
-      // bug real de produção.)
+      // O array local (ALL_QUESTIONS) é sempre a versão completa a publicar — nunca
+      // mesclado com o que já estava na nuvem. Mesclar por uid trazia de volta
+      // questões antigas/duplicadas de pedaços velhos (e desfazia "Substituir tudo").
+      // O local já foi sincronizado com a nuvem por carregarMateriasPublicas().
       const questoesAtuais = ALL_QUESTIONS.filter(q=>q.materia===materiaNome).map(q=>({ ...q, origem:'publico' }));
       totalNovas += questoesAtuais.length;
 
@@ -638,33 +580,16 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
 
 async function pushToCloud(){
   if(!FIREBASE_OK || !STATE.syncCode) return;
-  // CORREÇÃO DEFINITIVA DE COTA (v49): nada a sincronizar — nenhuma chamada à
-  // nuvem é feita. Antes, esta função reescrevia TODAS as matérias a cada
-  // chamada (inclusive as 60 chamadas/hora do timer de fundo, mesmo sem
-  // nenhuma resposta nova), o que sozinho já se aproximava do limite diário
-  // gratuito do Firestore.
+  // Nada mudou desde o último envio: nenhuma chamada à nuvem (economiza a cota
+  // diária gratuita do Firestore).
   if(MATERIAS_PROGRESSO_SUJAS.size===0) return;
   try{
-    // CORREÇÃO CRÍTICA (v42): 'progress' de TODAS as matérias somadas numa
-    // única string já passa de 1MB na escala real de uso (muitas matérias,
-    // cada uma com centenas de questões respondidas e histórico) — o mesmo
-    // limite de tamanho de documento do Firestore já resolvido antes pra
-    // publico/{slug}. Agora cada matéria grava o próprio progresso no seu
-    // próprio documento (como string JSON — 1 entrada de índice só, resolvendo
-    // também o erro real de produção "too many index entries"), e o documento
-    // principal só guarda a LISTA de quais matérias têm progresso salvo, pra
-    // saber quais documentos buscar na leitura.
-    // CORREÇÃO (v48): cada escrita agora tem limite de 15s e falhas de uma
-    // matéria não impedem as outras de serem salvas — antes, com o Firestore
-    // em backoff (cota excedida), a PRIMEIRA chamada travada já bloqueava o
-    // laço inteiro (e essa função é chamada a cada resposta E ao remover
-    // matéria), deixando ações simples como "Remover" parecendo travadas.
-    // CORREÇÃO (v49): só percorre as matérias marcadas como "sujas"
-    // (registrarResposta/registrarFlash/registrarSessao/etc. marcam a matéria
-    // correspondente) — as outras 19 matérias que não mudaram não são
-    // reescritas de novo. Cada matéria só sai da lista de "sujas" se a escrita
-    // dela funcionar; se falhar, continua marcada e é tentada de novo na
-    // próxima chamada.
+    // Cada matéria grava o próprio progresso num documento separado (string JSON,
+    // uma entrada de índice só) — somadas, passariam de 1MB. O documento principal
+    // guarda só a lista de matérias com progresso.
+    // Só percorre as matérias marcadas como "sujas"; cada uma sai da lista só se a
+    // escrita funcionar. Cada escrita tem limite de 15s e a falha de uma matéria
+    // não impede as outras (com a cota excedida, o SDK pode travar em backoff).
     const materiasSujas = Array.from(MATERIAS_PROGRESSO_SUJAS);
     let algumaFalhou = false;
     for(const materiaNome of materiasSujas){
@@ -713,17 +638,10 @@ async function conectarSincronizacao(codigo){
   const quizzesAnteriores = STATE.quizzesEmAndamento;
   STATE.syncCode = codigo;
   try{ await storageSet(SYNC_CODE_KEY, codigo); }catch(e){ /* ignora */ }
-  // CORREÇÃO: cada código de sincronização deve ter um histórico
-  // INDEPENDENTE — antes, trocar de código nunca limpava o progresso local,
-  // então conectar um código novo "herdava" (e pior: publicava na nuvem sob o
-  // nome do código novo!) o progresso de quem usou este aparelho antes.
-  // Zera o progresso local ANTES de puxar da nuvem, mas SÓ quando havia um
-  // código ANTERIOR de verdade e ele é diferente do novo (troca real de
-  // usuário) — se codigoAnterior estiver vazio (primeira conexão, vindo de
-  // "sem sincronização"), o progresso local NÃO é zerado: ele passa a
-  // pertencer a este usuário que está conectando agora, e é enviado pra
-  // nuvem dele mais abaixo. Zerar nesse caso também era um bug — apagava o
-  // trabalho de quem só ainda não tinha conectado nenhum código.
+  // Cada código de sincronização tem histórico independente: ao TROCAR de código,
+  // o progresso local é zerado antes de puxar da nuvem. Na primeira conexão (sem
+  // código anterior), o progresso local passa a pertencer ao código conectado e
+  // não é zerado.
   if(codigoAnterior && codigo !== codigoAnterior){
     PROGRESS = {};
     STATE.quizzesEmAndamento = {};
@@ -878,23 +796,14 @@ async function loadProgress(){
         STATE.syncStatus = { type:'ok', msg: formatarUltimoSync(parseInt(res6.value,10)) };
       }
     }catch(e){ /* nunca sincronizou ainda neste dispositivo */ }
-    // CORREÇÃO CRÍTICA (v46): erro real de produção — com a cota diária do
-    // Firestore excedida, o SDK entra em "backoff máximo" e uma chamada como
-    // esta pode ficar tentando de novo por muito tempo sem nunca resolver. Como
-    // essa chamada era aguardada (await) ANTES do primeiro render(), a página
-    // inteira ficava presa em "Carregando processo…" — não é a rede que estava
-    // lenta, é a inicialização que nunca deveria ter dependido da nuvem pra
-    // mostrar a interface. Um limite de 8s garante que, na pior das hipóteses, a
-    // página sempre abre com os dados locais; o que vier da nuvem depois só
-    // enriquece, nunca bloqueia.
+    // Limite de 8s: com a cota do Firestore excedida o SDK pode ficar em backoff
+    // sem nunca resolver, e a página não pode ficar presa em "Carregando…" — ela
+    // sempre abre com os dados locais; a nuvem só complementa.
     try{ await comLimiteDeTempo(pullFromCloud({ silent: true }), 8000, 'tempo esgotado ao sincronizar progresso'); }
     catch(e){ console.warn('Sincronização de progresso não respondeu a tempo — seguindo com os dados locais.', e); }
-    // rede de segurança (v49): MATERIAS_PROGRESSO_SUJAS só existe em memória —
-    // se um envio anterior falhou (ex.: cota excedida) e a página foi recarregada
-    // antes de tentar de novo, aquela matéria ficaria sem sincronizar pra sempre.
-    // Marcar tudo como pendente uma vez aqui (só na abertura da página, não a
-    // cada resposta/minuto) garante consistência eventual sem voltar ao consumo
-    // excessivo de cota que motivou a correção.
+    // MATERIAS_PROGRESSO_SUJAS só existe em memória: se um envio falhou e a página
+    // foi recarregada, a matéria ficaria sem sincronizar. Marcar tudo como pendente
+    // uma vez, na abertura, garante consistência eventual.
     Object.keys(PROGRESS).forEach(m => marcarProgressoSujo(m));
   }
 
@@ -903,19 +812,12 @@ async function loadProgress(){
   await sincronizarMateriasPublicas();
 }
 
-// CORREÇÃO (pedido do usuário): esse bloco só rodava UMA VEZ, na abertura da
-// página — se outro dispositivo publicasse uma matéria nova ou questões
-// adicionais enquanto esta aba já estava aberta, elas nunca apareciam aqui
-// sem um reload completo da página. Extraído em função própria pra poder
-// rodar de novo periodicamente (ver setInterval no init), além da chamada
-// original na abertura. É seguro repetir: carregarMateriasPublicas() só
-// ADICIONA uids que ainda não existem localmente, e a reconciliação de
-// remoção só age sobre um sinal explícito (removido:true), nunca por
-// ausência — rodar de novo não é mais arriscado que a chamada original.
+// Busca matérias publicadas por outros dispositivos. Roda na abertura e
+// periodicamente (ver init). Seguro repetir: remoção local só acontece por sinal
+// explícito na nuvem (removido:true), nunca por ausência.
 async function sincronizarMateriasPublicas(){
-  // CORREÇÃO (v73): nunca lê/substitui o local enquanto alguma escrita local
-  // estiver em andamento (ver TRAVAS_ESCRITA_ATIVAS acima) — essa é a proteção
-  // central contra a corrida entre os dois setInterval de 5 minutos.
+  // Nunca lê/substitui o local enquanto alguma escrita local estiver em
+  // andamento (ver TRAVAS_ESCRITA_ATIVAS).
   if(TRAVAS_ESCRITA_ATIVAS>0) return false;
   let nuvemDisponivel = false;
   try{
@@ -1050,15 +952,8 @@ function undoRegistro(materiaKey, uid){
   const bucket = getBucket(materiaKey);
   const p = bucket.perguntas[uid];
   if(!p || !p.tentativas) return;
-  // CORREÇÃO: o histórico por tentativa é truncado em 20 entradas (por
-  // espaço), mas p.tentativas nunca é truncado — numa questão respondida/
-  // resetada mais de 20 vezes (ou após um merge de duplicatas que soma
-  // tentativas sem garantir histórico equivalente), o histórico podia
-  // esgotar antes das tentativas chegarem a zero. O código antigo dependia
-  // 100% do histórico e simplesmente não fazia nada nesse caso — "Limpar
-  // resposta" parecia não ter efeito nenhum na estatística. Sem histórico
-  // detalhado pra essa tentativa, usa a única informação que ainda temos
-  // (o ultimoResultado atual) como a tentativa sendo desfeita.
+  // O histórico é truncado em 20 entradas mas p.tentativas não: sem histórico
+  // pra esta tentativa, usa o ultimoResultado atual como a tentativa desfeita.
   if(p.historico && p.historico.length){
     const last = p.historico.pop();
     p.tentativas = Math.max(0, p.tentativas-1);
