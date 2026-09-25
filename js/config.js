@@ -1,0 +1,3 @@
+const CONFIG = {"sealText": "TC", "eyebrow": "Tribunal de Contas do Distrito Federal", "title": "TCDF Plataforma", "footer": "PROCESSO Nº LO-TCDF/2026 · MATERIAL DE ESTUDO PRIVADO", "materiaPadrao": "Lei Orgânica do TCDF"};
+const QUESTIONS = []; // Lei Orgânica do TCDF removida da base fixa a pedido do usuário — a matéria nativa não vem mais embutida no código; pode ser reintroduzida via importação normal se necessário
+const FIREBASE_CONFIG = {"apiKey": "AIzaSyDG4wNDfs0xGZ_8jgyzmWJF19iqmJ8ck8A", "authDomain": "plataforma-questoes-b6f07.firebaseapp.com", "projectId": "plataforma-questoes-b6f07", "storageBucket": "plataforma-questoes-b6f07.firebasestorage.app", "messagingSenderId": "570881339293", "appId": "1:570881339293:web:9eedbec34ff68e94370974"};
