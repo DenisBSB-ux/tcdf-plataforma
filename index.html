@@ -1362,6 +1362,7 @@ const FIREBASE_CONFIG = {"apiKey": "AIzaSyDG4wNDfs0xGZ_8jgyzmWJF19iqmJ8ck8A", "a
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script>
 /* ============================================================
    Sala de Estudos — motor genérico de simulados
@@ -2169,7 +2170,7 @@ function mergeRemoteEdicoesNaMemoria(remoteEdicoes){
     Object.entries(campos||{}).forEach(([campo, html])=>{
       if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
       if(EDICOES_USUARIO[uid][campo] === undefined){
-        EDICOES_USUARIO[uid][campo] = html;
+        EDICOES_USUARIO[uid][campo] = limparHtmlEditado(html);
         mudou = true;
       }
     });
@@ -3073,6 +3074,19 @@ function ajustarZoom(direcao){
   storageSet(ZOOM_KEY, String(z)).catch(()=>{});
   render();
 }
+// HTML das edições manuais (enunciado/resolução/resumo flash) vai pra tela como
+// HTML de verdade, e também é sincronizado pela nuvem — então passa sempre por
+// aqui, que só deixa a formatação que o editor produz (negrito, itálico,
+// tachado, marca-texto). Sem o DOMPurify (CDN fora do ar), cai pra texto puro.
+const TAGS_EDICAO_PERMITIDAS = ['b','strong','i','em','s','strike','u','mark','span','font','br','p','div','ul','ol','li','sub','sup'];
+function limparHtmlEditado(html){
+  if(!html) return '';
+  if(typeof DOMPurify !== 'undefined' && DOMPurify.sanitize){
+    return DOMPurify.sanitize(String(html), { ALLOWED_TAGS: TAGS_EDICAO_PERMITIDAS, ALLOWED_ATTR: ['style','class','color'] });
+  }
+  return esc(htmlParaTextoPlano(html));
+}
+
 function esc(str){
   // remove marcadores de citação tipo "[cite: 4]" ou "[cite: 4, 7]" que vêm do
   // material de origem — não fazem sentido pro usuário final da plataforma
@@ -4519,7 +4533,7 @@ function gerarImpressao(){
     </div>
     ${questoes.map((q,i)=>`
       <div class="print-q">
-        <h4>Questão ${i+1} (nº original ${q.n})</h4>
+        <h4>Questão ${i+1} (nº original ${esc(String(q.n))})</h4>
         <div class="print-tags">${esc(q.bc)} · ${NIVEL_STARS[q.nv]} · ${esc(q.td||'')}</div>
         <div class="print-enun">${esc(limparEnunciado(q.q, q.t))}</div>
         <div class="print-gab">Gabarito: ${esc(gabaritoEfetivo(q)||'—')}</div>
@@ -4858,7 +4872,7 @@ function editorToolbarHtml(uid){
 // questão inteira (usado igual no modo Normal e no modo Foco)
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
-  const custom = EDICOES_USUARIO[uid] && EDICOES_USUARIO[uid]['q'];
+  const custom = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid]['q']);
   const emEdicao = edicaoAtual === uid;
   const htmlAuto = destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)));
   const conteudo = custom || htmlAuto;
@@ -4877,7 +4891,7 @@ function blocoEnunciadoEditavel(q){
 // em edição junto quando a questão inteira está em edição (edicaoAtual===uid)
 function campoEditavelSimples(q, campo, htmlAuto){
   const uid = q.uid;
-  const custom = EDICOES_USUARIO[uid] && EDICOES_USUARIO[uid][campo];
+  const custom = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid][campo]);
   const emEdicao = edicaoAtual === uid;
   const conteudo = custom || htmlAuto;
   return `
@@ -5275,8 +5289,7 @@ function renderErros(){
 // usado no download, que é sempre texto puro, nunca HTML
 function htmlParaTextoPlano(html){
   if(!html) return '';
-  const div = document.createElement('div');
-  div.innerHTML = html;
+  const div = new DOMParser().parseFromString(String(html), 'text/html').body;
   div.querySelectorAll('br').forEach(br=>br.replaceWith('\n'));
   div.querySelectorAll('div,p').forEach(el=>{ el.insertAdjacentText('afterend','\n'); });
   return (div.textContent||'').replace(/\n{3,}/g,'\n\n').trim();
@@ -7261,7 +7274,7 @@ function attachHandlers(){
           const div = document.getElementById(`conteudo-${campo}-${uid}`);
           if(div){
             if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
-            EDICOES_USUARIO[uid][campo] = div.innerHTML;
+            EDICOES_USUARIO[uid][campo] = limparHtmlEditado(div.innerHTML);
           }
         });
         salvarEdicoesUsuario();
