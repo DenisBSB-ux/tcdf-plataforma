@@ -812,11 +812,6 @@ function comLimiteDeTempo(promise, ms, mensagemTimeout){
     new Promise((_, reject) => setTimeout(() => reject(new Error(mensagemTimeout||'Tempo esgotado.')), ms)),
   ]);
 }
-// detecta questões duplicadas DENTRO de uma matéria já importada — agrupa pelo
-// texto do enunciado normalizado (ignora espaços/maiúsculas), não pelo uid, já
-// que o bug histórico de duplicação gerava uids diferentes (com sufixo) pro
-// mesmo enunciado. Não depende do arquivo original — funciona em qualquer
-// matéria já importada, mesmo sem o texto-fonte salvo.
 function materiaComMesmoSlug(materiaNome){
   const slug = slugify(materiaNome);
   return materiasDisponiveis().find(m => m!==materiaNome && slugify(m)===slug) || null;
@@ -824,74 +819,117 @@ function materiaComMesmoSlug(materiaNome){
 function normalizarEnunciado(texto){
   return String(texto||'').toLowerCase().replace(/\s+/g,' ').trim();
 }
-function detectarDuplicatasDaMateria(materiaNome){
-  const porTexto = {};
-  ALL_QUESTIONS.forEach(q=>{
-    if(q.materia!==materiaNome || q.origem==='embutido') return;
-    const chave = normalizarEnunciado(q.q);
-    if(!chave) return;
-    if(!porTexto[chave]) porTexto[chave] = [];
-    porTexto[chave].push(q);
-  });
-  return Object.values(porTexto).filter(grupo => grupo.length>1);
+
+// Mesma questão escrita de formas diferentes. Arquivos diferentes trazem o
+// mesmo item ora sozinho ("Diferentemente do que ocorre…"), ora com um
+// cabeçalho na frente ("5) Em relação à … julgue o item. Diferentemente do
+// que ocorre…"), ora com "Certo/Errado" no fim. Duas chaves (ver
+// chaveDeEnunciado) são a mesma questão quando são iguais ou quando a menor,
+// com pelo menos 50 caracteres, é o FINAL da maior — itens diferentes sob o
+// mesmo cabeçalho não batem, porque o final é o próprio item.
+const TAMANHO_MIN_SUFIXO = 50;
+function mesmaQuestao(chaveA, chaveB){
+  if(!chaveA || !chaveB) return false;
+  if(chaveA===chaveB) return true;
+  const [menor, maior] = chaveA.length<=chaveB.length ? [chaveA, chaveB] : [chaveB, chaveA];
+  return menor.length>=TAMANHO_MIN_SUFIXO && maior.endsWith(' '+menor);
 }
-// remove as cópias excedentes de cada grupo de duplicatas, mantendo UMA por
-// grupo (a que já tiver progresso registrado, se houver — senão a primeira) e
-// somando o progresso das cópias removidas na que fica, pra não perder histórico
-async function removerDuplicatasDaMateria(materiaNome){
+// chave curta usada pra indexar: o final da chave. Se uma chave é sufixo da
+// outra, as duas têm o mesmo final — então basta comparar dentro do mesmo balde.
+function finalDaChave(chave){
+  return chave.length>=TAMANHO_MIN_SUFIXO ? chave.slice(-TAMANHO_MIN_SUFIXO) : chave;
+}
+// agrupa questões equivalentes (mesmaQuestao, de forma transitiva)
+function agruparQuestoesEquivalentes(qs){
+  const chaves = qs.map(q=>chaveDeEnunciado(q.q));
+  const pai = qs.map((_,i)=>i);
+  const raiz = i => { while(pai[i]!==i){ pai[i] = pai[pai[i]]; i = pai[i]; } return i; };
+  const baldes = {};
+  chaves.forEach((c,i)=>{
+    if(!c) return;
+    const k = finalDaChave(c);
+    (baldes[k] = baldes[k] || []).forEach(j=>{ if(mesmaQuestao(c, chaves[j])) pai[raiz(i)] = raiz(j); });
+    baldes[k].push(i);
+  });
+  const grupos = {};
+  qs.forEach((q,i)=>{ if(chaves[i]) (grupos[raiz(i)] = grupos[raiz(i)] || []).push(q); });
+  return Object.values(grupos);
+}
+// soma o progresso de "de" em "para" (tentativas, acertos, histórico) e
+// recalcula o último resultado pela tentativa mais recente
+function somarProgressoDaQuestao(pPara, pDe){
+  const p = pPara || { tentativas:0, acertos:0, ultimoResultado:null, historico:[] };
+  p.tentativas += pDe.tentativas||0;
+  p.acertos += pDe.acertos||0;
+  p.historico = (p.historico||[]).concat(pDe.historico||[]).sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-20);
+  if(p.historico.length) p.ultimoResultado = p.historico[p.historico.length-1].c;
+  else if(p.ultimoResultado==null) p.ultimoResultado = pDe.ultimoResultado;
+  return p;
+}
+// versão "mais atual" de duas cópias da mesma questão: maior ano; empate
+// decide pela resolução mais completa
+function questaoMaisAtual(a, b){
+  if((a.ar||0)!==(b.ar||0)) return (a.ar||0)>(b.ar||0) ? a : b;
+  return ((a.r||'').length+(a.rf||'').length) >= ((b.r||'').length+(b.rf||'').length) ? a : b;
+}
+
+// questões duplicadas DENTRO de uma matéria (mesmaQuestao), independente do
+// uid — não depende do arquivo original
+function detectarDuplicatasDaMateria(materiaNome){
+  const qs = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido');
+  return agruparQuestoesEquivalentes(qs).filter(grupo => grupo.length>1);
+}
+// Deixa uma questão por grupo de duplicatas: fica o uid que já tem progresso
+// (senão o primeiro), com o conteúdo da versão mais atual, e o progresso das
+// cópias é somado nele. Só mexe na memória; quem chama salva e publica.
+function deduplicarMateriaNaMemoria(materiaNome){
   const grupos = detectarDuplicatasDaMateria(materiaNome);
-  if(grupos.length===0) return { removidas: 0 };
+  if(grupos.length===0) return 0;
   const bucket = getBucket(materiaNome);
   const uidsRemover = new Set();
   grupos.forEach(grupo=>{
-    // prioriza manter a que já tem tentativas registradas
     grupo.sort((a,b)=>{
       const pa = bucket.perguntas[a.uid], pb = bucket.perguntas[b.uid];
       return (pb && pb.tentativas ? 1:0) - (pa && pa.tentativas ? 1:0);
     });
     const manter = grupo[0];
+    const conteudo = grupo.reduce(questaoMaisAtual);
     grupo.slice(1).forEach(dup=>{
       const pDup = bucket.perguntas[dup.uid];
-      if(pDup && pDup.tentativas){
-        const pManter = bucket.perguntas[manter.uid] || { tentativas:0, acertos:0, ultimoResultado:null, historico:[] };
-        pManter.tentativas += pDup.tentativas;
-        pManter.acertos += pDup.acertos;
-        pManter.historico = (pManter.historico||[]).concat(pDup.historico||[]).slice(-20);
-        bucket.perguntas[manter.uid] = pManter;
+      if(pDup && (pDup.tentativas || pDup.historico && pDup.historico.length)){
+        bucket.perguntas[manter.uid] = somarProgressoDaQuestao(bucket.perguntas[manter.uid], pDup);
       }
       delete bucket.perguntas[dup.uid];
+      if(bucket.flash) delete bucket.flash[dup.uid];
       uidsRemover.add(dup.uid);
     });
+    if(conteudo!==manter){
+      const idx = ALL_QUESTIONS.findIndex(x=>x.uid===manter.uid);
+      if(idx!==-1) ALL_QUESTIONS[idx] = { ...conteudo, uid: manter.uid, materia: manter.materia, origem: manter.origem };
+    }
   });
+  ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !uidsRemover.has(q.uid));
+  return uidsRemover.size;
+}
+async function removerDuplicatasDaMateria(materiaNome){
+  if(detectarDuplicatasDaMateria(materiaNome).length===0) return { removidas: 0 };
   return comTravaDeEscrita(async ()=>{
-    ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !uidsRemover.has(q.uid));
+    const removidas = deduplicarMateriaNaMemoria(materiaNome);
     reindex();
     marcarProgressoSujo(materiaNome);
     await saveCustomQuestions();
     saveProgress();
     marcarMateriaAtualizada(materiaNome);
     const pub = await publicarQuestoesNoFirestore([materiaNome], true);
-    return { removidas: uidsRemover.size, publicadoOk: pub.ok, motivoPublicacao: pub.ok?null:pub.motivo };
+    return { removidas, publicadoOk: pub.ok, motivoPublicacao: pub.ok?null:pub.motivo };
   });
 }
 
-// une duas matérias que na verdade são o MESMO conteúdo sob nomes diferentes
-// (ex.: "LO TCDF" e "Lei Orgânica do TCDF", "RJU LC840" e "RJU LC 840") —
-// causa raiz real do problema: a identidade de uma matéria neste app é o
-// texto EXATO do nome (é o que vira o slug/uid — ver slugify()), e a
-// detecção de duplicata (marcarDuplicatas/detectarDuplicatasDaMateria) só
-// compara enunciados DENTRO da mesma matéria, nunca entre matérias com nomes
-// diferentes. Então importar/criar a mesma matéria de novo com um nome
-// levemente diferente sempre virou uma matéria nova e paralela, sem nenhum
-// aviso — não um bug de sincronização, e sim de identidade por nome exato.
-// Esta função move o conteúdo de nomeOrigem pra dentro de nomeDestino:
-// questões com o MESMO enunciado (comparado normalizado) são tratadas como a
-// mesma questão — mantém a versão mais atual (mesmo critério de
-// marcarDuplicatas: maior ano; empate decide pela resolução mais completa) e
-// SOMA o progresso das duas em vez de descartar histórico de qualquer lado;
-// questões que só existem num dos lados entram como estão. Ao final,
-// nomeOrigem deixa de existir (mesmo tratamento de removerMateria: nunca
-// .delete() na nuvem, só marca removido — local + manifesto + pedaços).
+// Move o conteúdo de nomeOrigem pra dentro de nomeDestino (mesma matéria sob
+// nomes diferentes). Questão equivalente dos dois lados (mesmaQuestao) vira
+// uma só: fica a versão mais atual e o progresso das duas é somado. Questões
+// que só existem na origem entram como novas. No fim o destino é deduplicado
+// e a origem é marcada como removida na nuvem (nunca .delete()).
 async function mesclarMaterias(nomeOrigem, nomeDestino){
   if(!nomeOrigem || !nomeDestino || nomeOrigem===nomeDestino) return { ok:false, motivo:'Escolha duas matérias diferentes.' };
   const qsOrigem = ALL_QUESTIONS.filter(q=>q.materia===nomeOrigem);
@@ -903,20 +941,21 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
     const slugDestino = slugify(nomeDestino);
     const existingUids = new Set(ALL_QUESTIONS.filter(q=>q.materia!==nomeOrigem).map(q=>q.uid));
 
-    // índice do destino por enunciado normalizado, pra reconhecer a MESMA
-    // questão do outro lado mesmo com uid/número diferentes
-    const porTextoDestino = {};
+    // índice do destino pelo final da chave do enunciado, pra reconhecer a
+    // MESMA questão do outro lado mesmo com uid/número/cabeçalho diferentes
+    const porFinalDestino = {};
     ALL_QUESTIONS.forEach(q=>{
       if(q.materia!==nomeDestino) return;
       const chave = chaveDeEnunciado(q.q);
-      if(chave) (porTextoDestino[chave] = porTextoDestino[chave]||[]).push(q);
+      if(chave) (porFinalDestino[finalDaChave(chave)] = porFinalDestino[finalDaChave(chave)]||[]).push({ q, chave });
     });
 
     let fundidas = 0, movidas = 0;
 
     qsOrigem.forEach(q=>{
       const chave = chaveDeEnunciado(q.q);
-      const equivalente = chave && porTextoDestino[chave] ? porTextoDestino[chave][0] : null;
+      const candidato = chave ? (porFinalDestino[finalDaChave(chave)]||[]).find(c => mesmaQuestao(chave, c.chave)) : null;
+      const equivalente = candidato ? candidato.q : null;
       const pOrigem = bucketOrigem.perguntas[q.uid];
 
       if(equivalente){
@@ -927,12 +966,7 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
           if(idx!==-1) ALL_QUESTIONS[idx] = { ...q, materia: nomeDestino, uid: equivalente.uid, origem: equivalente.origem };
         }
         if(pOrigem && pOrigem.tentativas){
-          const pDestino = bucketDestino.perguntas[equivalente.uid] || { tentativas:0, acertos:0, ultimoResultado:null, historico:[] };
-          pDestino.tentativas += pOrigem.tentativas;
-          pDestino.acertos += pOrigem.acertos;
-          pDestino.historico = (pDestino.historico||[]).concat(pOrigem.historico||[]).sort((a,b)=>a.ts-b.ts).slice(-20);
-          pDestino.ultimoResultado = pDestino.historico.length ? pDestino.historico[pDestino.historico.length-1].c : pDestino.ultimoResultado;
-          bucketDestino.perguntas[equivalente.uid] = pDestino;
+          bucketDestino.perguntas[equivalente.uid] = somarProgressoDaQuestao(bucketDestino.perguntas[equivalente.uid], pOrigem);
         }
         delete bucketOrigem.perguntas[q.uid];
         fundidas++;
@@ -959,6 +993,9 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
     // destino) ou realocado (com materia/uid do destino) pelos ramos acima, então
     // qualquer entrada que ainda reste com o nome antigo é sempre sobra a descartar.
     ALL_QUESTIONS = ALL_QUESTIONS.filter(q => q.materia !== nomeOrigem);
+    // o destino pode já ter cópias da mesma questão entre si (de mesclas ou
+    // importações anteriores) — a mescla sempre termina sem duplicatas
+    const duplicatasRemovidas = deduplicarMateriaNaMemoria(nomeDestino);
 
     delete PROGRESS[nomeOrigem];
     delete TEXTOS_ORIGINAIS[nomeOrigem];
@@ -996,7 +1033,7 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
       }catch(e){ console.error('Falha ao marcar matéria de origem como removida na nuvem — pode reaparecer em outro dispositivo', e); }
     }
 
-    return { ok:true, movidas, fundidas };
+    return { ok:true, movidas, fundidas, duplicatasRemovidas };
   });
 }
 
@@ -1016,7 +1053,8 @@ function encontrarMateriaSemelhante(materiaNome, results){
   const chaves = new Set(results.map(r=>{
     const copia = { ...r, alt: Array.isArray(r.alt) ? r.alt.map(a=>({ ...a })) : r.alt };
     sanitizarFonteEmbutida(copia);
-    return chaveDeEnunciado(copia.q);
+    const c = chaveDeEnunciado(copia.q);
+    return c ? finalDaChave(c) : '';
   }).filter(Boolean));
   if(chaves.size<3) return null;
   let melhor = null;
@@ -1037,6 +1075,7 @@ function chaveDeEnunciado(texto){
   const chave = normalizarParaComparacao(limparMarcadoresCitacao(String(texto||'')))
     .replace(/^(questao\s*)?\d+\s*[).:\-–—]\s*/, '')
     .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/( certo errado| errado certo)$/, '')
     .trim();
   return chave.length>=15 ? chave : '';
 }
@@ -1045,7 +1084,7 @@ function chavesPorMateria(){
   ALL_QUESTIONS.forEach(q=>{
     const c = chaveDeEnunciado(q.q);
     if(!c) return;
-    (mapa[q.materia] = mapa[q.materia] || new Set()).add(c);
+    (mapa[q.materia] = mapa[q.materia] || new Set()).add(finalDaChave(c));
   });
   return mapa;
 }
