@@ -10,7 +10,7 @@
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>TCDF Plataforma</title>
-<script>window.__TCDF_BUILD__ = { versao: 'v89', build: '2026-09-24 17:25' };</script>
+<script>window.__TCDF_BUILD__ = { versao: 'v90', build: '2026-09-25 08:15' };</script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
@@ -5547,6 +5547,7 @@ function renderImportarPage(){
         <p class="upload-source-note">Aceita arquivos .txt, .pdf ou .md. Em PDFs, o texto é extraído automaticamente — funciona bem com PDFs de texto selecionável; PDFs que são apenas imagens escaneadas (sem camada de texto) não são suportados. Arquivos .md devem seguir o formato gerado pelo botão "⬇ Baixar" de cada matéria (útil pra editar as questões num editor de texto e reimportar depois). Se o nome da matéria ficar em branco, ele será derivado do nome do arquivo.</p>
 
         ${STATE.importPendente ? renderImportPendente() : ''}
+        ${STATE.importSemelhante ? renderImportSemelhante() : ''}
         ${STATE.importLog ? renderImportLog() : ''}
 
         ${materiasImportadas.length ? `<div class="card-block" style="margin-top:24px;">
@@ -5568,6 +5569,7 @@ function renderImportarPage(){
               ${numDuplicatas>0 ? `<button class="btn-outline" data-remover-duplicatas="${esc(m)}" style="padding:4px 10px;font-size:11px;border-color:var(--stamp-red);color:var(--stamp-red);" title="Detectadas questões repetidas (mesmo enunciado) dentro desta matéria — remove as cópias extras, mantendo o histórico de progresso">🧹 ${numDuplicatas} duplicata(s)</button>` : ''}
               <button class="btn-outline" data-renomear-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Muda o nome de exibição desta matéria, mantendo as questões e o progresso">✏️ Renomear</button>
               <button class="btn-outline" data-buscar-substituir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Corrige um texto/artefato que se repete em várias questões desta matéria (ex.: uma palavra ou trecho colado por engano na geração)">🔍 Buscar e substituir</button>
+              ${materiasImportadas.length>1 ? `<button class="btn-outline" data-mesclar-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Use se esta matéria for a MESMA coisa que outra, só com nome diferente (ex.: &quot;LO TCDF&quot; e &quot;Lei Orgânica do TCDF&quot;) — junta tudo numa só, mantendo a versão mais atual de cada questão e somando o progresso">🔗 Mesclar</button>` : ''}
               <button class="btn-outline" data-remover-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;">Remover</button>
               ${dedupInfo ? `<div style="flex-basis:100%;font-size:11px;margin-top:4px;color:var(--stamp-green, #3a9d5c);">✅ ${dedupInfo.removidas} questão(ões) duplicada(s) removida(s)${dedupInfo.publicadoOk===false?' (falha ao publicar na nuvem: '+esc(dedupInfo.motivoPublicacao||'')+' — já está salvo neste dispositivo)':''}.</div>` : ''}
             </div>`;
@@ -5601,6 +5603,11 @@ function renderImportLog(){
   if(log.error){
     return `<div class="import-log err"><b>Falha na importação.</b> ${esc(log.error)}</div>`;
   }
+  if(log.modo==='mesclar'){
+    return `<div class="import-log ok">
+      <b>🔗 Mesclado em "${esc(log.materia)}"</b> — ${log.fundidas||0} questão(ões) reconhecidas como já existentes (mantida a versão mais atual + progresso somado) e ${log.movidas||0} questão(ões) novas adicionadas. Nenhuma matéria separada foi criada.
+    </div>`;
+  }
   return `<div class="import-log ok">
     <b>${log.importadas} questão(ões) importada(s)</b> para a matéria "${esc(log.materia)}"${log.modo==='substituir' ? ' (substituindo o conteúdo anterior)' : ''}.
     ${log.puladasPorJaExistir ? `<br>${log.puladasPorJaExistir} questão(ões) já existiam nesta matéria (mesmo número) e foram puladas — não duplicadas.` : ''}
@@ -5626,6 +5633,20 @@ function renderImportPendente(){
       <button id="btn-import-substituir" class="btn-primary" style="padding:6px 14px;font-size:12px;">🔁 Substituir tudo (remove as ${p.existentesCount} antigas, usa só as novas)</button>
       <button id="btn-import-somar" class="btn-outline" style="padding:6px 14px;font-size:12px;">➕ Somar só as novas (pula as que já existem, pelo número da questão)</button>
       <button id="btn-import-cancelar" class="btn-outline" style="padding:6px 14px;font-size:12px;">Cancelar</button>
+    </div>
+  </div>`;
+}
+
+function renderImportSemelhante(){
+  const p = STATE.importSemelhante;
+  if(!p) return '';
+  return `<div class="import-log" style="border-color:var(--stamp-red);">
+    <b>⚠️ Este conteúdo parece ser o mesmo de "${esc(p.materiaExistente)}"</b> (~${Math.round(p.pct*100)}% das questões batem com uma matéria já existente).
+    <br>Importar com o nome "${esc(p.materiaNome)}" criaria uma matéria SEPARADA com o mesmo conteúdo (é assim que duplicatas de nome diferente aparecem). O que você quer fazer?
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+      <button id="btn-import-mesclar-existente" class="btn-primary" style="padding:6px 14px;font-size:12px;">🔗 Mesclar em "${esc(p.materiaExistente)}" (mantém a versão mais atual de cada questão + todo o progresso)</button>
+      <button id="btn-import-criar-separada" class="btn-outline" style="padding:6px 14px;font-size:12px;">Criar como matéria separada mesmo assim</button>
+      <button id="btn-import-semelhante-cancelar" class="btn-outline" style="padding:6px 14px;font-size:12px;">Cancelar</button>
     </div>
   </div>`;
 }
@@ -6117,6 +6138,22 @@ async function processImportedText(content, sugestaoNome, modoForcado){
       return;
     }
 
+    // CORREÇÃO (v90): raiz do problema real relatado — matérias duplicadas com
+    // nomes diferentes (ex.: "LO TCDF" e "Lei Orgânica do TCDF") apareciam
+    // porque a checagem acima só compara o NOME exato; um nome levemente
+    // diferente do mesmo conteúdo passava direto e virava uma matéria nova,
+    // sem aviso algum. Agora, quando o nome é novo, o conteúdo é comparado
+    // com as matérias já existentes (por enunciado, não por nome) — se a
+    // sobreposição for forte, pergunta antes de criar uma matéria separada.
+    if(existentes.length===0 && !modoForcado){
+      const semelhante = encontrarMateriaSemelhante(materiaNome, results);
+      if(semelhante){
+        STATE.importSemelhante = { content, materiaNome, results, ignoradas, semGabarito, materiaExistente: semelhante.materia, pct: semelhante.pct };
+        render();
+        return;
+      }
+    }
+
     await aplicarImportacao(materiaNome, content, results, ignoradas, semGabarito, modoForcado || 'somar');
   }catch(err){
     STATE.importLog = { error: 'Erro ao interpretar o texto: ' + err.message };
@@ -6200,6 +6237,35 @@ async function confirmarImportPendente(modo){
 }
 function cancelarImportPendente(){
   STATE.importPendente = null;
+  render();
+}
+
+// resolve o aviso de "conteúdo parece ser o mesmo de uma matéria existente"
+// (ver encontrarMateriaSemelhante): 'mesclar' importa o arquivo como matéria
+// nova TEMPORÁRIA e imediatamente mescla ela na matéria existente (reusa
+// mesclarMaterias, que já sabe reconciliar por enunciado e somar progresso);
+// 'separar' segue a importação normalmente, criando a matéria com o nome novo
+async function confirmarImportSemelhante(acao){
+  const p = STATE.importSemelhante;
+  if(!p) return;
+  STATE.importSemelhante = null;
+  if(acao==='separar'){
+    await aplicarImportacao(p.materiaNome, p.content, p.results, p.ignoradas, p.semGabarito, 'somar');
+    return;
+  }
+  // 'mesclar': nome temporário garantidamente livre, só existe durante a
+  // fração de segundo entre importar e mesclar — nunca fica visível pro usuário
+  const nomeTemp = `__mesclagem_temp__${Date.now()}`;
+  await aplicarImportacao(nomeTemp, p.content, p.results, p.ignoradas, p.semGabarito, 'somar');
+  const resultado = await mesclarMaterias(nomeTemp, p.materiaExistente);
+  STATE.materia = p.materiaExistente;
+  STATE.importLog = resultado.ok
+    ? { materia: p.materiaExistente, mescladoDe: p.materiaNome, importadas: (resultado.movidas||0)+(resultado.fundidas||0), fundidas: resultado.fundidas, movidas: resultado.movidas, modo: 'mesclar' }
+    : { error: 'Falha ao mesclar: ' + (resultado.motivo||'motivo desconhecido') };
+  render();
+}
+function cancelarImportSemelhante(){
+  STATE.importSemelhante = null;
   render();
 }
 
@@ -6346,6 +6412,154 @@ async function removerDuplicatasDaMateria(materiaNome){
     const pub = await publicarQuestoesNoFirestore([materiaNome], true);
     return { removidas: uidsRemover.size, publicadoOk: pub.ok, motivoPublicacao: pub.ok?null:pub.motivo };
   });
+}
+
+// une duas matérias que na verdade são o MESMO conteúdo sob nomes diferentes
+// (ex.: "LO TCDF" e "Lei Orgânica do TCDF", "RJU LC840" e "RJU LC 840") —
+// causa raiz real do problema: a identidade de uma matéria neste app é o
+// texto EXATO do nome (é o que vira o slug/uid — ver slugify()), e a
+// detecção de duplicata (marcarDuplicatas/detectarDuplicatasDaMateria) só
+// compara enunciados DENTRO da mesma matéria, nunca entre matérias com nomes
+// diferentes. Então importar/criar a mesma matéria de novo com um nome
+// levemente diferente sempre virou uma matéria nova e paralela, sem nenhum
+// aviso — não um bug de sincronização, e sim de identidade por nome exato.
+// Esta função move o conteúdo de nomeOrigem pra dentro de nomeDestino:
+// questões com o MESMO enunciado (comparado normalizado) são tratadas como a
+// mesma questão — mantém a versão mais atual (mesmo critério de
+// marcarDuplicatas: maior ano; empate decide pela resolução mais completa) e
+// SOMA o progresso das duas em vez de descartar histórico de qualquer lado;
+// questões que só existem num dos lados entram como estão. Ao final,
+// nomeOrigem deixa de existir (mesmo tratamento de removerMateria: nunca
+// .delete() na nuvem, só marca removido — local + manifesto + pedaços).
+async function mesclarMaterias(nomeOrigem, nomeDestino){
+  if(!nomeOrigem || !nomeDestino || nomeOrigem===nomeDestino) return { ok:false, motivo:'Escolha duas matérias diferentes.' };
+  const qsOrigem = ALL_QUESTIONS.filter(q=>q.materia===nomeOrigem);
+  if(qsOrigem.length===0) return { ok:false, motivo:'A matéria de origem está vazia.' };
+
+  return comTravaDeEscrita(async ()=>{
+    const bucketOrigem = getBucket(nomeOrigem);
+    const bucketDestino = getBucket(nomeDestino);
+    const slugDestino = slugify(nomeDestino);
+    const existingUids = new Set(ALL_QUESTIONS.filter(q=>q.materia!==nomeOrigem).map(q=>q.uid));
+
+    // índice do destino por enunciado normalizado, pra reconhecer a MESMA
+    // questão do outro lado mesmo com uid/número diferentes
+    const porTextoDestino = {};
+    ALL_QUESTIONS.forEach(q=>{
+      if(q.materia!==nomeDestino) return;
+      const chave = normalizarEnunciado(q.q);
+      if(chave) (porTextoDestino[chave] = porTextoDestino[chave]||[]).push(q);
+    });
+
+    let fundidas = 0, movidas = 0;
+
+    qsOrigem.forEach(q=>{
+      const chave = normalizarEnunciado(q.q);
+      const equivalente = chave && porTextoDestino[chave] ? porTextoDestino[chave][0] : null;
+      const pOrigem = bucketOrigem.perguntas[q.uid];
+
+      if(equivalente){
+        const origemMaisNova = (q.ar||0) > (equivalente.ar||0) ||
+          ((q.ar||0)===(equivalente.ar||0) && ((q.r||'').length+(q.rf||'').length) > ((equivalente.r||'').length+(equivalente.rf||'').length));
+        if(origemMaisNova){
+          const idx = ALL_QUESTIONS.findIndex(x=>x.uid===equivalente.uid);
+          if(idx!==-1) ALL_QUESTIONS[idx] = { ...q, materia: nomeDestino, uid: equivalente.uid, origem: equivalente.origem };
+        }
+        if(pOrigem && pOrigem.tentativas){
+          const pDestino = bucketDestino.perguntas[equivalente.uid] || { tentativas:0, acertos:0, ultimoResultado:null, historico:[] };
+          pDestino.tentativas += pOrigem.tentativas;
+          pDestino.acertos += pOrigem.acertos;
+          pDestino.historico = (pDestino.historico||[]).concat(pOrigem.historico||[]).sort((a,b)=>a.ts-b.ts).slice(-20);
+          pDestino.ultimoResultado = pDestino.historico.length ? pDestino.historico[pDestino.historico.length-1].c : pDestino.ultimoResultado;
+          bucketDestino.perguntas[equivalente.uid] = pDestino;
+        }
+        delete bucketOrigem.perguntas[q.uid];
+        fundidas++;
+        return;
+      }
+
+      // sem equivalente no destino: entra como questão nova, com uid livre
+      // (mesmo padrão de colisão de aplicarImportacao)
+      const uidBase = `${slugDestino}-${q.n}`;
+      let uid = uidBase, suffix = 1;
+      while(existingUids.has(uid)){ uid = `${uidBase}-${suffix++}`; }
+      existingUids.add(uid);
+      const idx = ALL_QUESTIONS.findIndex(x=>x.uid===q.uid);
+      if(idx!==-1) ALL_QUESTIONS[idx] = { ...q, materia: nomeDestino, uid, origem: q.origem==='embutido' ? 'importado' : q.origem };
+      if(pOrigem){ bucketDestino.perguntas[uid] = pOrigem; delete bucketOrigem.perguntas[q.uid]; }
+      movidas++;
+    });
+
+    // rede de segurança final: quando a versão do DESTINO é a mais atual (não
+    // a de origem), o ramo "equivalente" acima só atualiza/mantém a entrada do
+    // destino — a entrada própria da origem em ALL_QUESTIONS nunca é tocada
+    // nesse caso e ficaria pra sempre com materia===nomeOrigem se não fosse
+    // removida aqui. Todo conteúdo de origem já foi consumido (fundido no
+    // destino) ou realocado (com materia/uid do destino) pelos ramos acima, então
+    // qualquer entrada que ainda reste com o nome antigo é sempre sobra a descartar.
+    ALL_QUESTIONS = ALL_QUESTIONS.filter(q => q.materia !== nomeOrigem);
+
+    delete PROGRESS[nomeOrigem];
+    delete TEXTOS_ORIGINAIS[nomeOrigem];
+    salvarTextosOriginaisLocalmente();
+    delete MATERIA_ULTIMA_ATUALIZACAO[nomeOrigem];
+    if(STATE.quizzesEmAndamento[nomeOrigem]) delete STATE.quizzesEmAndamento[nomeOrigem];
+    STATE.quizzesVerificados.delete(nomeOrigem);
+    STATE.quizzesVerificados.delete(nomeDestino); // força reconferir o simulado salvo do destino, agora com conteúdo novo
+    if(STATE.quiz && STATE.quiz.materia===nomeOrigem) STATE.quiz = null;
+    if(STATE.flashDeck && STATE.flashDeck.materia===nomeOrigem) STATE.flashDeck = null;
+    if(STATE.materia===nomeOrigem) STATE.materia = nomeDestino;
+
+    reindex();
+    marcarProgressoSujo(nomeDestino);
+    marcarMateriaAtualizada(nomeDestino);
+    await saveCustomQuestions();
+    saveProgress();
+    render();
+
+    if(FIREBASE_OK){
+      try{ await publicarQuestoesNoFirestore([nomeDestino], true); }
+      catch(e){ console.error('Falha ao publicar matéria mesclada na nuvem', e); }
+      const slugOrigem = slugify(nomeOrigem);
+      try{
+        const manifestDoc = await comLimiteDeTempo(fbDb.collection('publico').doc(slugOrigem).get(), 15000, 'tempo esgotado ao consultar a matéria de origem na nuvem');
+        const numChunks = (manifestDoc.exists && manifestDoc.data().numChunks) || 0;
+        await comLimiteDeTempo(fbDb.collection('publico').doc(slugOrigem).set({ materia: nomeOrigem, questoes: [], removido: true, atualizadoEm: Date.now() }), 15000, 'tempo esgotado ao marcar a matéria de origem como removida na nuvem');
+        for(let i=0;i<numChunks;i++){
+          try{ await comLimiteDeTempo(fbDb.collection('publico').doc(`${slugOrigem}__p${i}`).set({ materia: nomeOrigem, chunkIndex: i, questoes: [] }), 15000, 'tempo esgotado ao limpar pedaço na nuvem'); }
+          catch(e){ console.error(`Falha ao limpar o pedaço ${i} da matéria de origem na nuvem`, e); }
+        }
+      }catch(e){ console.error('Falha ao marcar matéria de origem como removida na nuvem — pode reaparecer em outro dispositivo', e); }
+    }
+
+    return { ok:true, movidas, fundidas };
+  });
+}
+
+// checagem PROATIVA no momento da importação: se o texto que está sendo
+// importado sob um nome que ainda não existe tem forte sobreposição de
+// enunciados com uma matéria JÁ existente sob outro nome, avisa em vez de
+// criar silenciosamente uma matéria duplicada. Limiar de 40% de sobreposição
+// (sobre o menor dos dois conjuntos) e mínimo de 3 questões dos dois lados —
+// pensado pra pegar o caso real (mesma prova reimportada com um nome
+// abreviado/reformatado) sem disparar em matérias que só compartilham um
+// puxadinho de questões parecidas por coincidência.
+function encontrarMateriaSemelhante(materiaNome, results){
+  const chaves = new Set(results.map(r=>normalizarEnunciado(r.q)).filter(Boolean));
+  if(chaves.size<3) return null;
+  let melhor = null;
+  materiasDisponiveis().forEach(m=>{
+    if(m===materiaNome) return;
+    const qsM = ALL_QUESTIONS.filter(q=>q.materia===m);
+    if(qsM.length<3) return;
+    const chavesM = new Set(qsM.map(q=>normalizarEnunciado(q.q)).filter(Boolean));
+    if(chavesM.size<3) return;
+    let bateram = 0;
+    chaves.forEach(c=>{ if(chavesM.has(c)) bateram++; });
+    const pct = bateram / Math.min(chaves.size, chavesM.size);
+    if(pct>=0.4 && (!melhor || pct>melhor.pct)) melhor = { materia:m, pct, bateram };
+  });
+  return melhor;
 }
 
 async function buscarSubstituirMateria(materiaNome){
@@ -6674,6 +6888,12 @@ function attachHandlers(){
   if(btnImportSomar) btnImportSomar.addEventListener('click', ()=> confirmarImportPendente('somar'));
   const btnImportCancelar = document.getElementById('btn-import-cancelar');
   if(btnImportCancelar) btnImportCancelar.addEventListener('click', cancelarImportPendente);
+  const btnImportMesclarExistente = document.getElementById('btn-import-mesclar-existente');
+  if(btnImportMesclarExistente) btnImportMesclarExistente.addEventListener('click', ()=> confirmarImportSemelhante('mesclar'));
+  const btnImportCriarSeparada = document.getElementById('btn-import-criar-separada');
+  if(btnImportCriarSeparada) btnImportCriarSeparada.addEventListener('click', ()=> confirmarImportSemelhante('separar'));
+  const btnImportSemelhanteCancelar = document.getElementById('btn-import-semelhante-cancelar');
+  if(btnImportSemelhanteCancelar) btnImportSemelhanteCancelar.addEventListener('click', cancelarImportSemelhante);
   const btnTentarSalvar = document.getElementById('btn-tentar-salvar-de-novo');
   if(btnTentarSalvar) btnTentarSalvar.addEventListener('click', async ()=>{
     STATE.avisoStorage = null;
@@ -7127,6 +7347,27 @@ function attachHandlers(){
   });
   root.querySelectorAll('[data-buscar-substituir-materia]').forEach(el=>{
     el.addEventListener('click', ()=> buscarSubstituirMateria(el.dataset.buscarSubstituirMateria));
+  });
+  root.querySelectorAll('[data-mesclar-materia]').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      const nomeOrigem = el.dataset.mesclarMateria;
+      const outras = materiasGerenciaveis().filter(m=>m!==nomeOrigem);
+      if(outras.length===0) return;
+      const lista = outras.map((m,i)=>`${i+1}) ${m}`).join('\n');
+      const escolha = window.prompt(`Mesclar "${nomeOrigem}" em qual matéria? Digite o número:\n\n${lista}\n\nA matéria "${nomeOrigem}" deixará de existir; suas questões e progresso passam pra matéria escolhida (mantendo a versão mais atual de cada questão repetida).`);
+      if(escolha===null) return;
+      const idx = parseInt(escolha.trim(), 10) - 1;
+      if(isNaN(idx) || idx<0 || idx>=outras.length){ alert('Número inválido.'); return; }
+      const nomeDestino = outras[idx];
+      const ok = window.confirm(`Confirma mesclar "${nomeOrigem}" em "${nomeDestino}"? Essa ação não pode ser desfeita automaticamente.`);
+      if(!ok) return;
+      el.disabled = true;
+      el.textContent = '⏳ Mesclando…';
+      const resultado = await mesclarMaterias(nomeOrigem, nomeDestino);
+      if(!resultado.ok){ alert('Não foi possível mesclar: ' + (resultado.motivo||'motivo desconhecido')); render(); return; }
+      STATE.dedupInfo = null;
+      render();
+    });
   });
   const btnSalvarTudo = root.querySelector('#btn-salvar-tudo');
   if(btnSalvarTudo) btnSalvarTudo.addEventListener('click', ()=> salvarTudoAgora());
