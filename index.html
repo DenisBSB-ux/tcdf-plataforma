@@ -1361,6 +1361,7 @@ const FIREBASE_CONFIG = {"apiKey": "AIzaSyDG4wNDfs0xGZ_8jgyzmWJF19iqmJ8ck8A", "a
 </script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/dompurify@3.2.6/dist/purify.min.js"></script>
 <script>
@@ -2019,7 +2020,7 @@ async function sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz){
     const doc = await comLimiteDeTempo(ref.get(), 15000, 'tempo esgotado ao consultar simulado em andamento');
     const atual = (doc.exists && doc.data().quizzesEmAndamento) ? (typeof doc.data().quizzesEmAndamento==='string' ? JSON.parse(doc.data().quizzesEmAndamento) : doc.data().quizzesEmAndamento) : {};
     atual[materiaKey] = sanitizarParaFirestore(quiz);
-    await comLimiteDeTempo(ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true }), 15000, 'tempo esgotado ao salvar simulado em andamento');
+    await comLimiteDeTempo(ref.set(comDono({ quizzesEmAndamento: JSON.stringify(atual) }), { merge: true }), 15000, 'tempo esgotado ao salvar simulado em andamento');
   }catch(e){ console.warn('Falha ao sincronizar simulado em andamento na nuvem', e); }
 }
 function limparQuizSalvo(materiaKey){
@@ -2034,7 +2035,7 @@ function limparQuizSalvo(materiaKey){
     comLimiteDeTempo(ref.get(), 15000, 'tempo esgotado ao consultar simulado em andamento').then(doc=>{
       const atual = (doc.exists && doc.data().quizzesEmAndamento) ? (typeof doc.data().quizzesEmAndamento==='string' ? JSON.parse(doc.data().quizzesEmAndamento) : doc.data().quizzesEmAndamento) : {};
       atual[materiaKey] = null;
-      return comLimiteDeTempo(ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true }), 15000, 'tempo esgotado ao limpar simulado em andamento');
+      return comLimiteDeTempo(ref.set(comDono({ quizzesEmAndamento: JSON.stringify(atual) }), { merge: true }), 15000, 'tempo esgotado ao limpar simulado em andamento');
     }).catch(e=>console.warn('Falha ao limpar simulado em andamento na nuvem', e));
   }
 }
@@ -2094,13 +2095,65 @@ function formatarDataHoraSalvamento(ts){
 
 let FIREBASE_OK = false;
 let fbDb = null;
+let fbAuth = null;
+let USUARIO_ATUAL = null; // { uid, email } quando logado com Google
+let APP_INICIADO = false;
 try{
   if(typeof firebase !== 'undefined' && FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey){
     firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.firestore();
     FIREBASE_OK = true;
+    if(firebase.auth){
+      fbAuth = firebase.auth();
+      fbAuth.onAuthStateChanged(usuario=>{
+        USUARIO_ATUAL = usuario ? { uid: usuario.uid, email: usuario.email || '' } : null;
+        if(APP_INICIADO) render();
+      });
+      fbAuth.getRedirectResult().then(r=>{ if(r && r.user) reivindicarProgresso(); }).catch(e=>console.warn('Falha no login por redirecionamento', e));
+    }
   }
 }catch(e){ console.warn('Firebase indisponível nesta sessão.', e); }
+
+// Login (Google) — exigido pelas regras do Firestore (firestore.rules) pra
+// publicar matérias e pra gravar progresso. Sem login o app continua
+// funcionando localmente e lendo as matérias públicas.
+// ao entrar, regrava o progresso com o campo "dono" — é isso que as regras do
+// Firestore usam pra impedir que outra pessoa leia ou altere o progresso deste
+// código de sincronização. Só roda num login explícito, não a cada abertura.
+async function reivindicarProgresso(){
+  if(!APP_INICIADO){ setTimeout(reivindicarProgresso, 1000); return; }
+  if(!STATE.syncCode) return;
+  Object.keys(PROGRESS).forEach(m => marcarProgressoSujo(m));
+  await pushToCloud();
+  render();
+}
+function comDono(dados){
+  return USUARIO_ATUAL ? { ...dados, dono: USUARIO_ATUAL.uid } : dados;
+}
+async function entrarComGoogle(){
+  if(!fbAuth) return;
+  const provedor = new firebase.auth.GoogleAuthProvider();
+  try{
+    await fbAuth.signInWithPopup(provedor);
+    await reivindicarProgresso();
+  }catch(e){
+    if(e && (e.code==='auth/popup-blocked' || e.code==='auth/operation-not-supported-in-this-environment')){
+      await fbAuth.signInWithRedirect(provedor);
+      return;
+    }
+    if(e && e.code==='auth/popup-closed-by-user') return;
+    alert('Não foi possível entrar: ' + motivoErroAuth(e));
+  }
+}
+function sairDaConta(){
+  if(fbAuth) fbAuth.signOut().catch(e=>console.warn('Falha ao sair', e));
+}
+function motivoErroAuth(e){
+  const codigo = e && e.code ? e.code : '';
+  if(codigo==='auth/unauthorized-domain') return `o domínio "${location.hostname}" não está autorizado no Firebase (Authentication → Settings → Authorized domains).`;
+  if(codigo==='auth/operation-not-allowed') return 'o login com Google não está ativado no Firebase (Authentication → Sign-in method → Google).';
+  return (e && e.message) ? e.message : 'erro desconhecido';
+}
 
 // pdf.js precisa do worker configurado antes do primeiro uso — mesma versão do
 // script carregado no <head>, servido pelo mesmo CDN
@@ -2228,7 +2281,9 @@ function setSyncStatusDOM(type, msg, detalhe){
 
 function motivoErroFirestore(e){
   const codigo = e && e.code ? e.code : '';
-  if(codigo === 'permission-denied') return 'Acesso negado — confira se você publicou as regras do Firestore (aba Regras → botão Publicar).';
+  if(codigo === 'permission-denied') return USUARIO_ATUAL
+    ? 'Acesso negado — esta conta não tem permissão para esta operação (publicar matérias é só para o administrador definido em firestore.rules).'
+    : 'Acesso negado — entre com o Google (barra lateral, bloco Sincronização) para sincronizar e publicar.';
   if(codigo === 'unavailable') return 'Sem conexão com o Firestore no momento — verifique sua internet e tente novamente.';
   if(codigo === 'not-found') return 'Banco de dados Firestore não encontrado — confira se ele foi criado no projeto certo.';
   return (e && e.message) ? e.message : 'erro desconhecido';
@@ -2585,12 +2640,12 @@ async function pushToCloud(){
           const q = BY_UID[uid];
           if(q && q.materia===materiaNome) edicoesDestaMateria[uid] = EDICOES_USUARIO[uid];
         });
-        await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugM}`).set(sanitizarParaFirestore({
+        await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugM}`).set(sanitizarParaFirestore(comDono({
           materia: materiaNome,
           progress: JSON.stringify(PROGRESS[materiaNome]),
           edicoes: JSON.stringify(edicoesDestaMateria),
           updatedAt: Date.now(),
-        })), 15000, 'tempo esgotado ao salvar progresso da matéria "'+materiaNome+'"');
+        }))), 15000, 'tempo esgotado ao salvar progresso da matéria "'+materiaNome+'"');
         MATERIAS_PROGRESSO_SUJAS.delete(materiaNome);
       }catch(e){
         algumaFalhou = true;
@@ -2600,10 +2655,10 @@ async function pushToCloud(){
     // merge:true é essencial aqui: sem isso, cada vez que o progresso é salvo
     // (a cada resposta) o documento inteiro seria sobrescrito, apagando o campo
     // quizzesEmAndamento gravado separadamente por sincronizarQuizEmAndamentoNaNuvem
-    await comLimiteDeTempo(fbDb.collection('progresso').doc(STATE.syncCode).set(sanitizarParaFirestore({
+    await comLimiteDeTempo(fbDb.collection('progresso').doc(STATE.syncCode).set(sanitizarParaFirestore(comDono({
       materiasComProgresso: Object.keys(PROGRESS),
       updatedAt: Date.now(),
-    }), { merge: true }), 15000, 'tempo esgotado ao salvar o manifesto de progresso');
+    })), { merge: true }), 15000, 'tempo esgotado ao salvar o manifesto de progresso');
     if(algumaFalhou) throw new Error('uma ou mais matérias não sincronizaram (ver avisos acima) — os dados já estão salvos neste dispositivo');
     marcarUltimoSyncOk();
   }catch(e){
@@ -4243,6 +4298,15 @@ function renderMateriaTopStrip(){
   </div></div>`;
 }
 
+function renderContaBlock(){
+  if(!fbAuth) return '';
+  if(!USUARIO_ATUAL){
+    return `<button class="side-action-btn compact" id="btn-entrar-google" style="margin-top:6px;">🔐 Entrar com Google</button>
+      <div class="side-status detail">necessário para sincronizar o progresso e publicar matérias</div>`;
+  }
+  return `<div class="side-status detail" style="margin-top:6px;" title="ID da conta (UID) — é o valor usado em firestore.rules">🔐 ${esc(USUARIO_ATUAL.email || 'conta Google')}<br><span style="font-family:var(--font-mono);font-size:10px;user-select:all;">${esc(USUARIO_ATUAL.uid)}</span></div>
+    <button class="side-action-btn compact" id="btn-sair-google">Sair da conta</button>`;
+}
 function renderSyncSidebarBlock(){
   if(!FIREBASE_OK){
     return `<div class="sidebar-block"><div class="sb-pad">
@@ -4256,6 +4320,7 @@ function renderSyncSidebarBlock(){
       <input type="text" id="input-sync-code" placeholder="nome de usuário">
       <button class="side-action-btn compact" id="btn-conectar-sync">🔗 Conectar dispositivo</button>
       <div class="side-status detail" id="sync-status-el">use exatamente o mesmo código em todos os dispositivos (maiúsculas/minúsculas não importam)</div>
+      ${renderContaBlock()}
     </div></div>`;
   }
   const statusClass = STATE.syncStatus ? STATE.syncStatus.type : '';
@@ -4274,6 +4339,7 @@ function renderSyncSidebarBlock(){
       <button class="side-action-btn compact" id="btn-dispensar-alertas-sobrescrita" style="margin-top:4px;">Dispensar</button>
     </div>` : ''}
     <button class="side-action-btn compact" id="btn-desconectar-sync">Desconectar</button>
+    ${renderContaBlock()}
   </div></div>`;
 }
 
@@ -6883,7 +6949,7 @@ async function renomearMateria(nomeAtual, nomeNovo){
         if(atual[nomeAtual]){
           atual[nomeNovo] = atual[nomeAtual];
           delete atual[nomeAtual];
-          await comLimiteDeTempo(ref.set({ quizzesEmAndamento: JSON.stringify(atual) }, { merge: true }), 15000, 'tempo esgotado ao mover simulado em andamento na nuvem');
+          await comLimiteDeTempo(ref.set(comDono({ quizzesEmAndamento: JSON.stringify(atual) }), { merge: true }), 15000, 'tempo esgotado ao mover simulado em andamento na nuvem');
         }
       }catch(e){ console.error('Falha ao mover o simulado em andamento (nuvem) pro novo nome', e); }
     }
@@ -7093,6 +7159,10 @@ function attachHandlers(){
   }
   const btnDesconectarSync = document.getElementById('btn-desconectar-sync');
   if(btnDesconectarSync) btnDesconectarSync.addEventListener('click', desconectarSincronizacao);
+  const btnEntrarGoogle = document.getElementById('btn-entrar-google');
+  if(btnEntrarGoogle) btnEntrarGoogle.addEventListener('click', entrarComGoogle);
+  const btnSairGoogle = document.getElementById('btn-sair-google');
+  if(btnSairGoogle) btnSairGoogle.addEventListener('click', sairDaConta);
 
   const btnVerAlertasSobrescrita = document.getElementById('btn-ver-alertas-sobrescrita');
   if(btnVerAlertasSobrescrita) btnVerAlertasSobrescrita.addEventListener('click', ()=>{
@@ -7572,6 +7642,7 @@ document.addEventListener('keydown', (e)=>{
   root.innerHTML = `<div style="padding:60px;text-align:center;color:#a9b6cc;font-family:var(--font-mono);font-size:13px;">Carregando processo…</div>`;
   await loadProgress();
   ensureMateriaSelecionada();
+  APP_INICIADO = true;
   render();
   // salvamento automático silencioso a cada minuto, além do salvamento
   // já disparado a cada resposta/ação
