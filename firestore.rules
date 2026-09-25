@@ -1,0 +1,43 @@
+rules_version = '2';
+
+// Regras de segurança do Firestore da TCDF Plataforma.
+// Como publicar: Firebase Console → Firestore Database → aba "Regras" →
+// colar este arquivo → "Publicar". Passo a passo completo em SEGURANCA.md.
+//
+// ANTES DE PUBLICAR: troque COLE_SEU_UID_AQUI pelo UID da sua conta Google.
+// O UID aparece na barra lateral da plataforma (bloco Sincronização) depois
+// de clicar em "Entrar com Google".
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function logado() {
+      return request.auth != null;
+    }
+
+    function administrador() {
+      return logado() && request.auth.uid in ['COLE_SEU_UID_AQUI'];
+    }
+
+    // Matérias públicas: qualquer pessoa lê, só o administrador publica,
+    // renomeia, mescla ou remove.
+    match /publico/{documento} {
+      allow read: if true;
+      allow write: if administrador();
+    }
+
+    // Progresso pessoal (documentos {codigo} e {codigo}__{materia}).
+    // O campo "dono" guarda o UID de quem gravou. Documentos antigos, sem
+    // "dono", continuam legíveis e passam a pertencer à primeira conta
+    // logada que gravar neles.
+    match /progresso/{documento} {
+      allow read: if resource == null
+                  || !('dono' in resource.data)
+                  || (logado() && resource.data.dono == request.auth.uid);
+      allow create: if logado() && request.resource.data.dono == request.auth.uid;
+      allow update: if logado()
+                    && request.resource.data.dono == request.auth.uid
+                    && (!('dono' in resource.data) || resource.data.dono == request.auth.uid);
+      allow delete: if false;
+    }
+  }
+}
