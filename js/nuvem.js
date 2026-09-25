@@ -431,7 +431,7 @@ async function carregarMateriasPublicas(){
         });
       }
       // guarda o texto original e a versão do site que o processou pela última
-      // vez — é o que permite reprocessar automaticamente sem reimportar na mão.
+      // vez (só referência).
       // Só existe na nuvem pra matérias pequenas o bastante pra caber (ver
       // publicarQuestoesNoFirestore); pra matérias grandes, o texto original
       // ainda fica disponível localmente neste aparelho (TEXTOS_ORIGINAIS_KEY).
@@ -864,8 +864,9 @@ async function sincronizarMateriasPublicas(){
       await saveCustomQuestions();
     }
   }
-  try{ await comLimiteDeTempo(reprocessarMateriasDesatualizadas(), 8000, 'tempo esgotado ao reprocessar matérias'); }
-  catch(e){ console.warn('Reprocessamento automático não respondeu a tempo — tenta de novo na próxima abertura.', e); }
+  // Não há reprocessamento automático a partir do texto original importado:
+  // ele substituía o conteúdo atual (já deduplicado/mesclado/editado) pelo
+  // arquivo bruto a cada versão nova do site e trazia duplicatas de volta.
   try{ await comLimiteDeTempo(verificarTodosQuizzesSalvos(), 8000, 'tempo esgotado ao verificar simulados em andamento'); }
   catch(e){ console.warn('Verificação de simulados em andamento não respondeu a tempo — algumas matérias podem não mostrar "Continuar" até você entrar nelas.', e); }
 }

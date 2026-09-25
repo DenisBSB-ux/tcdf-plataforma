@@ -2,7 +2,7 @@
 const STORAGE_KEY = 'sim-progresso-v3';
 const EDICOES_KEY = 'tcdf-edicoes-usuario-v1';
 let EDICOES_USUARIO = {}; // { [uid]: { r: 'html editado', rf: 'html editado' } }
-let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — permite reprocessar com o parser atual sem precisar reimportar manualmente
+let TEXTOS_ORIGINAIS = {}; // { [materiaNome]: textoBrutoDoImport } — texto do último arquivo importado (só referência; não é reprocessado automaticamente)
 // data/hora da última atualização de cada matéria (importação, reimportação,
 // salvamento manual) — mostrada ao lado do nome na tela de gerenciamento
 let MATERIA_ULTIMA_ATUALIZACAO = {}; // { [materiaNome]: timestamp }
