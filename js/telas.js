@@ -148,7 +148,40 @@ function ensureMateriaSelecionada(){
 
 const root = document.getElementById('app');
 
+// Login Google obrigatório: até a conta ser reconhecida, a página mostra só
+// esta tela. Sem o Firebase (sem conexão), avisa e oferece tentar de novo.
+function precisaLogin(){
+  return !USUARIO_ATUAL;
+}
+function renderTelaLogin(){
+  let conteudo;
+  if(!fbAuth){
+    conteudo = `<h2>Sem conexão com o login</h2>
+      <p>Não foi possível carregar o login com Google. Confira a internet e tente de novo.</p>
+      <button class="btn btn-primary" id="btn-login-recarregar">↻ Tentar novamente</button>`;
+  }else if(!AUTH_RESOLVIDO){
+    conteudo = `<p>Verificando sua conta…</p>`;
+  }else{
+    conteudo = `<h2>Entre para continuar</h2>
+      <p>Use sua conta Google para acessar as questões e salvar seu progresso em qualquer aparelho.</p>
+      <button class="btn btn-primary" id="btn-login-google" style="font-size:15px;padding:10px 22px;">🔐 Entrar com Google</button>`;
+  }
+  return `<div class="tela-login"><div class="tela-login-caixa">
+    <div class="seal-mark" style="margin:0 auto 10px;">${esc(CONFIG.sealText||'')}</div>
+    <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;margin-bottom:14px;">${esc(CONFIG.title||'')}</div>
+    ${conteudo}
+  </div></div>`;
+}
 function render(){
+  if(precisaLogin()){
+    document.body.classList.remove('focus-mode');
+    root.innerHTML = renderTelaLogin();
+    const btn = document.getElementById('btn-login-google');
+    if(btn) btn.addEventListener('click', entrarComGoogle);
+    const btnRecarregar = document.getElementById('btn-login-recarregar');
+    if(btnRecarregar) btnRecarregar.addEventListener('click', ()=> location.reload());
+    return;
+  }
   ensureMateriaSelecionada();
   document.body.classList.toggle('focus-mode', !!STATE.focusMode);
   root.innerHTML = `
@@ -173,14 +206,8 @@ function renderAvisoStorage(){
 
 // Sem código de sincronização o progresso não vai pra nuvem — por isso este
 // banner aparece no topo de toda página até um código ser conectado.
-function renderAvisoSyncAusente(){
-  if(!FIREBASE_OK || !fbAuth || USUARIO_ATUAL || STATE.avisoSyncDispensado) return '';
-  return `<div style="position:sticky;top:0;z-index:499;background:var(--gold-bright,#c9a227);color:#1a1200;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <span>⚠️ <b>Suas respostas estão sendo salvas SÓ neste aparelho</b> — entre com sua conta Google para salvar o progresso na nuvem e usar em outro PC/celular.</span>
-    <button id="btn-entrar-google-banner" style="padding:4px 12px;border-radius:6px;border:1px solid #1a1200;background:#1a1200;color:#fff;cursor:pointer;font-size:12px;font-weight:600;">🔐 Entrar com Google</button>
-    <button id="btn-dispensar-aviso-sync" style="padding:4px 10px;border-radius:6px;border:1px solid #1a1200;background:transparent;color:#1a1200;cursor:pointer;font-size:12px;">Agora não</button>
-  </div>`;
-}
+// sem aviso de "salvo só neste aparelho": o login Google é obrigatório
+function renderAvisoSyncAusente(){ return ''; }
 
 function questoesFiltradas(){
   if(!STATE.materia) return [];
@@ -611,18 +638,18 @@ function renderEstatisticasPorMateria(){
   return `
   <div class="card-block" style="margin-top:22px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-      <h3 style="margin:0;">📈 Estatísticas por matéria</h3>
+      <h3 style="margin:0;color:inherit;">📈 Estatísticas por matéria</h3>
       <div class="tabs" style="margin:0;">
         <button class="tab-btn ${abaAtual==='tabela'?'active':''}" data-estatisticas-aba="tabela" style="padding:4px 10px;font-size:12px;">📋 Tabela</button>
         <button class="tab-btn ${abaAtual==='tendencias'?'active':''}" data-estatisticas-aba="tendencias" style="padding:4px 10px;font-size:12px;">📈 Tendências</button>
       </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
-      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
+      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);color:var(--ink);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
         <div style="font-size:11px;color:var(--ink-soft);">Total hoje</div>
         <div style="font-size:15px;font-weight:700;">${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</div>
       </div>
-      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas) · ${atividade.diasComAtividade} dia(s) com atividade">
+      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);color:var(--ink);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas) · ${atividade.diasComAtividade} dia(s) com atividade">
         <div style="font-size:11px;color:var(--ink-soft);">Média diária</div>
         <div style="font-size:15px;font-weight:700;">${atividade.mediaDiaria.toFixed(1)} questões/dia</div>
       </div>
@@ -690,57 +717,28 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
     }).join('')}`;
   return cabecalhoTabela;
 }
-// paleta de cores por matéria — cíclica; não repete cor entre vizinhas até
-// passar de 12 matérias
-const PALETA_CORES_MATERIA = ['#2563eb','#dc2626','#059669','#d97706','#7c3aed','#0891b2','#db2777','#65a30d','#ea580c','#4338ca','#0d9488','#be123c'];
 
 // gráfico único: todas as matérias no eixo X, % de acerto no eixo Y, cada uma
 // com sua cor (a grade de tendências abaixo mostra a evolução de cada matéria)
 function renderGraficoComparativoMaterias(linhas){
   const comResposta = linhas.filter(l=>l.respondidas>0);
-  if(comResposta.length<2){
-    return `<div style="font-size:12px;color:var(--ink-soft);padding:10px 4px;">Responda questões em pelo menos 2 matérias pra ver a comparação aqui.</div>`;
+  if(comResposta.length===0){
+    return `<div style="font-size:12px;color:var(--ink-soft);padding:10px 4px;">Responda questões pra ver o desempenho por matéria aqui.</div>`;
   }
-  const largura = Math.max(360, comResposta.length*70);
-  const margemEsq = 34, margemDir = 14, margemTopo = 14, margemBaixo = 64;
-  // eixo Y: de a menor porcentagem real (arredondada pra baixo em múltiplo de 5)
-  // até 100% fixo, com grade a cada 5%; a altura cresce com o número de linhas
-  const pcts = comResposta.map(l=>l.pct);
-  const minEixo = Math.max(0, Math.floor(Math.min(...pcts)/5)*5);
-  const maxEixo = 100;
-  const rangeEixo = Math.max(5, maxEixo - minEixo); // nunca zero, mesmo se tudo for 100%
-  const numLinhas = rangeEixo/5;
-  const areaH = Math.max(140, numLinhas*32) * 2; // pedido explícito: dobrar o eixo vertical
-  const altura = margemTopo + margemBaixo + areaH;
-  const areaW = largura-margemEsq-margemDir;
-  const coords = comResposta.map((l,i)=>{
-    const x = margemEsq + (comResposta.length===1 ? areaW/2 : (i/(comResposta.length-1))*areaW);
-    const y = margemTopo + (1 - (l.pct-minEixo)/rangeEixo)*areaH;
-    const cor = PALETA_CORES_MATERIA[i % PALETA_CORES_MATERIA.length];
-    return { x, y, l, cor };
-  });
-  const linhaPontos = coords.map(c=>`${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
-  // uma linha de grade a cada 5% exatos, do mínimo ao máximo
-  const valoresGrade = [];
-  for(let v=minEixo; v<=maxEixo; v+=5) valoresGrade.push(v);
-  const gradeY = valoresGrade.map(v=>{
-    const y = margemTopo + (1-(v-minEixo)/rangeEixo)*areaH;
-    return `<line x1="${margemEsq}" y1="${y.toFixed(1)}" x2="${largura-margemDir}" y2="${y.toFixed(1)}" stroke="currentColor" stroke-opacity=".08" />
-      <text x="${margemEsq-6}" y="${y.toFixed(1)}" font-size="10" text-anchor="end" dominant-baseline="middle" fill="currentColor" opacity=".55">${v}%</text>`;
-  }).join('');
-  const marcadores = coords.map(c=>`
-    <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="5" fill="${c.cor}" stroke="var(--paper,#fdfaf2)" stroke-width="1.5">
-      <title>${esc(c.l.nome)}: ${c.l.pct}% (${c.l.respondidas} resposta${c.l.respondidas>1?'s':''})</title>
-    </circle>
-    <text x="${c.x.toFixed(1)}" y="${(c.y-9).toFixed(1)}" font-size="10" font-weight="700" text-anchor="middle" fill="${c.cor}">${c.l.pct}%</text>
-    <text x="${c.x.toFixed(1)}" y="${(margemTopo+areaH+16).toFixed(1)}" font-size="10" text-anchor="end" fill="currentColor" opacity=".75" transform="rotate(-40 ${c.x.toFixed(1)} ${(margemTopo+areaH+16).toFixed(1)})">${esc(c.l.nome.length>18 ? c.l.nome.slice(0,17)+'…' : c.l.nome)}<title>${esc(c.l.nome)}</title></text>
-  `).join('');
-  return `<div style="overflow-x:auto;">
-    <svg viewBox="0 0 ${largura} ${altura}" width="${largura}" height="${altura}" style="display:block;min-width:${largura}px;">
-      ${gradeY}
-      <polyline points="${linhaPontos}" fill="none" stroke="currentColor" stroke-opacity=".25" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-      ${marcadores}
-    </svg>
+  // uma barra por matéria (0–100%), com o nome em cima. Uma cor só: o nome
+  // identifica a matéria, e vermelho/verde ficam reservados pra erro/acerto
+  return `<div class="barras-materias">
+    ${linhas.map(l=>{
+      if(!l.respondidas) return '';
+      const dica = `${l.nome}: ${l.pct}% de acerto (${l.respondidas} respondida${l.respondidas>1?'s':''})`;
+      return `<div class="barra-materia" title="${esc(dica)}">
+        <div class="barra-materia-topo">
+          <span class="barra-materia-nome" data-macro-materia="${esc(l.nome)}">${esc(l.nome)}</span>
+          <span class="barra-materia-pct">${l.pct}%</span>
+        </div>
+        <div class="barra-materia-trilho"><div class="barra-materia-valor" style="width:${Math.max(0, Math.min(100, l.pct))}%;"></div></div>
+      </div>`;
+    }).join('')}
   </div>`;
 }
 

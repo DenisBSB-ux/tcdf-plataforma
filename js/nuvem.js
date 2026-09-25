@@ -110,6 +110,7 @@ let fbDb = null;
 let fbAuth = null;
 let USUARIO_ATUAL = null; // { uid, email } quando logado com Google
 let APP_INICIADO = false;
+let AUTH_RESOLVIDO = false; // o Firebase já disse se há conta logada
 try{
   if(typeof firebase !== 'undefined' && FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey){
     firebase.initializeApp(FIREBASE_CONFIG);
@@ -118,6 +119,7 @@ try{
     if(firebase.auth){
       fbAuth = firebase.auth();
       fbAuth.onAuthStateChanged(usuario=>{
+        AUTH_RESOLVIDO = true;
         const uidAntes = USUARIO_ATUAL && USUARIO_ATUAL.uid;
         USUARIO_ATUAL = usuario ? {
           uid: usuario.uid,
@@ -544,8 +546,15 @@ async function carregarMateriasPublicas(){
     // leitura.
     let mudou = false;
     Object.entries(questoesPorMateria).forEach(([materiaNome, questoesNuvem])=>{
-      // mudança local ainda não publicada: o local é mais novo que a nuvem
-      if(PUBLICACAO_PENDENTE.has(materiaNome) && ALL_QUESTIONS.some(q => q.materia===materiaNome)) return;
+      // mudança local ainda não publicada: só prevalece se for MAIS NOVA que a
+      // versão da nuvem. Se a nuvem foi atualizada depois (outro aparelho,
+      // reimportação), vale a nuvem e a pendência local é descartada.
+      if(PUBLICACAO_PENDENTE.has(materiaNome) && ALL_QUESTIONS.some(q => q.materia===materiaNome)){
+        const mudancaLocal = MATERIA_ULTIMA_ATUALIZACAO[materiaNome] || 0;
+        const versaoNuvem = MATERIA_ATUALIZADOEM_NUVEM_VISTO[materiaNome] || 0;
+        if(mudancaLocal > versaoNuvem) return;
+        marcarPublicacaoPendente(materiaNome, false);
+      }
       ALL_QUESTIONS = ALL_QUESTIONS.filter(q => q.materia !== materiaNome);
       questoesNuvem.forEach(q=>{ ALL_QUESTIONS.push({ ...q, origem: 'importado' }); });
       mudou = true;
@@ -675,6 +684,9 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
       STATE.materiasPublicadasNestaSessao.add(materiaNome);
     }catch(e){
       console.error('Falha ao publicar a matéria "'+materiaNome+'"', e);
+      // sem permissão (não é a conta administradora): este aparelho nunca vai
+      // conseguir publicar, então a versão da nuvem é que vale
+      if(e && e.code==='permission-denied') marcarPublicacaoPendente(materiaNome, false);
       falhas.push({ materia: materiaNome, motivo: e && e.message ? e.message : motivoErroFirestore(e) });
     }
   }
