@@ -90,11 +90,12 @@ function renderImportLog(){
   }
   return `<div class="import-log ok">
     <b>${log.importadas} questão(ões) importada(s)</b> para a matéria "${esc(log.materia)}"${log.modo==='substituir' ? ' (substituindo o conteúdo anterior)' : ''}.
-    ${log.puladasPorJaExistir ? `<br>${log.puladasPorJaExistir} questão(ões) já existiam nesta matéria (mesmo número) e foram puladas — não duplicadas.` : ''}
+    ${log.puladasPorJaExistir ? `<br>${log.puladasPorJaExistir} questão(ões) já existiam nesta matéria (mesmo enunciado) e foram puladas — não duplicadas.` : ''}
+    ${log.progressosMantidos ? `<br>Progresso mantido em ${log.progressosMantidos} questão(ões) que já existiam.` : ''}
     ${log.semGabarito ? `<br>${log.semGabarito} questão(ões) foram importadas mas <b>sem gabarito identificado</b> (não entram no simulado) — confira o formato de "gabarito" nesse arquivo.` : ''}
     ${log.ignoradas ? `<br>${log.ignoradas} bloco(s) ignorado(s) (status diferente de "Válida" ou fora do padrão).` : ''}
     ${log.publicadoAutomaticamente===true ? `<br><b>🌐 Publicada automaticamente</b> — já está visível pra qualquer visitante do site.` : ''}
-    ${log.publicadoAutomaticamente===false ? `<br><span style="color:var(--stamp-red);">⚠ Não foi possível publicar automaticamente (${esc(log.erroPublicacao||'')}). Tente de novo em alguns instantes usando "Inserir" com o mesmo arquivo — a publicação roda automaticamente a cada importação.</span>` : ''}
+    ${log.publicadoAutomaticamente===false ? `<br><span style="color:var(--stamp-red);">⚠ Não foi possível publicar na nuvem agora (${esc(log.erroPublicacao||'')}). Está salvo neste dispositivo e será publicado automaticamente assim que a nuvem responder — não reimporte.</span>` : ''}
   </div>
   ${log.amostra && log.amostra.length ? `<div class="import-list">
     ${log.amostra.map(s=>`<div class="imp-row"><span>Questão original nº <b>${s.n}</b></span><span>${esc(s.tipo)}</span></div>`).join('')}
@@ -636,26 +637,69 @@ async function processImportedText(content, sugestaoNome, modoForcado){
 async function aplicarImportacao(materiaNome, content, results, ignoradas, semGabarito, modo, opcoes){
   const publicar = !(opcoes && opcoes.publicar===false);
   return comTravaDeEscrita(async ()=>{
+  const bucket = getBucket(materiaNome);
+  // questões que já estavam na matéria, indexadas pra reconhecer a mesma
+  // questão no arquivo novo (mesmaQuestao), mesmo com outro número/cabeçalho
+  const anteriores = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido');
+  const porFinal = {};
+  anteriores.forEach(q=>{
+    const c = chaveDeEnunciado(q.q);
+    if(c) (porFinal[finalDaChave(c)] = porFinal[finalDaChave(c)] || []).push({ q, chave: c });
+  });
+  // todas as cópias anteriores equivalentes (a matéria pode ter duplicatas)
+  const equivalentesAnteriores = r => {
+    const c = chaveDeEnunciado(r.q);
+    return c ? (porFinal[finalDaChave(c)] || []).filter(x => mesmaQuestao(c, x.chave)).map(x => x.q) : [];
+  };
+  // Substituir: a lista passa a ser exatamente a do arquivo, e o progresso vai
+  // junto pra questão equivalente (não pelo número, que muda entre arquivos).
+  // Progresso de questão que não existe mais no arquivo é descartado.
+  let progressoAnterior = null;
   if(modo === 'substituir'){
+    progressoAnterior = {};
+    anteriores.forEach(q=>{
+      if(bucket.perguntas[q.uid]) progressoAnterior[q.uid] = bucket.perguntas[q.uid];
+      delete bucket.perguntas[q.uid];
+      if(bucket.flash) delete bucket.flash[q.uid];
+    });
     ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !(q.materia===materiaNome && q.origem!=='embutido'));
   }
   const slug = slugify(materiaNome);
   const existingUids = new Set(ALL_QUESTIONS.map(q=>q.uid));
-  let added = 0, puladasPorJaExistir = 0;
+  let added = 0, puladasPorJaExistir = 0, progressosMantidos = 0;
   results.forEach(r=>{
-    const uidBase = `${slug}-${r.n}`;
-    if(modo==='somar' && existingUids.has(uidBase)){
+    const equivalentes = equivalentesAnteriores(r);
+    // Inserir/somar: só entra o que falta — a questão equivalente já existe
+    if(modo==='somar' && equivalentes.length){
       puladasPorJaExistir++;
       return;
     }
+    const uidBase = `${slug}-${r.n}`;
     let uid = uidBase;
     let suffix = 1;
     while(existingUids.has(uid)){ uid = `${uidBase}-${suffix++}`; }
     existingUids.add(uid);
     const temaAuto = r.tema || classifyTemaPorFonte(r.ft) || classifyTema(r.q, r.es);
     ALL_QUESTIONS.push({ ...r, materia: materiaNome, tema: temaAuto || 'Geral', uid, origem:'importado' });
+    if(progressoAnterior){
+      let manteve = false;
+      equivalentes.forEach(eq=>{
+        if(!progressoAnterior[eq.uid]) return;
+        bucket.perguntas[uid] = somarProgressoDaQuestao(bucket.perguntas[uid], progressoAnterior[eq.uid]);
+        delete progressoAnterior[eq.uid];
+        manteve = true;
+      });
+      if(manteve) progressosMantidos++;
+    }
     added++;
   });
+  if(progressoAnterior){
+    // o arquivo novo pode ter a mesma questão repetida: não deixa cópia
+    deduplicarMateriaNaMemoria(materiaNome);
+    added = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido').length;
+    marcarProgressoSujo(materiaNome);
+    saveProgress();
+  }
   TEXTOS_ORIGINAIS[materiaNome] = { texto: content, versaoProcessada: (window.__TCDF_BUILD__ && window.__TCDF_BUILD__.versao) || null };
   salvarTextosOriginaisLocalmente();
   marcarMateriaAtualizada(materiaNome);
@@ -667,6 +711,7 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
     // não quantas de fato ENTRARAM — enganoso quando "somar" pula duplicatas
     importadas: added,
     puladasPorJaExistir,
+    progressosMantidos,
     modo,
     semGabarito,
     ignoradas,
@@ -866,10 +911,13 @@ function somarProgressoDaQuestao(pPara, pDe){
   else if(p.ultimoResultado==null) p.ultimoResultado = pDe.ultimoResultado;
   return p;
 }
-// versão "mais atual" de duas cópias da mesma questão: maior ano; empate
-// decide pela resolução mais completa
+// versão a manter de duas cópias da mesma questão: maior ano; empate decide
+// pelo enunciado mais completo (com o texto de contexto/caso, sem o qual o
+// item pode ficar incompreensível) e depois pela resolução mais completa
 function questaoMaisAtual(a, b){
   if((a.ar||0)!==(b.ar||0)) return (a.ar||0)>(b.ar||0) ? a : b;
+  const ca = chaveDeEnunciado(a.q).length, cb = chaveDeEnunciado(b.q).length;
+  if(ca!==cb) return ca>cb ? a : b;
   return ((a.r||'').length+(a.rf||'').length) >= ((b.r||'').length+(b.rf||'').length) ? a : b;
 }
 
@@ -1219,7 +1267,7 @@ async function salvarMateriaAgora(materiaNome){
     }
   }
   STATE.salvandoMateria = null;
-  if(okLocal && okNuvem) marcarMateriaAtualizada(materiaNome);
+  if(okLocal && okNuvem) marcarMateriaAtualizada(materiaNome, { publicada:true });
   STATE.ultimoSalvamentoManual = {
     materia: materiaNome,
     ok: okLocal && okNuvem,
@@ -1258,7 +1306,7 @@ async function salvarTudoAgora(){
     }
   }
   STATE.salvandoTudo = false;
-  if(okLocal && okNuvem) materias.forEach(marcarMateriaAtualizada);
+  if(okLocal && okNuvem) materias.forEach(m => marcarMateriaAtualizada(m, { publicada:true }));
   STATE.ultimoSalvamentoGeral = {
     ok: okLocal && okNuvem,
     qtdMaterias: materias.length,

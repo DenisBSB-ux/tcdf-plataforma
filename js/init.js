@@ -21,14 +21,15 @@
       const ok = await saveCustomQuestions();
       let okNuvem = true, motivoNuvem = null;
       if(ok && FIREBASE_OK){
-        const alteradas = materias.filter(m => (MATERIA_ULTIMA_ATUALIZACAO[m]||0) > desdeUltimoCiclo);
+        // inclui as que ficaram pendentes de uma publicação que falhou antes
+        const alteradas = materias.filter(m => (MATERIA_ULTIMA_ATUALIZACAO[m]||0) > desdeUltimoCiclo || PUBLICACAO_PENDENTE.has(m));
         if(alteradas.length>0){
           try{
             // sem force, pelo mesmo motivo de salvarTudoAgora
             const pub = await publicarQuestoesNoFirestore(alteradas, false);
             okNuvem = !!pub.ok;
             motivoNuvem = pub.ok ? null : pub.motivo;
-            if(pub.ok) alteradas.forEach(marcarMateriaAtualizada);
+            if(pub.ok) alteradas.forEach(m => marcarMateriaAtualizada(m, { publicada:true }));
           }catch(e){ okNuvem=false; motivoNuvem = e && e.message ? e.message : 'erro desconhecido'; }
         }
       }
