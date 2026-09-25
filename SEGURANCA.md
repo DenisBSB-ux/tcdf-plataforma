@@ -9,7 +9,10 @@ sincronização dela.
 ## Passo a passo (uma vez só)
 
 1. **Ativar o login com Google**
-   Firebase Console → *Authentication* → *Sign-in method* → *Google* → ativar.
+   Firebase Console → *Authentication* → *Vamos começar* (*Get started*, só na
+   primeira vez) → *Sign-in method* → *Google* → ativar → escolher o e-mail de
+   suporte → *Salvar*. Sem isso o login mostra
+   `auth/configuration-not-found`.
 
 2. **Autorizar o domínio do site**
    *Authentication* → *Settings* → *Authorized domains* → adicionar o domínio

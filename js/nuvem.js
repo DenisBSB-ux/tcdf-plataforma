@@ -163,6 +163,7 @@ function sairDaConta(){
 function motivoErroAuth(e){
   const codigo = e && e.code ? e.code : '';
   if(codigo==='auth/unauthorized-domain') return `o domínio "${location.hostname}" não está autorizado no Firebase (Authentication → Settings → Authorized domains).`;
+  if(codigo==='auth/configuration-not-found') return 'o Authentication ainda não foi ativado neste projeto do Firebase. No Firebase Console: Authentication → "Vamos começar" (Get started) → Sign-in method → Google → Ativar → Salvar. Veja SEGURANCA.md.';
   if(codigo==='auth/operation-not-allowed') return 'o login com Google não está ativado no Firebase (Authentication → Sign-in method → Google).';
   return (e && e.message) ? e.message : 'erro desconhecido';
 }
