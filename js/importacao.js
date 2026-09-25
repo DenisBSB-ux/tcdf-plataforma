@@ -911,10 +911,13 @@ function somarProgressoDaQuestao(pPara, pDe){
   else if(p.ultimoResultado==null) p.ultimoResultado = pDe.ultimoResultado;
   return p;
 }
-// versão "mais atual" de duas cópias da mesma questão: maior ano; empate
-// decide pela resolução mais completa
+// versão a manter de duas cópias da mesma questão: maior ano; empate decide
+// pelo enunciado mais completo (com o texto de contexto/caso, sem o qual o
+// item pode ficar incompreensível) e depois pela resolução mais completa
 function questaoMaisAtual(a, b){
   if((a.ar||0)!==(b.ar||0)) return (a.ar||0)>(b.ar||0) ? a : b;
+  const ca = chaveDeEnunciado(a.q).length, cb = chaveDeEnunciado(b.q).length;
+  if(ca!==cb) return ca>cb ? a : b;
   return ((a.r||'').length+(a.rf||'').length) >= ((b.r||'').length+(b.rf||'').length) ? a : b;
 }
 
