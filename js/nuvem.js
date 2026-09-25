@@ -37,7 +37,7 @@ function flushQuizSyncPendente(){
   if(!quizSyncPendente) return;
   const { materiaKey, quiz } = quizSyncPendente;
   quizSyncPendente = null;
-  sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz);
+  return sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz);
 }
 // grava só o campo desta matéria dentro do quizzesEmAndamento: lê o estado
 // atual, atualiza essa chave e regrava tudo como uma única string JSON (um
@@ -125,6 +125,11 @@ try{
           nome: usuario.displayName || (usuario.email || '').split('@')[0] || 'conta Google',
         } : null;
         if(usuario && usuario.uid!==uidAntes) vincularContaGoogle();
+        else if(!usuario && uidAntes && !SAINDO_DA_CONTA){
+          // saiu por outro caminho (outra aba, sessão expirada): o aparelho
+          // também não pode ficar com os dados dessa conta
+          limparDadosDoUsuarioNoAparelho().then(()=>{ if(APP_INICIADO) render(); });
+        }
         else if(APP_INICIADO) render();
       });
       fbAuth.getRedirectResult().catch(e=>console.warn('Falha no login por redirecionamento', e));
@@ -198,11 +203,55 @@ async function entrarComGoogle(){
     alert('Não foi possível entrar: ' + motivoErroAuth(e));
   }
 }
-// Sair mantém STATE.syncCode guardado: se OUTRA conta entrar depois neste
-// aparelho, conectarSincronizacao vê a troca e não mistura o progresso.
-function sairDaConta(){
+// Sair: primeiro envia pra nuvem o que ainda estiver pendente (ainda logado,
+// senão as regras recusam), depois apaga deste aparelho tudo o que é da
+// conta (progresso, simulados em andamento, edições) e só então sai. O
+// próximo usuário do aparelho começa do zero. Correções de gabarito não
+// são apagadas: não vão pra nuvem e se perderiam de vez.
+let SAINDO_DA_CONTA = false;
+async function sairDaConta(){
+  if(!fbAuth || SAINDO_DA_CONTA) return;
+  SAINDO_DA_CONTA = true;
+  try{
+    let tudoEnviado = true;
+    try{
+      await comLimiteDeTempo(Promise.all([flushQuizSyncPendente(), pushToCloud()]), 20000, 'tempo esgotado ao enviar o progresso');
+      if(MATERIAS_PROGRESSO_SUJAS.size>0) tudoEnviado = false;
+    }catch(e){ tudoEnviado = false; }
+    if(!tudoEnviado && !window.confirm('Parte do seu progresso ainda não chegou à nuvem (sem conexão?). Se sair agora, ela será apagada deste aparelho.\n\nSair mesmo assim?')) return;
+    await limparDadosDoUsuarioNoAparelho();
+    try{ await fbAuth.signOut(); }catch(e){ console.warn('Falha ao sair', e); }
+  }finally{
+    SAINDO_DA_CONTA = false;
+  }
+  render();
+}
+async function limparDadosDoUsuarioNoAparelho(){
+  const chavesQuiz = new Set([
+    ...Object.keys(STATE.quizzesEmAndamento || {}),
+    ...materiasDisponiveis(),
+    ...materiasDisponiveis().map(m => m + '::erros'),
+  ]);
+  clearTimeout(saveTimer);
+  clearTimeout(syncQuizEmAndamentoTimer);
+  quizSyncPendente = null;
+  PROGRESS = {};
+  MATERIAS_PROGRESSO_SUJAS.clear();
+  EDICOES_USUARIO = {};
+  edicaoAtual = null;
+  STATE.quizzesEmAndamento = {};
+  STATE.quizzesVerificados = new Set();
+  STATE.quiz = null;
+  STATE.flashDeck = null;
+  STATE.syncCode = '';
   STATE.syncStatus = null;
-  if(fbAuth) fbAuth.signOut().catch(e=>console.warn('Falha ao sair', e));
+  const escritas = [[STORAGE_KEY, '{}'], [EDICOES_KEY, '{}'], [SYNC_CODE_KEY, ''], [LAST_SYNC_KEY, ''], [CONTA_DO_APARELHO_KEY, '']];
+  chavesQuiz.forEach(k => escritas.push([quizStorageKey(k), '']));
+  for(const [chave, valor] of escritas){
+    try{ await storageSet(chave, valor); }catch(e){ console.warn('Falha ao limpar '+chave, e); }
+    // cópia antiga no localStorage (versões anteriores) também não pode sobrar
+    try{ if(window.localStorage.getItem(chave)!==null) window.localStorage.setItem(chave, valor); }catch(e){ /* sem localStorage */ }
+  }
 }
 function motivoErroAuth(e){
   const codigo = e && e.code ? e.code : '';
