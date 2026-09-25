@@ -507,8 +507,10 @@ async function carregarMateriasPublicas(){
     // pedaços além do numChunks do manifesto são sobras de uma versão maior
     // (ou de uma publicação interrompida) e não fazem parte da matéria
     const numChunksPorSlug = {};
+    const docsPorId = {};
     docs.forEach(doc=>{
       const data = doc.data();
+      docsPorId[doc.id] = data;
       if(data && !/__p\d+$/.test(doc.id) && typeof data.numChunks==='number') numChunksPorSlug[doc.id] = data.numChunks;
     });
     docs.forEach(doc=>{
@@ -518,9 +520,18 @@ async function carregarMateriasPublicas(){
       if(SLUGS_REMOVIDOS_NUVEM.has(slugBase)) return;
       const mPedaco = doc.id.match(/__p(\d+)$/);
       if(mPedaco && slugBase in numChunksPorSlug && Number(mPedaco[1]) >= numChunksPorSlug[slugBase]) return;
+      // Só entram questões de um documento que É a matéria: um pedaço cujo
+      // manifesto existe, ou um manifesto legado com o array embutido — e
+      // sempre com o nome da matéria batendo com o do documento. Documentos
+      // soltos (ex.: "publico/materias", de uma versão antiga, com cópias
+      // antigas de várias matérias) eram somados às listas certas a cada
+      // abertura e faziam as duplicatas voltarem.
+      const manifesto = mPedaco ? docsPorId[slugBase] : data;
+      const materiaDoDocumento = manifesto && manifesto.materia;
+      if(!materiaDoDocumento || slugify(materiaDoDocumento)!==slugBase) return;
       if(Array.isArray(data.questoes) && data.questoes.length>0){
         data.questoes.forEach(q=>{
-          if(!q || !q.uid || !q.materia) return;
+          if(!q || !q.uid || q.materia!==materiaDoDocumento) return;
           if(!questoesPorMateria[q.materia]) questoesPorMateria[q.materia] = [];
           questoesPorMateria[q.materia].push(q);
         });
