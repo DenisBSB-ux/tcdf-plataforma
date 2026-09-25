@@ -1295,7 +1295,7 @@ async function renomearMateria(nomeAtual, nomeNovo){
     // move o simulado em andamento também na nuvem (mesmo raciocínio do
     // armazenamento local acima) — lê o documento principal, move a chave do
     // nome antigo pro novo dentro do JSON de quizzesEmAndamento, e regrava
-    if(STATE.syncCode){
+    if(sincronizacaoAtiva()){
       try{
         const ref = fbDb.collection('progresso').doc(STATE.syncCode);
         const doc = await comLimiteDeTempo(ref.get(), 15000, 'tempo esgotado ao consultar simulado em andamento na nuvem');

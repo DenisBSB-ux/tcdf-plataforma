@@ -5,8 +5,8 @@ rules_version = '2';
 // colar este arquivo → "Publicar". Passo a passo completo em SEGURANCA.md.
 //
 // Administrador: UID da conta Google que publica as matérias. O UID aparece
-// na barra lateral da plataforma (bloco Sincronização) depois de clicar em
-// "Entrar com Google". Para mais administradores, acrescente UIDs na lista.
+// ao passar o mouse sobre o seu nome na barra lateral (bloco Sincronização),
+// depois de "Entrar com Google". Para mais administradores, acrescente UIDs.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -30,9 +30,12 @@ service cloud.firestore {
     // "dono", continuam legíveis e passam a pertencer à primeira conta
     // logada que gravar neles.
     match /progresso/{documento} {
-      allow read: if resource == null
-                  || !('dono' in resource.data)
-                  || (logado() && resource.data.dono == request.auth.uid);
+      allow get: if resource == null
+                 || !('dono' in resource.data)
+                 || (logado() && resource.data.dono == request.auth.uid);
+      // o app só lê progresso pelo nome do documento; listar a coleção
+      // mostraria os códigos e datas de todos os usuários
+      allow list: if false;
       allow create: if logado() && request.resource.data.dono == request.auth.uid;
       allow update: if logado()
                     && request.resource.data.dono == request.auth.uid

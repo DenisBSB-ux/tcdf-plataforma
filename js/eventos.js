@@ -68,16 +68,10 @@ function attachHandlers(){
     });
   }
 
-  const inputSyncCode = document.getElementById('input-sync-code');
-  const btnConectarSync = document.getElementById('btn-conectar-sync');
-  if(inputSyncCode && btnConectarSync){
-    btnConectarSync.addEventListener('click', ()=> conectarSincronizacao(inputSyncCode.value));
-    inputSyncCode.addEventListener('keydown', (e)=>{ if(e.key==='Enter') conectarSincronizacao(inputSyncCode.value); });
-  }
-  const btnDesconectarSync = document.getElementById('btn-desconectar-sync');
-  if(btnDesconectarSync) btnDesconectarSync.addEventListener('click', desconectarSincronizacao);
   const btnEntrarGoogle = document.getElementById('btn-entrar-google');
   if(btnEntrarGoogle) btnEntrarGoogle.addEventListener('click', entrarComGoogle);
+  const btnEntrarGoogleBanner = document.getElementById('btn-entrar-google-banner');
+  if(btnEntrarGoogleBanner) btnEntrarGoogleBanner.addEventListener('click', entrarComGoogle);
   const btnSairGoogle = document.getElementById('btn-sair-google');
   if(btnSairGoogle) btnSairGoogle.addEventListener('click', sairDaConta);
 
@@ -91,12 +85,6 @@ function attachHandlers(){
     render();
   });
 
-  const inputSyncCodeBanner = document.getElementById('input-sync-code-banner');
-  const btnConectarSyncBanner = document.getElementById('btn-conectar-sync-banner');
-  if(inputSyncCodeBanner && btnConectarSyncBanner){
-    btnConectarSyncBanner.addEventListener('click', ()=> conectarSincronizacao(inputSyncCodeBanner.value));
-    inputSyncCodeBanner.addEventListener('keydown', (e)=>{ if(e.key==='Enter') conectarSincronizacao(inputSyncCodeBanner.value); });
-  }
   const btnDispensarAvisoSync = document.getElementById('btn-dispensar-aviso-sync');
   if(btnDispensarAvisoSync) btnDispensarAvisoSync.addEventListener('click', ()=>{ STATE.avisoSyncDispensado = true; render(); });
 

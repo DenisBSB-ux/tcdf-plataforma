@@ -37,13 +37,13 @@ function flushQuizSyncPendente(){
   if(!quizSyncPendente) return;
   const { materiaKey, quiz } = quizSyncPendente;
   quizSyncPendente = null;
-  sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz);
+  return sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz);
 }
 // grava só o campo desta matéria dentro do quizzesEmAndamento: lê o estado
 // atual, atualiza essa chave e regrava tudo como uma única string JSON (um
 // campo aninhado nativo gastaria uma entrada de índice por chave).
 async function sincronizarQuizEmAndamentoNaNuvem(materiaKey, quiz){
-  if(!FIREBASE_OK || !STATE.syncCode) return;
+  if(!sincronizacaoAtiva()) return;
   try{
     const ref = fbDb.collection('progresso').doc(STATE.syncCode);
     const doc = await comLimiteDeTempo(ref.get(), 15000, 'tempo esgotado ao consultar simulado em andamento');
@@ -59,7 +59,7 @@ function limparQuizSalvo(materiaKey){
     clearTimeout(syncQuizEmAndamentoTimer);
     quizSyncPendente = null;
   }
-  if(FIREBASE_OK && STATE.syncCode){
+  if(sincronizacaoAtiva()){
     const ref = fbDb.collection('progresso').doc(STATE.syncCode);
     comLimiteDeTempo(ref.get(), 15000, 'tempo esgotado ao consultar simulado em andamento').then(doc=>{
       const atual = (doc.exists && doc.data().quizzesEmAndamento) ? (typeof doc.data().quizzesEmAndamento==='string' ? JSON.parse(doc.data().quizzesEmAndamento) : doc.data().quizzesEmAndamento) : {};
@@ -118,10 +118,21 @@ try{
     if(firebase.auth){
       fbAuth = firebase.auth();
       fbAuth.onAuthStateChanged(usuario=>{
-        USUARIO_ATUAL = usuario ? { uid: usuario.uid, email: usuario.email || '' } : null;
-        if(APP_INICIADO) render();
+        const uidAntes = USUARIO_ATUAL && USUARIO_ATUAL.uid;
+        USUARIO_ATUAL = usuario ? {
+          uid: usuario.uid,
+          email: usuario.email || '',
+          nome: usuario.displayName || (usuario.email || '').split('@')[0] || 'conta Google',
+        } : null;
+        if(usuario && usuario.uid!==uidAntes) vincularContaGoogle();
+        else if(!usuario && uidAntes && !SAINDO_DA_CONTA){
+          // saiu por outro caminho (outra aba, sessão expirada): o aparelho
+          // também não pode ficar com os dados dessa conta
+          limparDadosDoUsuarioNoAparelho().then(()=>{ if(APP_INICIADO) render(); });
+        }
+        else if(APP_INICIADO) render();
       });
-      fbAuth.getRedirectResult().then(r=>{ if(r && r.user) reivindicarProgresso(); }).catch(e=>console.warn('Falha no login por redirecionamento', e));
+      fbAuth.getRedirectResult().catch(e=>console.warn('Falha no login por redirecionamento', e));
     }
   }
 }catch(e){ console.warn('Firebase indisponível nesta sessão.', e); }
@@ -129,14 +140,50 @@ try{
 // Login (Google) — exigido pelas regras do Firestore (firestore.rules) pra
 // publicar matérias e pra gravar progresso. Sem login o app continua
 // funcionando localmente e lendo as matérias públicas.
-// ao entrar, regrava o progresso com o campo "dono" — é isso que as regras do
-// Firestore usam pra impedir que outra pessoa leia ou altere o progresso deste
-// código de sincronização. Só roda num login explícito, não a cada abertura.
-async function reivindicarProgresso(){
-  if(!APP_INICIADO){ setTimeout(reivindicarProgresso, 1000); return; }
-  if(!STATE.syncCode) return;
-  Object.keys(PROGRESS).forEach(m => marcarProgressoSujo(m));
-  await pushToCloud();
+// A sincronização é só pela conta Google: o código interno que nomeia os
+// documentos de progresso fica guardado na nuvem em progresso/_conta_{uid}
+// ({ dono, codigo }) e é escolhido automaticamente — o usuário nunca vê nem
+// digita código. Na primeira vez, a conta adota o código que este aparelho já
+// usava (mantém o progresso antigo); sem código anterior, cria um novo.
+const CONTA_DO_APARELHO_KEY = 'tcdf-conta-do-aparelho-v1';
+function sincronizacaoAtiva(){
+  return FIREBASE_OK && !!STATE.syncCode && (!fbAuth || !!USUARIO_ATUAL);
+}
+async function vincularContaGoogle(){
+  if(!APP_INICIADO){ setTimeout(vincularContaGoogle, 500); return; }
+  if(!FIREBASE_OK || !USUARIO_ATUAL) return;
+  const uid = USUARIO_ATUAL.uid;
+  try{
+    const ref = fbDb.collection('progresso').doc(`_conta_${uid}`);
+    const doc = await comLimiteDeTempo(ref.get(), 15000, 'tempo esgotado ao consultar a conta na nuvem');
+    let codigo = doc.exists ? doc.data().codigo : null;
+    const primeiraVez = !codigo;
+    if(primeiraVez){
+      // só adota o código deste aparelho se ele ainda não pertence a OUTRA
+      // conta (aparelho compartilhado: quem entra depois começa do zero)
+      let contaDoAparelho = null;
+      try{ const r = await storageGet(CONTA_DO_APARELHO_KEY); contaDoAparelho = r && r.value; }catch(e){ /* sem registro */ }
+      const podeAdotar = STATE.syncCode && (!contaDoAparelho || contaDoAparelho===uid);
+      codigo = podeAdotar ? STATE.syncCode : ('g-' + uid.toLowerCase());
+      await comLimiteDeTempo(ref.set({ dono: uid, codigo, criadoEm: Date.now() }), 15000, 'tempo esgotado ao registrar a conta na nuvem');
+    }
+    if(!USUARIO_ATUAL || USUARIO_ATUAL.uid!==uid) return; // trocou de conta no meio
+    try{ await storageSet(CONTA_DO_APARELHO_KEY, uid); }catch(e){ /* só evita adoção indevida */ }
+    if(codigo!==STATE.syncCode){
+      // conectarSincronizacao zera o progresso local se este aparelho estava
+      // com OUTRA conta, puxa o da nuvem e envia tudo com o campo "dono"
+      await conectarSincronizacao(codigo);
+    }else{
+      await pullFromCloud({ silent: true });
+      // na primeira vez regrava tudo com o campo "dono" (assume os documentos
+      // antigos); nas outras, só o que estiver pendente
+      if(primeiraVez) Object.keys(PROGRESS).forEach(m => marcarProgressoSujo(m));
+      await pushToCloud();
+    }
+  }catch(e){
+    console.error('Falha ao vincular a conta Google à sincronização', e);
+    setSyncStatusDOM('err', 'falha ao sincronizar (passe o mouse aqui)', motivoErroFirestore(e));
+  }
   render();
 }
 function comDono(dados){
@@ -147,7 +194,6 @@ async function entrarComGoogle(){
   const provedor = new firebase.auth.GoogleAuthProvider();
   try{
     await fbAuth.signInWithPopup(provedor);
-    await reivindicarProgresso();
   }catch(e){
     if(e && (e.code==='auth/popup-blocked' || e.code==='auth/operation-not-supported-in-this-environment')){
       await fbAuth.signInWithRedirect(provedor);
@@ -157,8 +203,55 @@ async function entrarComGoogle(){
     alert('Não foi possível entrar: ' + motivoErroAuth(e));
   }
 }
-function sairDaConta(){
-  if(fbAuth) fbAuth.signOut().catch(e=>console.warn('Falha ao sair', e));
+// Sair: primeiro envia pra nuvem o que ainda estiver pendente (ainda logado,
+// senão as regras recusam), depois apaga deste aparelho tudo o que é da
+// conta (progresso, simulados em andamento, edições) e só então sai. O
+// próximo usuário do aparelho começa do zero. Correções de gabarito não
+// são apagadas: não vão pra nuvem e se perderiam de vez.
+let SAINDO_DA_CONTA = false;
+async function sairDaConta(){
+  if(!fbAuth || SAINDO_DA_CONTA) return;
+  SAINDO_DA_CONTA = true;
+  try{
+    let tudoEnviado = true;
+    try{
+      await comLimiteDeTempo(Promise.all([flushQuizSyncPendente(), pushToCloud()]), 20000, 'tempo esgotado ao enviar o progresso');
+      if(MATERIAS_PROGRESSO_SUJAS.size>0) tudoEnviado = false;
+    }catch(e){ tudoEnviado = false; }
+    if(!tudoEnviado && !window.confirm('Parte do seu progresso ainda não chegou à nuvem (sem conexão?). Se sair agora, ela será apagada deste aparelho.\n\nSair mesmo assim?')) return;
+    await limparDadosDoUsuarioNoAparelho();
+    try{ await fbAuth.signOut(); }catch(e){ console.warn('Falha ao sair', e); }
+  }finally{
+    SAINDO_DA_CONTA = false;
+  }
+  render();
+}
+async function limparDadosDoUsuarioNoAparelho(){
+  const chavesQuiz = new Set([
+    ...Object.keys(STATE.quizzesEmAndamento || {}),
+    ...materiasDisponiveis(),
+    ...materiasDisponiveis().map(m => m + '::erros'),
+  ]);
+  clearTimeout(saveTimer);
+  clearTimeout(syncQuizEmAndamentoTimer);
+  quizSyncPendente = null;
+  PROGRESS = {};
+  MATERIAS_PROGRESSO_SUJAS.clear();
+  EDICOES_USUARIO = {};
+  edicaoAtual = null;
+  STATE.quizzesEmAndamento = {};
+  STATE.quizzesVerificados = new Set();
+  STATE.quiz = null;
+  STATE.flashDeck = null;
+  STATE.syncCode = '';
+  STATE.syncStatus = null;
+  const escritas = [[STORAGE_KEY, '{}'], [EDICOES_KEY, '{}'], [SYNC_CODE_KEY, ''], [LAST_SYNC_KEY, ''], [CONTA_DO_APARELHO_KEY, '']];
+  chavesQuiz.forEach(k => escritas.push([quizStorageKey(k), '']));
+  for(const [chave, valor] of escritas){
+    try{ await storageSet(chave, valor); }catch(e){ console.warn('Falha ao limpar '+chave, e); }
+    // cópia antiga no localStorage (versões anteriores) também não pode sobrar
+    try{ if(window.localStorage.getItem(chave)!==null) window.localStorage.setItem(chave, valor); }catch(e){ /* sem localStorage */ }
+  }
 }
 function motivoErroAuth(e){
   const codigo = e && e.code ? e.code : '';
@@ -313,7 +406,7 @@ function marcarUltimoSyncOk(){
 }
 
 async function pullFromCloud({silent} = {}){
-  if(!FIREBASE_OK || !STATE.syncCode) return null;
+  if(!sincronizacaoAtiva()) return null;
   if(!silent) setSyncStatusDOM('pending', 'sincronizando…');
   try{
     const doc = await fbDb.collection('progresso').doc(STATE.syncCode).get();
@@ -354,7 +447,7 @@ async function pullFromCloud({silent} = {}){
       // o código existe localmente, mas não tem NENHUM dado salvo na nuvem com esse
       // nome ainda — pode ser a primeira vez usando, ou pode ser um erro de digitação
       // (maiúscula/minúscula, espaço) fazendo cair num documento diferente do esperado
-      setSyncStatusDOM('pending', `nenhum dado encontrado para "${STATE.syncCode}" — confira se digitou o código exatamente igual em todos os dispositivos`);
+      setSyncStatusDOM('pending', 'primeira sincronização desta conta — ainda sem dados na nuvem');
       return false;
     }
   }catch(e){
@@ -593,7 +686,7 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
 
 
 async function pushToCloud(){
-  if(!FIREBASE_OK || !STATE.syncCode) return;
+  if(!sincronizacaoAtiva()) return;
   // Nada mudou desde o último envio: nenhuma chamada à nuvem (economiza a cota
   // diária gratuita do Firestore).
   if(MATERIAS_PROGRESSO_SUJAS.size===0) return;
@@ -681,15 +774,8 @@ async function conectarSincronizacao(codigo){
     // evita que a mensagem de sucesso do push (que roda logo em seguida, criando o
     // documento pela primeira vez) esconda o aviso importante de que não havia
     // NENHUM dado prévio salvo com esse código — sinal de possível erro de digitação
-    setSyncStatusDOM('pending', `código "${STATE.syncCode}" conectado — é a primeira vez que ele é usado, sem dados prévios na nuvem`);
+    setSyncStatusDOM('pending', 'conta conectada — primeira sincronização, sem dados anteriores na nuvem');
   }
-  render();
-}
-
-function desconectarSincronizacao(){
-  STATE.syncCode = '';
-  STATE.syncStatus = null;
-  storageSet(SYNC_CODE_KEY, '').catch(()=>{});
   render();
 }
 
@@ -817,7 +903,9 @@ async function loadProgress(){
     // Limite de 8s: com a cota do Firestore excedida o SDK pode ficar em backoff
     // sem nunca resolver, e a página não pode ficar presa em "Carregando…" — ela
     // sempre abre com os dados locais; a nuvem só complementa.
-    try{ await comLimiteDeTempo(pullFromCloud({ silent: true }), 8000, 'tempo esgotado ao sincronizar progresso'); }
+    // com login Google, quem puxa é vincularContaGoogle (quando a conta é
+    // reconhecida, logo depois da abertura)
+    if(sincronizacaoAtiva()) try{ await comLimiteDeTempo(pullFromCloud({ silent: true }), 8000, 'tempo esgotado ao sincronizar progresso'); }
     catch(e){ console.warn('Sincronização de progresso não respondeu a tempo — seguindo com os dados locais.', e); }
     // MATERIAS_PROGRESSO_SUJAS só existe em memória: se um envio falhou e a página
     // foi recarregada, a matéria ficaria sem sincronizar. Marcar tudo como pendente

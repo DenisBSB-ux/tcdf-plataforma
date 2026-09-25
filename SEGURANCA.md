@@ -20,7 +20,7 @@ sincronização dela.
 
 3. **Descobrir seu UID**
    Abrir a plataforma → barra lateral, bloco *Sincronização* →
-   *Entrar com Google*. O UID aparece logo abaixo do e-mail.
+   *Entrar com Google*. O UID aparece ao passar o mouse sobre o seu nome.
 
 4. **Publicar as regras**
    Abrir `firestore.rules`, trocar `COLE_SEU_UID_AQUI` pelo UID do passo 3,

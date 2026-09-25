@@ -174,12 +174,11 @@ function renderAvisoStorage(){
 // Sem código de sincronização o progresso não vai pra nuvem — por isso este
 // banner aparece no topo de toda página até um código ser conectado.
 function renderAvisoSyncAusente(){
-  if(!FIREBASE_OK || STATE.syncCode || STATE.avisoSyncDispensado) return '';
+  if(!FIREBASE_OK || !fbAuth || USUARIO_ATUAL || STATE.avisoSyncDispensado) return '';
   return `<div style="position:sticky;top:0;z-index:499;background:var(--gold-bright,#c9a227);color:#1a1200;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <span>⚠️ <b>Suas respostas estão sendo salvas SÓ neste aparelho</b> — sem um código de sincronização, nada vai pra nuvem, e outro PC/celular não vai ver o mesmo progresso.</span>
-    <input type="text" id="input-sync-code-banner" placeholder="nome de usuário" style="padding:4px 8px;border-radius:6px;border:1px solid #1a1200;font-size:12px;">
-    <button id="btn-conectar-sync-banner" style="padding:4px 12px;border-radius:6px;border:1px solid #1a1200;background:#1a1200;color:#fff;cursor:pointer;font-size:12px;font-weight:600;">🔗 Conectar agora</button>
-    <button id="btn-dispensar-aviso-sync" style="padding:4px 10px;border-radius:6px;border:1px solid #1a1200;background:transparent;color:#1a1200;cursor:pointer;font-size:12px;">Já uso só neste aparelho, não avisar de novo</button>
+    <span>⚠️ <b>Suas respostas estão sendo salvas SÓ neste aparelho</b> — entre com sua conta Google para salvar o progresso na nuvem e usar em outro PC/celular.</span>
+    <button id="btn-entrar-google-banner" style="padding:4px 12px;border-radius:6px;border:1px solid #1a1200;background:#1a1200;color:#fff;cursor:pointer;font-size:12px;font-weight:600;">🔐 Entrar com Google</button>
+    <button id="btn-dispensar-aviso-sync" style="padding:4px 10px;border-radius:6px;border:1px solid #1a1200;background:transparent;color:#1a1200;cursor:pointer;font-size:12px;">Agora não</button>
   </div>`;
 }
 
@@ -920,9 +919,10 @@ function renderContaBlock(){
   if(!fbAuth) return '';
   if(!USUARIO_ATUAL){
     return `<button class="side-action-btn compact" id="btn-entrar-google" style="margin-top:6px;">🔐 Entrar com Google</button>
-      <div class="side-status detail">necessário para sincronizar o progresso e publicar matérias</div>`;
+      <div class="side-status detail">para salvar o progresso na nuvem e usar em outros aparelhos</div>`;
   }
-  return `<div class="side-status detail" style="margin-top:6px;" title="ID da conta (UID) — é o valor usado em firestore.rules">🔐 ${esc(USUARIO_ATUAL.email || 'conta Google')}<br><span style="font-family:var(--font-mono);font-size:10px;user-select:all;">${esc(USUARIO_ATUAL.uid)}</span></div>
+  // o UID fica só no title (passar o mouse) — é o valor usado em firestore.rules
+  return `<div class="sync-user-display" title="${esc(USUARIO_ATUAL.email)} · UID ${esc(USUARIO_ATUAL.uid)}">👤 ${esc(USUARIO_ATUAL.nome)}</div>
     <button class="side-action-btn compact" id="btn-sair-google">Sair da conta</button>`;
 }
 function renderSyncSidebarBlock(){
@@ -932,22 +932,19 @@ function renderSyncSidebarBlock(){
       <div class="side-status err">indisponível nesta sessão</div>
     </div></div>`;
   }
-  if(!STATE.syncCode){
+  if(!USUARIO_ATUAL){
     return `<div class="sidebar-block"><div class="sb-pad sync-block compact">
       <div class="sidebar-label">Sincronização</div>
-      <input type="text" id="input-sync-code" placeholder="nome de usuário">
-      <button class="side-action-btn compact" id="btn-conectar-sync">🔗 Conectar dispositivo</button>
-      <div class="side-status detail" id="sync-status-el">use exatamente o mesmo código em todos os dispositivos (maiúsculas/minúsculas não importam)</div>
       ${renderContaBlock()}
     </div></div>`;
   }
   const statusClass = STATE.syncStatus ? STATE.syncStatus.type : '';
-  const statusMsg = statusClass==='ok' ? '🟢 Atualizado na nuvem' : (STATE.syncStatus ? STATE.syncStatus.msg : 'conectado');
+  const statusMsg = statusClass==='ok' ? '🟢 Atualizado na nuvem' : (STATE.syncStatus ? STATE.syncStatus.msg : 'sincronizando…');
   const statusHorario = (statusClass==='ok' && STATE.syncStatus) ? STATE.syncStatus.msg.replace('nuvem ✓ ', '') : '';
   const statusDetalhe = STATE.syncStatus ? STATE.syncStatus.detalhe : '';
   return `<div class="sidebar-block"><div class="sb-pad sync-block compact">
     <div class="sidebar-label">Sincronização</div>
-    <div class="sync-user-display">👤 ${esc(STATE.syncCode)}</div>
+    <div class="sync-user-display" title="${esc(USUARIO_ATUAL.email)} · UID ${esc(USUARIO_ATUAL.uid)}">👤 ${esc(USUARIO_ATUAL.nome)}</div>
     <div class="side-status ${statusClass}" id="sync-status-el">${esc(statusMsg)}</div>
     ${statusHorario ? `<div class="side-status detail">última atualização: ${esc(statusHorario)}</div>` : ''}
     ${statusDetalhe ? `<div class="side-status detail">${esc(statusDetalhe)}</div>` : ''}
@@ -956,8 +953,7 @@ function renderSyncSidebarBlock(){
       <button class="side-action-btn compact" id="btn-ver-alertas-sobrescrita" style="margin-top:4px;">Ver detalhes</button>
       <button class="side-action-btn compact" id="btn-dispensar-alertas-sobrescrita" style="margin-top:4px;">Dispensar</button>
     </div>` : ''}
-    <button class="side-action-btn compact" id="btn-desconectar-sync">Desconectar</button>
-    ${renderContaBlock()}
+    <button class="side-action-btn compact" id="btn-sair-google">Sair da conta</button>
   </div></div>`;
 }
 
