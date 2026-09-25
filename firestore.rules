@@ -5,8 +5,8 @@ rules_version = '2';
 // colar este arquivo → "Publicar". Passo a passo completo em SEGURANCA.md.
 //
 // Administrador: UID da conta Google que publica as matérias. O UID aparece
-// na barra lateral da plataforma (bloco Sincronização) depois de clicar em
-// "Entrar com Google". Para mais administradores, acrescente UIDs na lista.
+// ao passar o mouse sobre o seu nome na barra lateral (bloco Sincronização),
+// depois de "Entrar com Google". Para mais administradores, acrescente UIDs.
 service cloud.firestore {
   match /databases/{database}/documents {
 
