@@ -110,6 +110,7 @@ let fbDb = null;
 let fbAuth = null;
 let USUARIO_ATUAL = null; // { uid, email } quando logado com Google
 let APP_INICIADO = false;
+let AUTH_RESOLVIDO = false; // o Firebase já disse se há conta logada
 try{
   if(typeof firebase !== 'undefined' && FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey){
     firebase.initializeApp(FIREBASE_CONFIG);
@@ -118,6 +119,7 @@ try{
     if(firebase.auth){
       fbAuth = firebase.auth();
       fbAuth.onAuthStateChanged(usuario=>{
+        AUTH_RESOLVIDO = true;
         const uidAntes = USUARIO_ATUAL && USUARIO_ATUAL.uid;
         USUARIO_ATUAL = usuario ? {
           uid: usuario.uid,

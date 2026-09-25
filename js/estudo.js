@@ -58,16 +58,11 @@ function renderQuiz(){
   const riscadas = (STATE.quiz.riscadas && STATE.quiz.riscadas[uidAtual]) || [];
   const gEfetivo = gabaritoEfetivo(q);
   if(q.t === 'CE'){
-    optionsHtml = `<div class="ce-buttons-row">` + ['Certo','Errado'].map(opt=>{
+    // respondida: fica só o botão escolhido — verde se acertou, vermelho se errou
+    const opcoesCE = revelado ? ['Certo','Errado'].filter(opt => opt===resposta.picked) : ['Certo','Errado'];
+    optionsHtml = `<div class="ce-buttons-row">` + opcoesCE.map(opt=>{
       let cls='answer-opt ce-btn ' + (opt==='Certo' ? 'ce-certo' : 'ce-errado');
-      if(revelado){
-        const isPicked = opt===resposta.picked;
-        const isCorrect = opt===gEfetivo;
-        if(isPicked) cls+=' picked';
-        if(isCorrect) cls+=' correct';
-        else if(isPicked) cls+=' incorrect';
-        else cls+=' nao-escolhida-errada';
-      }
+      if(revelado) cls += ' picked ' + (resposta.correct ? 'correct' : 'incorrect');
       if(riscadas.includes(opt)) cls+=' riscado';
       return `<button class="${cls}" data-opt="${opt}" ${revelado?'disabled':''} title="${opt} (2 cliques risca)">
         <span class="letter">${opt==='Certo'?'✓':'✗'}</span>
