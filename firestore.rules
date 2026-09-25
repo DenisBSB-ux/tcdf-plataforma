@@ -30,9 +30,12 @@ service cloud.firestore {
     // "dono", continuam legíveis e passam a pertencer à primeira conta
     // logada que gravar neles.
     match /progresso/{documento} {
-      allow read: if resource == null
-                  || !('dono' in resource.data)
-                  || (logado() && resource.data.dono == request.auth.uid);
+      allow get: if resource == null
+                 || !('dono' in resource.data)
+                 || (logado() && resource.data.dono == request.auth.uid);
+      // o app só lê progresso pelo nome do documento; listar a coleção
+      // mostraria os códigos e datas de todos os usuários
+      allow list: if false;
       allow create: if logado() && request.resource.data.dono == request.auth.uid;
       allow update: if logado()
                     && request.resource.data.dono == request.auth.uid
