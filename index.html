@@ -1789,6 +1789,9 @@ let MATERIAS_REMOVIDAS_NUVEM = new Set(); // nomes de matéria marcados como rem
 let MATERIAS_VALIDAS_NUVEM = new Set(); // nomes de matéria que TÊM doc válido e não-removido em publico/{slug} — a nuvem é a fonte da verdade pra saber quais matérias importadas devem existir
 let SLUGS_VALIDOS_NUVEM = new Set(); // ids de documento (slugs) com conteúdo válido — segunda camada de checagem, independente do campo "materia" de cada questão
 let SLUGS_REMOVIDOS_NUVEM = new Set();
+function materiaRemovidaNaNuvem(materiaNome){
+  return MATERIAS_REMOVIDAS_NUVEM.has(materiaNome) || SLUGS_REMOVIDOS_NUVEM.has(slugify(materiaNome));
+}
 let MATERIAS_OCULTAS = new Set(); // matérias NATIVAS (embutidas no código) que o usuário removeu — como elas
   // não vivem no Firestore nem no localStorage de questões, o único jeito de "remover de vez" uma matéria
   // embutida é guardar o nome dela aqui e filtrar toda vez que a base nativa for recriada no carregamento
@@ -2314,6 +2317,10 @@ async function carregarMateriasPublicas(){
     // conter o array "questoes" completo direto nele (formato legado, ainda lido).
     const snapshot = await fbDb.collection('publico').get();
     const docs = snapshot.docs || [];
+    // recalculado a cada leitura: uma matéria reimportada depois de removida
+    // deixa de ser "removida" assim que a nuvem mostrar o documento novo
+    MATERIAS_REMOVIDAS_NUVEM = new Set();
+    SLUGS_REMOVIDOS_NUVEM = new Set();
 
     // 1ª passada: descobre quais matérias (pelo slug BASE, sem sufixo de pedaço)
     // estão marcadas como removidas — precisa vir antes da 2ª passada porque a
@@ -5550,6 +5557,7 @@ function renderImportarPage(){
         ${STATE.importSemelhante ? renderImportSemelhante() : ''}
         ${STATE.importLog ? renderImportLog() : ''}
 
+        ${renderAvisoMateriasDuplicadas()}
         ${materiasImportadas.length ? `<div class="card-block" style="margin-top:24px;">
           <h3>Matérias</h3>
           <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;">Todas as matérias — inclusive as que já vêm com a plataforma — ficam disponíveis pra todo mundo automaticamente assim que importadas. Use "Inserir" pra adicionar questões novas a uma matéria já existente (sem apagar as antigas nem o histórico de progresso), ou "Remover" pra excluir a matéria por completo.</p>
@@ -6045,7 +6053,8 @@ function reprocessarMateriaComTexto(materiaNome, content){
   // reimportação manual explícita (processImportedText, ação deliberada) pode de
   // fato substituir o conteúdo de uma matéria.
   const atuais = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido').length;
-  if(atuais>0 && results.length < atuais){
+  if(atuais===0) return 0; // nunca cria uma matéria que não existe mais
+  if(results.length < atuais){
     REPROCESSAMENTOS_BLOQUEADOS.push({ materia: materiaNome, antes: atuais, depois: results.length });
     return 0;
   }
@@ -6071,6 +6080,16 @@ function reprocessarMateriaComTexto(materiaNome, content){
 async function reprocessarMateriasDesatualizadas(){
   const versaoAtual = window.__TCDF_BUILD__ && window.__TCDF_BUILD__.versao;
   if(!versaoAtual) return;
+  // Reprocessar só atualiza matérias que EXISTEM agora. Um texto original
+  // guardado sob um nome antigo (matéria renomeada, mesclada ou removida em
+  // outro dispositivo) não pode recriar essa matéria — era isso que fazia
+  // "LO TCDF" reaparecer ao lado de "Lei Orgânica do TCDF" a cada versão nova.
+  const existentes = new Set(materiasDisponiveis());
+  let textosOrfaos = false;
+  Object.keys(TEXTOS_ORIGINAIS).forEach(m=>{
+    if(!existentes.has(m) || materiaRemovidaNaNuvem(m)){ delete TEXTOS_ORIGINAIS[m]; textosOrfaos = true; }
+  });
+  if(textosOrfaos) salvarTextosOriginaisLocalmente();
   const materiasParaReprocessar = Object.keys(TEXTOS_ORIGINAIS).filter(m => TEXTOS_ORIGINAIS[m].versaoProcessada !== versaoAtual);
   if(materiasParaReprocessar.length===0) return;
   let alguma = false;
@@ -6113,6 +6132,13 @@ async function processImportedText(content, sugestaoNome, modoForcado){
   }
   if(!materiaNome) materiaNome = (sugestaoNome||'').trim();
   if(!materiaNome) materiaNome = 'Módulo importado';
+  // nomes que só diferem em maiúsculas, acentos, espaços ou pontuação
+  // ("Lei Orgânica do TCDF" / "lei organica do tcdf") geram o mesmo slug — e
+  // portanto o mesmo documento na nuvem e os mesmos uids. Tratá-los como
+  // matérias diferentes criava duas abas com o mesmo conteúdo; aqui viram a
+  // matéria que já existe.
+  const mesmoSlug = materiaComMesmoSlug(materiaNome);
+  if(mesmoSlug) materiaNome = mesmoSlug;
 
   try{
     const { results, ignoradas, semGabarito } = parseTxtQuestions(content);
@@ -6171,7 +6197,8 @@ async function processImportedText(content, sugestaoNome, modoForcado){
 // modo 'somar': mantém as que já existem; questões cujo NÚMERO já existe nesta
 //   matéria são tratadas como a mesma questão sendo reimportada e são puladas
 //   (em vez de duplicadas com um uid renomeado, que era o bug).
-async function aplicarImportacao(materiaNome, content, results, ignoradas, semGabarito, modo){
+async function aplicarImportacao(materiaNome, content, results, ignoradas, semGabarito, modo, opcoes){
+  const publicar = !(opcoes && opcoes.publicar===false);
   return comTravaDeEscrita(async ()=>{
   if(modo === 'substituir'){
     ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !(q.materia===materiaNome && q.origem!=='embutido'));
@@ -6223,6 +6250,7 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   // force=true: reimportação é uma ação explícita e deliberada do usuário,
   // então PODE sobrescrever uma marca de "removido" anterior — diferente do
   // reprocessamento automático em segundo plano, que nunca deve fazer isso
+  if(!publicar) return;
   const pub = await publicarQuestoesNoFirestore([materiaNome], true);
   STATE.importLog.publicadoAutomaticamente = pub.ok;
   STATE.importLog.erroPublicacao = pub.ok ? null : pub.motivo;
@@ -6256,7 +6284,10 @@ async function confirmarImportSemelhante(acao){
   // 'mesclar': nome temporário garantidamente livre, só existe durante a
   // fração de segundo entre importar e mesclar — nunca fica visível pro usuário
   const nomeTemp = `__mesclagem_temp__${Date.now()}`;
-  await aplicarImportacao(nomeTemp, p.content, p.results, p.ignoradas, p.semGabarito, 'somar');
+  // publicar:false — a matéria temporária nunca vai pra nuvem. Antes ela era
+  // publicada e, se a marcação de removida falhasse depois da mescla, aparecia
+  // como uma matéria "__mesclagem_temp__…" duplicada em outros dispositivos.
+  await aplicarImportacao(nomeTemp, p.content, p.results, p.ignoradas, p.semGabarito, 'somar', { publicar:false });
   const resultado = await mesclarMaterias(nomeTemp, p.materiaExistente);
   STATE.materia = p.materiaExistente;
   STATE.importLog = resultado.ok
@@ -6360,6 +6391,10 @@ function comLimiteDeTempo(promise, ms, mensagemTimeout){
 // que o bug histórico de duplicação gerava uids diferentes (com sufixo) pro
 // mesmo enunciado. Não depende do arquivo original — funciona em qualquer
 // matéria já importada, mesmo sem o texto-fonte salvo.
+function materiaComMesmoSlug(materiaNome){
+  const slug = slugify(materiaNome);
+  return materiasDisponiveis().find(m => m!==materiaNome && slugify(m)===slug) || null;
+}
 function normalizarEnunciado(texto){
   return String(texto||'').toLowerCase().replace(/\s+/g,' ').trim();
 }
@@ -6447,14 +6482,14 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
     const porTextoDestino = {};
     ALL_QUESTIONS.forEach(q=>{
       if(q.materia!==nomeDestino) return;
-      const chave = normalizarEnunciado(q.q);
+      const chave = chaveDeEnunciado(q.q);
       if(chave) (porTextoDestino[chave] = porTextoDestino[chave]||[]).push(q);
     });
 
     let fundidas = 0, movidas = 0;
 
     qsOrigem.forEach(q=>{
-      const chave = normalizarEnunciado(q.q);
+      const chave = chaveDeEnunciado(q.q);
       const equivalente = chave && porTextoDestino[chave] ? porTextoDestino[chave][0] : null;
       const pOrigem = bucketOrigem.perguntas[q.uid];
 
@@ -6521,7 +6556,10 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
       try{ await publicarQuestoesNoFirestore([nomeDestino], true); }
       catch(e){ console.error('Falha ao publicar matéria mesclada na nuvem', e); }
       const slugOrigem = slugify(nomeOrigem);
-      try{
+      // a origem temporária da importação nunca foi publicada; e se as duas
+      // matérias têm o mesmo slug, o documento da origem é o do destino
+      const origemTemNuvemPropria = !nomeOrigem.startsWith('__mesclagem_temp__') && slugOrigem!==slugify(nomeDestino);
+      if(origemTemNuvemPropria) try{
         const manifestDoc = await comLimiteDeTempo(fbDb.collection('publico').doc(slugOrigem).get(), 15000, 'tempo esgotado ao consultar a matéria de origem na nuvem');
         const numChunks = (manifestDoc.exists && manifestDoc.data().numChunks) || 0;
         await comLimiteDeTempo(fbDb.collection('publico').doc(slugOrigem).set({ materia: nomeOrigem, questoes: [], removido: true, atualizadoEm: Date.now() }), 15000, 'tempo esgotado ao marcar a matéria de origem como removida na nuvem');
@@ -6545,21 +6583,90 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
 // abreviado/reformatado) sem disparar em matérias que só compartilham um
 // puxadinho de questões parecidas por coincidência.
 function encontrarMateriaSemelhante(materiaNome, results){
-  const chaves = new Set(results.map(r=>normalizarEnunciado(r.q)).filter(Boolean));
+  // as questões recém-lidas ainda não passaram pela limpeza que as já
+  // existentes receberam em reindex() (marcadores [cite], fonte grudada no fim
+  // do enunciado etc.) — sem limpar uma cópia antes, a mesma questão vinha com
+  // texto diferente e a sobreposição ficava abaixo do limiar
+  const chaves = new Set(results.map(r=>{
+    const copia = { ...r, alt: Array.isArray(r.alt) ? r.alt.map(a=>({ ...a })) : r.alt };
+    sanitizarFonteEmbutida(copia);
+    return chaveDeEnunciado(copia.q);
+  }).filter(Boolean));
   if(chaves.size<3) return null;
   let melhor = null;
-  materiasDisponiveis().forEach(m=>{
-    if(m===materiaNome) return;
-    const qsM = ALL_QUESTIONS.filter(q=>q.materia===m);
-    if(qsM.length<3) return;
-    const chavesM = new Set(qsM.map(q=>normalizarEnunciado(q.q)).filter(Boolean));
-    if(chavesM.size<3) return;
-    let bateram = 0;
-    chaves.forEach(c=>{ if(chavesM.has(c)) bateram++; });
-    const pct = bateram / Math.min(chaves.size, chavesM.size);
-    if(pct>=0.4 && (!melhor || pct>melhor.pct)) melhor = { materia:m, pct, bateram };
+  Object.entries(chavesPorMateria()).forEach(([m, chavesM])=>{
+    if(m===materiaNome || chavesM.size<3) return;
+    const r = sobreposicao(chaves, chavesM);
+    if(r.pct>=LIMIAR_MATERIA_SEMELHANTE && (!melhor || r.pct>melhor.pct)) melhor = { materia:m, ...r };
   });
   return melhor;
+}
+
+// Chave de comparação entre matérias: mais tolerante que normalizarEnunciado
+// (ignora acentos, pontuação, numeração inicial e marcadores [cite]), porque a
+// mesma questão importada de formatos diferentes (.txt do Gemini, .md
+// exportado, PDF) chega com pequenas diferenças de texto.
+const LIMIAR_MATERIA_SEMELHANTE = 0.4;
+function chaveDeEnunciado(texto){
+  const chave = normalizarParaComparacao(limparMarcadoresCitacao(String(texto||'')))
+    .replace(/^(questao\s*)?\d+\s*[).:\-–—]\s*/, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+  return chave.length>=15 ? chave : '';
+}
+function chavesPorMateria(){
+  const mapa = {};
+  ALL_QUESTIONS.forEach(q=>{
+    const c = chaveDeEnunciado(q.q);
+    if(!c) return;
+    (mapa[q.materia] = mapa[q.materia] || new Set()).add(c);
+  });
+  return mapa;
+}
+function sobreposicao(a, b){
+  let bateram = 0;
+  const [menor, maior] = a.size<=b.size ? [a, b] : [b, a];
+  menor.forEach(c=>{ if(maior.has(c)) bateram++; });
+  return { bateram, pct: menor.size ? bateram/menor.size : 0 };
+}
+
+// Pares de matérias JÁ existentes com o mesmo conteúdo sob nomes diferentes —
+// a checagem da importação só impede duplicatas novas; estas são as que já
+// estão na base. A sugestão é sempre mesclar a menor na maior.
+let CACHE_MATERIAS_DUPLICADAS = { assinatura: null, pares: [] };
+function detectarMateriasDuplicadas(){
+  const assinatura = ALL_QUESTIONS.length + '|' + materiasDisponiveis().join('|');
+  if(CACHE_MATERIAS_DUPLICADAS.assinatura===assinatura) return CACHE_MATERIAS_DUPLICADAS.pares;
+  const mapa = chavesPorMateria();
+  const nomes = Object.keys(mapa).filter(m=>mapa[m].size>=3);
+  const pares = [];
+  for(let i=0;i<nomes.length;i++){
+    for(let j=i+1;j<nomes.length;j++){
+      const r = sobreposicao(mapa[nomes[i]], mapa[nomes[j]]);
+      if(r.pct<LIMIAR_MATERIA_SEMELHANTE) continue;
+      // empate de tamanho: fica o nome mais descritivo (mais longo)
+      const a = nomes[i], b = nomes[j];
+      const aVira = mapa[a].size!==mapa[b].size ? mapa[a].size<mapa[b].size : a.length<b.length;
+      const [origem, destino] = aVira ? [a, b] : [b, a];
+      pares.push({ origem, destino, ...r });
+    }
+  }
+  pares.sort((a,b)=>b.pct-a.pct);
+  CACHE_MATERIAS_DUPLICADAS = { assinatura, pares };
+  return pares;
+}
+function renderAvisoMateriasDuplicadas(){
+  const pares = detectarMateriasDuplicadas();
+  if(pares.length===0) return '';
+  return `<div class="card-block" style="margin-top:24px;border:1px solid var(--stamp-red);">
+    <h3>⚠ Matérias com o mesmo conteúdo sob nomes diferentes</h3>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:12px;">Estas matérias têm muitas questões com o mesmo enunciado. Mesclar junta tudo numa só, mantém a versão mais atual de cada questão repetida e soma o progresso.</p>
+    ${pares.map(p=>`<div class="bar-row" style="flex-wrap:wrap;">
+      <div class="name">"${esc(p.origem)}" ↔ "${esc(p.destino)}"</div>
+      <div class="pct" style="margin-right:8px;">${p.bateram} em comum (${Math.round(p.pct*100)}%)</div>
+      <button class="btn-outline" data-mesclar-par-origem="${esc(p.origem)}" data-mesclar-par-destino="${esc(p.destino)}" style="padding:4px 10px;font-size:11px;">🔗 Mesclar "${esc(p.origem)}" em "${esc(p.destino)}"</button>
+    </div>`).join('')}
+  </div>`;
 }
 
 async function buscarSubstituirMateria(materiaNome){
@@ -6676,7 +6783,10 @@ async function salvarTudoAgora(){
   }
   if(okLocal && FIREBASE_OK){
     try{
-      const pub = await comLimiteDeTempo(publicarQuestoesNoFirestore(materias, true), 25000, 'Tempo esgotado ao publicar na nuvem (25s). Confira sua conexão — os dados já estão salvos neste dispositivo.');
+      // sem force: "Salvar tudo" publica em lote, e uma cópia local desatualizada
+      // de uma matéria já removida/renomeada/mesclada em outro dispositivo não
+      // pode passar por cima da marca de removida na nuvem
+      const pub = await comLimiteDeTempo(publicarQuestoesNoFirestore(materias, false), 25000, 'Tempo esgotado ao publicar na nuvem (25s). Confira sua conexão — os dados já estão salvos neste dispositivo.');
       okNuvem = !!pub.ok;
       motivoNuvem = pub.ok ? null : pub.motivo;
     }catch(e){
@@ -6703,6 +6813,12 @@ async function renomearMateria(nomeAtual, nomeNovo){
     alert(`Já existe uma matéria chamada "${nomeNovo}". Escolha outro nome.`);
     return;
   }
+  const conflito = materiaComMesmoSlug(nomeNovo);
+  if(conflito && conflito!==nomeAtual){
+    alert(`"${nomeNovo}" é praticamente igual ao nome de "${conflito}" (só muda maiúscula, acento ou pontuação). Use "🔗 Mesclar" se for a mesma matéria, ou escolha outro nome.`);
+    return;
+  }
+  const mesmoDocumentoNaNuvem = slugify(nomeNovo)===slugify(nomeAtual);
   return comTravaDeEscrita(async ()=>{
   // renomeia em tudo que referencia o nome antigo: questões, progresso, texto
   // original guardado pra reprocessamento, e o estado atual da tela
@@ -6737,8 +6853,12 @@ async function renomearMateria(nomeAtual, nomeNovo){
     // (mesma trava de segurança usada em removerMateria — nunca .delete())
     try{ await publicarQuestoesNoFirestore([nomeNovo], true); }
     catch(e){ console.error('Falha ao publicar matéria renomeada na nuvem', e); }
-    try{ await comLimiteDeTempo(fbDb.collection('publico').doc(slugify(nomeAtual)).set({ materia: nomeAtual, questoes: [], removido: true, atualizadoEm: Date.now() }), 15000, 'tempo esgotado ao marcar nome antigo como removido'); }
-    catch(e){ console.error('Falha ao marcar nome antigo como removido na nuvem', e); }
+    // se o slug não mudou (ex.: só maiúsculas/acentos), o documento antigo É o
+    // novo — marcá-lo como removido apagaria a matéria recém-renomeada
+    if(!mesmoDocumentoNaNuvem){
+      try{ await comLimiteDeTempo(fbDb.collection('publico').doc(slugify(nomeAtual)).set({ materia: nomeAtual, questoes: [], removido: true, atualizadoEm: Date.now() }), 15000, 'tempo esgotado ao marcar nome antigo como removido'); }
+      catch(e){ console.error('Falha ao marcar nome antigo como removido na nuvem', e); }
+    }
     // move o simulado em andamento também na nuvem (mesmo raciocínio do
     // armazenamento local acima) — lê o documento principal, move a chave do
     // nome antigo pro novo dentro do JSON de quizzesEmAndamento, e regrava
@@ -7369,6 +7489,18 @@ function attachHandlers(){
       render();
     });
   });
+  root.querySelectorAll('[data-mesclar-par-origem]').forEach(el=>{
+    el.addEventListener('click', async ()=>{
+      const nomeOrigem = el.dataset.mesclarParOrigem;
+      const nomeDestino = el.dataset.mesclarParDestino;
+      if(!window.confirm(`Confirma mesclar "${nomeOrigem}" em "${nomeDestino}"? "${nomeOrigem}" deixará de existir. Essa ação não pode ser desfeita automaticamente.`)) return;
+      el.disabled = true;
+      el.textContent = '⏳ Mesclando…';
+      const resultado = await mesclarMaterias(nomeOrigem, nomeDestino);
+      if(!resultado.ok) alert('Não foi possível mesclar: ' + (resultado.motivo||'motivo desconhecido'));
+      render();
+    });
+  });
   const btnSalvarTudo = root.querySelector('#btn-salvar-tudo');
   if(btnSalvarTudo) btnSalvarTudo.addEventListener('click', ()=> salvarTudoAgora());
   root.querySelectorAll('[data-renomear-materia]').forEach(el=>{
@@ -7455,7 +7587,8 @@ document.addEventListener('keydown', (e)=>{
         const alteradas = materias.filter(m => (MATERIA_ULTIMA_ATUALIZACAO[m]||0) > desdeUltimoCiclo);
         if(alteradas.length>0){
           try{
-            const pub = await publicarQuestoesNoFirestore(alteradas, true);
+            // sem force, pelo mesmo motivo de salvarTudoAgora
+            const pub = await publicarQuestoesNoFirestore(alteradas, false);
             okNuvem = !!pub.ok;
             motivoNuvem = pub.ok ? null : pub.motivo;
             if(pub.ok) alteradas.forEach(marcarMateriaAtualizada);
