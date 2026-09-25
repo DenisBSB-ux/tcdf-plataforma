@@ -17,7 +17,6 @@ let STATE = {
   assuntoAberto: false,
   materiaMenuAberto: false,
   paginacaoAberta: false,
-  estatisticasAba: 'tabela', // 'tabela' | 'tendencias' — ver renderEstatisticasPorMateria
   showBackupManual: false,
   materiasPublicadasNestaSessao: new Set(),
   focusMode: false,
@@ -249,55 +248,7 @@ function computeSnapshot(){
   return { respondidas: nums.length, tent, ac, taxa: pct(ac,tent), erros: erradas, totalPontuavel: scoreableFiltradas().length };
 }
 
-// agrupa todas as respostas já dadas nesta matéria por dia (data local),
-// calculando a taxa de acerto de cada dia — base pro gráfico de tendência.
-// Cada questão guarda só as 20 tentativas mais recentes (ver registrarResposta).
-function computeTendenciaDiariaMateria(materiaKey){
-  const bucket = getBucket(materiaKey);
-  const porDia = {}; // { 'AAAA-MM-DD': {acertos, total} }
-  Object.entries(bucket.perguntas).forEach(([uid,p])=>{
-    if(!BY_UID[uid] || !p.historico) return;
-    p.historico.forEach(ev=>{
-      if(!ev || !ev.ts) return;
-      const d = new Date(ev.ts);
-      const chave = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-      if(!porDia[chave]) porDia[chave] = { acertos:0, total:0, ts: new Date(chave).getTime() };
-      porDia[chave].total++;
-      if(ev.c) porDia[chave].acertos++;
-    });
-  });
-  return Object.entries(porDia)
-    .map(([dia, v]) => ({ dia, ts: v.ts, total: v.total, pct: pct(v.acertos, v.total) }))
-    .sort((a,b)=> a.ts - b.ts);
-}
 
-// desenha um gráfico de linha simples em SVG inline (sem depender de nenhuma
-// biblioteca externa — mantém o arquivo autocontido) a partir dos pontos
-// {ts, pct} de computeTendenciaDiariaMateria
-function renderGraficoTendenciaSVG(pontos, corLinha){
-  const largura = 220, altura = 60, margem = 6;
-  if(pontos.length===0){
-    return `<div style="height:${altura}px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-soft);">sem respostas registradas ainda</div>`;
-  }
-  if(pontos.length===1){
-    return `<div style="height:${altura}px;display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--ink-soft);">só um dia com resposta (${pontos[0].pct}%) — sem tendência ainda</div>`;
-  }
-  const minTs = pontos[0].ts, maxTs = pontos[pontos.length-1].ts;
-  const rangeTs = Math.max(1, maxTs-minTs);
-  const coords = pontos.map(p=>{
-    const x = margem + ((p.ts-minTs)/rangeTs) * (largura-2*margem);
-    const y = margem + (1 - p.pct/100) * (altura-2*margem);
-    return { x, y, p };
-  });
-  const linha = coords.map(c=>`${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ');
-  const pontosSvg = coords.map(c=>`<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="2.3" fill="${corLinha}"><title>${esc(c.p.dia)}: ${c.p.pct}% (${c.p.total} resposta${c.p.total>1?'s':''})</title></circle>`).join('');
-  return `<svg viewBox="0 0 ${largura} ${altura}" width="100%" height="${altura}" preserveAspectRatio="none" style="display:block;overflow:visible;">
-    <line x1="${margem}" y1="${margem}" x2="${largura-margem}" y2="${margem}" stroke="currentColor" stroke-opacity=".08" />
-    <line x1="${margem}" y1="${altura-margem}" x2="${largura-margem}" y2="${altura-margem}" stroke="currentColor" stroke-opacity=".08" />
-    <polyline points="${linha}" fill="none" stroke="${corLinha}" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" />
-    ${pontosSvg}
-  </svg>`;
-}
 
 function computeSnapshotMateria(materiaKey){
   const bucket = getBucket(materiaKey);
@@ -633,16 +584,11 @@ function renderEstatisticasPorMateria(){
     return { nome: m, acertos: s.ac, erros: s.erradas, pct: s.taxa, respondidas, total: s.totalPontuavel, ativa: m===STATE.materia, temSimuladoEmAndamento, ultimaRespostaTs: s.ultimaRespostaTs };
   }).sort((a,b)=> a.nome.localeCompare(b.nome,'pt-BR') || b.respondidas - a.respondidas || b.pct - a.pct);
   const estiloCelula = 'font-size:13px;font-weight:400;font-family:inherit;line-height:1.4;';
-  const abaAtual = STATE.estatisticasAba || 'tabela';
   const atividade = computeAtividadeDiariaGeral();
   return `
   <div class="card-block" style="margin-top:22px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <h3 style="margin:0;color:inherit;">📈 Estatísticas por matéria</h3>
-      <div class="tabs" style="margin:0;">
-        <button class="tab-btn ${abaAtual==='tabela'?'active':''}" data-estatisticas-aba="tabela" style="padding:4px 10px;font-size:12px;">📋 Tabela</button>
-        <button class="tab-btn ${abaAtual==='tendencias'?'active':''}" data-estatisticas-aba="tendencias" style="padding:4px 10px;font-size:12px;">📈 Tendências</button>
-      </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
       <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);color:var(--ink);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
@@ -655,7 +601,7 @@ function renderEstatisticasPorMateria(){
       </div>
     </div>
     <div style="height:10px;"></div>
-    ${abaAtual==='tendencias' ? renderGraficoComparativoMaterias(linhas) : renderTabelaEstatisticas(linhas, estiloCelula)}
+    ${renderTabelaEstatisticas(linhas, estiloCelula)}
   </div>
   `;
 }
@@ -713,51 +659,12 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
         <div style="width:52px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas ? l.erros : '—'}</div>
         <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fgForte};font-weight:700;">${l.respondidas ? l.pct+'%' : '—'}</div>
         <div style="width:90px;text-align:right;${estiloCelula}color:${cor.fg};font-size:11px;" title="${l.ultimaRespostaTs ? new Date(l.ultimaRespostaTs).toLocaleString('pt-BR') : ''}">${l.ultimaRespostaTs ? formatarDataHoraSalvamento(l.ultimaRespostaTs) : '—'}</div>
+        ${l.respondidas ? `<div class="linha-estatistica-trilho" title="${esc(l.nome)}: ${l.pct}% de acerto"><div class="linha-estatistica-barra" style="width:${Math.max(0, Math.min(100, l.pct))}%;background:${cor.fgForte};"></div></div>` : ''}
       </div>`;
     }).join('')}`;
   return cabecalhoTabela;
 }
 
-// gráfico único: todas as matérias no eixo X, % de acerto no eixo Y, cada uma
-// com sua cor (a grade de tendências abaixo mostra a evolução de cada matéria)
-function renderGraficoComparativoMaterias(linhas){
-  const comResposta = linhas.filter(l=>l.respondidas>0);
-  if(comResposta.length===0){
-    return `<div style="font-size:12px;color:var(--ink-soft);padding:10px 4px;">Responda questões pra ver o desempenho por matéria aqui.</div>`;
-  }
-  // uma barra por matéria (0–100%), com o nome em cima. Uma cor só: o nome
-  // identifica a matéria, e vermelho/verde ficam reservados pra erro/acerto
-  return `<div class="barras-materias">
-    ${linhas.map(l=>{
-      if(!l.respondidas) return '';
-      const dica = `${l.nome}: ${l.pct}% de acerto (${l.respondidas} respondida${l.respondidas>1?'s':''})`;
-      return `<div class="barra-materia" title="${esc(dica)}">
-        <div class="barra-materia-topo">
-          <span class="barra-materia-nome" data-macro-materia="${esc(l.nome)}">${esc(l.nome)}</span>
-          <span class="barra-materia-pct">${l.pct}%</span>
-        </div>
-        <div class="barra-materia-trilho"><div class="barra-materia-valor" style="width:${Math.max(0, Math.min(100, l.pct))}%;"></div></div>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
-
-function renderGradeTendencias(linhas){
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px;">
-    ${linhas.map(l=>{
-      const cor = faixaCorPct(l.pct, l.respondidas);
-      const pontos = computeTendenciaDiariaMateria(l.nome);
-      return `<div style="background:${cor.bg};border-radius:8px;padding:10px 12px;${l.ativa?`border:2px solid ${cor.fgForte};`:'border:2px solid transparent;'}">
-        <div style="display:flex;justify-content:space-between;align-items:baseline;gap:6px;margin-bottom:4px;">
-          <div class="name" style="cursor:pointer;font-size:13px;font-weight:700;color:${cor.fgForte};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" data-macro-materia="${esc(l.nome)}" title="${esc(l.nome)}">${esc(l.nome)}</div>
-          <div style="font-size:13px;font-weight:700;color:${cor.fgForte};white-space:nowrap;">${l.respondidas ? l.pct+'%' : '—'}</div>
-        </div>
-        ${renderGraficoTendenciaSVG(pontos, cor.fgForte)}
-        <div style="font-size:10px;color:var(--ink-soft);margin-top:2px;">${pontos.length>1 ? pontos.length+' dias com resposta' : ''}</div>
-      </div>`;
-    }).join('')}
-  </div>`;
-}
 function renderDashboardAnalitico(){
   if(!STATE.materia) return '';
   const analise = analisarTemasDaMateria(STATE.materia);
@@ -1071,7 +978,6 @@ function renderLanding(){
     ${botoesAcao}
   </div>
   ${renderEstatisticasPorMateria()}
-  ${(STATE.estatisticasAba||'tabela')==='tendencias' ? '' : `
   ${renderDashboardAnalitico()}
   ${renderSimuladosSalvosBlock()}
   ${ultimaSessoes.length ? `<div class="card-block" style="margin-top:22px;">
@@ -1094,7 +1000,6 @@ function renderLanding(){
     }).join('')}
   </div>` : ''}
   ${STATE.materia ? renderDangerZone() : ''}
-  `}
   `;
 }
 

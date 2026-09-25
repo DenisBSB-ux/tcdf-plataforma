@@ -99,13 +99,6 @@ function attachHandlers(){
     });
   });
 
-  root.querySelectorAll('[data-estatisticas-aba]').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      STATE.estatisticasAba = el.dataset.estatisticasAba;
-      render();
-    });
-  });
-
   root.querySelectorAll('[data-tema]').forEach(el=>{
     el.addEventListener('click', ()=>{
       STATE.tema = el.dataset.tema;

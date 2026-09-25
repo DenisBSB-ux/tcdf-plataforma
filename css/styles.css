@@ -1341,17 +1341,16 @@ body:not(.theme-light) .landing-cta{ background:rgba(255,255,255,0.05); }
 .tela-login-caixa h2{ font-family:var(--font-display); font-size:22px; margin-bottom:10px; }
 .tela-login-caixa p{ font-size:14px; color:var(--ink-soft); margin-bottom:20px; line-height:1.45; }
 
-/* ---------- barras de acerto por matéria (aba Tendências) ---------- */
-.barras-materias{ display:flex; flex-direction:column; gap:12px; padding:6px 2px; }
-.barra-materia-topo{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:4px; font-size:13px; }
-.barra-materia-nome{ font-weight:600; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.barra-materia-pct{ font-family:var(--font-mono); font-weight:600; white-space:nowrap; }
-.barra-materia-trilho{ height:12px; border-radius:4px; background:rgba(127,127,127,.15); overflow:hidden; }
-.barra-materia-valor{ height:100%; border-radius:4px; background:var(--gold-bright); }
+/* ---------- barra de acerto em cada linha da tabela de estatísticas ---------- */
+.linha-estatistica-trilho{ flex-basis:100%; height:8px; margin-top:6px; border-radius:4px; background:rgba(0,0,0,.08); overflow:hidden; }
+.linha-estatistica-barra{ height:100%; border-radius:4px; }
 
-/* botão Certo/Errado respondido: só o escolhido fica, preenchido —
-   verde se acertou, vermelho se errou (nos dois temas) */
-body .answer-opt.ce-btn.picked.correct{ background:var(--stamp-green); border-color:var(--stamp-green); opacity:1; }
-body .answer-opt.ce-btn.picked.incorrect{ background:var(--stamp-red); border-color:var(--stamp-red); opacity:1; }
-body .answer-opt.ce-btn.picked.correct .letter,
-body .answer-opt.ce-btn.picked.incorrect .letter{ color:#fff; }
+/* botão Certo/Errado respondido: mesmas cores das alternativas de múltipla
+   escolha (.answer-opt.correct / .incorrect) — fundo verde no acerto,
+   fundo vermelho no erro — em vez das variações próprias do .ce-btn */
+body .answer-opt.ce-btn.picked.correct{ border-color:var(--stamp-green); background:#eef6f0; opacity:1; }
+body .answer-opt.ce-btn.picked.incorrect{ border-color:var(--stamp-red); background:#fbeeec; opacity:1; }
+body:not(.theme-light) .answer-opt.ce-btn.picked.correct{ background:rgba(63,150,105,0.28); color:#eaffef; }
+body:not(.theme-light) .answer-opt.ce-btn.picked.incorrect{ background:rgba(194,80,65,0.28); color:#ffeeec; }
+body .answer-opt.ce-btn.picked.correct .letter{ color:var(--stamp-green); }
+body .answer-opt.ce-btn.picked.incorrect .letter{ color:var(--stamp-red); }
