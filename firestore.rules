@@ -4,9 +4,9 @@ rules_version = '2';
 // Como publicar: Firebase Console → Firestore Database → aba "Regras" →
 // colar este arquivo → "Publicar". Passo a passo completo em SEGURANCA.md.
 //
-// ANTES DE PUBLICAR: troque COLE_SEU_UID_AQUI pelo UID da sua conta Google.
-// O UID aparece na barra lateral da plataforma (bloco Sincronização) depois
-// de clicar em "Entrar com Google".
+// Administrador: UID da conta Google que publica as matérias. O UID aparece
+// na barra lateral da plataforma (bloco Sincronização) depois de clicar em
+// "Entrar com Google". Para mais administradores, acrescente UIDs na lista.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -15,7 +15,7 @@ service cloud.firestore {
     }
 
     function administrador() {
-      return logado() && request.auth.uid in ['COLE_SEU_UID_AQUI'];
+      return logado() && request.auth.uid in ['LjkZLfBRfNRuDxHqbA3ivlywlq23'];
     }
 
     // Matérias públicas: qualquer pessoa lê, só o administrador publica,
