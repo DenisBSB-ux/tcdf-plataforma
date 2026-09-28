@@ -57,8 +57,6 @@ function attachHandlers(){
 
   const btnExportarProgresso = document.getElementById('btn-exportar-progresso');
   if(btnExportarProgresso) btnExportarProgresso.addEventListener('click', exportarProgresso);
-  const btnDownloadResumo = document.getElementById('btn-download-resumo');
-  if(btnDownloadResumo) btnDownloadResumo.addEventListener('click', downloadResumoRevisao);
   const btnImportarProgresso = document.getElementById('btn-importar-progresso');
   const fileInputProgresso = document.getElementById('file-input-progresso');
   if(btnImportarProgresso && fileInputProgresso){
