@@ -23,7 +23,8 @@
    vezes traz outro ano), o sufixo ", Auditor de Controle Externo, TCDF"
    acrescentado pelo gerador de questões é descartado, especialidades do mesmo
    concurso contam como uma prova só, e questões de "Elaboração própria" (não
-   são de prova) ficam de fora. */
+   são de prova) ficam de fora, assim como questões cujo "bc" não traz o ano
+   da prova (não dá pra saber de qual prova são). */
 
 const MEIA_VIDA_ANOS = 4;
 const FORCA_PRIOR = 2;
@@ -37,7 +38,11 @@ function identificarProva(q){
   if(/^elabora[cç][aã]o/i.test(txt)) return null;
   txt = txt.replace(/,\s*Auditor de Controle Externo,\s*TCDF\s*$/i, '').trim();
   const anos = txt.match(/\b(19|20)\d{2}\b/g);
-  const ano = anos ? Number(anos[anos.length-1]) : (q.ar || null);
+  // sem ano escrito no "bc" não dá pra saber de qual prova é: o campo "ar" é
+  // o ano em que a questão foi coletada, não o da prova (ex.: "CEBRASPE,
+  // Auditor de Controle Externo (TCDF)" vem com ar=2024, e não houve prova do
+  // TCDF em 2024) — fica sem ano e fora da contagem de provas
+  const ano = anos ? Number(anos[anos.length-1]) : null;
   // banca = texto antes do primeiro separador (" - ", " — " ou ","); o resto
   // começa pelo cargo, até a primeira "/" ou " — "
   const m = txt.match(/^(.+?)(?:\s-\s|\s—\s|,\s*)(.*)$/);
@@ -134,7 +139,7 @@ function analisarTemasDaMateria(materiaKey){
   const provasMap = {};
   qs.forEach(q=>{
     const p = identificarProva(q);
-    if(!p || !q.tema) return;
+    if(!p || !p.ano || !q.tema) return;
     (provasMap[p.id] = provasMap[p.id] || { ...p, temas: new Set() }).temas.add(q.tema);
   });
   const provas = Object.values(provasMap);

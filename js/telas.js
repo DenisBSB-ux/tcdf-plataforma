@@ -577,7 +577,7 @@ function renderDashboardAnalitico(){
         <div class="assunto-analise-incidencia" title="Frequência nesta base: ${a.nProvasComTema} de ${a.totalProvas} provas (${pct(a.frequencia)}); últimos 5 anos: ${a.provasRecentesComTema} de ${a.totalProvasRecentes}">
           <span class="inc-badge" style="background:transparent;color:inherit;font-weight:600;">Base: ${a.nProvasComTema}/${a.totalProvas} provas · ${pct(a.frequencia)}</span>
         </div>
-        <div class="assunto-analise-bar" title="${tt? `${ac} certas / ${tt-ac} erradas de ${tt} tentativas` : 'ainda não respondida'}">
+        <div class="assunto-analise-bar" title="${tt? `${tt} questões respondidas deste assunto: ${ac} certas e ${tt-ac} erradas na última resposta de cada uma` : 'ainda não respondida'}">
           <div class="stacked-bar">
             ${tt ? `<div class="stacked-seg stacked-green" style="width:${pctAcerto}%;"></div><div class="stacked-seg stacked-red" style="width:${pctErro}%;"></div>` : `<div class="stacked-seg stacked-empty" style="width:100%;"></div>`}
           </div>
