@@ -1,6 +1,12 @@
 /* ---------------- app state ---------------- */
+// ordem da tabela de matérias ('nome' | 'ultima'), lembrada neste aparelho
+const ORDEM_MATERIAS_KEY = 'tcdf-ordem-materias';
+function ordemMateriasSalva(){
+  try{ return window.localStorage.getItem(ORDEM_MATERIAS_KEY)==='ultima' ? 'ultima' : 'nome'; }catch(e){ return 'nome'; }
+}
 let STATE = {
   materia: null,
+  ordemMaterias: ordemMateriasSalva(),
   viewImportar: false,
   tema: 'todos',
   tabByMateria: {},
@@ -582,13 +588,22 @@ function renderEstatisticasPorMateria(){
     const q = STATE.quizzesEmAndamento[m];
     const temSimuladoEmAndamento = q && !q.finished;
     return { nome: m, acertos: s.ac, erros: s.erradas, pct: s.taxa, respondidas, total: s.totalPontuavel, ativa: m===STATE.materia, temSimuladoEmAndamento, ultimaRespostaTs: s.ultimaRespostaTs };
-  }).sort((a,b)=> a.nome.localeCompare(b.nome,'pt-BR') || b.respondidas - a.respondidas || b.pct - a.pct);
+  }).sort((a,b)=>{
+    // "ultima": última resposta mais recente primeiro; nunca respondidas no fim
+    if(STATE.ordemMaterias==='ultima' && (a.ultimaRespostaTs||0)!==(b.ultimaRespostaTs||0)) return (b.ultimaRespostaTs||0) - (a.ultimaRespostaTs||0);
+    return a.nome.localeCompare(b.nome,'pt-BR') || b.respondidas - a.respondidas || b.pct - a.pct;
+  });
   const estiloCelula = 'font-size:13px;font-weight:400;font-family:inherit;line-height:1.4;';
   const atividade = computeAtividadeDiariaGeral();
   return `
   <div class="card-block" style="margin-top:22px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <h3 style="margin:0;color:inherit;">📈 Estatísticas por matéria</h3>
+      <div class="tabs" style="margin:0;align-items:center;gap:6px;">
+        <span style="font-size:12px;opacity:.75;">Ordenar:</span>
+        <button class="tab-btn ${STATE.ordemMaterias!=='ultima'?'active':''}" data-ordem-materias="nome" style="padding:4px 10px;font-size:12px;">A–Z</button>
+        <button class="tab-btn ${STATE.ordemMaterias==='ultima'?'active':''}" data-ordem-materias="ultima" style="padding:4px 10px;font-size:12px;">🕒 Última resposta</button>
+      </div>
     </div>
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
       <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);color:var(--ink);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
@@ -963,12 +978,13 @@ function renderLanding(){
   const infoSalvo = quizSalvo ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">
     <b>Simulado salvo:</b> ${respondidasNaFila}/${quizSalvo.queue.length} respondidas${quizSalvo.ultimoSalvamento ? ` · 💾 ${formatarDataHoraSalvamento(quizSalvo.ultimoSalvamento)}` : ''}
   </div>` : '';
-  // Sem simulado em andamento: "Configurar novo simulado". Com simulado em
-  // andamento: "Continuar" + "Reiniciar". Nunca os dois grupos juntos.
+  // "Continuar" fica sempre ao lado de "Configurar novo simulado": com um
+  // simulado salvo, volta nele; sem, abre a matéria começando pelas questões
+  // ainda não respondidas. "Reiniciar" só aparece com simulado salvo.
   const botoesAcao = `<div style="display:flex; gap:8px; flex-wrap:wrap;">
-    ${quizSalvo ? `<button class="btn btn-gold btn-sm" id="btn-continuar-simulado" style="flex:1;justify-content:center;min-width:140px;">▶ Continuar da última questão</button>
-    <button class="btn-outline btn-sm" id="btn-reiniciar-simulado" style="flex:1;justify-content:center;min-width:140px;">🔄 Reiniciar simulado</button>`
-    : `<button class="btn btn-primary btn-sm" id="btn-abrir-config" style="flex:1;justify-content:center;min-width:140px;">⚙ Configurar novo simulado</button>`}
+    <button class="btn btn-gold btn-sm" id="btn-continuar-simulado" style="flex:1;justify-content:center;min-width:140px;">▶ Continuar simulado</button>
+    <button class="btn btn-primary btn-sm" id="btn-abrir-config" style="flex:1;justify-content:center;min-width:140px;">⚙ Configurar novo simulado</button>
+    ${quizSalvo ? `<button class="btn-outline btn-sm" id="btn-reiniciar-simulado" style="justify-content:center;min-width:140px;">🔄 Reiniciar simulado</button>` : ''}
   </div>`;
 
   return `
@@ -1129,11 +1145,15 @@ function gerarImpressao(){
 // matérias, não só na que está aberta no momento)
 function continuarSimuladoDaMateria(materiaNome){
   const q = STATE.quizzesEmAndamento[materiaNome];
-  if(!q || q.finished) return;
   if(STATE.quiz) salvarQuizEmAndamento(); // flush do que estava em andamento antes de trocar
   STATE.materia = materiaNome;
   STATE.tema = 'todos';
   STATE.viewImportar = false;
+  if(!q || q.finished){
+    // sem simulado salvo: começa pelas questões ainda não respondidas
+    startQuiz();
+    return;
+  }
   const last = acharIdxUltimaRespondida(q);
   if(last>=0) q.idx = last;
   STATE.quiz = q;

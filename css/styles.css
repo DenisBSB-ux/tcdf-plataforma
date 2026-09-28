@@ -1357,3 +1357,9 @@ body:not(.theme-light) .answer-opt.ce-btn.picked.correct{ background:rgba(63,150
 body:not(.theme-light) .answer-opt.ce-btn.picked.incorrect{ background:rgba(194,80,65,0.28); color:#ffeeec; }
 body .answer-opt.ce-btn.picked.correct .letter{ color:var(--stamp-green); }
 body .answer-opt.ce-btn.picked.incorrect .letter{ color:var(--stamp-red); }
+
+/* indicador de envio do progresso pra nuvem, ao lado do 💾 nas questões */
+.indicador-nuvem{ font-size:12px; margin-left:4px; white-space:nowrap; }
+.indicador-nuvem.ok{ color:var(--stamp-green); }
+.indicador-nuvem.pending{ color:var(--gold); }
+.indicador-nuvem.err{ color:var(--stamp-red); }

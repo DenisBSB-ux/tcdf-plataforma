@@ -174,7 +174,8 @@ function renderQuiz(){
         <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
         <span class="toolbar-divider"></span>
         ${renderZoomControl()}
-        ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvamento automático a cada ação">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
+        ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvo automaticamente neste aparelho a cada resposta">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
+        ${(()=>{ const e = estadoSincronizacaoProgresso(); return `<span id="indicador-nuvem" class="indicador-nuvem ${e.classe}" title="${esc(e.texto)}">${e.icone}</span>`; })()}
         ${renderProgressoMateriaToolbar(quiz.materia)}
       </div>
       <div class="toolbar-meta-row">
