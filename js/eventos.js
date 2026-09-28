@@ -319,6 +319,13 @@ function attachHandlers(){
   const btnFocusToggle = document.getElementById('btn-focus-toggle');
   if(btnFocusToggle) btnFocusToggle.addEventListener('click', ()=>{ STATE.focusMode = !STATE.focusMode; render(); });
 
+  root.querySelectorAll('[data-ordem-materias]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      STATE.ordemMaterias = el.dataset.ordemMaterias;
+      try{ window.localStorage.setItem(ORDEM_MATERIAS_KEY, STATE.ordemMaterias); }catch(e){ /* só preferência */ }
+      render();
+    });
+  });
   const btnContinuarSimulado = document.getElementById('btn-continuar-simulado');
   if(btnContinuarSimulado) btnContinuarSimulado.addEventListener('click', ()=> continuarSimuladoDaMateria(STATE.materia));
   const btnReiniciarSimulado = document.getElementById('btn-reiniciar-simulado');
