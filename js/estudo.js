@@ -4,8 +4,8 @@
 function renderProgressoMateriaToolbar(materiaKey){
   if(!materiaKey) return '';
   const s = computeSnapshotMateria(materiaKey);
-  return `<span class="kbd-hint progresso-materia-toolbar" title="Progresso em ${esc(materiaKey)}: resultado atual de cada questão">
-    Total ${s.totalPontuavel} · <span class="pm-certas">✓ ${s.ac}</span> · <span class="pm-erradas">✗ ${s.erradas}</span> · ${s.taxa}%
+  return `<span class="progresso-materia-toolbar" title="Progresso em ${esc(materiaKey)} (${s.totalPontuavel} questões): resultado atual de cada questão respondida">
+    Total Respondidas: ${s.ac + s.erradas} · <span class="pm-certas">✓ ${s.ac}</span> · <span class="pm-erradas">✗ ${s.erradas}</span> · ${s.taxa}%
   </span>`;
 }
 function renderQuiz(){
@@ -121,6 +121,7 @@ function renderQuiz(){
           <button class="icon-btn" id="btn-focus-toggle" title="Sair do modo foco">✕</button>
           <button class="theme-toggle-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro" style="width:36px;height:36px;">${STATE.theme==='light'?'🌙':'☀️'}</button>
           ${renderZoomControl()}
+          ${renderProgressoMateriaToolbar(quiz.materia)}
         </div>
       </div>
     </div>
