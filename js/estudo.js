@@ -99,12 +99,16 @@ function renderQuiz(){
   }
 
   if(STATE.focusMode){
-    // modo foco: só o essencial pra responder sem distração — enunciado,
-    // botões de resposta, a justificativa depois de responder, setas de
-    // navegação e o botão de sair do foco. Nada de cabeçalho com banca/tags,
-    // paginação, resetar ou finalizar aqui.
+    // modo foco: sem menus nem paginação, mas com as informações da questão
+    // (banca/cargo/ano, assunto, frequência/estimativa) e o progresso da
+    // matéria na barra de baixo
     return `
     <div class="case-file focus-simple" style="zoom:${STATE.zoomLevel};">
+      <div class="case-header">
+        <div class="q-number-row"><span class="q-meta-inline">${bancaCargoAnoLine(q)}</span></div>
+        ${q.tema && q.tema!=='Geral' ? `<div class="q-tema-line">${esc(q.tema)}</div>` : ''}
+        ${narrativaBancaBanner(q)}
+      </div>
       <div class="case-body">
         <div class="enunciado">${blocoEnunciadoEditavel(q)}</div>
       </div>

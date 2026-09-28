@@ -37,14 +37,16 @@ function renderImportarPage(){
           <input type="file" id="file-input-atualizar" accept=".txt,text/plain,.pdf,application/pdf,.md,text/markdown" style="display:none;">
           ${materiasImportadas.map(m=>{
             const n = ALL_QUESTIONS.filter(q=>q.materia===m).length;
-            const ultimaAtualizacao = MATERIA_ULTIMA_ATUALIZACAO[m];
+            // horário da versão publicada na nuvem (igual em todos os aparelhos);
+            // sem ele, a última alteração feita neste aparelho
+            const ultimaAtualizacao = MATERIA_ATUALIZADOEM_NUVEM_VISTO[m] || MATERIA_ULTIMA_ATUALIZACAO[m];
             const numDuplicatas = detectarDuplicatasDaMateria(m).reduce((soma,g)=>soma + (g.length-1), 0);
             const dedupInfo = STATE.dedupInfo && STATE.dedupInfo.materia===m ? STATE.dedupInfo : null;
             const ativa = m===STATE.materia;
             return `<div class="bar-row" style="flex-wrap:wrap;${ativa?'background:var(--gold-soft, #fdf1de);border:1px solid var(--gold-bright, #c9a227);':''}">
               <div class="name" style="${ativa?'font-weight:700;':''}">${ativa?'▸ ':''}${esc(m)}</div>
               <div class="pct" style="margin-right:8px;">${n} questão(ões)</div>
-              ${ultimaAtualizacao ? `<div style="font-size:11px;color:var(--ink-soft);margin-right:8px;" title="Última atualização desta matéria">🕒 ${formatarDataHoraSalvamento(ultimaAtualizacao)}</div>` : ''}
+              ${ultimaAtualizacao ? `<div style="font-size:11px;color:var(--ink-soft);margin-right:8px;" title="Última vez que o conteúdo (questões) desta matéria foi atualizado na nuvem">Atualizada em ${formatarDataHoraSalvamento(ultimaAtualizacao)}</div>` : ''}
               <button class="btn-outline" data-download-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
               <button class="btn-outline" data-inserir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">➕ Inserir</button>
               ${numDuplicatas>0 ? `<button class="btn-outline" data-remover-duplicatas="${esc(m)}" style="padding:4px 10px;font-size:11px;border-color:var(--stamp-red);color:var(--stamp-red);" title="Detectadas questões repetidas (mesmo enunciado) dentro desta matéria — remove as cópias extras, mantendo o histórico de progresso">🧹 ${numDuplicatas} duplicata(s)</button>` : ''}
@@ -56,7 +58,9 @@ function renderImportarPage(){
             </div>`;
           }).join('')}
           <button class="btn-outline" id="btn-salvar-tudo" style="margin-top:10px;padding:6px 14px;font-size:12px;font-weight:600;" title="Força salvar TODAS as matérias agora (local + nuvem) numa vez só — use depois de importar, antes de atualizar a página" ${STATE.salvandoTudo?'disabled':''}>${STATE.salvandoTudo?'⏳ Salvando tudo…':'💾 Salvar tudo'}</button>
-          ${STATE.ultimoSalvamentoGeral ? `<div style="font-size:11px;margin-top:4px;color:${STATE.ultimoSalvamentoGeral.ok?'var(--stamp-green, #3a9d5c)':'var(--stamp-red)'};">${STATE.ultimoSalvamentoGeral.ok?'✅ '+STATE.ultimoSalvamentoGeral.qtdMaterias+' matéria(s) salva(s) com sucesso ('+new Date(STATE.ultimoSalvamentoGeral.ts).toLocaleTimeString('pt-BR')+') — pode atualizar a página com segurança.':'❌ Falha ao salvar: '+esc(STATE.ultimoSalvamentoGeral.motivo||'motivo desconhecido')}</div>` : ''}
+          ${STATE.ultimoSalvamentoGeral ? `<div style="font-size:11px;margin-top:4px;color:${STATE.ultimoSalvamentoGeral.ok?'var(--stamp-green, #3a9d5c)':'var(--stamp-red)'};">${STATE.ultimoSalvamentoGeral.ok
+            ? '💾 '+(STATE.ultimoSalvamentoGeral.automatico ? 'Salvamento automático' : 'Salvo')+' às '+new Date(STATE.ultimoSalvamentoGeral.ts).toLocaleTimeString('pt-BR')+' — tudo salvo.'
+            : '❌ Falha ao salvar: '+esc(STATE.ultimoSalvamentoGeral.motivo||'motivo desconhecido')}</div>` : ''}
         </div>` : ''}
 
         ${false ? `<div class="card-block" style="margin-top:10px;">
