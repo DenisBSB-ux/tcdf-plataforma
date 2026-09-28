@@ -131,7 +131,9 @@ function tendenciasDisponiveis(){
   return ['crescente','estável','decrescente'].filter(t=>presentes.has(t));
 }
 function getLocalTab(materiaKey){
-  return STATE.tabByMateria[materiaKey] || 'simulado';
+  const tab = STATE.tabByMateria[materiaKey];
+  // abas que ainda existem ("Resumo p/ revisão" foi removida)
+  return ['simulado','erros','flashcards'].includes(tab) ? tab : 'simulado';
 }
 function setLocalTab(materiaKey, tab){
   STATE.tabByMateria[materiaKey] = tab;
@@ -897,8 +899,7 @@ function renderLocalTabs(){
   const tabs = [
     {id:'simulado', n:'01', label:'Simulado'},
     {id:'erros', n:'02', label:'Caderno de erros'},
-    {id:'revisao', n:'03', label:'Resumo p/ revisão'},
-    {id:'flashcards', n:'04', label:'Flashcards'},
+    {id:'flashcards', n:'03', label:'Flashcards'},
   ];
   const atual = getLocalTab(STATE.materia);
   return `<div class="tabs">${tabs.map(t=>`
@@ -933,7 +934,6 @@ function renderMainPanel(tabAtual){
     return renderLanding();
   }
   if(tabAtual==='erros') return renderErros();
-  if(tabAtual==='revisao') return renderResumoRevisao();
   if(tabAtual==='flashcards') return renderFlashcards();
   return '';
 }

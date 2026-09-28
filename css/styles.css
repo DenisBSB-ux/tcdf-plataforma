@@ -1341,6 +1341,11 @@ body:not(.theme-light) .landing-cta{ background:rgba(255,255,255,0.05); }
 .tela-login-caixa h2{ font-family:var(--font-display); font-size:22px; margin-bottom:10px; }
 .tela-login-caixa p{ font-size:14px; color:var(--ink-soft); margin-bottom:20px; line-height:1.45; }
 
+/* ---------- progresso da matéria ao lado do horário de salvamento ---------- */
+.progresso-materia-toolbar{ margin-left:10px; white-space:nowrap; }
+.progresso-materia-toolbar .pm-certas{ color:var(--stamp-green); font-weight:600; }
+.progresso-materia-toolbar .pm-erradas{ color:var(--stamp-red); font-weight:600; }
+
 /* ---------- barra de acerto em cada linha da tabela de estatísticas ---------- */
 .linha-estatistica-trilho{ flex-basis:100%; height:8px; margin-top:6px; border-radius:4px; background:rgba(0,0,0,.08); overflow:hidden; }
 .linha-estatistica-barra{ height:100%; border-radius:4px; }

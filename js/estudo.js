@@ -1,4 +1,13 @@
 /* ================= QUIZ ================= */
+// progresso da matéria inteira (resultado atual de cada questão), mostrado ao
+// lado do horário de salvamento: Total / Certas / Erradas / %
+function renderProgressoMateriaToolbar(materiaKey){
+  if(!materiaKey) return '';
+  const s = computeSnapshotMateria(materiaKey);
+  return `<span class="kbd-hint progresso-materia-toolbar" title="Progresso em ${esc(materiaKey)}: resultado atual de cada questão">
+    Total ${s.totalPontuavel} · <span class="pm-certas">✓ ${s.ac}</span> · <span class="pm-erradas">✗ ${s.erradas}</span> · ${s.taxa}%
+  </span>`;
+}
 function renderQuiz(){
   const quiz = STATE.quiz;
   if(quiz.finished) return renderResults();
@@ -134,9 +143,6 @@ function renderQuiz(){
       </div>
       ${temaLinha}
       <div class="tag-row">
-        ${q.pp ? probabilidadeBadge(q.pp) : probabilidadeCalculadaBadge(q)}
-        ${nivelBadge(q.nv)}
-        ${trendBadge(q.td)}
         ${freqBadge(q.fr)}
         ${ineditaBadge(q)}
       </div>
@@ -168,6 +174,7 @@ function renderQuiz(){
         <span class="toolbar-divider"></span>
         ${renderZoomControl()}
         ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvamento automático a cada ação">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
+        ${renderProgressoMateriaToolbar(quiz.materia)}
       </div>
       <div class="toolbar-meta-row">
         <div class="progress-bar" style="max-width:220px;"><div class="fill" style="width:${progressPct}%"></div></div>
@@ -616,12 +623,10 @@ function renderErros(){
 
   ${lista.map(({uid,p})=>{
     const q = BY_UID[uid];
+    // só o texto da questão (sem estrelas, tendência, tentativas, banca, assunto)
     return `<div class="error-row">
-      <span class="num">${String(q.n).padStart(3,'0')}</span>
-      <div class="summary">
-        ${esc(q.rf)}
-        <div class="meta">${NIVEL_STARS[q.nv]} · ${esc(q.td||'')} ${tendenciaQuente(q)?'⚠':''} · ${p.tentativas} tentativa(s), ${p.acertos} acerto(s) · ${esc(q.bc)}${q.tema && q.tema!=='Geral' ? ` · ${esc(q.tema)}`:''}</div>
-      </div>
+      <span class="num">${esc(String(q.n).padStart(3,'0'))}</span>
+      <div class="summary">${esc(limparEnunciado(q.q, q.t) || q.rf || '')}</div>
       <button class="btn btn-gold btn-sm" data-refazer="${uid}">Refazer</button>
     </div>`;
   }).join('')}
@@ -692,77 +697,6 @@ function downloadListaQuestoes(materiaKey){
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-function downloadResumoRevisao(){
-  const lista = getCadernoErros();
-  if(lista.length===0) return;
-  const porTema = {};
-  lista.forEach(({uid})=>{
-    const q = BY_UID[uid];
-    if(!q) return;
-    const tema = (q.tema && q.tema!=='Geral') ? q.tema : 'Geral';
-    if(!porTema[tema]) porTema[tema] = [];
-    porTema[tema].push(q);
-  });
-  const temasOrdenados = Object.keys(porTema).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  let texto = `RESUMO PARA REVISÃO DE VÉSPERA — ${STATE.materia}\n`;
-  texto += `Gerado em ${new Date().toLocaleDateString('pt-BR')} · ${lista.length} ponto(s) de atenção\n`;
-  texto += '='.repeat(60) + '\n\n';
-  temasOrdenados.forEach(tema=>{
-    texto += `${tema.toUpperCase()} (${porTema[tema].length})\n`;
-    texto += '-'.repeat(40) + '\n';
-    porTema[tema].sort((a,b)=>a.n-b.n).forEach(q=>{
-      texto += `${String(q.n).padStart(3,'0')}. ${(q.rf||'').replace(/\s+/g,' ').trim()}\n\n`;
-    });
-    texto += '\n';
-  });
-  const blob = new Blob([texto], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const dataStr = new Date().toISOString().slice(0,10);
-  const nomeArquivo = (STATE.materia||'materia').toLowerCase().replace(/[^a-z0-9]+/g,'-');
-  a.href = url;
-  a.download = `resumo-revisao-${nomeArquivo}-${dataStr}.txt`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function renderResumoRevisao(){
-  const lista = getCadernoErros();
-  if(lista.length===0){
-    return emptyState('🎯','Nada pra revisar por aqui',`Quando você errar questões em "${esc(STATE.materia||'')}", o resumo flash delas aparece aqui, agrupado por assunto, pronto pra uma revisão rápida de véspera.`);
-  }
-  const porTema = {};
-  lista.forEach(({uid})=>{
-    const q = BY_UID[uid];
-    if(!q) return;
-    const tema = (q.tema && q.tema!=='Geral') ? q.tema : 'Geral';
-    if(!porTema[tema]) porTema[tema] = [];
-    porTema[tema].push(q);
-  });
-  const temasOrdenados = Object.keys(porTema).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-
-  return `
-  <div class="section-eyebrow">${esc(STATE.materia)}</div>
-  <h2 class="section-title">Resumo para revisão de véspera</h2>
-  <p class="section-desc">${lista.length} ponto(s) de atenção — resumo flash no método <b>ELI10</b> (<i>Explain Like I'm 10</i>: explicado de um jeito simples, como se você tivesse 10 anos) das questões que você errou${STATE.tema!=='todos'?` no assunto ${esc(STATE.tema)}`:''}, agrupados por assunto.</p>
-  <button class="btn-outline" id="btn-download-resumo" style="margin-bottom:18px;">⬇ Baixar como arquivo de texto</button>
-
-  ${temasOrdenados.map(tema=>`
-    <div class="card-block">
-      <h3>${esc(tema)} <span style="font-weight:400;color:var(--ink-soft);font-size:12px;">(${porTema[tema].length})</span></h3>
-      ${porTema[tema].sort((a,b)=>a.n-b.n).map(q=>`
-        <div class="resumo-revisao-item">
-          <div class="num">${String(q.n).padStart(3,'0')}</div>
-          <div class="txt"><span class="eli10-tag" title="Explain Like I'm 10 — explicação simplificada">⚡ ELI10</span> ${formatarTextoComDestaque(q.rf, palavrasChaveDaRespostaCorreta(q))}</div>
-        </div>
-      `).join('')}
-    </div>
-  `).join('')}
-  `;
 }
 
 // true se existe um simulado salvo com progresso real nesta matéria que seria
