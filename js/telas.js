@@ -540,16 +540,14 @@ function analisarTemasDaMateria(materiaKey){
   }).filter(Boolean).sort((a,b)=>b.score-a.score || b.total-a.total);
 }
 
-// faixa de cor pastel pro percentual: 90-100 verde claro, 70-89 amarelo claro,
-// 0-69 vermelho claro; sem tentativas = neutro
+// faixa de cor (clara) pelo % de acerto: 95-100 azul, 90-94 verde, 80-89
+// amarelo, 1-79 vermelho; 0% (ou nada respondido) preto
 function faixaCorPct(pct, respondidas){
-  if(!respondidas) return { bg:'#f3f1ea', fg:'#7a7566', fgForte:'#7a7566' };
-  // faixas pedidas: 100-90% azul, 89-80% verde, 79-70% amarelo, 69-0% vermelho
-  // (cores claras, mesma família de tons já usada no resto da tela)
-  if(pct>=90) return { bg:'#e3eefb', fg:'#1e5f9d', fgForte:'#134a80' };
-  if(pct>=80) return { bg:'#e3f6e9', fg:'#1e7d43', fgForte:'#166534' };
-  if(pct>=70) return { bg:'#fdf4d9', fg:'#8a6416', fgForte:'#7a5a10' };
-  return { bg:'#fce6e4', fg:'#a3352c', fgForte:'#8f2a22' };
+  if(!respondidas || pct<=0) return { bg:'#1f1f1f', fg:'#d4d4d4', fgForte:'#f5f5f5' };
+  if(pct>=95) return { bg:'#dbeafe', fg:'#1e4f8f', fgForte:'#173e72' };
+  if(pct>=90) return { bg:'#dcfce7', fg:'#1e7d43', fgForte:'#166534' };
+  if(pct>=80) return { bg:'#fef3c7', fg:'#855b0e', fgForte:'#6f4b0a' };
+  return { bg:'#fee2e2', fg:'#a3352c', fgForte:'#8f2a22' };
 }
 // anel compacto de acerto geral (certas x erradas), no canto superior direito
 // do card
@@ -649,7 +647,11 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
     ${linhas.map((l,i)=>{
       const cor = faixaCorPct(l.pct, l.respondidas);
       const destaque = l.ativa ? `border:2px solid ${cor.fgForte};` : 'border:2px solid transparent;';
-      return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${cor.bg};border-radius:6px;padding:6px 8px;margin-bottom:4px;${destaque}">
+      // o fundo da linha é a própria barra: a cor da faixa vai até o % de
+      // acerto, o resto fica neutro claro (0% = linha preta inteira)
+      const p = l.respondidas ? Math.max(0, Math.min(100, l.pct)) : 0;
+      const fundo = p>0 ? `linear-gradient(to right, ${cor.bg} ${p}%, #f3f1ea ${p}%)` : cor.bg;
+      return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${fundo};border-radius:6px;padding:6px 8px;margin-bottom:4px;${destaque}" title="${esc(l.nome)}: ${l.respondidas ? l.pct+'% de acerto' : 'nada respondido'}">
         <div style="width:26px;${estiloCelula}color:${cor.fg};">${l.ativa?'▸':i+1}</div>
         <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:${cor.fgForte};font-weight:${l.ativa?800:600};display:flex;align-items:center;gap:6px;" data-macro-materia="${esc(l.nome)}">
           <span>${esc(l.nome)}${l.ativa?' <span style="font-size:10px;font-weight:600;opacity:.75;">(selecionada)</span>':''}</span>
@@ -661,7 +663,6 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
         <div style="width:52px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas ? l.erros : '—'}</div>
         <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fgForte};font-weight:700;">${l.respondidas ? l.pct+'%' : '—'}</div>
         <div style="width:90px;text-align:right;${estiloCelula}color:${cor.fg};font-size:11px;" title="${l.ultimaRespostaTs ? new Date(l.ultimaRespostaTs).toLocaleString('pt-BR') : ''}">${l.ultimaRespostaTs ? formatarDataHoraSalvamento(l.ultimaRespostaTs) : '—'}</div>
-        ${l.respondidas ? `<div class="linha-estatistica-trilho" title="${esc(l.nome)}: ${l.pct}% de acerto"><div class="linha-estatistica-barra" style="width:${Math.max(0, Math.min(100, l.pct))}%;background:${cor.fgForte};"></div></div>` : ''}
       </div>`;
     }).join('')}`;
   return cabecalhoTabela;
