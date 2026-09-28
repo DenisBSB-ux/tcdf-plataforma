@@ -305,81 +305,19 @@ function probabilidadeBadge(pp){
   if(!pp) return '';
   return `<span class="prob-badge" title="Probabilidade preditiva de recorrência">🎯 ${esc(pp)}</span>`;
 }
-// combina nível de incidência + tendência num único veredito direto, pra quem
-// não tem "Probabilidade Preditiva" explícita na fonte (caso das listas que só
-// trazem incidência histórica em concursos, sem esse campo pronto)
-const MATRIZ_PROBABILIDADE = {
-  alta:  { crescente:'Alta', 'estável':'Alta',   decrescente:'Média' },
-  media: { crescente:'Alta', 'estável':'Média',  decrescente:'Baixa' },
-  baixa: { crescente:'Média','estável':'Baixa',  decrescente:'Baixa' },
-};
-function probabilidadeCalculada(q){
-  if(q.pp) return null; // já existe um valor explícito da fonte, não sobrepor
-  const narrativa = narrativaBanca(q);
-  // Sem veredito de narrativaBanca (poucas provas reais na base), não afirma
-  // nenhuma probabilidade — q.nv/q.td são palpites gerados por questão e não
-  // servem pra isso.
-  return (narrativa && narrativa.forcaProbabilidade) || null;
-}
-function probabilidadeCalculadaBadge(q){
-  const p = probabilidadeCalculada(q);
-  if(!p) return '';
-  const cor = p==='Alta' ? 'prob-alta' : p==='Média' ? 'prob-media' : 'prob-baixa';
-  return `<span class="prob-badge prob-calc ${cor}" title="Estimativa combinando nível de incidência histórica e tendência recente — não é um campo direto da fonte">🎯 ${p} probabilidade</span>`;
-}
 
-// "Como a banca pensa": usa analisarTemasDaMateria, que conta PROVAS REAIS
-// DISTINTAS (valores únicos de q.bc) na matéria, e não q.fr ("Incidência
-// histórica" que o gerador de questões inventa por questão). Com amostra
-// pequena, avisa que há poucos dados em vez de inventar um veredito.
-function narrativaBanca(q){
-  if(isInedita(q)) return null;
-  if(!q.tema || !q.materia) return null;
-  const analise = analisarTemasDaMateriaCached(q.materia);
-  const dados = analise.find(a => a.tema===q.tema);
-  if(!dados) return null;
-
-  const { faixa, confianca, tendenciaTxt, nProvasComTema, totalProvas, provasRecentesComTema, totalProvasRecentes, score } = dados;
-
-  if(confianca==='baixa'){
-    return { icone:'❔', cor:'narr-raro', titulo:'Poucos dados ainda',
-      texto:`Só ${totalProvas} prova${totalProvas===1?'':'s'} ${totalProvas===1?'real':'reais'} dessa matéria na base até agora — ainda não dá pra estimar com confiança a probabilidade deste assunto. Isso não quer dizer que ele é raro na banca, só que a base ainda é pequena.`,
-      forcaProbabilidade: null };
-  }
-
-  const detalheRecente = totalProvasRecentes>0 ? ` Nos últimos 5 anos: ${provasRecentesComTema} de ${totalProvasRecentes} provas.` : '';
-  if(faixa==='alta'){
-    return { icone:'🔥', cor:'narr-alta', titulo:'Alta probabilidade',
-      texto:`Apareceu em ${nProvasComTema} das ${totalProvas} provas reais já vistas dessa matéria (${Math.round(score*100)}%). Tendência: ${tendenciaTxt}.${detalheRecente}`,
-      forcaProbabilidade:'Alta' };
-  }
-  if(faixa==='media'){
-    return { icone:'⚖️', cor:'narr-estavel', titulo:'Média probabilidade',
-      texto:`Apareceu em ${nProvasComTema} das ${totalProvas} provas reais já vistas dessa matéria (${Math.round(score*100)}%). Tendência: ${tendenciaTxt}.${detalheRecente}`,
-      forcaProbabilidade:'Média' };
-  }
-  return { icone:'🎲', cor:'narr-raro', titulo:'Baixa probabilidade',
-    texto:`Apareceu em só ${nProvasComTema} das ${totalProvas} provas reais já vistas dessa matéria (${Math.round(score*100)}%). Tendência: ${tendenciaTxt}.${detalheRecente}`,
-    forcaProbabilidade:'Baixa' };
-}
-function narrativaBancaBanner(q){
-  const n = narrativaBanca(q);
-  if(!n) return '';
-  // a probabilidade calculada entra dentro da própria narrativa (em vez de um
-  // badge separado logo acima) — evita repetir o mesmo veredito duas vezes
-  // com cores parecidas, já que a narrativa por si só já entrega o "porquê"
-  const prob = n.forcaProbabilidade || probabilidadeCalculada(q);
-  const probTxt = (prob && !q.pp) ? ` <span class="narr-prob">(${esc(prob)} probabilidade)</span>` : '';
-  return `<div class="narr-banner ${n.cor}">
-    <span class="narr-icone">${n.icone}</span>
-    <span class="narr-texto"><b>${esc(n.titulo)}</b>${probTxt} — ${esc(n.texto)}</span>
-  </div>`;
-}
 function freqHistLine(fr){
   if(!fr) return '';
   return `<div class="freq-hist"><span class="lbl-inline">Frequência por ano:</span> ${esc(fr)}</div>`;
 }
 function bancaCargoAnoLine(q){
+  const prova = identificarProva(q);
+  if(prova){
+    const cargo = prova.cargo;
+    return `<span class="lbl-inline">Banca:</span> ${esc(prova.banca)}`
+      + (cargo ? ` &nbsp;·&nbsp; <span class="lbl-inline">Cargo:</span> ${esc(cargo)}` : '')
+      + (prova.ano ? ` &nbsp;·&nbsp; <span class="lbl-inline">Ano:</span> ${prova.ano}` : '');
+  }
   const banca = bancaCurta(q.bc);
   const ano = q.ar || (q.an && q.an.length ? Math.max(...q.an) : null);
   // remove um ano já embutido no fim do texto do cargo (ex.: "Agente
@@ -450,30 +388,7 @@ function extrairReferenciasLegais(texto){
   return refs;
 }
 
-// analisa todos os assuntos de uma matéria: pra cada um, levanta as referências
-// legais mais citadas (item 2) e calcula um índice de "probabilidade de
-// cobrança" combinando % de questões de alta incidência com % de questões em
-// tendência de alta recente (item 3) — quanto maior, mais provável de cair de
-// novo em provas futuras, segundo o histórico já registrado nessa matéria
-// identifica se a questão veio de uma banca/prova real (tem q.bc com banca
-// reconhecível) ou é uma questão inédita (sem banca real, "—" de fallback) —
-// item 1: a análise por assunto do dashboard só deve considerar questões reais
-function ehQuestaoDeBancaReal(q){
-  if(isInedita(q)) return false;
-  const b = bancaCurta(q.bc);
-  return !!b && b !== '—';
-}
-// Incidência por assunto medida em PROVAS REAIS DISTINTAS (cada valor único de
-// q.bc — banca+cargo+ano — é uma prova), não em quantidade de questões na base
-// nem nos campos q.nv/q.td (palpites gerados por questão).
-// Score = % das provas da base que cobraram o assunto, com peso maior nos
-// últimos 5 anos. Amostra pequena reduz a confiança, nunca vira score alto.
-function contarProvasDistintas(qs){
-  const set = new Set();
-  qs.forEach(q => { if(q.bc) set.add(q.bc); });
-  return set;
-}
-// cache simples por matéria — narrativaBanca/probabilidadeCalculada chamam
+// cache simples por matéria — o quadro de frequência (previsao.js) chama
 // isso por QUESTÃO renderizada, e recalcular analisarTemasDaMateria (que
 // percorre a base toda) a cada card seria caro. Invalidação: comparamos o
 // tamanho atual de ALL_QUESTIONS com o tamanho no momento do cache; qualquer
@@ -488,62 +403,6 @@ function analisarTemasDaMateriaCached(materiaKey){
   const dados = analisarTemasDaMateria(materiaKey);
   _analiseTemasCache[materiaKey||''] = { qtdAtual, dados };
   return dados;
-}
-function analisarTemasDaMateria(materiaKey){
-  const todasQs = ALL_QUESTIONS.filter(q => q.materia===materiaKey && !q.duplicataOculta && (q.t==='CE'||q.t==='MC') && ehQuestaoDeBancaReal(q));
-  const provasTotais = contarProvasDistintas(todasQs);
-  const totalProvas = provasTotais.size;
-  if(totalProvas===0) return [];
-
-  const anoRef = anoMaisRecente(materiaKey);
-  const JANELA_RECENTE_ANOS = 5;
-  const provasRecentesSet = new Set(
-    [...todasQs].filter(q => q.ar && anoRef && q.ar >= anoRef-(JANELA_RECENTE_ANOS-1)).map(q=>q.bc).filter(Boolean)
-  );
-  const totalProvasRecentes = provasRecentesSet.size;
-
-  const temas = temasDisponiveis(materiaKey).filter(t => t && t!=='Fora do Edital');
-  return temas.map(tema=>{
-    const qs = todasQs.filter(q => q.tema===tema);
-    if(qs.length===0) return null;
-
-    const refsMap = {};
-    qs.forEach(q=>{
-      // dedup por questão: se o mesmo artigo aparece no enunciado E na resolução
-      // da mesma questão, conta como 1 só — o que importa é quantas QUESTÕES
-      // diferentes citam aquela referência, não quantas vezes ela é mencionada
-      const refsUnicas = new Set(extrairReferenciasLegais((q.q||'') + ' ' + (q.r||'')));
-      refsUnicas.forEach(ref=>{ refsMap[ref] = (refsMap[ref]||0) + 1; });
-    });
-    const refsOrdenadas = Object.entries(refsMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
-
-    const provasComTema = contarProvasDistintas(qs);
-    const nProvasComTema = provasComTema.size;
-    const provasRecentesComTema = [...provasComTema].filter(bc => provasRecentesSet.has(bc)).length;
-
-    const incidenciaGeral = nProvasComTema/totalProvas;
-    const incidenciaRecente = totalProvasRecentes>0 ? (provasRecentesComTema/totalProvasRecentes) : incidenciaGeral;
-    const score = incidenciaGeral*0.4 + incidenciaRecente*0.6;
-
-    // confiança da estimativa = quantas provas distintas embasam o cálculo
-    // nessa matéria (não é por-tema — é a base toda). Poucas provas na base
-    // = qualquer percentual aqui é pouco confiável, seja ele alto ou baixo.
-    const confianca = totalProvas>=15 ? 'alta' : (totalProvas>=5 ? 'media' : 'baixa');
-
-    let faixa;
-    if(score>=0.66) faixa='alta';
-    else if(score>=0.33) faixa='media';
-    else faixa='baixa';
-
-    const delta = incidenciaRecente - incidenciaGeral;
-    const tendenciaTxt = delta>0.15 ? '↑ Crescente' : (delta<-0.15 ? '↓ Decrescente' : '→ Estável');
-
-    return {
-      tema, total: qs.length, refsOrdenadas,
-      nProvasComTema, totalProvas, provasRecentesComTema, totalProvasRecentes,
-      incidenciaGeral, incidenciaRecente, score, faixa, confianca, tendenciaTxt,
-    };
-  }).filter(Boolean).sort((a,b)=>b.score-a.score || b.total-a.total);
 }
 
 // faixa de cor (clara) pelo % de acerto: 95-100 azul, 90-94 verde, 80-89
@@ -685,49 +544,41 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
 
 function renderDashboardAnalitico(){
   if(!STATE.materia) return '';
-  const analise = analisarTemasDaMateria(STATE.materia);
+  const analise = analisarTemasDaMateriaCached(STATE.materia);
   if(analise.length===0) return '';
-  const destaques = analise.filter(a=>a.faixa==='alta' && a.confianca!=='baixa').slice(0,3);
-
-  // desempenho (certas/erradas) por assunto, pra desenhar a barra verde/vermelha
-  // na mesma linha do assunto — não filtra por banca real, reflete o desempenho
-  // de fato nas tentativas do candidato, incluindo inéditas respondidas
+  // desempenho (resultado atual de cada questão) por assunto
   const bucket = getBucket(STATE.materia);
   const acertosPorTema = {};
-  // mesma correção das outras estatísticas: conta pelo resultado ATUAL de
-  // cada questão (1 vez cada), não pela soma histórica de tentativas — senão
-  // essa barra verde/vermelha não bate com o resto da página.
   Object.entries(bucket.perguntas||{}).forEach(([uid,p])=>{
     const q = BY_UID[uid]; if(!q || q.materia!==STATE.materia) return;
     if(p.ultimoResultado!==true && p.ultimoResultado!==false) return;
     if(!acertosPorTema[q.tema]) acertosPorTema[q.tema]=[0,0];
     acertosPorTema[q.tema][0]+=(p.ultimoResultado===true?1:0); acertosPorTema[q.tema][1]+=1;
   });
-
-  const confiancaGeral = analise.length ? analise[0].confianca : 'baixa';
-  const avisoConfianca = confiancaGeral!=='alta' ? `<p style="font-size:12px;color:var(--stamp-red, #a3352c);margin:-6px 0 14px;">⚠ Base ainda pequena (${analise[0].totalProvas} prova${analise[0].totalProvas===1?'':'s'} distinta${analise[0].totalProvas===1?'':'s'} identificada${analise[0].totalProvas===1?'':'s'} nessa matéria) — os percentuais abaixo tendem a ficar mais precisos à medida que mais provas reais forem importadas. Poucas provas na base não significa que o assunto é raro na banca, só que ainda vimos pouco dele.</p>` : '';
+  const g = analise[0];
+  const v = g.validacao;
+  const pct = x => Math.round(x*100)+'%';
+  const avisoValidacao = v.habilidade===null
+    ? `Ainda não há provas de anos diferentes suficientes para testar a estimativa com provas passadas.`
+    : (v.validado
+      ? `✓ Validada: testada nas provas de ${v.nTestes} combinações assunto × prova dos anos mais recentes, errou ${pct(v.habilidade)} menos que o palpite simples (mesma chance para todo assunto).`
+      : `⚠ Não validada: testada com provas passadas (${v.nTestes} combinações), não superou o palpite simples — use as estimativas só como referência.`);
   return `
   <div class="card-block dashboard-analitico" style="margin-top:24px;">
-    <h3>📊 Análise por assunto</h3>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;">Levantamento automático a partir de questões reais de bancas (questões inéditas não entram nesta análise) — % de provas distintas, dentre as já importadas dessa matéria, que cobraram cada assunto (ponderando mais o comportamento dos últimos 5 anos que o histórico total). Quanto maior o percentual, maior a probabilidade estimada de cobrança em provas futuras.</p>
-    ${avisoConfianca}
-    ${destaques.length ? `<div class="tendencia-alerta">
-      <b>⚠ Maior probabilidade de cobrança agora:</b> ${destaques.map(a=>esc(a.tema)).join(', ')} — assuntos presentes na maioria das provas reais já vistas, com base numa amostra razoável.
-    </div>` : ''}
+    <h3 style="color:inherit;">📊 Frequência e previsão por assunto</h3>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;"><b>Frequência nesta base</b>: em quantas das ${g.totalProvas} provas desta base de questões (Cebraspe e outras, ${g.anoRef ? 'até '+g.anoRef : ''}) o assunto aparece. A base é uma amostra — poucas questões por prova —, então um assunto ausente numa prova da base pode ter caído nela.</p>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;"><b>Estimativa</b>: chance de o assunto cair (1 item ou mais) numa próxima prova, com intervalo de 80%. Provas recentes e do TCDF pesam mais.</p>
+    <p style="font-size:12px;margin-bottom:14px;${v.validado?'color:var(--stamp-green);':'color:var(--stamp-red, #a3352c);'}">${esc(avisoValidacao)}${g.confianca==='baixa' ? ' Poucas provas na base.' : ''}</p>
     ${analise.map(a=>{
       const [ac,tt] = acertosPorTema[a.tema] || [0,0];
       const pctAcerto = tt ? Math.round((ac/tt)*100) : 0;
       const pctErro = tt ? 100-pctAcerto : 0;
-      const incClasse = a.faixa==='alta' ? 'inc-alta' : (a.faixa==='media' ? 'inc-media' : 'inc-baixa');
-      const incLabel = a.faixa==='alta' ? 'Alta' : (a.faixa==='media' ? 'Média' : 'Baixa');
-      const tituloIncidencia = `${a.nProvasComTema} de ${a.totalProvas} provas reais já vistas cobraram este assunto (${Math.round(a.incidenciaGeral*100)}% do histórico)`
-        + (a.totalProvasRecentes>0 ? `; nos últimos 5 anos: ${a.provasRecentesComTema} de ${a.totalProvasRecentes} (${Math.round(a.incidenciaRecente*100)}%)` : '');
+      const faixa = a.estimativa>=0.5 ? 'inc-alta' : (a.estimativa>=0.25 ? 'inc-media' : 'inc-baixa');
       return `
       <div class="assunto-analise-row">
         <div class="assunto-analise-nome">${esc(a.tema)} <span class="cnt">(${a.total})</span></div>
-        <div class="assunto-analise-incidencia" title="${esc(tituloIncidencia)}">
-          <span class="inc-badge ${incClasse}">${incLabel} · ${a.nProvasComTema}/${a.totalProvas} provas</span>
-          <span class="inc-badge" style="background:transparent;color:var(--ink-soft);font-weight:400;">${a.tendenciaTxt}</span>
+        <div class="assunto-analise-incidencia" title="Frequência nesta base: ${a.nProvasComTema} de ${a.totalProvas} provas (${pct(a.frequencia)}); últimos 5 anos: ${a.provasRecentesComTema} de ${a.totalProvasRecentes}">
+          <span class="inc-badge" style="background:transparent;color:inherit;font-weight:600;">Base: ${a.nProvasComTema}/${a.totalProvas} provas · ${pct(a.frequencia)}</span>
         </div>
         <div class="assunto-analise-bar" title="${tt? `${ac} certas / ${tt-ac} erradas de ${tt} tentativas` : 'ainda não respondida'}">
           <div class="stacked-bar">
@@ -735,7 +586,7 @@ function renderDashboardAnalitico(){
           </div>
           <span class="stacked-pct">${tt ? `${ac} acertos · ${tt-ac} erros · ${pctAcerto}%` : '—'}</span>
         </div>
-        <div class="assunto-analise-score" title="Score = 40% incidência histórica geral + 60% incidência nos últimos 5 anos, medida em provas distintas">${Math.round(a.score*100)}%</div>
+        <div class="assunto-analise-score" title="Estimativa de cair na próxima prova (intervalo de 80%: ${pct(a.intervalo[0])} a ${pct(a.intervalo[1])})"><span class="inc-badge ${faixa}">${pct(a.estimativa)}</span><div style="font-size:10px;opacity:.75;">${pct(a.intervalo[0])}–${pct(a.intervalo[1])}</div></div>
       </div>
     `;}).join('')}
   </div>
