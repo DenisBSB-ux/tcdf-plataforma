@@ -34,13 +34,14 @@ service cloud.firestore {
                  || !('dono' in resource.data)
                  || (logado() && resource.data.dono == request.auth.uid);
       // o app só lê progresso pelo nome do documento; listar a coleção
-      // mostraria os códigos e datas de todos os usuários
-      allow list: if false;
+      // mostraria os códigos e datas de todos os usuários — só o
+      // administrador lista (manutenção: remover dados de outros usuários)
+      allow list: if administrador();
       allow create: if logado() && request.resource.data.dono == request.auth.uid;
       allow update: if logado()
                     && request.resource.data.dono == request.auth.uid
                     && (!('dono' in resource.data) || resource.data.dono == request.auth.uid);
-      allow delete: if false;
+      allow delete: if administrador();
     }
   }
 }

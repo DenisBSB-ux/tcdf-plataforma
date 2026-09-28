@@ -465,6 +465,8 @@ function attachHandlers(){
       render();
     });
   });
+  const btnLimparOutros = document.getElementById('btn-limpar-outros-usuarios');
+  if(btnLimparOutros) btnLimparOutros.addEventListener('click', limparOutrosUsuarios);
   root.querySelectorAll('[data-mesclar-par-origem]').forEach(el=>{
     el.addEventListener('click', async ()=>{
       const nomeOrigem = el.dataset.mesclarParOrigem;
