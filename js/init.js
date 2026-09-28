@@ -39,6 +39,7 @@
       // usa o mesmo indicador do botão "Salvar tudo" (hora do último salvamento
       // automático bem-sucedido)
       STATE.ultimoSalvamentoGeral = {
+        automatico: true,
         ok: ok && okNuvem,
         qtdMaterias: materias.length,
         ts: Date.now(),

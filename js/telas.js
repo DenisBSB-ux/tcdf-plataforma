@@ -565,10 +565,7 @@ function renderDashboardAnalitico(){
       : `⚠ Não validada: testada com provas passadas (${v.nTestes} combinações), não superou o palpite simples — use as estimativas só como referência.`);
   return `
   <div class="card-block dashboard-analitico" style="margin-top:24px;">
-    <h3 style="color:inherit;">📊 Frequência e previsão por assunto</h3>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;"><b>Frequência nesta base</b>: em quantas das ${g.totalProvas} provas desta base de questões (Cebraspe e outras, ${g.anoRef ? 'até '+g.anoRef : ''}) o assunto aparece. A base é uma amostra — poucas questões por prova —, então um assunto ausente numa prova da base pode ter caído nela.</p>
-    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;"><b>Estimativa</b>: chance de o assunto cair (1 item ou mais) numa próxima prova, com intervalo de 80%. Provas recentes e do TCDF pesam mais.</p>
-    <p style="font-size:12px;margin-bottom:14px;${v.validado?'color:var(--stamp-green);':'color:var(--stamp-red, #a3352c);'}">${esc(avisoValidacao)}${g.confianca==='baixa' ? ' Poucas provas na base.' : ''}</p>
+    <h3 style="color:inherit;" title="${esc(`Frequência nesta base: em quantas das ${g.totalProvas} provas desta base de questões o assunto aparece (a base é uma amostra — um assunto ausente numa prova da base pode ter caído nela). Estimativa: chance de o assunto cair (1 item ou mais) numa próxima prova; provas recentes e do TCDF pesam mais. ${avisoValidacao}`)}">📊 Frequência e previsão por assunto <span style="font-size:12px;font-weight:400;opacity:.75;">${v.validado ? '✓ validada' : 'ⓘ'}</span></h3>
     ${analise.map(a=>{
       const [ac,tt] = acertosPorTema[a.tema] || [0,0];
       const pctAcerto = tt ? Math.round((ac/tt)*100) : 0;
@@ -586,7 +583,7 @@ function renderDashboardAnalitico(){
           </div>
           <span class="stacked-pct">${tt ? `${ac} acertos · ${tt-ac} erros · ${pctAcerto}%` : '—'}</span>
         </div>
-        <div class="assunto-analise-score" title="Estimativa de cair na próxima prova (intervalo de 80%: ${pct(a.intervalo[0])} a ${pct(a.intervalo[1])})"><span class="inc-badge ${faixa}">${pct(a.estimativa)}</span><div style="font-size:10px;opacity:.75;">${pct(a.intervalo[0])}–${pct(a.intervalo[1])}</div></div>
+        <div class="assunto-analise-score" title="Estimativa de cair na próxima prova (intervalo de 80%: ${pct(a.intervalo[0])} a ${pct(a.intervalo[1])})"><span class="inc-badge ${faixa}">${pct(a.estimativa)}</span></div>
       </div>
     `;}).join('')}
   </div>
