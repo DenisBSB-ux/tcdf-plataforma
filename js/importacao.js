@@ -30,6 +30,7 @@ function renderImportarPage(){
         ${STATE.importLog ? renderImportLog() : ''}
 
         ${renderAvisoMateriasDuplicadas()}
+        ${renderManutencaoUsuarios()}
         ${materiasImportadas.length ? `<div class="card-block" style="margin-top:24px;">
           <h3>Matérias</h3>
           <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;">Todas as matérias — inclusive as que já vêm com a plataforma — ficam disponíveis pra todo mundo automaticamente assim que importadas. Use "Inserir" pra adicionar questões novas a uma matéria já existente (sem apagar as antigas nem o histórico de progresso), ou "Remover" pra excluir a matéria por completo.</p>
@@ -1404,3 +1405,51 @@ async function inserirNaMateria(materiaNome, file){
   handleImportFile(file, 'somar');
 }
 
+
+// Manutenção (só a conta administradora, garantido pelas regras do Firestore):
+// apaga da nuvem o progresso de todos os outros usuários/códigos, mantendo só
+// o da conta logada (código atual + ponteiro _conta_{uid}). Mostra a lista e
+// pede confirmação antes de apagar.
+function renderManutencaoUsuarios(){
+  if(!FIREBASE_OK || !USUARIO_ATUAL || !STATE.syncCode) return '';
+  const r = STATE.limpezaUsuarios;
+  return `<div class="card-block" style="margin-top:24px;">
+    <h3>Manutenção · usuários</h3>
+    <p style="font-size:12px;color:var(--ink-soft);margin-bottom:12px;">Apaga da nuvem o progresso de todos os outros usuários e códigos antigos, mantendo só o da sua conta (${esc(USUARIO_ATUAL.nome)}). Só a conta administradora consegue fazer isso.</p>
+    <button class="btn-outline" id="btn-limpar-outros-usuarios" ${r && r.rodando ? 'disabled' : ''} style="border-color:var(--stamp-red);color:var(--stamp-red);">${r && r.rodando ? '⏳ Apagando…' : '🗑 Remover dados de outros usuários'}</button>
+    ${r && r.msg ? `<div class="side-status ${r.erro ? 'err' : 'ok'}" style="margin-top:8px;">${esc(r.msg)}</div>` : ''}
+  </div>`;
+}
+function documentoDaMinhaConta(id){
+  const codigo = STATE.syncCode;
+  return id===codigo || id.startsWith(codigo + '__') || id===`_conta_${USUARIO_ATUAL.uid}`;
+}
+async function limparOutrosUsuarios(){
+  if(!FIREBASE_OK || !USUARIO_ATUAL || !STATE.syncCode) return;
+  STATE.limpezaUsuarios = { rodando: true };
+  render();
+  try{
+    const snap = await comLimiteDeTempo(fbDb.collection('progresso').get(), 30000, 'tempo esgotado ao listar o progresso');
+    const apagar = snap.docs.filter(d => !documentoDaMinhaConta(d.id));
+    const codigos = Array.from(new Set(apagar.map(d => d.id.startsWith('_conta_') ? 'conta Google '+d.id.slice(7,13)+'…' : (d.id.split('__')[0] || '(sem nome)'))));
+    if(apagar.length===0){
+      STATE.limpezaUsuarios = { msg: 'Nada a remover: só existe o progresso da sua conta.' };
+      render(); return;
+    }
+    const ok = window.confirm(`Apagar da nuvem ${apagar.length} documento(s) de progresso destes usuários/códigos?\n\n${codigos.join(', ')}\n\nO seu progresso (${STATE.syncCode}) é mantido. Não dá para desfazer.`);
+    if(!ok){ STATE.limpezaUsuarios = null; render(); return; }
+    for(let i=0; i<apagar.length; i+=400){
+      const lote = fbDb.batch();
+      apagar.slice(i, i+400).forEach(d => lote.delete(d.ref));
+      await comLimiteDeTempo(lote.commit(), 30000, 'tempo esgotado ao apagar');
+    }
+    STATE.limpezaUsuarios = { msg: `${apagar.length} documento(s) removido(s) (${codigos.length} usuário(s)/código(s)). Só o seu progresso ficou na nuvem.` };
+  }catch(e){
+    console.error('Falha ao remover dados de outros usuários', e);
+    const motivo = e && e.code==='permission-denied'
+      ? 'sem permissão — publique as regras novas do firestore.rules (administrador pode listar e apagar progresso).'
+      : motivoErroFirestore(e);
+    STATE.limpezaUsuarios = { erro: true, msg: 'Não foi possível remover: ' + motivo };
+  }
+  render();
+}
