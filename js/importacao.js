@@ -40,13 +40,17 @@ function renderImportarPage(){
             // horário da versão publicada na nuvem (igual em todos os aparelhos);
             // sem ele, a última alteração feita neste aparelho
             const ultimaAtualizacao = MATERIA_ATUALIZADOEM_NUVEM_VISTO[m] || MATERIA_ULTIMA_ATUALIZACAO[m];
+            const ultimaRespostaTs = computeSnapshotMateria(m).ultimaRespostaTs;
             const numDuplicatas = detectarDuplicatasDaMateria(m).reduce((soma,g)=>soma + (g.length-1), 0);
             const dedupInfo = STATE.dedupInfo && STATE.dedupInfo.materia===m ? STATE.dedupInfo : null;
             const ativa = m===STATE.materia;
             return `<div class="bar-row" style="flex-wrap:wrap;${ativa?'background:var(--gold-soft, #fdf1de);border:1px solid var(--gold-bright, #c9a227);':''}">
               <div class="name" style="${ativa?'font-weight:700;':''}">${ativa?'▸ ':''}${esc(m)}</div>
               <div class="pct" style="margin-right:8px;">${n} questão(ões)</div>
-              ${ultimaAtualizacao ? `<div style="font-size:11px;color:var(--ink-soft);margin-right:8px;" title="Última vez que o conteúdo (questões) desta matéria foi atualizado na nuvem">Atualizada em ${formatarDataHoraSalvamento(ultimaAtualizacao)}</div>` : ''}
+              <div style="font-size:11px;color:var(--ink-soft);margin-right:8px;line-height:1.4;">
+                ${ultimaAtualizacao ? `<div title="Última vez que o conteúdo (questões) desta matéria foi alterado e publicado na nuvem — responder questões não muda este horário">Questões atualizadas em ${formatarDataHoraSalvamento(ultimaAtualizacao)}</div>` : ''}
+                <div title="Última vez que você respondeu uma questão desta matéria (seu progresso é salvo automaticamente a cada resposta)">Última resposta: ${ultimaRespostaTs ? formatarDataHoraSalvamento(ultimaRespostaTs) : '—'}</div>
+              </div>
               <button class="btn-outline" data-download-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
               <button class="btn-outline" data-inserir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">➕ Inserir</button>
               ${numDuplicatas>0 ? `<button class="btn-outline" data-remover-duplicatas="${esc(m)}" style="padding:4px 10px;font-size:11px;border-color:var(--stamp-red);color:var(--stamp-red);" title="Detectadas questões repetidas (mesmo enunciado) dentro desta matéria — remove as cópias extras, mantendo o histórico de progresso">🧹 ${numDuplicatas} duplicata(s)</button>` : ''}
