@@ -56,9 +56,11 @@
   // garante que o simulado em andamento chegue na nuvem mesmo se a aba for
   // fechada/minimizada antes do debounce de 250ms disparar sozinho — essencial
   // pro "Continuar" aparecer certo em outro dispositivo depois
+  // ao minimizar/fechar a aba, grava e envia na hora tudo o que estiver
+  // pendente (progresso e simulado em andamento)
   document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState==='hidden') flushQuizSyncPendente();
+    if(document.visibilityState==='hidden') salvarTudoAgoraAoSair();
   });
-  window.addEventListener('pagehide', flushQuizSyncPendente);
+  window.addEventListener('pagehide', salvarTudoAgoraAoSair);
 })();
 

@@ -385,6 +385,7 @@ function setSyncStatusDOM(type, msg, detalhe){
     el.className = 'sync-status ' + type;
     if(detalhe) el.title = detalhe; else el.removeAttribute('title');
   }
+  atualizarIndicadorNuvem();
 }
 
 function motivoErroFirestore(e){
@@ -404,6 +405,7 @@ function formatarUltimoSync(ts){
 function marcarUltimoSyncOk(){
   const ts = Date.now();
   setSyncStatusDOM('ok', formatarUltimoSync(ts));
+  atualizarIndicadorNuvem();
   storageSet(LAST_SYNC_KEY, String(ts)).catch(()=>{});
 }
 
@@ -983,19 +985,37 @@ async function sincronizarMateriasPublicas(){
 }
 
 let saveTimer = null;
+// Salvamento do progresso: grava NESTE aparelho na hora (a cada resposta, sem
+// espera) e envia pra nuvem logo em seguida — com uma espera curta só pra
+// juntar respostas dadas em sequência num único envio. Ao fechar/minimizar a
+// aba, salvarTudoAgoraAoSair() força o envio do que estiver pendente.
 function saveProgress(){
+  salvarProgressoLocal();
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(async ()=>{
-    try{
-      await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS));
-    }
-    catch(e){
-      console.error('Falha ao salvar progresso', e);
-      STATE.avisoStorage = 'Não foi possível salvar seu progresso neste dispositivo (' + (e && e.message ? e.message : 'erro desconhecido') + '). Se você atualizar a página agora, pode perder o que fez.';
-      render();
-    }
-    pushToCloud();
-  }, 300);
+  saveTimer = setTimeout(()=>{ pushToCloud(); }, 800);
+}
+async function salvarProgressoLocal(){
+  try{
+    await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS));
+  }catch(e){
+    console.error('Falha ao salvar progresso', e);
+    STATE.avisoStorage = 'Não foi possível salvar seu progresso neste dispositivo (' + (e && e.message ? e.message : 'erro desconhecido') + '). Se você atualizar a página agora, pode perder o que fez.';
+    render();
+  }
+}
+function salvarTudoAgoraAoSair(){
+  clearTimeout(saveTimer);
+  salvarQuizEmAndamento();
+  salvarProgressoLocal();
+  flushQuizSyncPendente();
+  pushToCloud();
+}
+// situação do envio do progresso pra nuvem, mostrada ao lado do 💾 nas questões
+function estadoSincronizacaoProgresso(){
+  if(!sincronizacaoAtiva()) return { icone:'⚠', texto:'só neste aparelho (sem login)', classe:'err' };
+  if(STATE.syncStatus && STATE.syncStatus.type==='err') return { icone:'⚠', texto:'falha ao enviar pra nuvem — tenta de novo a cada resposta', classe:'err' };
+  if(MATERIAS_PROGRESSO_SUJAS.size>0 || quizSyncPendente) return { icone:'⏳', texto:'enviando pra nuvem…', classe:'pending' };
+  return { icone:'☁✓', texto:'salvo na nuvem', classe:'ok' };
 }
 
 async function saveCustomQuestions(){
@@ -1121,3 +1141,13 @@ function resetProgressoMateria(materiaKey){
   saveProgress();
 }
 
+
+// atualiza só o indicador ☁ das questões (sem re-renderizar a página)
+function atualizarIndicadorNuvem(){
+  const el = document.getElementById('indicador-nuvem');
+  if(!el) return;
+  const e = estadoSincronizacaoProgresso();
+  el.textContent = e.icone;
+  el.title = e.texto;
+  el.className = 'indicador-nuvem ' + e.classe;
+}
