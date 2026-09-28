@@ -59,7 +59,7 @@ function renderImportarPage(){
           }).join('')}
           <button class="btn-outline" id="btn-salvar-tudo" style="margin-top:10px;padding:6px 14px;font-size:12px;font-weight:600;" title="Força salvar TODAS as matérias agora (local + nuvem) numa vez só — use depois de importar, antes de atualizar a página" ${STATE.salvandoTudo?'disabled':''}>${STATE.salvandoTudo?'⏳ Salvando tudo…':'💾 Salvar tudo'}</button>
           ${STATE.ultimoSalvamentoGeral ? `<div style="font-size:11px;margin-top:4px;color:${STATE.ultimoSalvamentoGeral.ok?'var(--stamp-green, #3a9d5c)':'var(--stamp-red)'};">${STATE.ultimoSalvamentoGeral.ok
-            ? '💾 '+(STATE.ultimoSalvamentoGeral.automatico ? 'Salvamento automático' : 'Salvo')+' às '+new Date(STATE.ultimoSalvamentoGeral.ts).toLocaleTimeString('pt-BR')+' — tudo salvo.'
+            ? '💾 '+(STATE.ultimoSalvamentoGeral.automatico ? 'Salvamento automático' : 'Salvo')+' às '+new Date(STATE.ultimoSalvamentoGeral.ts).toLocaleTimeString('pt-BR')+' — tudo salvo'+(STATE.ultimoSalvamentoGeral.automatico ? '.' : (STATE.ultimoSalvamentoGeral.publicadas ? ` (${STATE.ultimoSalvamentoGeral.publicadas} matéria(s) enviada(s) à nuvem).` : '; a nuvem já estava atualizada.'))
             : '❌ Falha ao salvar: '+esc(STATE.ultimoSalvamentoGeral.motivo||'motivo desconhecido')}</div>` : ''}
         </div>` : ''}
 
@@ -1223,12 +1223,16 @@ async function salvarTudoAgora(){
   }catch(e){
     motivoLocal = e && e.message ? e.message : 'erro desconhecido';
   }
-  if(okLocal && FIREBASE_OK){
+  // só vão pra nuvem as matérias com alteração ainda não publicada — reenviar
+  // as 22 inteiras a cada clique estourava o tempo e gastava a cota à toa
+  const pendentes = materias.filter(m => PUBLICACAO_PENDENTE.has(m));
+  if(okLocal && FIREBASE_OK && pendentes.length){
     try{
       // sem force: "Salvar tudo" publica em lote, e uma cópia local desatualizada
       // de uma matéria já removida/renomeada/mesclada em outro dispositivo não
       // pode passar por cima da marca de removida na nuvem
-      const pub = await comLimiteDeTempo(publicarQuestoesNoFirestore(materias, false), 25000, 'Tempo esgotado ao publicar na nuvem (25s). Confira sua conexão — os dados já estão salvos neste dispositivo.');
+      const limite = 25000 + pendentes.length*20000;
+      const pub = await comLimiteDeTempo(publicarQuestoesNoFirestore(pendentes, false), limite, `Tempo esgotado ao publicar na nuvem (${Math.round(limite/1000)}s). Confira sua conexão — os dados já estão salvos neste dispositivo e o envio é tentado de novo automaticamente.`);
       okNuvem = !!pub.ok;
       motivoNuvem = pub.ok ? null : pub.motivo;
     }catch(e){
@@ -1237,10 +1241,11 @@ async function salvarTudoAgora(){
     }
   }
   STATE.salvandoTudo = false;
-  if(okLocal && okNuvem) materias.forEach(m => marcarMateriaAtualizada(m, { publicada:true }));
+  if(okLocal && okNuvem) pendentes.forEach(m => marcarMateriaAtualizada(m, { publicada:true }));
   STATE.ultimoSalvamentoGeral = {
     ok: okLocal && okNuvem,
     qtdMaterias: materias.length,
+    publicadas: pendentes.length,
     ts: Date.now(),
     motivo: motivoLocal ? ('falha ao salvar localmente: ' + motivoLocal) : (!okNuvem ? ('falha ao publicar na nuvem: ' + motivoNuvem) : null),
   };
