@@ -688,7 +688,10 @@ body:not(.theme-light) .kw-decisivo{ color:#ff8a7a; border-bottom-color:#ff8a7a;
 .campo-editavel-conteudo[contenteditable="true"]{
   outline:2px solid var(--gold); outline-offset:2px; border-radius:4px;
   padding:6px; background:#fffef8; cursor:text;
+  /* fundo claro também no tema escuro: o texto não pode herdar a cor clara */
+  color:#1f2430 !important; caret-color:#1f2430;
 }
+.campo-editavel-conteudo[contenteditable="true"] *:not(mark):not([style*="color"]){ color:inherit !important; }
 .campo-editavel-conteudo mark{ background:#fff3b0; padding:0 2px; border-radius:2px; }
 .resumo-flash-box .lbl{
   font-family:var(--font-mono);
