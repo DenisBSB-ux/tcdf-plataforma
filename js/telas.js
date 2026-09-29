@@ -571,21 +571,17 @@ function renderDashboardAnalitico(){
     acertosPorTema[q.tema][0]+=(p.ultimoResultado===true?1:0); acertosPorTema[q.tema][1]+=1;
   });
   const g = analise[0];
-  const v = g.validacao;
   const pct = x => Math.round(x*100)+'%';
-  const avisoValidacao = v.habilidade===null
-    ? `Ainda não há provas de anos diferentes suficientes para testar a estimativa com provas passadas.`
-    : (v.validado
-      ? `✓ Validada: testada nas provas de ${v.nTestes} combinações assunto × prova dos anos mais recentes, errou ${pct(v.habilidade)} menos que o palpite simples (mesma chance para todo assunto).`
-      : `⚠ Não validada: testada com provas passadas (${v.nTestes} combinações), não superou o palpite simples — use as estimativas só como referência.`);
+  // só a frequência nas provas da base (a estimativa segue calculada, usada
+  // na ordem "Prioridade" do simulado, mas não é exibida)
+  const porFrequencia = [...analise].sort((x,y)=> y.frequencia-x.frequencia || y.total-x.total);
   return `
   <div class="card-block dashboard-analitico" style="margin-top:24px;">
-    <h3 style="color:inherit;" title="${esc(`Frequência nesta base: em quantas das ${g.totalProvas} provas desta base de questões o assunto aparece (a base é uma amostra — um assunto ausente numa prova da base pode ter caído nela). Estimativa: chance de o assunto cair (1 item ou mais) numa próxima prova; provas recentes e do TCDF pesam mais. ${avisoValidacao}`)}">📊 Frequência e previsão por assunto <span style="font-size:12px;font-weight:400;opacity:.75;">${v.validado ? '✓ validada' : 'ⓘ'}</span></h3>
-    ${analise.map(a=>{
+    <h3 style="color:inherit;" title="${esc(`Frequência nesta base: em quantas das ${g.totalProvas} provas desta base de questões o assunto aparece (a base é uma amostra — um assunto ausente numa prova da base pode ter caído nela).`)}">📊 Frequência por assunto <span style="font-size:12px;font-weight:400;opacity:.75;">ⓘ</span></h3>
+    ${porFrequencia.map(a=>{
       const [ac,tt] = acertosPorTema[a.tema] || [0,0];
       const pctAcerto = tt ? Math.round((ac/tt)*100) : 0;
       const pctErro = tt ? 100-pctAcerto : 0;
-      const faixa = a.estimativa>=0.5 ? 'inc-alta' : (a.estimativa>=0.25 ? 'inc-media' : 'inc-baixa');
       return `
       <div class="assunto-analise-row">
         <div class="assunto-analise-nome">${esc(a.tema)} <span class="cnt">(${a.total})</span></div>
@@ -598,7 +594,6 @@ function renderDashboardAnalitico(){
           </div>
           <span class="stacked-pct">${tt ? `${ac} acertos · ${tt-ac} erros · ${pctAcerto}%` : '—'}</span>
         </div>
-        <div class="assunto-analise-score" title="Estimativa de cair na próxima prova (intervalo de 80%: ${pct(a.intervalo[0])} a ${pct(a.intervalo[1])})"><span class="inc-badge ${faixa}">${pct(a.estimativa)}</span></div>
       </div>
     `;}).join('')}
   </div>
@@ -1152,14 +1147,6 @@ function mudarOrdemSimulado(modo){
   const aplicou = reordenarQuizEmAndamento(quiz, modo);
   STATE.avisoOrdem = aplicou ? { ts: Date.now(), modo } : null;
   render();
-}
-function renderSeletorOrdemQuiz(quiz){
-  if(!quiz || quiz.origemErros || quiz.reaberto) return '';
-  const atual = quiz.ordem || '';
-  return `<select id="sel-ordem-quiz" class="sel-ordem-quiz" title="Ordem das questões ainda não respondidas deste simulado (as já respondidas ficam onde estão)">
-    ${atual ? '' : '<option value="" selected>Ordem: nº da questão</option>'}
-    ${ORDENS_SIMULADO.map(([k,rot])=>`<option value="${k}" ${atual===k?'selected':''}>Ordem: ${rot}</option>`).join('')}
-  </select>`;
 }
 function startQuiz(nums){
   const candidatosTotais = nums ? nums.map(u=>BY_UID[u]).filter(Boolean) : pool();
