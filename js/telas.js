@@ -4,9 +4,24 @@ const ORDEM_MATERIAS_KEY = 'tcdf-ordem-materias';
 function ordemMateriasSalva(){
   try{ return window.localStorage.getItem(ORDEM_MATERIAS_KEY)==='ultima' ? 'ultima' : 'nome'; }catch(e){ return 'nome'; }
 }
+// ordem das questões no simulado novo, lembrada neste aparelho
+const ORDEM_SIMULADO_KEY = 'tcdf-ordem-simulado';
+const ORDENS_SIMULADO = [
+  ['prioridade', '⭐ Prioridade', 'Primeiro os assuntos com estimativa alta de cair e seu acerto baixo; assuntos da mesma faixa se alternam'],
+  ['assunto', '📚 Assunto do edital', 'Em blocos, na ordem dos itens do edital'],
+  ['recentes', '🆕 Provas recentes', 'Ano da prova, do mais novo ao mais antigo; inéditas e de elaboração própria no fim'],
+  ['prova', '📄 Por prova', 'Agrupa as questões da mesma prova (mais recentes primeiro)'],
+  ['intercalado', '🔀 Intercalado', 'Aleatório, alternando os assuntos a cada questão'],
+  ['espacada', '🔁 Revisão espaçada', 'Primeiro as que você errou (mais vezes e há mais tempo); as ainda não respondidas vão pro fim'],
+];
+function ordemSimuladoSalva(){
+  try{ const v = window.localStorage.getItem(ORDEM_SIMULADO_KEY); if(ORDENS_SIMULADO.some(o=>o[0]===v)) return v; }catch(e){ /* só preferência */ }
+  return 'prioridade';
+}
 let STATE = {
   materia: null,
   ordemMaterias: ordemMateriasSalva(),
+  ordemSimulado: ordemSimuladoSalva(),
   viewImportar: false,
   tema: 'todos',
   tabByMateria: {},
@@ -876,7 +891,15 @@ function renderCamposFiltro(idPrefix){
   const cargos = cargosDisponiveis();
   const tendencias = tendenciasDisponiveis();
   const qtdIneditas = scoreableFiltradas().filter(isInedita).length;
+  const ordemAtual = ORDENS_SIMULADO.find(o=>o[0]===STATE.ordemSimulado) || ORDENS_SIMULADO[0];
   return `
+    <div class="setup-mini-field">
+      <label>Ordem das questões</label>
+      <div class="chip-row" id="chip-ordem">
+        ${ORDENS_SIMULADO.map(([k,rot,dica])=>`<span class="chip ${STATE.ordemSimulado===k?'selected':''}" data-ordem-simulado="${k}" title="${esc(dica)}">${rot}</span>`).join('')}
+      </div>
+      <div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">${esc(ordemAtual[2])}.</div>
+    </div>
     <div class="setup-mini-field">
       <label>Nível de incidência</label>
       <div class="chip-row" id="chip-nivel">
@@ -1007,6 +1030,94 @@ function continuarSimuladoDaMateria(materiaNome){
   STATE.quiz = q;
   render();
 }
+/* ---- ordem das questões no simulado ---- */
+function _embaralhar(lista){
+  const a = [...lista];
+  for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; }
+  return a;
+}
+// alterna os grupos (assuntos): uma questão de cada por rodada, em ordem sorteada
+function _intercalar(grupos){
+  const filas = grupos.map(g => [...g]).filter(g => g.length);
+  const out = [];
+  while(filas.length){
+    _embaralhar(filas.map((_,i)=>i)).forEach(i => { if(filas[i].length) out.push(filas[i].shift()); });
+    for(let i=filas.length-1;i>=0;i--) if(!filas[i].length) filas.splice(i,1);
+  }
+  return out;
+}
+function _agrupar(lista, chave){
+  const m = new Map();
+  lista.forEach(q => { const k = chave(q); if(!m.has(k)) m.set(k, []); m.get(k).push(q); });
+  return m;
+}
+function ordenarFilaSimulado(candidatos, materia, modo){
+  const porNumero = (a,b) => (a.n||0)-(b.n||0);
+  const temas = temasDisponiveis(materia);
+  const idxTema = t => { const i = temas.indexOf(t); return i===-1 ? 1e6 : i; };
+  const bucket = getBucket(materia);
+  if(modo==='assunto'){
+    return [...candidatos].sort((a,b)=> idxTema(a.tema)-idxTema(b.tema) || porNumero(a,b));
+  }
+  if(modo==='recentes'){
+    const ano = q => { const p = identificarProva(q); return (p && p.ano) || 0; };
+    return [...candidatos].sort((a,b)=> ano(b)-ano(a) || porNumero(a,b));
+  }
+  if(modo==='prova'){
+    const grupos = _agrupar(candidatos, q => { const p = identificarProva(q); return p && p.ano ? p.id : '~'; });
+    const anoDe = id => id==='~' ? -1 : Number(id.split('|').pop()) || 0;
+    return [...grupos.keys()].sort((a,b)=> anoDe(b)-anoDe(a) || a.localeCompare(b))
+      .flatMap(k => grupos.get(k).sort(porNumero));
+  }
+  if(modo==='intercalado'){
+    const grupos = _agrupar(candidatos, q => q.tema);
+    return _intercalar([...grupos.values()].map(_embaralhar));
+  }
+  if(modo==='espacada'){
+    // último resultado errado primeiro; depois mais erros no histórico; depois a
+    // resposta mais antiga; não respondidas no fim
+    const info = q => {
+      const p = bucket.perguntas[q.uid];
+      if(!p || !p.tentativas) return { resp:0, errou:0, erros:0, ts:0 };
+      const hist = p.historico || [];
+      const erros = hist.filter(h => h.c===false).length || (p.tentativas - (p.acertos||0));
+      const ts = hist.length ? hist[hist.length-1].ts || 0 : 0;
+      return { resp:1, errou: p.ultimoResultado===false ? 1 : 0, erros, ts };
+    };
+    const cache = new Map(candidatos.map(q => [q.uid, info(q)]));
+    return [...candidatos].sort((a,b)=>{
+      const x = cache.get(a.uid), y = cache.get(b.uid);
+      return (y.resp-x.resp) || (y.errou-x.errou) || (y.erros-x.erros) || (x.ts-y.ts) || porNumero(a,b);
+    });
+  }
+  // prioridade: nota do assunto = estimativa de cair × chance de errar (acerto
+  // suavizado: (acertos+1)/(respondidas+2)). Sem estimativa (matéria sem
+  // provas), usa a fatia de questões do assunto. Assuntos fora do edital no
+  // fim. Faixas de 0,1 na nota; dentro da faixa os assuntos se alternam.
+  const analise = analisarTemasDaMateriaCached(materia);
+  const estimativa = Object.fromEntries(analise.map(a => [a.tema, a.estimativa]));
+  const desempenho = {};
+  Object.entries(bucket.perguntas||{}).forEach(([uid,p]) => {
+    const q = BY_UID[uid]; if(!q || q.materia!==materia) return;
+    if(p.ultimoResultado!==true && p.ultimoResultado!==false) return;
+    const d = desempenho[q.tema] = desempenho[q.tema] || [0,0];
+    d[0] += p.ultimoResultado===true ? 1 : 0; d[1]++;
+  });
+  const qtdPorTema = {};
+  ALL_QUESTIONS.forEach(q => { if(q.materia===materia && !q.duplicataOculta) qtdPorTema[q.tema] = (qtdPorTema[q.tema]||0)+1; });
+  const maxQtd = Math.max(1, ...Object.values(qtdPorTema));
+  const nota = t => {
+    if(typeof ehForaDoEdital==='function' && ehForaDoEdital(t)) return -1;
+    const est = estimativa[t]!=null ? estimativa[t] : (qtdPorTema[t]||0)/maxQtd;
+    const [ac,tt] = desempenho[t] || [0,0];
+    return est * (1 - (ac+1)/(tt+2));
+  };
+  const faixas = _agrupar(candidatos, q => Math.floor(nota(q.tema)*10));
+  return [...faixas.keys()].sort((a,b)=>b-a).flatMap(f => {
+    const grupos = _agrupar(faixas.get(f), q => q.tema);
+    return _intercalar([...grupos.values()].map(g => g.sort(porNumero)));
+  });
+}
 function startQuiz(nums){
   const candidatosTotais = nums ? nums.map(u=>BY_UID[u]).filter(Boolean) : pool();
   if(candidatosTotais.length===0){
@@ -1022,20 +1133,20 @@ function startQuiz(nums){
     if(!ok) return;
   }
   // Simulado novo prioriza questões AINDA NÃO respondidas dentro do filtro; só
-  // volta a incluir as já respondidas quando não sobra nenhuma nova.
+  // volta a incluir as já respondidas quando não sobra nenhuma nova. Na revisão
+  // espaçada é o contrário: entram todas, com as respondidas (erros) na frente.
   const bucketAtual = (!nums && STATE.materia) ? getBucket(STATE.materia) : null;
-  const naoRespondidas = bucketAtual
+  const espacada = STATE.ordemSimulado==='espacada';
+  const naoRespondidas = (bucketAtual && !espacada)
     ? candidatosTotais.filter(q => !(bucketAtual.perguntas[q.uid] && bucketAtual.perguntas[q.uid].tentativas>0))
     : candidatosTotais;
   const candidatos = naoRespondidas.length>0 ? naoRespondidas : candidatosTotais;
   // Usa todos os candidatos do filtro (nunca um lote limitado): o simulado fica
-  // aberto até responder tudo.
-  const qtd = candidatos.length;
-  // ordena pelas questões mais recentes primeiro (ano de aplicação, decrescente),
-  // exceto quando é um conjunto específico (refazer erros), que mantém a ordem dada
-  const ordenados = nums ? candidatos : [...candidatos].sort((a,b)=>(a.n||0)-(b.n||0));
-  const queue = ordenados.slice(0, qtd).map(q=>q.uid);
-  STATE.quiz = { queue, idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema };
+  // aberto até responder tudo. Conjunto específico (refazer erros) mantém a
+  // ordem dada; o resto segue a ordem escolhida em "Ordem das questões".
+  const ordenados = nums ? candidatos : ordenarFilaSimulado(candidatos, STATE.materia, STATE.ordemSimulado);
+  const queue = ordenados.map(q=>q.uid);
+  STATE.quiz = { queue, idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, ordem: nums ? null : STATE.ordemSimulado };
   STATE.setupDrawerOpen = false;
   STATE.mostrarConfigSimulado = false;
   STATE.simuladoSalvoMsg = false;
