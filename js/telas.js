@@ -898,7 +898,8 @@ function renderCamposFiltro(idPrefix){
       <div class="chip-row" id="chip-ordem">
         ${ORDENS_SIMULADO.map(([k,rot,dica])=>`<span class="chip ${STATE.ordemSimulado===k?'selected':''}" data-ordem-simulado="${k}" title="${esc(dica)}">${rot}</span>`).join('')}
       </div>
-      <div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">${esc(ordemAtual[2])}.</div>
+      <div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">${esc(ordemAtual[2])}.${(()=>{ const qa = STATE.quizzesEmAndamento[STATE.materia]; return qa && !qa.finished ? ' Vale também para o simulado em andamento (as já respondidas ficam onde estão).' : ''; })()}</div>
+      ${STATE.avisoOrdem && Date.now()-STATE.avisoOrdem.ts < 8000 ? `<div style="font-size:11px;color:var(--stamp-green, #3a9d5c);margin-top:4px;">✓ Simulado em andamento reordenado.</div>` : ''}
     </div>
     <div class="setup-mini-field">
       <label>Nível de incidência</label>
@@ -1117,6 +1118,48 @@ function ordenarFilaSimulado(candidatos, materia, modo){
     const grupos = _agrupar(faixas.get(f), q => q.tema);
     return _intercalar([...grupos.values()].map(g => g.sort(porNumero)));
   });
+}
+// reordena o simulado em andamento: as questões já respondidas NESTE simulado
+// ficam onde estão (no começo, na ordem em que foram feitas); o resto segue a
+// nova ordem — as nunca respondidas antes primeiro, como num simulado novo
+// (na revisão espaçada, todas juntas). Continua da 1ª ainda não respondida.
+function reordenarQuizEmAndamento(quiz, modo){
+  if(!quiz || quiz.finished || quiz.origemErros || quiz.reaberto) return false;
+  const bucket = getBucket(quiz.materia);
+  const feitas = quiz.queue.filter(u => quiz.respostas[u]);
+  const resto = quiz.queue.filter(u => !quiz.respostas[u]).map(u => BY_UID[u]).filter(Boolean);
+  let restoOrdenado;
+  if(modo==='espacada'){
+    restoOrdenado = ordenarFilaSimulado(resto, quiz.materia, modo);
+  } else {
+    const jaFeita = q => bucket.perguntas[q.uid] && bucket.perguntas[q.uid].tentativas>0;
+    restoOrdenado = ordenarFilaSimulado(resto.filter(q=>!jaFeita(q)), quiz.materia, modo)
+      .concat(ordenarFilaSimulado(resto.filter(jaFeita), quiz.materia, modo));
+  }
+  quiz.queue = feitas.concat(restoOrdenado.map(q => q.uid));
+  quiz.idx = Math.min(feitas.length, Math.max(0, quiz.queue.length-1));
+  quiz.ordem = modo;
+  // salvarQuizEmAndamento grava o STATE.quiz; o simulado pode não estar aberto
+  const aberto = STATE.quiz; STATE.quiz = quiz; salvarQuizEmAndamento(); STATE.quiz = aberto;
+  return true;
+}
+// muda a ordem escolhida (lembrada no aparelho) e aplica no simulado em
+// andamento da matéria, se houver
+function mudarOrdemSimulado(modo){
+  STATE.ordemSimulado = modo;
+  try{ window.localStorage.setItem(ORDEM_SIMULADO_KEY, modo); }catch(e){ /* só preferência */ }
+  const quiz = STATE.quiz || STATE.quizzesEmAndamento[STATE.materia];
+  const aplicou = reordenarQuizEmAndamento(quiz, modo);
+  STATE.avisoOrdem = aplicou ? { ts: Date.now(), modo } : null;
+  render();
+}
+function renderSeletorOrdemQuiz(quiz){
+  if(!quiz || quiz.origemErros || quiz.reaberto) return '';
+  const atual = quiz.ordem || '';
+  return `<select id="sel-ordem-quiz" class="sel-ordem-quiz" title="Ordem das questões ainda não respondidas deste simulado (as já respondidas ficam onde estão)">
+    ${atual ? '' : '<option value="" selected>Ordem: nº da questão</option>'}
+    ${ORDENS_SIMULADO.map(([k,rot])=>`<option value="${k}" ${atual===k?'selected':''}>Ordem: ${rot}</option>`).join('')}
+  </select>`;
 }
 function startQuiz(nums){
   const candidatosTotais = nums ? nums.map(u=>BY_UID[u]).filter(Boolean) : pool();

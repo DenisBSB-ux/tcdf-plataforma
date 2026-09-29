@@ -941,6 +941,12 @@ body.focus-mode .app{ padding-top:14px; max-width:1240px; }
 .q-jump-label{
   font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); min-width:56px; text-align:center;
 }
+.sel-ordem-quiz{
+  height:36px; border-radius:8px; border:1.5px solid var(--paper-line); background:#fff; color:var(--ink);
+  font-family:var(--font-body); font-size:12px; padding:0 8px; cursor:pointer; max-width:210px;
+}
+body:not(.theme-light) .sel-ordem-quiz{ background:transparent; color:#d8dee9; }
+body:not(.theme-light) .sel-ordem-quiz option{ background:#1d2330; color:#e6e9ef; }
 .toolbar-meta-row{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
 .icon-btn{
   width:36px; height:36px;

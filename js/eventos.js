@@ -145,11 +145,7 @@ function attachHandlers(){
     });
   });
   root.querySelectorAll('[data-ordem-simulado]').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      STATE.ordemSimulado = el.dataset.ordemSimulado;
-      try{ window.localStorage.setItem(ORDEM_SIMULADO_KEY, STATE.ordemSimulado); }catch(e){ /* só preferência */ }
-      render();
-    });
+    el.addEventListener('click', ()=> mudarOrdemSimulado(el.dataset.ordemSimulado));
   });
   root.querySelectorAll('[data-toggle-ineditas]').forEach(el=>{
     el.addEventListener('click', ()=>{
@@ -270,6 +266,8 @@ function attachHandlers(){
   if(btnResetQuestao) btnResetQuestao.addEventListener('click', resetQuestaoAtual);
   const btnResetSimulado = document.getElementById('btn-reset-simulado');
   if(btnResetSimulado) btnResetSimulado.addEventListener('click', resetSimuladoAtual);
+  const selOrdemQuiz = document.getElementById('sel-ordem-quiz');
+  if(selOrdemQuiz) selOrdemQuiz.addEventListener('change', ()=>{ if(selOrdemQuiz.value) mudarOrdemSimulado(selOrdemQuiz.value); });
   const btnAbandonar = document.getElementById('btn-abandonar');
   if(btnAbandonar) btnAbandonar.addEventListener('click', abandonarQuiz);
   const btnVoltarResultado = document.getElementById('btn-voltar-resultado');
