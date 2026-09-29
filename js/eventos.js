@@ -144,6 +144,13 @@ function attachHandlers(){
       render();
     });
   });
+  root.querySelectorAll('[data-ordem-simulado]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      STATE.ordemSimulado = el.dataset.ordemSimulado;
+      try{ window.localStorage.setItem(ORDEM_SIMULADO_KEY, STATE.ordemSimulado); }catch(e){ /* só preferência */ }
+      render();
+    });
+  });
   root.querySelectorAll('[data-toggle-ineditas]').forEach(el=>{
     el.addEventListener('click', ()=>{
       const setup = getSetup(STATE.materia);

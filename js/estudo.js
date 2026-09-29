@@ -35,17 +35,20 @@ function renderQuiz(){
     const semOrfas = quiz.queue.filter(u=>poolUids.has(u));
     const queueUidsAtuais = new Set(semOrfas);
     const faltando = poolAtual.filter(q2=>!queueUidsAtuais.has(q2.uid)).map(q2=>q2.uid);
-    // ordena pelo número da questão (as já respondidas ficam agrupadas) e
-    // preserva a posição atual pelo uid, não pelo índice
+    // mantém a ordem escolhida ao criar o simulado ("Ordem das questões"): só
+    // tira as órfãs e põe as que faltam no fim, na mesma ordem. Simulados
+    // antigos (sem quiz.ordem) seguem pelo número da questão, como antes.
     const uidAtualAntes = quiz.queue[quiz.idx];
-    const filaReconciliada = semOrfas.concat(faltando);
-    const filaOrdenada = [...filaReconciliada].sort((ua,ub)=>((BY_UID[ua]&&BY_UID[ua].n)||0)-((BY_UID[ub]&&BY_UID[ub].n)||0));
-    // reordena sempre que a sequência mudar — cobre tanto reconciliação
-    // (órfãs/faltantes) quanto sessões antigas já completas, mas que ainda
-    // estavam na ordem antiga (por ano da prova, não por número da questão)
-    const mudouAlgo = filaOrdenada.length !== quiz.queue.length || filaOrdenada.some((u,i)=>u!==quiz.queue[i]);
+    let novaFila;
+    if(quiz.ordem){
+      const faltandoOrd = faltando.length ? ordenarFilaSimulado(faltando.map(u=>BY_UID[u]), quiz.materia, quiz.ordem).map(q2=>q2.uid) : [];
+      novaFila = semOrfas.concat(faltandoOrd);
+    } else {
+      novaFila = [...semOrfas.concat(faltando)].sort((ua,ub)=>((BY_UID[ua]&&BY_UID[ua].n)||0)-((BY_UID[ub]&&BY_UID[ub].n)||0));
+    }
+    const mudouAlgo = novaFila.length !== quiz.queue.length || novaFila.some((u,i)=>u!==quiz.queue[i]);
     if(mudouAlgo){
-      quiz.queue = filaOrdenada;
+      quiz.queue = novaFila;
       const novoIdx = quiz.queue.indexOf(uidAtualAntes);
       quiz.idx = novoIdx>=0 ? novoIdx : Math.max(0, Math.min(quiz.idx, quiz.queue.length-1));
       salvarQuizEmAndamento();
