@@ -335,6 +335,7 @@ function marcarDuplicatas(){
 }
 function reindex(){
   ALL_QUESTIONS.forEach(sanitizarFonteEmbutida);
+  ALL_QUESTIONS.forEach(aplicarTemaDoEdital);
   marcarDuplicatas();
   BY_UID = Object.fromEntries(ALL_QUESTIONS.map(q => [q.uid, q]));
 }
@@ -347,6 +348,9 @@ function materiasDisponiveis(){
 }
 function temasDisponiveis(materia){
   const set = new Set(ALL_QUESTIONS.filter(q=>q.materia===materia).map(q=>q.tema));
-  return ordenarTemas(Array.from(set));
+  const lista = ordenarTemas(Array.from(set));
+  // matérias organizadas pelo edital: abas na ordem do edital, "fora do edital" no fim
+  if(EDITAL[materia]) return lista.map((t,i)=>({t,i})).sort((a,b)=> ordemNoEdital(materia,a.t)-ordemNoEdital(materia,b.t) || a.i-b.i).map(x=>x.t);
+  return lista;
 }
 

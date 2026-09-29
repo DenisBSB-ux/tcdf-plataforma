@@ -148,7 +148,7 @@ function analisarTemasDaMateria(materiaKey){
   const anoRef = Math.max(...provas.map(p=>p.ano||0));
   provas.forEach(p => { p.peso = pesoDaProva(p, anoRef); });
   const recentes = provas.filter(p => p.ano && p.ano >= anoRef-4);
-  const temas = temasDisponiveis(materiaKey).filter(t => t && t!=='Fora do Edital');
+  const temas = temasDisponiveis(materiaKey).filter(t => !ehForaDoEdital(t));
   const prior = taxaMedia(provas, temas);
   const validacao = validarModelo(provas, temas);
   const confianca = totalProvas>=15 ? 'alta' : (totalProvas>=5 ? 'media' : 'baixa');
