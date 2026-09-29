@@ -170,17 +170,14 @@ function analisarTemasDaMateria(materiaKey){
 
 function _pct(x){ return Math.round(x*100) + '%'; }
 
-// quadro da questão: só os números — frequência nesta base e estimativa. As
-// explicações (amostra, validação) ficam no título, ao passar o mouse.
+// quadro da questão: só a frequência nas provas desta base
 function narrativaBancaBanner(q){
   if(isInedita(q) || !q.tema || !q.materia) return '';
   const d = analisarTemasDaMateriaCached(q.materia).find(a => a.tema===q.tema);
   if(!d) return '';
-  const estimativa = d.confianca==='baixa' ? '—' : `${_pct(d.estimativa)} (${_pct(d.intervalo[0])}–${_pct(d.intervalo[1])})`;
-  const dica = `Frequência: provas desta base (amostra) em que o assunto aparece. Estimativa: chance de cair na próxima prova, com intervalo de 80%`
-    + (d.confianca==='baixa' ? ' — poucas provas na base para estimar.' : (d.validacao.validado ? ' — modelo validado com provas passadas.' : ' — modelo ainda não validado nesta base, use só como referência.'));
+  const dica = 'Frequência: provas desta base (amostra) em que o assunto aparece.';
   return `<div class="narr-banner narr-estavel narr-numeros" title="${esc(dica)}">
     <span class="narr-icone">📊</span>
-    <span class="narr-texto"><b>Frequência:</b> ${d.nProvasComTema}/${d.totalProvas} provas (${_pct(d.frequencia)}) &nbsp;·&nbsp; <b>Estimativa:</b> ${estimativa}</span>
+    <span class="narr-texto"><b>Frequência:</b> ${d.nProvasComTema}/${d.totalProvas} provas (${_pct(d.frequencia)})</span>
   </div>`;
 }

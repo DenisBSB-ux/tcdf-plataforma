@@ -266,8 +266,6 @@ function attachHandlers(){
   if(btnResetQuestao) btnResetQuestao.addEventListener('click', resetQuestaoAtual);
   const btnResetSimulado = document.getElementById('btn-reset-simulado');
   if(btnResetSimulado) btnResetSimulado.addEventListener('click', resetSimuladoAtual);
-  const selOrdemQuiz = document.getElementById('sel-ordem-quiz');
-  if(selOrdemQuiz) selOrdemQuiz.addEventListener('change', ()=>{ if(selOrdemQuiz.value) mudarOrdemSimulado(selOrdemQuiz.value); });
   const btnAbandonar = document.getElementById('btn-abandonar');
   if(btnAbandonar) btnAbandonar.addEventListener('click', abandonarQuiz);
   const btnVoltarResultado = document.getElementById('btn-voltar-resultado');
