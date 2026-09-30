@@ -677,6 +677,7 @@ function gerarMarkdownDaMateria(materiaKey){
   let md = `# ${materiaKey}\n\n`;
   qs.forEach(q=>{
     md += `## QUESTÃO ${q.n}\n\n`;
+    md += `**ID:** ${q.uid}\n`;
     md += `**Banca/Cargo:** ${q.bc||'—'}\n`;
     md += `**Ano:** ${q.ar||'—'} | **Nível:** ${NIVEL_LABEL[q.nv]||'Média'} | **Tendência:** ${tendenciaCurta(q.td)}\n`;
     md += `**Assunto:** ${q.tema||'Geral'}\n\n`;
