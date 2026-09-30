@@ -454,6 +454,16 @@ body:not(.theme-light) .narr-raro{ background:rgba(205,184,232,0.12); border-col
   0%,100%{ box-shadow:0 0 0 0 rgba(162,58,46,0.4); }
   50%{ box-shadow:0 0 0 4px rgba(162,58,46,0); }
 }
+.tag-cobranca{ text-transform:none; letter-spacing:0; font-size:11px; color:#3a6b8c; }
+.tag-cobranca-T{ color:#a37a2c; }
+.tag-cobranca-R{ color:#4c7a5c; }
+.tag-cobranca-H, .tag-cobranca-I{ color:#7a5a9c; }
+.tag-cobranca-J{ color:#9c5a5a; }
+body:not(.theme-light) .tag-cobranca{ color:#8fb8d6; }
+body:not(.theme-light) .tag-cobranca-T{ color:#e0b865; }
+body:not(.theme-light) .tag-cobranca-R{ color:#8fd1a3; }
+body:not(.theme-light) .tag-cobranca-H, body:not(.theme-light) .tag-cobranca-I{ color:#c3a6e6; }
+body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
 .tag-inedita{
   background:#fff3b0;
   border:2px solid #b23a2e;
