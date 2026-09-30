@@ -72,6 +72,7 @@ function getSetup(materiaKey){
       tendenciasExcluidas: new Set(),
       cargoMenuAberto: false,
       incluirIneditas: true, // questões sintéticas (geradas por IA) entram por padrão
+      cobrancaExcluida: new Set(), // grupos de "Tipo de cobrança" desmarcados ('lei','I',…,'sem')
     };
   }
   return STATE.setupByMateria[materiaKey];
@@ -920,6 +921,18 @@ function renderCamposFiltro(idPrefix){
         ${bancas.map(b=>`<span class="chip ${!setup.bancasExcluidas.has(b)?'selected':''}" data-banca="${esc(b)}">${esc(b)}</span>`).join('')}
       </div>
     </div>` : ''}
+    ${materiaTemCobranca(STATE.materia) ? (()=>{
+      const base = scoreableFiltradas();
+      const cont = {}; base.forEach(q => { const g = grupoCobranca(q) || 'sem'; cont[g] = (cont[g]||0)+1; });
+      const exc = setup.cobrancaExcluida || new Set();
+      const chips = COBRANCA_GRUPOS.filter(([k]) => cont[k]).map(([k,rot]) => [k, rot, cont[k]]);
+      if(cont.sem) chips.push(['sem', 'Sem classificação', cont.sem]);
+      return `<div class="setup-mini-field">
+      <label title="Como a questão foi redigida. Literal e literal com troca ficam juntas em 'Lei seca' para não denunciar o gabarito">Tipo de cobrança</label>
+      <div class="chip-row" id="chip-cobranca">
+        ${chips.map(([k,rot,n])=>`<span class="chip ${!exc.has(k)?'selected':''}" data-cobranca="${k}">${rot} (${n})</span>`).join('')}
+      </div>
+    </div>`; })() : ''}
     ${qtdIneditas>0 ? `<div class="setup-mini-field">
       <label>Origem</label>
       <div class="chip-row" id="chip-ineditas">
@@ -975,7 +988,8 @@ function pool(){
     !setup.bancasExcluidas.has(bancaCurta(q.bc)) &&
     !setup.cargosExcluidos.has(cargoCurto(q.bc)) &&
     !setup.tendenciasExcluidas.has(tendenciaCurta(q.td)) &&
-    (setup.incluirIneditas || !isInedita(q))
+    (setup.incluirIneditas || !isInedita(q)) &&
+    (!setup.cobrancaExcluida || !setup.cobrancaExcluida.size || !setup.cobrancaExcluida.has(grupoCobranca(q) || 'sem'))
   );
 }
 

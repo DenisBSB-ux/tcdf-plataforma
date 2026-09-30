@@ -110,6 +110,7 @@ function renderQuiz(){
       <div class="case-header">
         <div class="q-number-row"><span class="q-meta-inline">${bancaCargoAnoLine(q)}</span></div>
         ${q.tema && q.tema!=='Geral' ? `<div class="q-tema-line">${esc(q.tema)}</div>` : ''}
+        ${revelado && cobrancaTag(q) ? `<div class="tag-row">${cobrancaTag(q)}</div>` : ''}
         ${narrativaBancaBanner(q)}
       </div>
       <div class="case-body">
@@ -153,6 +154,7 @@ function renderQuiz(){
       <div class="tag-row">
         ${freqBadge(q.fr)}
         ${ineditaBadge(q)}
+        ${revelado ? cobrancaTag(q) : ''}
       </div>
       ${narrativaBancaBanner(q)}
     </div>

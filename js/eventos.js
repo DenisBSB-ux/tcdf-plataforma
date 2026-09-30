@@ -147,6 +147,15 @@ function attachHandlers(){
   root.querySelectorAll('[data-ordem-simulado]').forEach(el=>{
     el.addEventListener('click', ()=> mudarOrdemSimulado(el.dataset.ordemSimulado));
   });
+  root.querySelectorAll('[data-cobranca]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const setup = getSetup(STATE.materia);
+      if(!setup.cobrancaExcluida) setup.cobrancaExcluida = new Set();
+      const k = el.dataset.cobranca;
+      setup.cobrancaExcluida.has(k) ? setup.cobrancaExcluida.delete(k) : setup.cobrancaExcluida.add(k);
+      render();
+    });
+  });
   root.querySelectorAll('[data-toggle-ineditas]').forEach(el=>{
     el.addEventListener('click', ()=>{
       const setup = getSetup(STATE.materia);
