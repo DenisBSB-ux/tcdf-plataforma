@@ -542,7 +542,7 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
       // gradiente na linha inteira — mais legível, o texto nunca fica em
       // cima de um fundo colorido variável
       const destaque = l.ativa ? `box-shadow:inset 0 0 0 1.5px ${cor.fgForte};` : '';
-      return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:rgba(127,127,127,.07);border-left:4px solid ${cor.fgForte};border-radius:4px;padding:8px 10px 8px 12px;margin-bottom:6px;${destaque}" title="${esc(l.nome)}: ${l.respondidas ? l.pct+'% de acerto' : 'nada respondido'}">
+      return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${cor.bg};border-left:4px solid ${cor.fgForte};border-radius:4px;padding:8px 10px 8px 12px;margin-bottom:6px;${destaque}" title="${esc(l.nome)}: ${l.respondidas ? l.pct+'% de acerto' : 'nada respondido'}">
         <div style="width:26px;${estiloCelula}color:${cor.fg};">${l.ativa?'▸':i+1}</div>
         <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:${cor.fgForte};font-weight:${l.ativa?800:600};display:flex;align-items:center;gap:6px;" data-macro-materia="${esc(l.nome)}">
           <span>${esc(l.nome)}${l.ativa?' <span style="font-size:10px;font-weight:600;opacity:.75;">(selecionada)</span>':''}</span>
