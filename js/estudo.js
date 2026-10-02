@@ -107,13 +107,11 @@ function renderQuiz(){
     // matéria na barra de baixo
     return `
     <div class="case-file focus-simple" style="zoom:${STATE.zoomLevel};">
+      ${revelado ? `<div class="tag-cobranca-corner">${cobrancaTag(q)}</div>` : ''}
       <div class="case-header">
-        <div class="q-number-row"><span class="q-meta-inline">${bancaCargoAnoLine(q)}</span></div>
+        <div class="q-number-row">${bancaCargoAnoLine(q)}</div>
         ${q.tema && q.tema!=='Geral' ? `<div class="q-tema-line">${esc(q.tema)}</div>` : ''}
-        <div class="tag-row">
-          ${revelado ? cobrancaTag(q) : ''}
-          ${narrativaBancaBanner(q)}
-        </div>
+        <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
       </div>
       <div class="case-body">
         <div class="enunciado">${blocoEnunciadoEditavel(q)}</div>
@@ -147,18 +145,18 @@ function renderQuiz(){
 
   return `
   <div class="case-file">
+    ${revelado ? `<div class="tag-cobranca-corner">${cobrancaTag(q)}</div>` : ''}
     <div class="case-header">
       <div class="q-number-row">
-        <span class="q-meta-inline">${bancaCargoAnoLine(q)}</span>
+        ${bancaCargoAnoLine(q)}
         ${historicoHtml}
       </div>
       ${temaLinha}
       <div class="tag-row">
         ${freqBadge(q.fr)}
         ${ineditaBadge(q)}
-        ${revelado ? cobrancaTag(q) : ''}
-        ${narrativaBancaBanner(q)}
       </div>
+      <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
     </div>
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
@@ -239,6 +237,7 @@ function editorToolbarHtml(uid){
   return `<div class="editor-toolbar">
     <button data-editar-acao="bold" title="Negrito"><b>B</b></button>
     <button data-editar-acao="italic" title="Itálico"><i>I</i></button>
+    <button data-editar-acao="underline" title="Sublinhado"><u>U</u></button>
     <button data-editar-acao="strike" title="Tachado"><s>S</s></button>
     <span class="editor-toolbar-sep"></span>
     <button data-editar-acao="highlight" data-cor="#fff3b0" class="swatch-amarelo" title="Grifar em amarelo"></button>
@@ -246,6 +245,12 @@ function editorToolbarHtml(uid){
     <button data-editar-acao="highlight" data-cor="#bbdefb" class="swatch-azul" title="Grifar em azul"></button>
     <button data-editar-acao="highlight" data-cor="#f8bbd0" class="swatch-rosa" title="Grifar em rosa"></button>
     <span class="editor-toolbar-sep"></span>
+    <button data-editar-acao="ul" title="Lista com marcadores">• Lista</button>
+    <button data-editar-acao="ol" title="Lista numerada">1. Lista</button>
+    <button data-editar-acao="citacao" title="Citação em bloco">❝</button>
+    <span class="editor-toolbar-sep"></span>
+    <button data-editar-acao="desfazer" title="Desfazer (Ctrl+Z)">↶</button>
+    <button data-editar-acao="refazer" title="Refazer (Ctrl+Y)">↷</button>
     <button data-editar-acao="limpar" title="Limpar formatação da seleção">🧹</button>
     <button data-editar-acao="salvar" data-uid="${esc(uid)}" class="btn-salvar-edicao">💾 Salvar</button>
     <button data-editar-acao="cancelar" class="btn-cancelar-edicao">✕ Cancelar</button>

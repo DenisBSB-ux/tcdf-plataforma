@@ -237,6 +237,7 @@ function attachHandlers(){
       const acao = el.dataset.editarAcao;
       if(acao==='bold'){ document.execCommand('bold'); return; }
       if(acao==='italic'){ document.execCommand('italic'); return; }
+      if(acao==='underline'){ document.execCommand('underline'); return; }
       if(acao==='strike'){ document.execCommand('strikeThrough'); return; }
       if(acao==='highlight'){
         const cor = el.dataset.cor || '#fff3b0';
@@ -244,6 +245,11 @@ function attachHandlers(){
         catch(e){ document.execCommand('backColor', false, cor); }
         return;
       }
+      if(acao==='ul'){ document.execCommand('insertUnorderedList'); return; }
+      if(acao==='ol'){ document.execCommand('insertOrderedList'); return; }
+      if(acao==='citacao'){ document.execCommand('formatBlock', false, 'blockquote'); return; }
+      if(acao==='desfazer'){ document.execCommand('undo'); return; }
+      if(acao==='refazer'){ document.execCommand('redo'); return; }
       if(acao==='limpar'){ document.execCommand('removeFormat'); return; }
       if(acao==='cancelar'){ edicaoAtual = null; render(); return; }
       if(acao==='salvar'){

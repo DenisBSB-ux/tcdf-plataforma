@@ -73,7 +73,7 @@ function ajustarZoom(direcao){
 // HTML de verdade, e também é sincronizado pela nuvem — então passa sempre por
 // aqui, que só deixa a formatação que o editor produz (negrito, itálico,
 // tachado, marca-texto). Sem o DOMPurify (CDN fora do ar), cai pra texto puro.
-const TAGS_EDICAO_PERMITIDAS = ['b','strong','i','em','s','strike','u','mark','span','font','br','p','div','ul','ol','li','sub','sup'];
+const TAGS_EDICAO_PERMITIDAS = ['b','strong','i','em','s','strike','u','mark','span','font','br','p','div','ul','ol','li','sub','sup','blockquote'];
 function limparHtmlEditado(html){
   if(!html) return '';
   if(typeof DOMPurify !== 'undefined' && DOMPurify.sanitize){

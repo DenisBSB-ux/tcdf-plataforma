@@ -326,25 +326,30 @@ function freqHistLine(fr){
   if(!fr) return '';
   return `<div class="freq-hist"><span class="lbl-inline">Frequência por ano:</span> ${esc(fr)}</div>`;
 }
+// cada parte (Banca / Cargo / Ano) agora vira sua própria linha — layout
+// pedido: uma linha por metadado, em vez do antigo "Banca: X · Cargo: Y · Ano: Z"
 function bancaCargoAnoLine(q){
+  let banca, cargo, ano;
   const prova = identificarProva(q);
   if(prova){
     // descrição completa do cargo (não a versão truncada de identificarProva,
     // que corta no primeiro "/" só pra fins de agrupar provas)
-    const cargo = cargoCurto(q.bc) || prova.cargo;
-    return `<span class="lbl-inline">Banca:</span> ${esc(prova.banca)}`
-      + (cargo ? ` &nbsp;·&nbsp; <span class="lbl-inline">Cargo:</span> ${esc(cargo)}` : '')
-      + (prova.ano ? ` &nbsp;·&nbsp; <span class="lbl-inline">Ano:</span> ${prova.ano}` : '');
+    banca = prova.banca;
+    cargo = cargoCurto(q.bc) || prova.cargo;
+    ano = prova.ano;
+  } else {
+    banca = bancaCurta(q.bc);
+    ano = q.ar || (q.an && q.an.length ? Math.max(...q.an) : null);
+    cargo = cargoCurto(q.bc);
+    // remove um ano já embutido no fim do texto do cargo (ex.: "Agente
+    // Administrativo — 2025") pra não duplicar com a linha "Ano:" seguinte
+    if(cargo && ano) cargo = cargo.replace(new RegExp(`[\\s\\u2014-]*${ano}\\s*$`), '').trim();
   }
-  const banca = bancaCurta(q.bc);
-  const ano = q.ar || (q.an && q.an.length ? Math.max(...q.an) : null);
-  // remove um ano já embutido no fim do texto do cargo (ex.: "Agente
-  // Administrativo — 2025") pra não duplicar com o campo "Ano:" logo depois
-  let cargo = cargoCurto(q.bc);
-  if(cargo && ano) cargo = cargo.replace(new RegExp(`[\\s\\u2014-]*${ano}\\s*$`), '').trim();
-  return `<span class="lbl-inline">Banca:</span> ${esc(banca)}`
-    + (cargo ? ` &nbsp;·&nbsp; <span class="lbl-inline">Cargo:</span> ${esc(cargo)}` : '')
-    + (ano ? ` &nbsp;·&nbsp; <span class="lbl-inline">Ano:</span> ${ano}` : '');
+  const linhas = [];
+  if(banca) linhas.push(`<div class="q-meta-line"><span class="lbl-inline">Banca:</span> ${esc(banca)}</div>`);
+  if(cargo) linhas.push(`<div class="q-meta-line"><span class="lbl-inline">Cargo:</span> ${esc(cargo)}</div>`);
+  if(ano) linhas.push(`<div class="q-meta-line"><span class="lbl-inline">Ano:</span> ${ano}</div>`);
+  return linhas.join('');
 }
 // padrão banca-cargo-ano-incidência: a incidência histórica entra aqui em forma
 // compacta de símbolo (📊 total ×, 🕐 recentes nos últimos 5 anos), em vez do
