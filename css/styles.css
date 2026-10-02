@@ -832,10 +832,11 @@ body:not(.theme-light) .stat-card{ border-top-color:var(--gold-bright); }
   display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;
 }
 .flashcard{
-  width:100%; max-width:560px; height:300px;
+  width:100%; max-width:720px; height:380px;
   perspective:1400px;
   cursor:pointer;
 }
+.flashcard.editando{ height:440px; cursor:default; }
 .flashcard-inner{
   position:relative; width:100%; height:100%;
   transform-style:preserve-3d;
@@ -855,14 +856,25 @@ body:not(.theme-light) .stat-card{ border-top-color:var(--gold-bright); }
   background:#fff;
   justify-content:center; align-items:center; text-align:center;
 }
+.flashcard.editando .flashcard-front{ justify-content:flex-start; align-items:stretch; text-align:left; cursor:default; }
 .flashcard-front .q-text{
   font-size:13pt; line-height:1.6; color:#1a1610; white-space:pre-line;
-  max-height:210px; overflow:auto;
+  max-height:280px; overflow:auto;
+}
+.flashcard-edit-area{ display:flex; flex-direction:column; gap:8px; height:100%; min-height:0; }
+.flashcard-edit-area .campo-editavel-conteudo{
+  flex:1; min-height:0; overflow:auto; text-align:left;
+  font-size:13pt; line-height:1.6; white-space:pre-line;
 }
 .flashcard-back{
   background:var(--navy-900); color:var(--paper);
   transform:rotateY(180deg);
   justify-content:flex-start;
+}
+.flashcard.editando .flashcard-back{ cursor:default; }
+.flashcard-back .campo-editavel-conteudo{
+  overflow:auto; max-height:230px; margin-bottom:10px;
+  color:#1f2430 !important;
 }
 .flashcard-back .lbl{ font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-bright); margin-bottom:10px; }
 .flashcard-back .rf-text{ font-size:13pt; line-height:1.6; }
@@ -884,6 +896,9 @@ body:not(.theme-light) .stat-card{ border-top-color:var(--gold-bright); }
 }
 .review-know{ background:#e2efe6; color:var(--stamp-green); }
 .review-study{ background:#f7e6e2; color:var(--stamp-red); }
+/* mesma paleta do review-chip, mas em fluxo normal (não absoluto) — usado fora
+   do flashcard, ex. nas linhas de "chute" do Caderno de Erros */
+.error-row .review-chip{ position:static; display:inline-block; }
 
 /* ---------- results screen ---------- */
 .results-hero{ text-align:center; padding:20px 10px 30px; }
@@ -996,6 +1011,9 @@ body.focus-mode .app{ padding-top:14px; max-width:1240px; }
 .icon-btn-gold:hover:not(:disabled){ background:var(--gold-bright); border-color:var(--gold-bright); }
 .icon-btn:hover:not(:disabled){ border-color:var(--gold); background:#fffdf8; transform:scale(1.04); }
 .icon-btn:disabled{ opacity:.3; cursor:not-allowed; }
+#btn-chute{ width:auto; padding:0 10px; gap:4px; font-size:13px; }
+.btn-chute-ativo{ background:#f2e4c6; border-color:var(--gold); color:#5c4a1a; }
+body:not(.theme-light) .btn-chute-ativo{ background:rgba(224,184,101,0.22); border-color:var(--gold); color:#e0b865; }
 .kbd-hint{
   font-family:var(--font-mono); font-size:9.5px; color:var(--ink-soft); text-align:center; margin-top:3px;
 }
@@ -1351,6 +1369,8 @@ body:not(.theme-light) .landing-cta{ background:rgba(255,255,255,0.05); }
 @media (max-width:560px){
   .letterhead{ flex-direction:column; align-items:flex-start; }
   .snapshot{ gap:14px; }
+  .flashcard{ height:340px; }
+  .flashcard.editando{ height:400px; }
 }
 /* ---------- impressão ---------- */
 #print-area{ display:none; }
