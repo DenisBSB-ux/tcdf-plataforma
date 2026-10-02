@@ -338,24 +338,44 @@ h2.section-title{
 
 /* ---------- question card ---------- */
 .case-file{
+  position:relative;
   background:#fff;
   border:1px solid var(--paper-line);
-  border-radius:4px;
+  border-radius:10px;
   overflow:hidden;
-  box-shadow:0 1px 0 rgba(0,0,0,0.02);
+  box-shadow:0 2px 10px rgba(20,24,32,0.06);
 }
+/* etiqueta de "tipo de cobrança" (Literal, etc.) — fica como uma aba presa
+   no canto superior esquerdo do card, antes do cabeçalho, nunca disputando
+   espaço com banca/cargo/ano/estatística */
+.tag-cobranca-corner{ display:flex; }
+.tag-cobranca-corner .tag-cobranca{
+  display:inline-flex; align-items:center; gap:4px;
+  border:none; border-radius:0 0 10px 0;
+  padding:6px 16px 6px 14px;
+  font-size:11px; font-weight:700;
+  text-transform:none; letter-spacing:0;
+  color:#fff; background:#3a6b8c;
+}
+.tag-cobranca-corner .tag-cobranca-T{ background:#a37a2c; }
+.tag-cobranca-corner .tag-cobranca-R{ background:#4c7a5c; }
+.tag-cobranca-corner .tag-cobranca-H, .tag-cobranca-corner .tag-cobranca-I{ background:#7a5a9c; }
+.tag-cobranca-corner .tag-cobranca-J{ background:#9c5a5a; }
 .case-header{
-  display:flex; flex-direction:column; gap:8px;
+  display:flex; flex-direction:column; gap:6px;
   padding:16px 20px;
   background:var(--paper-dim);
   border-bottom:1px solid var(--paper-line);
 }
 .q-number-row{
-  display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+  display:flex; flex-direction:column; align-items:flex-start; gap:2px;
 }
-.q-meta-inline{
+.q-meta-inline, .q-meta-line{
   font-family:var(--font-mono); font-size:12px; font-weight:700; color:var(--ink);
 }
+.q-meta-line{ line-height:1.5; }
+.q-estatistica-line{ margin-top:2px; }
+.q-estatistica-line:empty{ display:none; }
 .q-historico-badge{
   font-family:var(--font-mono); font-size:11px; color:var(--ink-soft);
   background:var(--paper-dim); border:1px solid var(--paper-line); border-radius:12px;
@@ -676,7 +696,8 @@ body:not(.theme-light) .kw-decisivo{ color:#ff8a7a; border-bottom-color:#ff8a7a;
 }
 .btn-editar-campo:hover, .btn-restaurar-campo:hover, .btn-corrigir-gabarito:hover{ background:var(--paper-dim); }
 .editor-toolbar{
-  display:flex; gap:6px; margin-bottom:8px; padding:6px; border-radius:6px;
+  display:flex; gap:6px; flex-wrap:wrap; align-items:center;
+  margin-bottom:8px; padding:6px; border-radius:6px;
   background:var(--paper-dim); border:1px dashed var(--paper-line);
 }
 .editor-toolbar button{
@@ -701,6 +722,11 @@ body:not(.theme-light) .kw-decisivo{ color:#ff8a7a; border-bottom-color:#ff8a7a;
 }
 .campo-editavel-conteudo[contenteditable="true"] *:not(mark):not([style*="color"]){ color:inherit !important; }
 .campo-editavel-conteudo mark{ background:#fff3b0; padding:0 2px; border-radius:2px; }
+.campo-editavel-conteudo ul, .campo-editavel-conteudo ol{ margin:6px 0 6px 22px; padding:0; }
+.campo-editavel-conteudo blockquote{
+  margin:8px 0; padding:6px 12px; border-left:3px solid var(--gold);
+  color:var(--ink-soft); font-style:italic;
+}
 .resumo-flash-box .lbl{
   font-family:var(--font-mono);
   font-size:10px;
