@@ -15,7 +15,7 @@
    simulado junta L e T no grupo "Lei seca".
 
    Matérias classificadas: RJU LC840 (piloto), Administrativo (geral) (299 questões),
-   Lei 14.133 (220 questões). */
+   Lei 14.133 (220 questões), Direito Civil (210 questões). */
 
 const COBRANCA_TIPOS = {
   L: ['📜', 'Literal', 'Cópia do texto da lei (lei seca)'],
@@ -118,6 +118,27 @@ const COBRANCA = {
   'lei-14-133-220-191':'L', 'lei-14-133-220-192':'T:ext', 'lei-14-133-220-193':'L', 'lei-14-133-220-194':'T:res', 'lei-14-133-220-195':'T:inv', 'lei-14-133-220-196':'T:inv', 'lei-14-133-220-197':'T:inv', 'lei-14-133-220-198':'L', 'lei-14-133-220-199':'L', 'lei-14-133-220-200':'L',
   'lei-14-133-220-201':'T:inv', 'lei-14-133-220-202':'L', 'lei-14-133-220-203':'T:inv', 'lei-14-133-220-204':'L', 'lei-14-133-220-205':'L', 'lei-14-133-220-206':'L', 'lei-14-133-220-207':'L', 'lei-14-133-220-208':'L', 'lei-14-133-220-209':'L', 'lei-14-133-220-210':'T:inv',
   'lei-14-133-220-211':'T:num', 'lei-14-133-220-212':'L', 'lei-14-133-220-213':'T:inv', 'lei-14-133-220-214':'T:ext', 'lei-14-133-220-215':'L', 'lei-14-133-220-216':'T:inv', 'lei-14-133-220-217':'T:inv', 'lei-14-133-220-218':'T:inv', 'lei-14-133-220-219':'L', 'lei-14-133-220-220':'L',
+  'direito-civil-1':'T:inv', 'direito-civil-2':'T:inv', 'direito-civil-3':'L', 'direito-civil-4':'T:inv', 'direito-civil-5':'T:mis', 'direito-civil-6':'T:inv', 'direito-civil-7':'L', 'direito-civil-8':'T:ter', 'direito-civil-9':'T:inv', 'direito-civil-10':'L',
+  'direito-civil-11':'T:num', 'direito-civil-12':'I', 'direito-civil-13':'T:inv', 'direito-civil-14':'T:ter', 'direito-civil-15':'L', 'direito-civil-16':'L', 'direito-civil-17':'T:inv', 'direito-civil-18':'L', 'direito-civil-19':'L', 'direito-civil-20':'T:ter',
+  'direito-civil-21':'L', 'direito-civil-22':'L', 'direito-civil-23':'T:inv', 'direito-civil-24':'L', 'direito-civil-25':'T:inv', 'direito-civil-26':'J:inv', 'direito-civil-27':'T:mis', 'direito-civil-28':'L', 'direito-civil-29':'T:ter', 'direito-civil-30':'T:res',
+  'direito-civil-31':'L', 'direito-civil-32':'L', 'direito-civil-33':'L', 'direito-civil-34':'L', 'direito-civil-35':'L', 'direito-civil-36':'L', 'direito-civil-37':'T:res', 'direito-civil-38':'T:inv', 'direito-civil-39':'T:inv', 'direito-civil-40':'T:inv',
+  'direito-civil-41':'J', 'direito-civil-42':'T:inv', 'direito-civil-43':'L', 'direito-civil-44':'T:inv', 'direito-civil-45':'T:ter', 'direito-civil-46':'L', 'direito-civil-47':'L', 'direito-civil-48':'L', 'direito-civil-49':'T:inv', 'direito-civil-50':'T:ext',
+  'direito-civil-51':'L', 'direito-civil-52':'L', 'direito-civil-53':'T:res', 'direito-civil-54':'L', 'direito-civil-55':'L', 'direito-civil-56':'T:inv', 'direito-civil-57':'T:inv', 'direito-civil-58':'L', 'direito-civil-59':'L', 'direito-civil-60':'T:inv',
+  'direito-civil-61':'L', 'direito-civil-62':'T:ter', 'direito-civil-63':'T:inv', 'direito-civil-64':'L', 'direito-civil-65':'L', 'direito-civil-66':'T:ter', 'direito-civil-67':'T:inv', 'direito-civil-68':'T:res', 'direito-civil-69':'T:inv', 'direito-civil-70':'T:inv',
+  'direito-civil-71':'T:res', 'direito-civil-72':'T:inv', 'direito-civil-73':'T:inv', 'direito-civil-74':'T:inv', 'direito-civil-75':'L', 'direito-civil-76':'T:inv', 'direito-civil-77':'L', 'direito-civil-78':'L', 'direito-civil-79':'T:res', 'direito-civil-80':'L',
+  'direito-civil-81':'L', 'direito-civil-82':'L', 'direito-civil-83':'L', 'direito-civil-84':'L', 'direito-civil-85':'T:inv', 'direito-civil-86':'T:inv', 'direito-civil-87':'L', 'direito-civil-88':'L', 'direito-civil-89':'L', 'direito-civil-90':'T:inv',
+  'direito-civil-91':'T:inv', 'direito-civil-92':'L', 'direito-civil-93':'T:inv', 'direito-civil-94':'T:inv', 'direito-civil-95':'T:ext', 'direito-civil-96':'T:inv', 'direito-civil-97':'L', 'direito-civil-98':'T:res', 'direito-civil-99':'L', 'direito-civil-100':'L',
+  'direito-civil-101':'L', 'direito-civil-102':'L', 'direito-civil-103':'L', 'direito-civil-104':'L', 'direito-civil-105':'L', 'direito-civil-106':'T:ter', 'direito-civil-107':'L', 'direito-civil-108':'T:res', 'direito-civil-109':'L', 'direito-civil-110':'L',
+  'direito-civil-111':'T:inv', 'direito-civil-112':'L', 'direito-civil-113':'T:inv', 'direito-civil-114':'L', 'direito-civil-115':'L', 'direito-civil-116':'L', 'direito-civil-117':'L', 'direito-civil-118':'L', 'direito-civil-119':'T:ext', 'direito-civil-120':'L',
+  'direito-civil-121':'L', 'direito-civil-122':'L', 'direito-civil-123':'L', 'direito-civil-124':'T:ter', 'direito-civil-125':'L', 'direito-civil-126':'L', 'direito-civil-127':'L', 'direito-civil-128':'L', 'direito-civil-129':'L', 'direito-civil-130':'L',
+  'direito-civil-131':'L', 'direito-civil-132':'L', 'direito-civil-133':'L', 'direito-civil-134':'T:inv', 'direito-civil-135':'T:mis', 'direito-civil-136':'T:res', 'direito-civil-137':'L', 'direito-civil-138':'L', 'direito-civil-139':'L', 'direito-civil-140':'T:inv',
+  'direito-civil-141':'L', 'direito-civil-142':'T:ter', 'direito-civil-143':'T:inv', 'direito-civil-144':'L', 'direito-civil-145':'L', 'direito-civil-146':'L', 'direito-civil-147':'L', 'direito-civil-148':'L', 'direito-civil-149':'T:inv', 'direito-civil-150':'L',
+  'direito-civil-151':'T:inv', 'direito-civil-152':'L', 'direito-civil-153':'L', 'direito-civil-154':'L', 'direito-civil-155':'L', 'direito-civil-156':'L', 'direito-civil-157':'L', 'direito-civil-158':'T:inv', 'direito-civil-159':'L', 'direito-civil-160':'L',
+  'direito-civil-161':'T:inv', 'direito-civil-162':'J', 'direito-civil-163':'T:inv', 'direito-civil-164':'J:inv', 'direito-civil-165':'L', 'direito-civil-166':'L', 'direito-civil-167':'L', 'direito-civil-168':'T:inv', 'direito-civil-169':'T:inv', 'direito-civil-170':'T:inv',
+  'direito-civil-171':'T:inv', 'direito-civil-172':'L', 'direito-civil-173':'L', 'direito-civil-174':'L', 'direito-civil-175':'L', 'direito-civil-176':'T:inv', 'direito-civil-177':'L', 'direito-civil-178':'L', 'direito-civil-179':'L', 'direito-civil-180':'L',
+  'direito-civil-181':'L', 'direito-civil-182':'L', 'direito-civil-183':'L', 'direito-civil-184':'L', 'direito-civil-185':'L', 'direito-civil-186':'L', 'direito-civil-187':'L', 'direito-civil-188':'L', 'direito-civil-189':'L', 'direito-civil-190':'T:ext',
+  'direito-civil-191':'T:inv', 'direito-civil-192':'L', 'direito-civil-193':'T:inv', 'direito-civil-194':'L', 'direito-civil-195':'J', 'direito-civil-196':'L', 'direito-civil-197':'L', 'direito-civil-198':'L', 'direito-civil-199':'L', 'direito-civil-200':'L',
+  'direito-civil-201':'L', 'direito-civil-202':'T:inv', 'direito-civil-203':'L', 'direito-civil-204':'L', 'direito-civil-205':'L', 'direito-civil-206':'L', 'direito-civil-207':'T:inv', 'direito-civil-208':'J', 'direito-civil-209':'J', 'direito-civil-210':'J',
 };
 
 function cobrancaDaQuestao(q){
