@@ -591,6 +591,25 @@ body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
 .chute-chip-row:empty{ display:none; }
 .chute-chip-inline{ position:static; display:inline-flex; align-items:center; }
 .ce-buttons-row .chute-chip-inline{ margin-left:4px; }
+/* estado "armado": o chute foi marcado e está esperando o clique na resposta */
+.ce-btn.ce-chute.armado, .answer-opt.ce-chute.armado{
+  border-style:solid; border-color:var(--gold); background:#fff3b0; color:#5c4a1a; font-weight:700;
+}
+.chute-hint{
+  font-family:var(--font-mono); font-size:11.5px; font-weight:700; letter-spacing:.02em;
+  color:#8a6a1c; background:#fff8e4; border:1px dashed var(--gold);
+  border-radius:6px; padding:6px 10px; margin-bottom:8px;
+}
+body:not(.theme-light) .chute-hint{ background:rgba(224,184,101,0.14); color:#e0b865; }
+/* linha de edição de uma alternativa (múltipla escolha): letra fixa + campo editável */
+.answer-opt-edit{
+  display:flex; gap:12px; align-items:flex-start;
+  padding:10px 14px; border:1.5px dashed var(--paper-line); border-radius:8px;
+}
+.answer-opt-edit .letter{
+  font-family:var(--font-mono); font-weight:700; letter-spacing:.08em; font-size:10.5px;
+  text-transform:uppercase; color:var(--gold); flex-shrink:0; padding-top:5px;
+}
 
 /* ---------- layout de duas colunas: questão à esquerda, resolução à direita ---------- */
 .case-columns{
@@ -724,6 +743,10 @@ body:not(.theme-light) .kw-decisivo{ color:#ff8a7a; border-bottom-color:#ff8a7a;
   border:1px solid var(--paper-line); background:#fff; padding:4px 10px;
 }
 .editor-toolbar-sep{ width:1px; background:var(--paper-line); margin:2px 2px; }
+.editor-font-size{
+  font-family:var(--font-mono); font-size:12px; cursor:pointer; border-radius:5px;
+  border:1px solid var(--paper-line); background:#fff; padding:4px 6px; color:var(--ink);
+}
 .editor-toolbar button[class^="swatch-"]{
   width:22px; height:22px; padding:0; border-radius:5px;
 }
