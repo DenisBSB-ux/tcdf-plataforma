@@ -389,7 +389,7 @@ h2.section-title{
 .prob-calc.prob-baixa{ background:#4c7a5c; }
 .narr-banner{
   display:flex; align-items:center; gap:10px;
-  margin-top:10px; padding:9px 14px; border-radius:8px;
+  padding:9px 14px; border-radius:8px;
   font-size:13px; line-height:1.4;
 }
 .narr-icone{ font-size:20px; flex:0 0 auto; }
