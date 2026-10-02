@@ -214,8 +214,12 @@ async function storageSet(key, value){
 }
 
 function getBucket(materiaKey){
-  if(!PROGRESS[materiaKey]) PROGRESS[materiaKey] = { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[] };
+  if(!PROGRESS[materiaKey]) PROGRESS[materiaKey] = { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
   if(!PROGRESS[materiaKey].simuladosSalvos) PROGRESS[materiaKey].simuladosSalvos = [];
+  // "chutes": histórico independente de questões marcadas como "eu chutei essa"
+  // — não mexe em tentativas/acertos, só registra a marcação (item novo; bucket
+  // de matéria antiga carregado do storage não tem esse campo ainda)
+  if(!PROGRESS[materiaKey].chutes) PROGRESS[materiaKey].chutes = {};
   return PROGRESS[materiaKey];
 }
 

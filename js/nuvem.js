@@ -1119,6 +1119,24 @@ function undoRegistro(materiaKey, uid){
   saveProgress();
 }
 
+// "Chute!": marcação independente de tentativas/acertos — só registra que o
+// usuário não tinha certeza da resposta (ainda que tenha acertado por sorte).
+// Vive na própria aba Caderno de Erros, numa lista separada da de erros reais.
+function chuteMarcado(materiaKey, uid){
+  const bucket = getBucket(materiaKey);
+  return !!(bucket.chutes && bucket.chutes[uid]);
+}
+function toggleChute(materiaKey, uid, correct){
+  const bucket = getBucket(materiaKey);
+  if(bucket.chutes[uid]){
+    delete bucket.chutes[uid];
+  } else {
+    bucket.chutes[uid] = { ts: Date.now(), correct: (correct===true || correct===false) ? correct : null };
+  }
+  marcarProgressoSujo(materiaKey);
+  saveProgress();
+}
+
 function registrarFlash(materiaKey, uid, status){
   getBucket(materiaKey).flash[uid] = { status, ts: Date.now() };
   marcarProgressoSujo(materiaKey);

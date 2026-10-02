@@ -279,6 +279,22 @@ function attachHandlers(){
   });
   const btnResetQuestao = document.getElementById('btn-reset-questao');
   if(btnResetQuestao) btnResetQuestao.addEventListener('click', resetQuestaoAtual);
+  const btnChute = document.getElementById('btn-chute');
+  if(btnChute) btnChute.addEventListener('click', ()=>{
+    const uid = btnChute.dataset.uid;
+    const quiz = STATE.quiz;
+    const resposta = quiz && quiz.respostas[uid];
+    toggleChute(quiz.materia, uid, resposta ? resposta.correct : null);
+    render();
+  });
+  root.querySelectorAll('[data-desmarcar-chute]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      toggleChute(STATE.materia, el.dataset.desmarcarChute);
+      render();
+    });
+  });
+  const btnRefazerChutes = document.getElementById('btn-refazer-chutes');
+  if(btnRefazerChutes) btnRefazerChutes.addEventListener('click', refazerTodasChutes);
   const btnResetSimulado = document.getElementById('btn-reset-simulado');
   if(btnResetSimulado) btnResetSimulado.addEventListener('click', resetSimuladoAtual);
   const btnAbandonar = document.getElementById('btn-abandonar');
@@ -310,7 +326,19 @@ function attachHandlers(){
   if(btnIniciarFlash) btnIniciarFlash.addEventListener('click', startFlashDeck);
 
   const flashcardEl = document.getElementById('flashcard');
-  if(flashcardEl) flashcardEl.addEventListener('click', ()=>{ STATE.flashDeck.flipped = !STATE.flashDeck.flipped; render(); });
+  if(flashcardEl) flashcardEl.addEventListener('click', (e)=>{
+    // durante a edição, clique em área de texto/toolbar não deve virar a
+    // carta — só clique "fora" (no fundo do card) continua virando, pra dar
+    // um jeito de ver/editar o verso sem sair do modo de edição
+    if(e.target.closest('.editor-toolbar, [contenteditable], .btn-editar-campo, .btn-restaurar-campo')) return;
+    STATE.flashDeck.flipped = !STATE.flashDeck.flipped; render();
+  });
+  const btnEditarFlash = document.getElementById('btn-editar-flash');
+  if(btnEditarFlash) btnEditarFlash.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    edicaoAtual = btnEditarFlash.dataset.uid;
+    render();
+  });
 
   const btnFlashSei = document.getElementById('btn-flash-sei');
   if(btnFlashSei) btnFlashSei.addEventListener('click', (e)=>{ e.stopPropagation(); const d=STATE.flashDeck; registrarFlash(d.materia, d.uids[d.idx],'sei'); flashGoNext(); });

@@ -1,6 +1,13 @@
 /* ================= QUIZ ================= */
 // progresso da matéria inteira (resultado atual de cada questão), mostrado ao
 // lado do horário de salvamento: Total / Certas / Erradas / %
+// botão "Chute!": só aparece depois de responder, marca/desmarca a questão
+// atual no histórico independente de chutes (não mexe em tentativas/acertos)
+function btnChuteHtml(materiaKey, uid, revelado){
+  if(!revelado) return '';
+  const marcado = chuteMarcado(materiaKey, uid);
+  return `<button class="icon-btn ${marcado?'btn-chute-ativo':''}" id="btn-chute" data-uid="${esc(uid)}" title="${marcado?'Desmarcar &quot;chutei essa&quot;':'Marcar que você chutou esta resposta (não afeta estatísticas de acerto)'}">🎲${marcado?' ✓':''}</button>`;
+}
 function renderProgressoMateriaToolbar(materiaKey){
   if(!materiaKey) return '';
   const s = computeSnapshotMateria(materiaKey);
@@ -125,6 +132,7 @@ function renderQuiz(){
           <button class="icon-btn" id="btn-next-arrow" title="Próxima questão (seta → ou espaço)" ${quiz.idx===quiz.queue.length-1?'disabled':''}>→</button>
           <span class="toolbar-divider"></span>
           <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
+          ${btnChuteHtml(quiz.materia, uidAtual, revelado)}
           <span class="toolbar-divider"></span>
           <button class="icon-btn" id="btn-focus-toggle" title="Sair do modo foco">✕</button>
           <button class="theme-toggle-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro" style="width:36px;height:36px;">${STATE.theme==='light'?'🌙':'☀️'}</button>
@@ -152,11 +160,11 @@ function renderQuiz(){
         ${historicoHtml}
       </div>
       ${temaLinha}
+      <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
       <div class="tag-row">
         ${freqBadge(q.fr)}
         ${ineditaBadge(q)}
       </div>
-      <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
     </div>
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
@@ -179,6 +187,7 @@ function renderQuiz(){
         <button class="icon-btn" id="btn-jump-proximo-assunto" title="Ir para o próximo assunto" ${idxProximoAssunto<0?'disabled':''}>⏭</button>
         <span class="toolbar-divider"></span>
         <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
+        ${btnChuteHtml(quiz.materia, uidAtual, revelado)}
         <button class="icon-btn" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
         <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
         <span class="toolbar-divider"></span>
@@ -629,28 +638,74 @@ function getCadernoErros(){
     .sort((a,b)=> (b.p.historico[b.p.historico.length-1] ? b.p.historico[b.p.historico.length-1].ts : 0) - (a.p.historico[a.p.historico.length-1] ? a.p.historico[a.p.historico.length-1].ts : 0));
 }
 
+// histórico independente de marcações "Chute!" — não entra nas estatísticas
+// de tentativas/acertos, só mostra onde o usuário sinalizou que respondeu
+// sem segurança no conteúdo (mesmo que tenha acertado)
+function getCadernoChutes(){
+  if(!STATE.materia) return [];
+  const bucket = getBucket(STATE.materia);
+  const scopeUids = scopeUidsComHistorico();
+  return Object.entries(bucket.chutes || {})
+    .filter(([uid]) => scopeUids.has(uid) && BY_UID[uid])
+    .map(([uid,c]) => ({ uid, c }))
+    .sort((a,b)=> (b.c.ts||0) - (a.c.ts||0));
+}
+
+function refazerTodasChutes(){
+  const uids = getCadernoChutes().map(e=>e.uid);
+  if(uids.length===0) return;
+  setLocalTab(STATE.materia, 'simulado');
+  STATE.quiz = { queue: shuffle(uids), idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, origemErros:true };
+  salvarQuizEmAndamento();
+  render();
+}
+
 function renderErros(){
   const lista = getCadernoErros();
-  if(lista.length===0){
+  const chutes = getCadernoChutes();
+  if(lista.length===0 && chutes.length===0){
     return emptyState('🗂️','Caderno de erros vazio',`As questões que você errar em "${esc(STATE.materia||'')}" aparecem aqui automaticamente. Acerte-as novamente para removê-las da lista.`);
   }
-  return `
-  <div class="section-eyebrow">${esc(STATE.materia)}</div>
-  <h2 class="section-title">Caderno de erros</h2>
-  <p class="section-desc">${lista.length} questão(ões) com o último resultado registrado como erro${STATE.tema!=='todos'?` no assunto ${esc(STATE.tema)}`:''}. Refaça-as para atualizar o status.</p>
+  let html = `<div class="section-eyebrow">${esc(STATE.materia)}</div>
+  <h2 class="section-title">Caderno de erros</h2>`;
 
-  ${lista.map(({uid,p})=>{
-    const q = BY_UID[uid];
-    // só o texto da questão (sem estrelas, tendência, tentativas, banca, assunto)
-    return `<div class="error-row">
-      <span class="num">${esc(String(q.n).padStart(3,'0'))}</span>
-      <div class="summary">${esc(limparEnunciado(q.q, q.t) || q.rf || '')}</div>
-      <button class="btn btn-gold btn-sm" data-refazer="${uid}">Refazer</button>
-    </div>`;
-  }).join('')}
+  if(lista.length){
+    html += `<p class="section-desc">${lista.length} questão(ões) com o último resultado registrado como erro${STATE.tema!=='todos'?` no assunto ${esc(STATE.tema)}`:''}. Refaça-as para atualizar o status.</p>
 
-  <button class="btn btn-primary" id="btn-refazer-todas" style="margin-top:14px;">Refazer todas (${lista.length})</button>
-  `;
+    ${lista.map(({uid,p})=>{
+      const q = BY_UID[uid];
+      // só o texto da questão (sem estrelas, tendência, tentativas, banca, assunto)
+      return `<div class="error-row">
+        <span class="num">${esc(String(q.n).padStart(3,'0'))}</span>
+        <div class="summary">${esc(limparEnunciado(q.q, q.t) || q.rf || '')}</div>
+        <button class="btn btn-gold btn-sm" data-refazer="${uid}">Refazer</button>
+      </div>`;
+    }).join('')}
+
+    <button class="btn btn-primary" id="btn-refazer-todas" style="margin-top:14px;">Refazer todas (${lista.length})</button>`;
+  }
+
+  if(chutes.length){
+    html += `<h3 class="section-title" style="margin-top:${lista.length?'32px':'0'};font-size:16px;">🎲 Chutes (${chutes.length})</h3>
+    <p class="section-desc">Questões marcadas como "chutei essa" — histórico independente dos erros, útil pra ver onde a resposta certa não veio de domínio real do conteúdo.</p>
+
+    ${chutes.map(({uid,c})=>{
+      const q = BY_UID[uid];
+      const statusChip = c.correct===true ? `<span class="review-chip review-know" style="margin-right:8px;">acertou</span>`
+        : c.correct===false ? `<span class="review-chip review-study" style="margin-right:8px;">errou</span>` : '';
+      return `<div class="error-row">
+        <span class="num">${esc(String(q.n).padStart(3,'0'))}</span>
+        ${statusChip}
+        <div class="summary">${esc(limparEnunciado(q.q, q.t) || q.rf || '')}</div>
+        <button class="btn btn-ghost btn-sm" data-desmarcar-chute="${uid}" title="Remover da lista de chutes">✕ Desmarcar</button>
+        <button class="btn btn-gold btn-sm" data-refazer="${uid}">Refazer</button>
+      </div>`;
+    }).join('')}
+
+    <button class="btn btn-primary" id="btn-refazer-chutes" style="margin-top:14px;">Refazer todos os chutes (${chutes.length})</button>`;
+  }
+
+  return html;
 }
 
 /* ================= RESUMO PARA REVISÃO DE VÉSPERA ================= */
@@ -788,30 +843,45 @@ function renderFlashcards(){
   const bucket = getBucket(deck.materia);
   const status = bucket.flash[uid] && bucket.flash[uid].status;
 
+  // edição do flashcard: reaproveita a mesma infraestrutura de edição das
+  // questões (EDICOES_USUARIO, editorToolbarHtml, limparHtmlEditado) — o
+  // botão "Salvar" da barra já grava qualquer campo "conteudo-{campo}-{uid}"
+  // presente na página, então um único toolbar no verso cobre os dois lados
+  const emEdicao = edicaoAtual === uid;
+  const customQ = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid]['q']);
+  const customRf = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid]['rf']);
+  const qHtml = customQ || destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)));
+  const rfHtml = customRf || formatarTextoComDestaque(q.rf, palavrasChaveDaRespostaCorreta(q));
+
   return `
   <div class="flash-stage">
     <div class="flash-counter">CARTA ${deck.idx+1} DE ${deck.uids.length} · QUESTÃO Nº ${q.n}${q.tema && q.tema!=='Geral'?` · ${esc(q.tema)}`:''} ${renderZoomControl()}</div>
-    <div class="flashcard ${deck.flipped?'flipped':''}" id="flashcard">
+    <div class="flashcard ${deck.flipped?'flipped':''} ${emEdicao?'editando':''}" id="flashcard">
       <div class="flashcard-inner">
         <div class="flashcard-face flashcard-front">
           ${status ? `<span class="review-chip ${status==='sei'?'review-know':'review-study'}">${status==='sei'?'Sei':'Revisar'}</span>` : ''}
-          <div class="q-text" style="zoom:${STATE.zoomLevel};">${destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)))}</div>
+          ${emEdicao
+            ? `<div class="flashcard-edit-area">${editorToolbarHtml(uid)}<div class="campo-editavel-conteudo" contenteditable="true" id="conteudo-q-${esc(uid)}">${qHtml}</div></div>`
+            : `<div class="q-text" style="zoom:${STATE.zoomLevel};">${qHtml}</div>`}
         </div>
         <div class="flashcard-face flashcard-back">
           <span class="lbl">Resumo flash</span>
-          <div class="rf-text" style="zoom:${STATE.zoomLevel};">${formatarTextoComDestaque(q.rf, palavrasChaveDaRespostaCorreta(q))}</div>
+          ${emEdicao
+            ? `<div class="campo-editavel-conteudo" contenteditable="true" id="conteudo-rf-${esc(uid)}" style="flex:1;">${rfHtml}</div>`
+            : `<div class="rf-text" style="zoom:${STATE.zoomLevel};">${rfHtml}</div>`}
           <div class="gab-line">Gabarito: ${gabaritoDestacado(gabaritoEfetivo(q))} · ${esc(q.td||'')} ${tendenciaQuente(q)?'⚠ alta recente':''}</div>
         </div>
       </div>
     </div>
-    <div class="flip-hint">clique na carta ou tecle espaço/enter para virar · ← → para navegar</div>
+    <div class="flip-hint">${emEdicao ? 'clique na carta (fora do texto) pra ver o outro lado enquanto edita' : 'clique na carta ou tecle espaço/enter para virar · ← → para navegar'}</div>
     <div class="flash-controls">
-      <button class="icon-btn" id="btn-flash-prev" title="Carta anterior" ${deck.idx===0?'disabled':''}>←</button>
-      <button class="btn btn-ghost btn-sm" id="btn-flash-revisar">Marcar: revisar</button>
-      <button class="btn btn-gold btn-sm" id="btn-flash-sei">Marcar: sei</button>
-      <button class="icon-btn" id="btn-flash-next-arrow" title="Próxima carta" ${deck.idx===deck.uids.length-1?'disabled':''}>→</button>
+      <button class="icon-btn" id="btn-flash-prev" title="Carta anterior" ${deck.idx===0 || emEdicao?'disabled':''}>←</button>
+      ${emEdicao ? '' : `<button class="btn btn-ghost btn-sm" id="btn-editar-flash" data-uid="${esc(uid)}" title="Editar o enunciado e o resumo flash deste flashcard">✏️ Editar flashcard</button>`}
+      <button class="btn btn-ghost btn-sm" id="btn-flash-revisar" ${emEdicao?'disabled':''}>Marcar: revisar</button>
+      <button class="btn btn-gold btn-sm" id="btn-flash-sei" ${emEdicao?'disabled':''}>Marcar: sei</button>
+      <button class="icon-btn" id="btn-flash-next-arrow" title="Próxima carta" ${deck.idx===deck.uids.length-1 || emEdicao?'disabled':''}>→</button>
     </div>
-    <button class="btn btn-primary btn-sm" id="btn-flash-finalizar" style="margin-top:14px;">Encerrar baralho</button>
+    <button class="btn btn-primary btn-sm" id="btn-flash-finalizar" style="margin-top:14px;" ${emEdicao?'disabled':''}>Encerrar baralho</button>
     <button class="icon-btn" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}" style="margin-top:10px;">${STATE.focusMode?'✕':'◉'}</button>
   </div>
   `;
