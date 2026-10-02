@@ -345,22 +345,24 @@ h2.section-title{
   overflow:hidden;
   box-shadow:0 2px 10px rgba(20,24,32,0.06);
 }
-/* etiqueta de "tipo de cobrança" (Literal, etc.) — fica como uma aba presa
-   no canto superior esquerdo do card, antes do cabeçalho, nunca disputando
-   espaço com banca/cargo/ano/estatística */
-.tag-cobranca-corner{ display:flex; }
+/* etiqueta de "tipo de cobrança" (Literal, etc.) — fica presa no canto
+   superior esquerdo do PRÓPRIO quadro do enunciado (não do card inteiro),
+   como um selo em destaque, levemente sobreposta à borda da caixa */
+.tag-cobranca-corner{ position:absolute; top:-13px; left:14px; z-index:2; display:flex; }
 .tag-cobranca-corner .tag-cobranca{
   display:inline-flex; align-items:center; gap:4px;
-  border:none; border-radius:0 0 10px 0;
-  padding:6px 16px 6px 14px;
-  font-size:11px; font-weight:700;
+  border:1.5px solid #fff; border-radius:20px;
+  padding:5px 14px;
+  font-size:11.5px; font-weight:700;
   text-transform:none; letter-spacing:0;
   color:#fff; background:#3a6b8c;
+  box-shadow:0 3px 8px rgba(20,24,32,0.22);
 }
 .tag-cobranca-corner .tag-cobranca-T{ background:#a37a2c; }
 .tag-cobranca-corner .tag-cobranca-R{ background:#4c7a5c; }
 .tag-cobranca-corner .tag-cobranca-H, .tag-cobranca-corner .tag-cobranca-I{ background:#7a5a9c; }
 .tag-cobranca-corner .tag-cobranca-J{ background:#9c5a5a; }
+body:not(.theme-light) .tag-cobranca-corner .tag-cobranca{ border-color:var(--black-800,#1c2230); }
 .case-header{
   display:flex; flex-direction:column; gap:6px;
   padding:16px 20px;
@@ -502,6 +504,7 @@ body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
 
 .case-body{ padding:28px 30px 10px; position:relative; }
 .enunciado{
+  position:relative;
   font-size:13pt;
   line-height:1.7;
   color:#3a2c08;
@@ -509,7 +512,9 @@ body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
   background:#fffcf3;
   border:1px solid #f0e6c4;
   border-radius:8px;
-  padding:16px 18px;
+  /* padding-top maior: reserva espaço pro selo "tag-cobranca-corner" que fica
+     presado no canto superior esquerdo desta caixa, sem encostar no texto */
+  padding:34px 18px 16px;
 }
 .banca{
   font-size:12.5px;
@@ -559,7 +564,7 @@ body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
 .answer-opt.riscado .letter{ text-decoration:line-through; }
 
 /* ---------- Certo/Errado lado a lado — neutros até serem selecionados ---------- */
-.ce-buttons-row{ display:flex; gap:10px; max-width:220px; }
+.ce-buttons-row{ display:flex; gap:10px; max-width:320px; }
 .ce-buttons-row .ce-btn{ flex:1; justify-content:center; text-align:center; padding:10px 12px; }
 .ce-btn .letter{ font-size:17px; font-weight:400; }
 .ce-btn.ce-certo .letter{ color:#5a8f6f; }
@@ -572,6 +577,20 @@ body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
 .ce-btn.incorrect{ border-color:var(--stamp-red); background:#f7d9d3; }
 .ce-btn.incorrect .letter{ color:var(--stamp-red); }
 @media (max-width:480px){ .ce-buttons-row{ flex-direction:column; } }
+/* botão "Chute": sorteia uma resposta e já marca a questão no histórico de
+   chutes — mesma forma dos outros botões de resposta, cor âmbar própria pra
+   não ser confundido com Certo/Errado nem com as alternativas */
+.ce-btn.ce-chute, .answer-opt.ce-chute{
+  font-size:13px; font-weight:600; gap:6px; color:#8a6a1c;
+  border-style:dashed;
+}
+.ce-btn.ce-chute .letter, .answer-opt.ce-chute .letter{ font-size:16px; color:inherit; }
+.ce-btn.ce-chute:hover, .answer-opt.ce-chute:hover{ border-color:var(--gold); background:#fffaf0; }
+.answer-opt.ce-chute{ margin-top:4px; max-width:220px; }
+.chute-chip-row{ margin-top:8px; }
+.chute-chip-row:empty{ display:none; }
+.chute-chip-inline{ position:static; display:inline-flex; align-items:center; }
+.ce-buttons-row .chute-chip-inline{ margin-left:4px; }
 
 /* ---------- layout de duas colunas: questão à esquerda, resolução à direita ---------- */
 .case-columns{
