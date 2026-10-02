@@ -75,6 +75,7 @@ let MATERIAS_OCULTAS = new Set(); // matérias NATIVAS (embutidas no código) qu
   // não vivem no Firestore nem no localStorage de questões, o único jeito de "remover de vez" uma matéria
   // embutida é guardar o nome dela aqui e filtrar toda vez que a base nativa for recriada no carregamento
 let edicaoAtual = null; // uid da questão em modo de edição agora (todos os campos — enunciado, resolução, resumo flash — ficam editáveis juntos)
+let chuteArmado = null; // uid da questão com o botão "Chute" armado, aguardando o clique na resposta de verdade
 let saveEdicoesTimer = null;
 function salvarEdicoesUsuario(){
   clearTimeout(saveEdicoesTimer);

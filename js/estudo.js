@@ -76,17 +76,24 @@ function renderQuiz(){
   const uidAtual = uid;
   const riscadas = (STATE.quiz.riscadas && STATE.quiz.riscadas[uidAtual]) || [];
   const gEfetivo = gabaritoEfetivo(q);
-  // chip "🎲 chute" mostrado no lugar do botão de chutar depois que a questão
-  // já foi respondida via chute (reaproveita o mesmo histórico independente)
+  const emEdicaoAlt = edicaoAtual === uidAtual && q.t==='MC' && q.alt;
+  // chip "🎲 chute" mostrado no lugar do botão depois que a questão já foi
+  // respondida como chute (reaproveita o mesmo histórico independente)
   const chuteChip = chuteMarcado(quiz.materia, uidAtual)
     ? `<span class="review-chip review-study chute-chip-inline">🎲 chute</span>` : '';
-  const btnChutarHtml = `<button class="answer-opt ce-btn ce-chute" id="btn-chute-responder" title="Chutar: sorteia uma resposta entre as opções e marca esta questão no histórico independente de chutes">
-    <span class="letter">🎲</span> Chute
+  // botão "Chute": agora é um TOGGLE — clica em "Chute" primeiro (fica
+  // destacado/armado), depois escolhe a resposta normalmente (Certo/Errado ou
+  // uma letra); a resposta escolhida é que entra no histórico de chutes,
+  // não uma resposta sorteada
+  const chuteArmadoAqui = chuteArmado === uidAtual;
+  const btnChutarHtml = `<button class="answer-opt ce-btn ce-chute ${chuteArmadoAqui?'armado':''}" id="btn-chute-armar" title="${chuteArmadoAqui?'Cancelar o chute':'Marcar que a próxima resposta é um chute — escolha Certo/Errado ou a alternativa normalmente em seguida'}">
+    <span class="letter">🎲</span> ${chuteArmadoAqui?'Chute armado ✓':'Chute'}
   </button>`;
+  const chuteHint = chuteArmadoAqui ? `<div class="chute-hint">🎲 Chute armado — agora escolha sua resposta</div>` : '';
   if(q.t === 'CE'){
     // respondida: fica só o botão escolhido — verde se acertou, vermelho se errou
     const opcoesCE = revelado ? ['Certo','Errado'].filter(opt => opt===resposta.picked) : ['Certo','Errado'];
-    optionsHtml = `<div class="ce-buttons-row">` + opcoesCE.map(opt=>{
+    optionsHtml = chuteHint + `<div class="ce-buttons-row">` + opcoesCE.map(opt=>{
       let cls='answer-opt ce-btn ' + (opt==='Certo' ? 'ce-certo' : 'ce-errado');
       if(revelado) cls += ' picked ' + (resposta.correct ? 'correct' : 'incorrect');
       if(riscadas.includes(opt)) cls+=' riscado';
@@ -95,8 +102,16 @@ function renderQuiz(){
       </button>`;
     }).join('') + (revelado ? chuteChip : btnChutarHtml) + `</div>`;
   } else if(q.t==='MC' && q.alt){
-    optionsHtml = q.alt.map(a=>{
+    optionsHtml = chuteHint + q.alt.map((a,idx)=>{
       const letraUp = a.letra.toUpperCase();
+      const customAlt = EDICOES_USUARIO[uidAtual] && EDICOES_USUARIO[uidAtual]['alt'+idx] && limparHtmlEditado(EDICOES_USUARIO[uidAtual]['alt'+idx]);
+      const textoHtml = customAlt || esc(a.texto);
+      if(emEdicaoAlt){
+        return `<div class="answer-opt-edit">
+          <span class="letter">${letraUp}</span>
+          <div class="campo-editavel-conteudo" contenteditable="true" id="conteudo-alt${idx}-${esc(uidAtual)}" style="flex:1;">${textoHtml}</div>
+        </div>`;
+      }
       let cls='answer-opt';
       if(revelado){
         const isPicked = letraUp===resposta.picked;
@@ -108,9 +123,9 @@ function renderQuiz(){
       }
       if(riscadas.includes(letraUp)) cls+=' riscado';
       return `<button class="${cls}" data-opt="${letraUp}" ${revelado?'disabled':''} title="2 cliques risca esta alternativa">
-        <span class="letter">${letraUp}</span> ${esc(a.texto)}
+        <span class="letter">${letraUp}</span> ${textoHtml}
       </button>`;
-    }).join('') + (revelado ? `<div class="chute-chip-row">${chuteChip}</div>` : btnChutarHtml);
+    }).join('') + (emEdicaoAlt ? '' : (revelado ? `<div class="chute-chip-row">${chuteChip}</div>` : btnChutarHtml));
   } else {
     optionsHtml = `<p style="font-size:13px;color:var(--ink-soft);padding:8px 0;">Questão sem gabarito identificado — não pontuável. Use as setas para navegar.</p>`;
   }
@@ -260,6 +275,14 @@ function editorToolbarHtml(uid){
     <button data-editar-acao="underline" title="Sublinhado"><u>U</u></button>
     <button data-editar-acao="strike" title="Tachado"><s>S</s></button>
     <span class="editor-toolbar-sep"></span>
+    <select data-editar-acao="fontsize" class="editor-font-size" title="Tamanho da fonte do trecho selecionado">
+      <option value="">Aa ▾</option>
+      <option value="13">Pequena</option>
+      <option value="17">Normal</option>
+      <option value="21">Grande</option>
+      <option value="26">Enorme</option>
+    </select>
+    <span class="editor-toolbar-sep"></span>
     <button data-editar-acao="highlight" data-cor="#fff3b0" class="swatch-amarelo" title="Grifar em amarelo"></button>
     <button data-editar-acao="highlight" data-cor="#c8e6c9" class="swatch-verde" title="Grifar em verde"></button>
     <button data-editar-acao="highlight" data-cor="#bbdefb" class="swatch-azul" title="Grifar em azul"></button>
@@ -336,7 +359,7 @@ function renderResolucao(q, resposta, quiz){
   `;
 }
 
-function pickAnswer(opt, isChute){
+function pickAnswer(opt){
   const quiz = STATE.quiz;
   if(!quiz) return; // clique atrasado (temporizador de duplo clique) após sair da sessão
   const uid = quiz.queue[quiz.idx];
@@ -345,7 +368,9 @@ function pickAnswer(opt, isChute){
   const correct = opt === gabaritoEfetivo(q);
   quiz.respostas[uid] = { picked: opt, correct };
   registrarResposta(quiz.materia, uid, correct);
-  if(isChute) toggleChute(quiz.materia, uid, correct);
+  // se o "Chute" estava armado pra esta questão, a resposta que acabou de ser
+  // escolhida é que entra no histórico de chutes — e desarma pra próxima
+  if(chuteArmado === uid){ toggleChute(quiz.materia, uid, correct); chuteArmado = null; }
   // finaliza sozinho assim que todas as questões da fila foram respondidas, em
   // qualquer ordem
   if(Object.keys(quiz.respostas).length >= quiz.queue.length){
@@ -356,42 +381,28 @@ function pickAnswer(opt, isChute){
   render();
 }
 
-// botão "Chute": sorteia uma opção válida (Certo/Errado, ou uma letra entre
-// as alternativas não riscadas, se houver alguma riscada) e responde com ela,
-// já marcando a questão no histórico independente de chutes — um único clique
-// em vez de escolher a resposta e depois marcar o chute à parte
-function pickChute(){
+// botão "Chute": armar/desarmar — não responde sozinho, só marca que a
+// PRÓXIMA escolha (Certo/Errado ou uma letra) deve contar como chute
+function toggleChuteArmado(){
   const quiz = STATE.quiz;
   if(!quiz) return;
   const uid = quiz.queue[quiz.idx];
   if(quiz.respostas[uid]) return;
-  const q = BY_UID[uid];
-  let opcoes;
-  if(q.t==='CE'){
-    opcoes = ['Certo','Errado'];
-  } else if(q.t==='MC' && q.alt){
-    opcoes = q.alt.map(a=>a.letra.toUpperCase());
-    const riscadas = (quiz.riscadas && quiz.riscadas[uid]) || [];
-    const naoRiscadas = opcoes.filter(o=>!riscadas.includes(o));
-    if(naoRiscadas.length) opcoes = naoRiscadas;
-  } else {
-    return;
-  }
-  const opt = opcoes[Math.floor(Math.random()*opcoes.length)];
-  pickAnswer(opt, true);
+  chuteArmado = (chuteArmado===uid) ? null : uid;
+  render();
 }
 
 function goPrev(){
   const quiz = STATE.quiz;
-  if(quiz.idx>0){ quiz.idx -= 1; salvarQuizEmAndamento(); render(); }
+  if(quiz.idx>0){ chuteArmado=null; quiz.idx -= 1; salvarQuizEmAndamento(); render(); }
 }
 function goNext(){
   const quiz = STATE.quiz;
-  if(quiz.idx < quiz.queue.length-1){ quiz.idx += 1; salvarQuizEmAndamento(); render(); }
+  if(quiz.idx < quiz.queue.length-1){ chuteArmado=null; quiz.idx += 1; salvarQuizEmAndamento(); render(); }
 }
 function goToQuestion(i){
   const quiz = STATE.quiz;
-  if(i>=0 && i<quiz.queue.length){ quiz.idx = i; salvarQuizEmAndamento(); render(); }
+  if(i>=0 && i<quiz.queue.length){ chuteArmado=null; quiz.idx = i; salvarQuizEmAndamento(); render(); }
 }
 
 // acha o índice, na fila atual, da última questão já respondida (percorrendo do

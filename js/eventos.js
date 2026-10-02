@@ -204,8 +204,8 @@ function attachHandlers(){
       toggleRiscarAlternativa(el.dataset.opt);
     });
   });
-  const btnChutarResponder = document.getElementById('btn-chute-responder');
-  if(btnChutarResponder) btnChutarResponder.addEventListener('click', pickChute);
+  const btnChutarArmar = document.getElementById('btn-chute-armar');
+  if(btnChutarArmar) btnChutarArmar.addEventListener('click', toggleChuteArmado);
   const btnPrev = document.getElementById('btn-prev');
   if(btnPrev) btnPrev.addEventListener('click', goPrev);
   const btnNextArrow = document.getElementById('btn-next-arrow');
@@ -263,6 +263,18 @@ function attachHandlers(){
             EDICOES_USUARIO[uid][campo] = limparHtmlEditado(div.innerHTML);
           }
         });
+        // múltipla escolha: salva também o texto editado de cada alternativa
+        // (campos "conteudo-alt{idx}-{uid}", um por letra)
+        const qSalva = BY_UID[uid];
+        if(qSalva && qSalva.t==='MC' && qSalva.alt){
+          qSalva.alt.forEach((a,idx)=>{
+            const div = document.getElementById(`conteudo-alt${idx}-${uid}`);
+            if(div){
+              if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
+              EDICOES_USUARIO[uid]['alt'+idx] = limparHtmlEditado(div.innerHTML);
+            }
+          });
+        }
         salvarEdicoesUsuario();
         // salvar a edição marca a matéria como pendente e envia pra nuvem na hora
         const qEditada = BY_UID[uid];
@@ -270,6 +282,24 @@ function attachHandlers(){
         edicaoAtual = null;
         render();
       }
+    });
+  });
+  // tamanho da fonte: usa o truque execCommand('fontSize','7') + troca o
+  // <font size="7"> resultante por um <span style="font-size:Npx">, porque o
+  // sanitizador (limparHtmlEditado) não deixa passar o atributo "size" solto
+  root.querySelectorAll('select[data-editar-acao="fontsize"]').forEach(el=>{
+    el.addEventListener('change', ()=>{
+      const px = el.value;
+      if(px){
+        document.execCommand('fontSize', false, '7');
+        document.querySelectorAll('[contenteditable="true"] font[size="7"]').forEach(f=>{
+          const span = document.createElement('span');
+          span.style.fontSize = px + 'px';
+          while(f.firstChild) span.appendChild(f.firstChild);
+          f.replaceWith(span);
+        });
+      }
+      el.value = '';
     });
   });
   const btnJumpUltimaRespondida = document.getElementById('btn-jump-ultima-respondida');
