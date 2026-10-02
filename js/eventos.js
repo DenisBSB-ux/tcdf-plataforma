@@ -204,6 +204,8 @@ function attachHandlers(){
       toggleRiscarAlternativa(el.dataset.opt);
     });
   });
+  const btnChutarResponder = document.getElementById('btn-chute-responder');
+  if(btnChutarResponder) btnChutarResponder.addEventListener('click', pickChute);
   const btnPrev = document.getElementById('btn-prev');
   if(btnPrev) btnPrev.addEventListener('click', goPrev);
   const btnNextArrow = document.getElementById('btn-next-arrow');

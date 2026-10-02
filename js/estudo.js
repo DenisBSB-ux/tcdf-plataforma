@@ -76,6 +76,13 @@ function renderQuiz(){
   const uidAtual = uid;
   const riscadas = (STATE.quiz.riscadas && STATE.quiz.riscadas[uidAtual]) || [];
   const gEfetivo = gabaritoEfetivo(q);
+  // chip "🎲 chute" mostrado no lugar do botão de chutar depois que a questão
+  // já foi respondida via chute (reaproveita o mesmo histórico independente)
+  const chuteChip = chuteMarcado(quiz.materia, uidAtual)
+    ? `<span class="review-chip review-study chute-chip-inline">🎲 chute</span>` : '';
+  const btnChutarHtml = `<button class="answer-opt ce-btn ce-chute" id="btn-chute-responder" title="Chutar: sorteia uma resposta entre as opções e marca esta questão no histórico independente de chutes">
+    <span class="letter">🎲</span> Chute
+  </button>`;
   if(q.t === 'CE'){
     // respondida: fica só o botão escolhido — verde se acertou, vermelho se errou
     const opcoesCE = revelado ? ['Certo','Errado'].filter(opt => opt===resposta.picked) : ['Certo','Errado'];
@@ -86,7 +93,7 @@ function renderQuiz(){
       return `<button class="${cls}" data-opt="${opt}" ${revelado?'disabled':''} title="${opt} (2 cliques risca)">
         <span class="letter">${opt==='Certo'?'✓':'✗'}</span>
       </button>`;
-    }).join('') + `</div>`;
+    }).join('') + (revelado ? chuteChip : btnChutarHtml) + `</div>`;
   } else if(q.t==='MC' && q.alt){
     optionsHtml = q.alt.map(a=>{
       const letraUp = a.letra.toUpperCase();
@@ -103,7 +110,7 @@ function renderQuiz(){
       return `<button class="${cls}" data-opt="${letraUp}" ${revelado?'disabled':''} title="2 cliques risca esta alternativa">
         <span class="letter">${letraUp}</span> ${esc(a.texto)}
       </button>`;
-    }).join('');
+    }).join('') + (revelado ? `<div class="chute-chip-row">${chuteChip}</div>` : btnChutarHtml);
   } else {
     optionsHtml = `<p style="font-size:13px;color:var(--ink-soft);padding:8px 0;">Questão sem gabarito identificado — não pontuável. Use as setas para navegar.</p>`;
   }
@@ -114,14 +121,16 @@ function renderQuiz(){
     // matéria na barra de baixo
     return `
     <div class="case-file focus-simple" style="zoom:${STATE.zoomLevel};">
-      ${revelado ? `<div class="tag-cobranca-corner">${cobrancaTag(q)}</div>` : ''}
       <div class="case-header">
         <div class="q-number-row">${bancaCargoAnoLine(q)}</div>
         ${q.tema && q.tema!=='Geral' ? `<div class="q-tema-line">${esc(q.tema)}</div>` : ''}
         <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
       </div>
       <div class="case-body">
-        <div class="enunciado">${blocoEnunciadoEditavel(q)}</div>
+        <div class="enunciado">
+          ${revelado ? `<div class="tag-cobranca-corner">${cobrancaTag(q)}</div>` : ''}
+          ${blocoEnunciadoEditavel(q)}
+        </div>
       </div>
       <div class="answers">${optionsHtml}</div>
       ${revelado ? `<div class="case-body focus-justificativa">${renderResolucao(q, resposta, quiz)}</div>` : ''}
@@ -153,7 +162,6 @@ function renderQuiz(){
 
   return `
   <div class="case-file">
-    ${revelado ? `<div class="tag-cobranca-corner">${cobrancaTag(q)}</div>` : ''}
     <div class="case-header">
       <div class="q-number-row">
         ${bancaCargoAnoLine(q)}
@@ -169,7 +177,10 @@ function renderQuiz(){
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
         <div class="case-body">
-          <div class="enunciado ${isInedita(q)?'is-inedita':''}">${blocoEnunciadoEditavel(q)}</div>
+          <div class="enunciado ${isInedita(q)?'is-inedita':''}">
+            ${revelado ? `<div class="tag-cobranca-corner">${cobrancaTag(q)}</div>` : ''}
+            ${blocoEnunciadoEditavel(q)}
+          </div>
         </div>
         <div class="answers">${optionsHtml}</div>
       </div>
@@ -325,7 +336,7 @@ function renderResolucao(q, resposta, quiz){
   `;
 }
 
-function pickAnswer(opt){
+function pickAnswer(opt, isChute){
   const quiz = STATE.quiz;
   if(!quiz) return; // clique atrasado (temporizador de duplo clique) após sair da sessão
   const uid = quiz.queue[quiz.idx];
@@ -334,6 +345,7 @@ function pickAnswer(opt){
   const correct = opt === gabaritoEfetivo(q);
   quiz.respostas[uid] = { picked: opt, correct };
   registrarResposta(quiz.materia, uid, correct);
+  if(isChute) toggleChute(quiz.materia, uid, correct);
   // finaliza sozinho assim que todas as questões da fila foram respondidas, em
   // qualquer ordem
   if(Object.keys(quiz.respostas).length >= quiz.queue.length){
@@ -342,6 +354,31 @@ function pickAnswer(opt){
   }
   salvarQuizEmAndamento();
   render();
+}
+
+// botão "Chute": sorteia uma opção válida (Certo/Errado, ou uma letra entre
+// as alternativas não riscadas, se houver alguma riscada) e responde com ela,
+// já marcando a questão no histórico independente de chutes — um único clique
+// em vez de escolher a resposta e depois marcar o chute à parte
+function pickChute(){
+  const quiz = STATE.quiz;
+  if(!quiz) return;
+  const uid = quiz.queue[quiz.idx];
+  if(quiz.respostas[uid]) return;
+  const q = BY_UID[uid];
+  let opcoes;
+  if(q.t==='CE'){
+    opcoes = ['Certo','Errado'];
+  } else if(q.t==='MC' && q.alt){
+    opcoes = q.alt.map(a=>a.letra.toUpperCase());
+    const riscadas = (quiz.riscadas && quiz.riscadas[uid]) || [];
+    const naoRiscadas = opcoes.filter(o=>!riscadas.includes(o));
+    if(naoRiscadas.length) opcoes = naoRiscadas;
+  } else {
+    return;
+  }
+  const opt = opcoes[Math.floor(Math.random()*opcoes.length)];
+  pickAnswer(opt, true);
 }
 
 function goPrev(){
