@@ -110,8 +110,10 @@ function renderQuiz(){
       <div class="case-header">
         <div class="q-number-row"><span class="q-meta-inline">${bancaCargoAnoLine(q)}</span></div>
         ${q.tema && q.tema!=='Geral' ? `<div class="q-tema-line">${esc(q.tema)}</div>` : ''}
-        ${revelado && cobrancaTag(q) ? `<div class="tag-row">${cobrancaTag(q)}</div>` : ''}
-        ${narrativaBancaBanner(q)}
+        <div class="tag-row">
+          ${revelado ? cobrancaTag(q) : ''}
+          ${narrativaBancaBanner(q)}
+        </div>
       </div>
       <div class="case-body">
         <div class="enunciado">${blocoEnunciadoEditavel(q)}</div>
@@ -155,8 +157,8 @@ function renderQuiz(){
         ${freqBadge(q.fr)}
         ${ineditaBadge(q)}
         ${revelado ? cobrancaTag(q) : ''}
+        ${narrativaBancaBanner(q)}
       </div>
-      ${narrativaBancaBanner(q)}
     </div>
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">

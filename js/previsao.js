@@ -178,6 +178,6 @@ function narrativaBancaBanner(q){
   const dica = 'Frequência: provas desta base (amostra) em que o assunto aparece.';
   return `<div class="narr-banner narr-estavel narr-numeros" title="${esc(dica)}">
     <span class="narr-icone">📊</span>
-    <span class="narr-texto"><b>Frequência:</b> ${d.nProvasComTema}/${d.totalProvas} provas (${_pct(d.frequencia)})</span>
+    <span class="narr-texto">${d.nProvasComTema}/${d.totalProvas} provas (${_pct(d.frequencia)})</span>
   </div>`;
 }

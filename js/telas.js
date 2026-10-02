@@ -329,7 +329,9 @@ function freqHistLine(fr){
 function bancaCargoAnoLine(q){
   const prova = identificarProva(q);
   if(prova){
-    const cargo = prova.cargo;
+    // descrição completa do cargo (não a versão truncada de identificarProva,
+    // que corta no primeiro "/" só pra fins de agrupar provas)
+    const cargo = cargoCurto(q.bc) || prova.cargo;
     return `<span class="lbl-inline">Banca:</span> ${esc(prova.banca)}`
       + (cargo ? ` &nbsp;·&nbsp; <span class="lbl-inline">Cargo:</span> ${esc(cargo)}` : '')
       + (prova.ano ? ` &nbsp;·&nbsp; <span class="lbl-inline">Ano:</span> ${prova.ano}` : '');
@@ -424,11 +426,11 @@ function analisarTemasDaMateriaCached(materiaKey){
 // faixa de cor (clara) pelo % de acerto: 95-100 azul, 90-94 verde, 80-89
 // amarelo, 1-79 vermelho; 0% (ou nada respondido) preto
 function faixaCorPct(pct, respondidas){
-  if(!respondidas || pct<=0) return { bg:'#1f1f1f', fg:'#d4d4d4', fgForte:'#f5f5f5' };
-  if(pct>=95) return { bg:'#dbeafe', fg:'#1e4f8f', fgForte:'#173e72' };
-  if(pct>=90) return { bg:'#dcfce7', fg:'#1e7d43', fgForte:'#166534' };
-  if(pct>=80) return { bg:'#fef3c7', fg:'#855b0e', fgForte:'#6f4b0a' };
-  return { bg:'#fee2e2', fg:'#a3352c', fgForte:'#8f2a22' };
+  if(!respondidas || pct<=0) return { bg:'#1f1f1f', fg:'#d4d4d4', fgForte:'#f5f5f5' }; // preto: 0
+  if(pct>=100) return { bg:'#dbeafe', fg:'#1e4f8f', fgForte:'#173e72' }; // azul: 100%
+  if(pct>=90) return { bg:'#dcfce7', fg:'#1e7d43', fgForte:'#166534' }; // verde: 90-99
+  if(pct>=80) return { bg:'#fef3c7', fg:'#855b0e', fgForte:'#6f4b0a' }; // amarelo: 80-89
+  return { bg:'#fee2e2', fg:'#a3352c', fgForte:'#8f2a22' }; // vermelho: 1-79
 }
 // anel compacto de acerto geral (certas x erradas), no canto superior direito
 // do card
