@@ -8,32 +8,23 @@ function renderImportarPage(){
       <div class="panel"><div class="pad">
         <div class="section-eyebrow">Anexação de novo processo</div>
         <h2 class="section-title">Importar questões (.txt)</h2>
-        ${fbAuth ? `<div class="import-conta" style="margin:8px 0 14px;max-width:360px;">${renderContaBlock()}</div>` : ''}
         <div class="import-field">
           <label>Nome da matéria (vira o nome da aba)</label>
           <input type="text" id="input-assunto-nome" placeholder="Ex.: Regimento Interno do TCDF" value="${esc(STATE.importDeckName)}">
         </div>
 
-        <div class="upload-zone" id="upload-zone">
-          <div class="glyph">📄</div>
-          <h3>Arraste o .txt, .pdf ou .md aqui</h3>
-          <p>ou escolha o arquivo abaixo</p>
-          <input type="file" id="file-input" accept=".txt,text/plain,.pdf,application/pdf,.md,text/markdown">
-        </div>
         <div class="upload-source-row">
           <button type="button" class="side-action-btn" id="btn-buscar-computador">💻 Buscar no computador</button>
+          <input type="file" id="file-input" accept=".txt,text/plain,.pdf,application/pdf,.md,text/markdown" style="display:none;">
         </div>
-        <p class="upload-source-note">Aceita arquivos .txt, .pdf ou .md. Em PDFs, o texto é extraído automaticamente — funciona bem com PDFs de texto selecionável; PDFs que são apenas imagens escaneadas (sem camada de texto) não são suportados. Arquivos .md devem seguir o formato gerado pelo botão "⬇ Baixar" de cada matéria (útil pra editar as questões num editor de texto e reimportar depois). Se o nome da matéria ficar em branco, ele será derivado do nome do arquivo.</p>
 
         ${STATE.importPendente ? renderImportPendente() : ''}
         ${STATE.importSemelhante ? renderImportSemelhante() : ''}
         ${STATE.importLog ? renderImportLog() : ''}
 
         ${renderAvisoMateriasDuplicadas()}
-        ${renderManutencaoUsuarios()}
         ${materiasImportadas.length ? `<div class="card-block" style="margin-top:24px;">
           <h3>Matérias</h3>
-          <p style="font-size:12px;color:var(--ink-soft);margin-bottom:14px;">Todas as matérias — inclusive as que já vêm com a plataforma — ficam disponíveis pra todo mundo automaticamente assim que importadas. Use "Inserir" pra adicionar questões novas a uma matéria já existente (sem apagar as antigas nem o histórico de progresso), ou "Remover" pra excluir a matéria por completo.</p>
           <input type="file" id="file-input-atualizar" accept=".txt,text/plain,.pdf,application/pdf,.md,text/markdown" style="display:none;">
           ${materiasImportadas.map(m=>{
             const n = ALL_QUESTIONS.filter(q=>q.materia===m).length;
@@ -48,15 +39,12 @@ function renderImportarPage(){
               <div class="name" style="${ativa?'font-weight:700;':''}">${ativa?'▸ ':''}${esc(m)}</div>
               <div class="pct" style="margin-right:8px;">${n} questão(ões)</div>
               <div style="font-size:11px;color:var(--ink-soft);margin-right:8px;line-height:1.4;">
-                ${ultimaAtualizacao ? `<div title="Última vez que o conteúdo (questões) desta matéria foi alterado e publicado na nuvem — responder questões não muda este horário">Questões atualizadas em ${formatarDataHoraSalvamento(ultimaAtualizacao)}</div>` : ''}
-                <div title="Última vez que você respondeu uma questão desta matéria (seu progresso é salvo automaticamente a cada resposta)">Última resposta: ${ultimaRespostaTs ? formatarDataHoraSalvamento(ultimaRespostaTs) : '—'}</div>
+                ${ultimaAtualizacao ? `<div title="Última vez que o conteúdo (questões) desta matéria foi alterado e publicado na nuvem — responder questões não muda este horário">🔄 Questões atualizadas em ${formatarDataHoraSalvamento(ultimaAtualizacao)}</div>` : ''}
+                <div title="Última vez que você respondeu uma questão desta matéria (seu progresso é salvo automaticamente a cada resposta)">🕒 Última resposta: ${ultimaRespostaTs ? formatarDataHoraSalvamento(ultimaRespostaTs) : '—'}</div>
               </div>
               <button class="btn-outline" data-download-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
               <button class="btn-outline" data-inserir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">➕ Inserir</button>
               ${numDuplicatas>0 ? `<button class="btn-outline" data-remover-duplicatas="${esc(m)}" style="padding:4px 10px;font-size:11px;border-color:var(--stamp-red);color:var(--stamp-red);" title="Detectadas questões repetidas (mesmo enunciado) dentro desta matéria — remove as cópias extras, mantendo o histórico de progresso">🧹 ${numDuplicatas} duplicata(s)</button>` : ''}
-              <button class="btn-outline" data-renomear-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Muda o nome de exibição desta matéria, mantendo as questões e o progresso">✏️ Renomear</button>
-              <button class="btn-outline" data-buscar-substituir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Corrige um texto/artefato que se repete em várias questões desta matéria (ex.: uma palavra ou trecho colado por engano na geração)">🔍 Buscar e substituir</button>
-              ${materiasImportadas.length>1 ? `<button class="btn-outline" data-mesclar-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Use se esta matéria for a MESMA coisa que outra, só com nome diferente (ex.: &quot;LO TCDF&quot; e &quot;Lei Orgânica do TCDF&quot;) — junta tudo numa só, mantendo a versão mais atual de cada questão e somando o progresso">🔗 Mesclar</button>` : ''}
               <button class="btn-outline" data-remover-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;">Remover</button>
               ${dedupInfo ? `<div style="flex-basis:100%;font-size:11px;margin-top:4px;color:var(--stamp-green, #3a9d5c);">✅ ${dedupInfo.removidas} questão(ões) duplicada(s) removida(s)${dedupInfo.publicadoOk===false?' (falha ao publicar na nuvem: '+esc(dedupInfo.motivoPublicacao||'')+' — já está salvo neste dispositivo)':''}.</div>` : ''}
             </div>`;
