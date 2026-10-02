@@ -404,18 +404,10 @@ function attachHandlers(){
   const btnVoltarLanding = document.getElementById('btn-voltar-landing');
   if(btnVoltarLanding) btnVoltarLanding.addEventListener('click', ()=>{ STATE.mostrarConfigSimulado = false; render(); });
 
-  const uploadZone = document.getElementById('upload-zone');
   const fileInput = document.getElementById('file-input');
   const assuntoInput = document.getElementById('input-assunto-nome');
   if(assuntoInput) assuntoInput.addEventListener('input', (e)=>{ STATE.importDeckName = e.target.value; });
-  if(uploadZone && fileInput){
-    uploadZone.addEventListener('click', ()=> fileInput.click());
-    uploadZone.addEventListener('dragover', (e)=>{ e.preventDefault(); uploadZone.classList.add('dragover'); });
-    uploadZone.addEventListener('dragleave', ()=> uploadZone.classList.remove('dragover'));
-    uploadZone.addEventListener('drop', (e)=>{
-      e.preventDefault(); uploadZone.classList.remove('dragover');
-      if(e.dataTransfer.files && e.dataTransfer.files[0]) handleImportFile(e.dataTransfer.files[0]);
-    });
+  if(fileInput){
     fileInput.addEventListener('change', (e)=>{
       if(e.target.files && e.target.files[0]) handleImportFile(e.target.files[0]);
     });
@@ -460,32 +452,6 @@ function attachHandlers(){
   root.querySelectorAll('[data-salvar-materia]').forEach(el=>{
     el.addEventListener('click', ()=> salvarMateriaAgora(el.dataset.salvarMateria));
   });
-  root.querySelectorAll('[data-buscar-substituir-materia]').forEach(el=>{
-    el.addEventListener('click', ()=> buscarSubstituirMateria(el.dataset.buscarSubstituirMateria));
-  });
-  root.querySelectorAll('[data-mesclar-materia]').forEach(el=>{
-    el.addEventListener('click', async ()=>{
-      const nomeOrigem = el.dataset.mesclarMateria;
-      const outras = materiasGerenciaveis().filter(m=>m!==nomeOrigem);
-      if(outras.length===0) return;
-      const lista = outras.map((m,i)=>`${i+1}) ${m}`).join('\n');
-      const escolha = window.prompt(`Mesclar "${nomeOrigem}" em qual matéria? Digite o número:\n\n${lista}\n\nA matéria "${nomeOrigem}" deixará de existir; suas questões e progresso passam pra matéria escolhida (mantendo a versão mais atual de cada questão repetida).`);
-      if(escolha===null) return;
-      const idx = parseInt(escolha.trim(), 10) - 1;
-      if(isNaN(idx) || idx<0 || idx>=outras.length){ alert('Número inválido.'); return; }
-      const nomeDestino = outras[idx];
-      const ok = window.confirm(`Confirma mesclar "${nomeOrigem}" em "${nomeDestino}"? Essa ação não pode ser desfeita automaticamente.`);
-      if(!ok) return;
-      el.disabled = true;
-      el.textContent = '⏳ Mesclando…';
-      const resultado = await mesclarMaterias(nomeOrigem, nomeDestino);
-      if(!resultado.ok){ alert('Não foi possível mesclar: ' + (resultado.motivo||'motivo desconhecido')); render(); return; }
-      STATE.dedupInfo = null;
-      render();
-    });
-  });
-  const btnLimparOutros = document.getElementById('btn-limpar-outros-usuarios');
-  if(btnLimparOutros) btnLimparOutros.addEventListener('click', limparOutrosUsuarios);
   root.querySelectorAll('[data-mesclar-par-origem]').forEach(el=>{
     el.addEventListener('click', async ()=>{
       const nomeOrigem = el.dataset.mesclarParOrigem;
@@ -500,13 +466,6 @@ function attachHandlers(){
   });
   const btnSalvarTudo = root.querySelector('#btn-salvar-tudo');
   if(btnSalvarTudo) btnSalvarTudo.addEventListener('click', ()=> salvarTudoAgora());
-  root.querySelectorAll('[data-renomear-materia]').forEach(el=>{
-    el.addEventListener('click', async ()=>{
-      const nomeAtual = el.dataset.renomearMateria;
-      const nomeNovo = window.prompt(`Novo nome para "${nomeAtual}":`, nomeAtual);
-      if(nomeNovo!==null) await renomearMateria(nomeAtual, nomeNovo);
-    });
-  });
   const fileInputAtualizar = document.getElementById('file-input-atualizar');
   root.querySelectorAll('[data-download-materia]').forEach(el=>{
     el.addEventListener('click', ()=> downloadListaQuestoes(el.dataset.downloadMateria));
