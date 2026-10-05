@@ -349,10 +349,7 @@ function attachHandlers(){
   });
 
   root.querySelectorAll('[data-deck]').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      selectedDeck = el.dataset.deck;
-      render();
-    });
+    el.addEventListener('click', ()=> trocarBaralhoFlash(el.dataset.deck));
   });
   const btnIniciarFlash = document.getElementById('btn-iniciar-flash');
   if(btnIniciarFlash) btnIniciarFlash.addEventListener('click', startFlashDeck);

@@ -498,7 +498,7 @@ function renderEstatisticasPorMateria(){
       </div>
     </div>
     <div style="height:10px;"></div>
-    ${renderTabelaEstatisticas(linhas, estiloCelula)}
+    <div class="tabela-scroll">${renderTabelaEstatisticas(linhas, estiloCelula)}</div>
   </div>
   `;
 }

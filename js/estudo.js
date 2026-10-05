@@ -144,7 +144,7 @@ function renderQuiz(){
         <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
       </div>
       <div class="case-body">
-        <div class="enunciado">
+        <div class="enunciado ${revelado?'com-selo':''}">
           ${revelado ? `<div class="tag-cobranca-corner">${cobrancaTag(q)}</div>` : ''}
           ${blocoEnunciadoEditavel(q)}
         </div>
@@ -163,7 +163,9 @@ function renderQuiz(){
           <button class="icon-btn" id="btn-focus-toggle" title="Sair do modo foco">✕</button>
           <button class="theme-toggle-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro" style="width:36px;height:36px;">${STATE.theme==='light'?'🌙':'☀️'}</button>
           ${renderZoomControl()}
-          ${renderProgressoMateriaToolbar(quiz.materia)}
+        </div>
+        <div class="toolbar-meta-row">
+          <span class="toolbar-meta-info">${renderProgressoMateriaToolbar(quiz.materia)}</span>
         </div>
       </div>
     </div>
@@ -194,7 +196,7 @@ function renderQuiz(){
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
         <div class="case-body">
-          <div class="enunciado ${isInedita(q)?'is-inedita':''}">
+          <div class="enunciado ${isInedita(q)?'is-inedita':''} ${revelado?'com-selo':''}">
             ${revelado ? `<div class="tag-cobranca-corner">${cobrancaTag(q)}</div>` : ''}
             ${blocoEnunciadoEditavel(q)}
           </div>
@@ -220,12 +222,14 @@ function renderQuiz(){
         <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
         <span class="toolbar-divider"></span>
         ${renderZoomControl()}
-        ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvo automaticamente neste aparelho a cada resposta">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
-        ${(()=>{ const e = estadoSincronizacaoProgresso(); return `<span id="indicador-nuvem" class="indicador-nuvem ${e.classe}" title="${esc(e.texto)}">${e.icone}</span>`; })()}
-        ${renderProgressoMateriaToolbar(quiz.materia)}
       </div>
       <div class="toolbar-meta-row">
         <div class="progress-bar" style="max-width:220px;"><div class="fill" style="width:${progressPct}%"></div></div>
+        <span class="toolbar-meta-info">
+          ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvo automaticamente neste aparelho a cada resposta">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
+          ${(()=>{ const e = estadoSincronizacaoProgresso(); return `<span id="indicador-nuvem" class="indicador-nuvem ${e.classe}" title="${esc(e.texto)}">${e.icone}</span>`; })()}
+          ${renderProgressoMateriaToolbar(quiz.materia)}
+        </span>
       </div>
     </div>
     ${quiz.queue.length>1 ? `
@@ -861,41 +865,48 @@ function gabaritoDestacado(g){
   return `<span class="gab-destaque gab-letra">${esc(g)}</span>`;
 }
 
+// tela única: baralho (filtro) + card ficam na MESMA tela — sem etapa
+// separada de "Começar revisão". A faixa de filtro fica sempre visível acima
+// do card e trocar de chip já reconstrói o baralho e mostra a 1ª carta.
 function renderFlashcards(){
-  if(!STATE.flashDeck){
-    const escopoQ = questoesFiltradas();
-    const bucket = STATE.materia ? getBucket(STATE.materia) : { flash:{}, perguntas:{} };
-    const revisar = escopoQ.filter(q=>bucket.flash[q.uid] && bucket.flash[q.uid].status==='revisar').length;
-    const naoVistas = escopoQ.filter(q=>!bucket.flash[q.uid]).length;
-    const erradasFlash = escopoQ.filter(q=>bucket.perguntas[q.uid] && bucket.perguntas[q.uid].ultimoResultado===false).length;
-    // se o baralho selecionado anteriormente não existe mais nesta matéria/assunto
-    // (ex.: era "erradas" mas agora não há nenhuma errada aqui), volta pra "todas" —
-    // evita clicar em "Começar revisão" e cair num baralho diferente do que aparece
-    // visualmente marcado na tela
-    if(selectedDeck==='erradas' && erradasFlash===0) selectedDeck = 'todas';
+  const escopoQ = questoesFiltradas();
+  const bucket = STATE.materia ? getBucket(STATE.materia) : { flash:{}, perguntas:{} };
+  const revisar = escopoQ.filter(q=>bucket.flash[q.uid] && bucket.flash[q.uid].status==='revisar').length;
+  const naoVistas = escopoQ.filter(q=>!bucket.flash[q.uid]).length;
+  const erradasFlash = escopoQ.filter(q=>bucket.perguntas[q.uid] && bucket.perguntas[q.uid].ultimoResultado===false).length;
+  // se o baralho selecionado anteriormente não existe mais nesta matéria/assunto
+  // (ex.: era "erradas" mas agora não há nenhuma errada aqui), volta pra "todas"
+  if(selectedDeck==='erradas' && erradasFlash===0) selectedDeck = 'todas';
+
+  // garante que sempre exista um baralho pronto pra matéria/assunto atuais —
+  // monta sozinho na primeira vez (ou quando a matéria mudou), sem precisar
+  // de clique prévio
+  if(!STATE.flashDeck || STATE.flashDeck.materia !== STATE.materia || STATE.flashDeck.escopoAssunto !== STATE.tema){
+    buildFlashDeck();
+  }
+
+  const filtroHtml = `
+    <div class="flash-filtros">
+      <span class="chip ${selectedDeck==='todas'?'selected':''}" data-deck="todas">Todas (${escopoQ.length})</span>
+      <span class="chip ${selectedDeck==='revisar'?'selected':''}" data-deck="revisar">Revisar (${revisar})</span>
+      <span class="chip ${selectedDeck==='novas'?'selected':''}" data-deck="novas">Não vistas (${naoVistas})</span>
+      ${erradasFlash>0 ? `<span class="chip ${selectedDeck==='erradas'?'selected':''}" data-deck="erradas">Erradas (${erradasFlash})</span>` : ''}
+    </div>`;
+
+  if(escopoQ.length===0){
     return `
     <div class="section-eyebrow">${esc(STATE.materia||'')}</div>
     <h2 class="section-title">Flashcards</h2>
-    <p class="section-desc">Cada carta traz o enunciado na frente e o resumo flash com o gabarito no verso. Marque como "sei" ou "revisar" para focar seus estudos.</p>
-    <div class="setup-grid">
-      <div class="field">
-        <label>Baralho${STATE.tema!=='todos'?` — ${esc(STATE.tema)}`:''}</label>
-        <div class="chip-row">
-          <span class="chip ${selectedDeck==='todas'?'selected':''}" data-deck="todas">Todas as questões (${escopoQ.length})</span>
-          <span class="chip ${selectedDeck==='revisar'?'selected':''}" data-deck="revisar">Marcadas para revisar (${revisar})</span>
-          <span class="chip ${selectedDeck==='novas'?'selected':''}" data-deck="novas">Ainda não vistas (${naoVistas})</span>
-          ${erradasFlash>0 ? `<span class="chip ${selectedDeck==='erradas'?'selected':''}" data-deck="erradas">Erradas (${erradasFlash})</span>` : ''}
-        </div>
-      </div>
-    </div>
-    <button class="btn btn-primary" id="btn-iniciar-flash">Começar revisão →</button>
+    <p class="section-desc">Nenhuma questão disponível neste escopo para gerar flashcards.</p>
     `;
   }
+
   const deck = STATE.flashDeck;
   const uid = deck.uids[deck.idx];
   const q = BY_UID[uid];
-  const bucket = getBucket(deck.materia);
-  const status = bucket.flash[uid] && bucket.flash[uid].status;
+  const bucketD = getBucket(deck.materia);
+  const status = bucketD.flash[uid] && bucketD.flash[uid].status;
+  const progressPct = pct(deck.idx+1, deck.uids.length);
 
   // edição do flashcard: reaproveita a mesma infraestrutura de edição das
   // questões (EDICOES_USUARIO, editorToolbarHtml, limparHtmlEditado) — o
@@ -909,7 +920,14 @@ function renderFlashcards(){
 
   return `
   <div class="flash-stage">
-    <div class="flash-counter">CARTA ${deck.idx+1} DE ${deck.uids.length} · QUESTÃO Nº ${q.n}${q.tema && q.tema!=='Geral'?` · ${esc(q.tema)}`:''} ${renderZoomControl()}</div>
+    <div class="section-eyebrow">${esc(STATE.materia||'')}</div>
+    <h2 class="section-title">Flashcards</h2>
+    ${filtroHtml}
+    <div class="flash-header">
+      <div class="flash-counter">CARTA ${deck.idx+1} DE ${deck.uids.length} · QUESTÃO Nº ${q.n}${q.tema && q.tema!=='Geral'?` · ${esc(q.tema)}`:''}</div>
+      ${renderZoomControl()}
+    </div>
+    <div class="progress-bar flash-progress"><div class="fill" style="width:${progressPct}%"></div></div>
     <div class="flashcard ${deck.flipped?'flipped':''} ${emEdicao?'editando':''}" id="flashcard">
       <div class="flashcard-inner">
         <div class="flashcard-face flashcard-front">
@@ -917,6 +935,7 @@ function renderFlashcards(){
           ${emEdicao
             ? `<div class="flashcard-edit-area">${editorToolbarHtml(uid)}<div class="campo-editavel-conteudo" contenteditable="true" id="conteudo-q-${esc(uid)}">${qHtml}</div></div>`
             : `<div class="q-text" style="zoom:${STATE.zoomLevel};">${qHtml}</div>`}
+          ${emEdicao ? '' : `<div class="flip-badge" title="Clique na carta ou tecle espaço/enter para virar">🔄 virar</div>`}
         </div>
         <div class="flashcard-face flashcard-back">
           <span class="lbl">Resumo flash</span>
@@ -927,22 +946,32 @@ function renderFlashcards(){
         </div>
       </div>
     </div>
-    <div class="flip-hint">${emEdicao ? 'clique na carta (fora do texto) pra ver o outro lado enquanto edita' : 'clique na carta ou tecle espaço/enter para virar · ← → para navegar'}</div>
+    <div class="flip-hint">${emEdicao ? 'clique na carta (fora do texto) pra ver o outro lado enquanto edita' : '← → para navegar · espaço/enter para virar'}</div>
     <div class="flash-controls">
-      <button class="icon-btn" id="btn-flash-prev" title="Carta anterior" ${deck.idx===0 || emEdicao?'disabled':''}>←</button>
-      ${emEdicao ? '' : `<button class="btn btn-ghost btn-sm" id="btn-editar-flash" data-uid="${esc(uid)}" title="Editar o enunciado e o resumo flash deste flashcard">✏️ Editar flashcard</button>`}
-      <button class="btn btn-ghost btn-sm" id="btn-flash-revisar" ${emEdicao?'disabled':''}>Marcar: revisar</button>
-      <button class="btn btn-gold btn-sm" id="btn-flash-sei" ${emEdicao?'disabled':''}>Marcar: sei</button>
-      <button class="icon-btn" id="btn-flash-next-arrow" title="Próxima carta" ${deck.idx===deck.uids.length-1 || emEdicao?'disabled':''}>→</button>
+      <div class="flash-controls-nav">
+        <button class="icon-btn" id="btn-flash-prev" title="Carta anterior" ${deck.idx===0 || emEdicao?'disabled':''}>←</button>
+        ${emEdicao ? '' : `<button class="icon-btn" id="btn-editar-flash" data-uid="${esc(uid)}" title="Editar o enunciado e o resumo flash deste flashcard">✏️</button>`}
+      </div>
+      <div class="flash-controls-marcar">
+        <button class="btn btn-ghost btn-sm" id="btn-flash-revisar" ${emEdicao?'disabled':''}>Marcar: revisar</button>
+        <button class="btn btn-gold btn-sm" id="btn-flash-sei" ${emEdicao?'disabled':''}>Marcar: sei</button>
+      </div>
+      <div class="flash-controls-nav">
+        <button class="icon-btn" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
+        <button class="icon-btn" id="btn-flash-next-arrow" title="Próxima carta" ${deck.idx===deck.uids.length-1 || emEdicao?'disabled':''}>→</button>
+      </div>
     </div>
-    <button class="btn btn-primary btn-sm" id="btn-flash-finalizar" style="margin-top:14px;" ${emEdicao?'disabled':''}>Encerrar baralho</button>
-    <button class="icon-btn" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}" style="margin-top:10px;">${STATE.focusMode?'✕':'◉'}</button>
+    <button class="btn btn-ghost btn-sm" id="btn-flash-finalizar" style="margin-top:12px;" ${emEdicao?'disabled':''}>Encerrar baralho</button>
   </div>
   `;
 }
 
 let selectedDeck = 'todas';
-function startFlashDeck(){
+// monta STATE.flashDeck a partir do filtro atual (selectedDeck) — sem
+// disparar render() sozinho, pra poder ser chamada tanto no meio de uma
+// renderização (renderFlashcards, quando falta baralho) quanto a partir de
+// um clique (que aí chama render() por conta própria)
+function buildFlashDeck(){
   const escopoQ = questoesFiltradas();
   const bucket = getBucket(STATE.materia);
   let uids;
@@ -956,7 +985,16 @@ function startFlashDeck(){
     uids = escopoQ.map(q=>q.uid);
   }
   if(uids.length===0) uids = escopoQ.map(q=>q.uid);
-  STATE.flashDeck = { uids: shuffle(uids), idx:0, flipped:false, materia: STATE.materia };
+  STATE.flashDeck = { uids: shuffle(uids), idx:0, flipped:false, materia: STATE.materia, escopoAssunto: STATE.tema };
+}
+// clique num chip de filtro: troca o baralho na hora, sem etapa intermediária
+function trocarBaralhoFlash(deckKey){
+  selectedDeck = deckKey;
+  buildFlashDeck();
+  render();
+}
+function startFlashDeck(){
+  buildFlashDeck();
   render();
 }
 
