@@ -86,8 +86,10 @@ function renderQuiz(){
   // uma letra); a resposta escolhida é que entra no histórico de chutes,
   // não uma resposta sorteada
   const chuteArmadoAqui = chuteArmado === uidAtual;
+  // sem texto no botão — só o dado 🎲 (destacado em dourado quando armado);
+  // mesmo tamanho dos demais botões de resposta (herda .ce-btn/.answer-opt)
   const btnChutarHtml = `<button class="answer-opt ce-btn ce-chute ${chuteArmadoAqui?'armado':''}" id="btn-chute-armar" title="${chuteArmadoAqui?'Cancelar o chute':'Marcar que a próxima resposta é um chute — escolha Certo/Errado ou a alternativa normalmente em seguida'}">
-    <span class="letter">🎲</span> ${chuteArmadoAqui?'Chute armado ✓':'Chute'}
+    <span class="letter">🎲</span>
   </button>`;
   const chuteHint = chuteArmadoAqui ? `<div class="chute-hint">🎲 Chute armado — agora escolha sua resposta</div>` : '';
   if(q.t === 'CE'){
@@ -275,12 +277,16 @@ function editorToolbarHtml(uid){
     <button data-editar-acao="underline" title="Sublinhado"><u>U</u></button>
     <button data-editar-acao="strike" title="Tachado"><s>S</s></button>
     <span class="editor-toolbar-sep"></span>
-    <select data-editar-acao="fontsize" class="editor-font-size" title="Tamanho da fonte do trecho selecionado">
+    <select data-editar-acao="fontsize" class="editor-font-size" title="Tamanho da fonte (em pixels) do trecho selecionado">
       <option value="">Aa ▾</option>
-      <option value="13">Pequena</option>
-      <option value="17">Normal</option>
-      <option value="21">Grande</option>
-      <option value="26">Enorme</option>
+      <option value="12">12</option>
+      <option value="14">14</option>
+      <option value="16">16</option>
+      <option value="18">18</option>
+      <option value="20">20</option>
+      <option value="24">24</option>
+      <option value="28">28</option>
+      <option value="32">32</option>
     </select>
     <span class="editor-toolbar-sep"></span>
     <button data-editar-acao="highlight" data-cor="#fff3b0" class="swatch-amarelo" title="Grifar em amarelo"></button>
