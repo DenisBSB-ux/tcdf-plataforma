@@ -40,6 +40,9 @@ body{
   min-height:100vh;
   -webkit-font-smoothing:antialiased;
   transition:background .2s;
+  /* evita rolagem horizontal da página inteira caso algum elemento pontual
+     ainda use largura fixa maior que a tela num aparelho estreito */
+  overflow-x:hidden;
 }
 
 body.theme-light{
@@ -502,7 +505,7 @@ body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
   padding-left:16px;
 }
 
-.case-body{ padding:28px 30px 10px; position:relative; }
+.case-body{ padding:20px 30px 10px; position:relative; }
 .enunciado{
   position:relative;
   font-size:13pt;
@@ -512,10 +515,12 @@ body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
   background:#fffcf3;
   border:1px solid #f0e6c4;
   border-radius:8px;
-  /* padding-top maior: reserva espaço pro selo "tag-cobranca-corner" que fica
-     presado no canto superior esquerdo desta caixa, sem encostar no texto */
-  padding:34px 18px 16px;
+  padding:16px 18px;
 }
+/* só reserva o espaço extra do topo quando o selo "tag-cobranca-corner" de
+   fato está presente (depois de revelar a resposta) — antes disso a reserva
+   fixa de 34px só criava um vão vazio acima do enunciado, sem nada ali */
+.enunciado.com-selo{ padding-top:34px; }
 .banca{
   font-size:12.5px;
   color:var(--ink-soft);
@@ -564,9 +569,12 @@ body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
 .answer-opt.riscado .letter{ text-decoration:line-through; }
 
 /* ---------- Certo/Errado lado a lado — neutros até serem selecionados ---------- */
-.ce-buttons-row{ display:flex; gap:10px; max-width:320px; }
-.ce-buttons-row .ce-btn{ flex:1; justify-content:center; text-align:center; padding:10px 12px; }
-.ce-btn .letter{ font-size:17px; font-weight:400; }
+/* grade de botões iguais e maiores (em vez da faixa estreita de 320px) — usa
+   toda a largura disponível na coluna do enunciado, como Certo/Errado/Chute
+   em 3 colunas de mesmo tamanho */
+.ce-buttons-row{ display:flex; gap:12px; }
+.ce-buttons-row .ce-btn{ flex:1; justify-content:center; text-align:center; padding:16px 12px; min-height:54px; }
+.ce-btn .letter{ font-size:19px; font-weight:400; }
 .ce-btn.ce-certo .letter{ color:#5a8f6f; }
 .ce-btn.ce-certo:hover{ border-color:var(--stamp-green); }
 .ce-btn.ce-errado .letter{ color:#b4675a; }
@@ -721,11 +729,12 @@ body:not(.theme-light) .kw-gabarito{ color:var(--gold-bright); }
   border-bottom:2px solid var(--stamp-red); padding-bottom:1px;
 }
 body:not(.theme-light) .kw-decisivo{ color:#ff8a7a; border-bottom-color:#ff8a7a; }
-.campo-editavel-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.campo-editavel-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
 .campo-editavel-acoes{ display:flex; gap:6px; }
 .btn-editar-campo, .btn-restaurar-campo, .btn-corrigir-gabarito{
   font-family:var(--font-mono); font-size:11px; background:none; cursor:pointer;
   border:1px solid var(--paper-line); border-radius:6px; padding:3px 8px; color:var(--ink-soft);
+  opacity:.75;
 }
 .btn-editar-campo:hover, .btn-restaurar-campo:hover, .btn-corrigir-gabarito:hover{ background:var(--paper-dim); }
 .editor-toolbar{
@@ -863,11 +872,20 @@ body:not(.theme-light) .stat-card{ border-top-color:var(--gold-bright); }
 /* ---------- flashcards ---------- */
 .flash-stage{
   display:flex; flex-direction:column; align-items:center; padding:10px 0 26px;
+  width:100%;
+}
+/* faixa de filtro (baralho) sempre visível — troca de chip reconstrói o
+   baralho na hora, sem tela separada de "Começar revisão" */
+.flash-filtros{ display:flex; flex-wrap:wrap; gap:7px; margin:10px 0 18px; justify-content:center; }
+.flash-header{
+  width:100%; max-width:720px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+  margin-bottom:8px;
 }
 .flash-counter{
-  font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); margin-bottom:16px; letter-spacing:.05em;
-  display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;
+  font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); letter-spacing:.05em;
 }
+.flash-progress{ width:100%; max-width:720px; margin-bottom:16px; }
 .flashcard{
   width:100%; max-width:720px; height:380px;
   perspective:1400px;
@@ -898,6 +916,13 @@ body:not(.theme-light) .stat-card{ border-top-color:var(--gold-bright); }
   font-size:13pt; line-height:1.6; color:#1a1610; white-space:pre-line;
   max-height:280px; overflow:auto;
 }
+/* indicador discreto de "esta carta vira" — substitui a dica só-texto por um
+   selo visível no canto da própria carta */
+.flip-badge{
+  position:absolute; bottom:12px; right:14px;
+  font-family:var(--font-mono); font-size:10px; letter-spacing:.04em;
+  color:var(--ink-soft); opacity:.55; pointer-events:none;
+}
 .flashcard-edit-area{ display:flex; flex-direction:column; gap:8px; height:100%; min-height:0; }
 .flashcard-edit-area .campo-editavel-conteudo{
   flex:1; min-height:0; overflow:auto; text-align:left;
@@ -924,7 +949,14 @@ body:not(.theme-light) .stat-card{ border-top-color:var(--gold-bright); }
 .gab-destaque.gab-letra{ background:var(--gold); color:var(--navy-950); }
 .flip-hint{ font-size:11px; color:var(--ink-soft); margin-top:12px; font-family:var(--font-mono); letter-spacing:.04em;}
 
-.flash-controls{ display:flex; gap:10px; margin-top:20px; }
+/* 3 grupos: navegação (esq) · ação principal "marcar" em destaque no centro ·
+   navegação/foco (dir) — separa claramente o que é navegar do que é avaliar */
+.flash-controls{
+  display:flex; align-items:center; justify-content:center; gap:16px;
+  margin-top:20px; flex-wrap:wrap; width:100%; max-width:720px;
+}
+.flash-controls-nav{ display:flex; align-items:center; gap:8px; }
+.flash-controls-marcar{ display:flex; align-items:center; gap:10px; }
 
 .review-chip{
   position:absolute; top:14px; right:14px;
@@ -1030,7 +1062,11 @@ body.focus-mode .app{ padding-top:14px; max-width:1240px; }
 .q-jump-label{
   font-family:var(--font-mono); font-size:12px; color:var(--ink-soft); min-width:56px; text-align:center;
 }
-.toolbar-meta-row{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+/* 2ª linha do rodapé: barra de progresso à esquerda, status/estatísticas à
+   direita — separa o que é AÇÃO (linha 1, ícones) do que é INFORMAÇÃO (linha
+   2), em vez de amontoar tudo numa única faixa densa */
+.toolbar-meta-row{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; justify-content:space-between; }
+.toolbar-meta-info{ display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-left:auto; }
 .icon-btn{
   width:36px; height:36px;
   border-radius:8px;
@@ -1403,11 +1439,59 @@ body:not(.theme-light) .landing-cta{ background:rgba(255,255,255,0.05); }
 }
 .paste-area textarea:focus{ outline:none; border-color:var(--gold); }
 
-@media (max-width:560px){
-  .letterhead{ flex-direction:column; align-items:flex-start; }
-  .snapshot{ gap:14px; }
+/* ---------- responsivo: tablet/celular ---------- */
+/* "tabela" de estatísticas por matéria usa larguras fixas em px por coluna —
+   em vez de espremer/quebrar o conteúdo, rola horizontalmente a partir daqui */
+.tabela-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.tabela-scroll > div{ min-width:560px; }
+
+/* tablet (retrato) */
+@media (max-width:1024px){
+  .app{ padding:16px 18px 32px; }
+}
+
+@media (max-width:820px){
+  .app{ padding:14px 14px 28px; }
+}
+
+/* celular */
+@media (max-width:640px){
+  .app{ padding:10px 10px 26px; }
+  .letterhead{ flex-direction:column; align-items:flex-start; gap:12px; }
+  .snapshot{ gap:14px; flex-wrap:wrap; }
+  .snapshot .stat{ min-width:56px; }
+
+  /* toques maiores (alvo mínimo recomendado ~40px) */
+  .icon-btn{ width:40px; height:40px; }
+  .theme-toggle-btn{ width:40px; height:40px; }
+
+  .case-header{ padding:12px 14px; }
+  .case-body{ padding:16px 16px 6px; }
+  .answers{ padding:6px 16px 22px; }
+  .case-col-right{ padding:22px 18px; }
+  .quiz-toolbar{ padding:12px 14px; }
+  .enunciado{ font-size:12.5pt; padding:14px 14px; }
+  .answer-opt{ padding:13px 14px; font-size:12.5pt; }
+
+  /* rodapé: ainda duas linhas, mas o grupo de status quebra abaixo da
+     barra de progresso em vez de espremer tudo na mesma largura */
+  .toolbar-meta-row{ justify-content:flex-start; }
+  .toolbar-meta-info{ margin-left:0; width:100%; justify-content:flex-start; }
+
   .flashcard{ height:340px; }
   .flashcard.editando{ height:400px; }
+  .flash-controls{ flex-direction:column; gap:12px; }
+  .flash-controls-marcar{ width:100%; justify-content:center; }
+  .flash-controls-marcar .btn{ flex:1; justify-content:center; }
+
+  h1.title{ font-size:20px; }
+  .section-title{ font-size:17px; }
+}
+
+/* celular pequeno */
+@media (max-width:420px){
+  .ce-buttons-row{ gap:8px; }
+  .ce-buttons-row .ce-btn{ padding:13px 8px; min-height:48px; }
 }
 /* ---------- impressão ---------- */
 #print-area{ display:none; }
