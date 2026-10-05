@@ -577,16 +577,11 @@ body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
 .ce-btn.incorrect{ border-color:var(--stamp-red); background:#f7d9d3; }
 .ce-btn.incorrect .letter{ color:var(--stamp-red); }
 @media (max-width:480px){ .ce-buttons-row{ flex-direction:column; } }
-/* botão "Chute": sorteia uma resposta e já marca a questão no histórico de
-   chutes — mesma forma dos outros botões de resposta, cor âmbar própria pra
-   não ser confundido com Certo/Errado nem com as alternativas */
-.ce-btn.ce-chute, .answer-opt.ce-chute{
-  font-size:13px; font-weight:600; gap:6px; color:#8a6a1c;
-  border-style:dashed;
-}
-.ce-btn.ce-chute .letter, .answer-opt.ce-chute .letter{ font-size:16px; color:inherit; }
+/* botão "Chute": arma/desarma o próximo clique de resposta como chute — sem
+   rótulo de texto, só o dado 🎲, e MESMO tamanho dos demais botões de
+   resposta (herda .ce-btn/.answer-opt sem overrides de fonte/borda) */
+.ce-btn.ce-chute, .answer-opt.ce-chute{ color:#8a6a1c; }
 .ce-btn.ce-chute:hover, .answer-opt.ce-chute:hover{ border-color:var(--gold); background:#fffaf0; }
-.answer-opt.ce-chute{ margin-top:4px; max-width:220px; }
 .chute-chip-row{ margin-top:8px; }
 .chute-chip-row:empty{ display:none; }
 .chute-chip-inline{ position:static; display:inline-flex; align-items:center; }
@@ -1273,7 +1268,7 @@ body:not(.theme-light) .panel{ background:var(--black-800); }
 body:not(.theme-light) .case-file{ background:var(--black-800); }
 body:not(.theme-light) .focus-justificativa{ border-top-color:rgba(255,255,255,0.14); }
 body:not(.theme-light) .case-header{ background:var(--black-900); border-bottom-color:rgba(255,255,255,0.12); }
-body:not(.theme-light) .q-meta-inline{ color:#fff; }
+body:not(.theme-light) .q-meta-inline, body:not(.theme-light) .q-meta-line{ color:#fff; }
 body:not(.theme-light) .q-historico-badge{ background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.16); color:#c9d3e6; }
 body:not(.theme-light) .q-tema-line{ color:#b89ae0; }
 body:not(.theme-light) .case-col-left{ background:var(--black-800); border-right-color:rgba(255,255,255,0.12); }
