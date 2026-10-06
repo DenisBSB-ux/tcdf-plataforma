@@ -487,6 +487,10 @@ body:not(.theme-light) .tag-cobranca-T{ color:#e0b865; }
 body:not(.theme-light) .tag-cobranca-R{ color:#8fd1a3; }
 body:not(.theme-light) .tag-cobranca-H, body:not(.theme-light) .tag-cobranca-I{ color:#c3a6e6; }
 body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
+/* rótulo de "tipo de cobrança" ainda não classificado — caderno de erros/chutes
+   (ver cobranca.js: só parte das matérias tem COBRANCA preenchido; isso torna
+   visível, por questão, o que falta classificar, em vez de simplesmente sumir) */
+.tag-cobranca-ausente{ text-transform:none; letter-spacing:0; font-size:11px; color:var(--ink-soft); border:1px dashed var(--paper-line); border-radius:4px; padding:1px 6px; }
 .tag-inedita{
   background:#fff3b0;
   border:2px solid #b23a2e;
