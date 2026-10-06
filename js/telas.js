@@ -96,7 +96,12 @@ function extrairBancaECargo(bc){
   if(!bc) return { banca:'—', cargo:'' };
   const txt = String(bc).trim();
 
-  const mHifen = txt.match(/^([^,\/]+?)\s+-\s+(.+\/.+)$/);
+  // aceita hífen comum "-", en dash "–" e em dash "—" como separador —
+  // material gerado em Markdown normalmente usa "—" (ex.: "CEBRASPE (CESPE)
+  // — AJ (TJ PA)/TJ PA/Direito/2025"); antes só "-" era reconhecido, e esse
+  // formato caía no branch de barra genérico (sem banca antes), que pegava o
+  // órgão como banca e a ÁREA (ex.: "Direito") como se fosse o cargo inteiro
+  const mHifen = txt.match(/^([^,\/]+?)\s+[-–—]\s+(.+\/.+)$/);
   if(mHifen){
     const banca = mHifen[1].trim() || '—';
     const partes = mHifen[2].trim().split('/').map(p=>p.trim()).filter(Boolean);
