@@ -23,6 +23,7 @@ let STATE = {
   ordemMaterias: ordemMateriasSalva(),
   ordemSimulado: ordemSimuladoSalva(),
   viewImportar: false,
+  viewAuditoria: false,
   tema: 'todos',
   tabByMateria: {},
   quiz: null,
@@ -137,7 +138,7 @@ function tendenciaCurta(td){
 }
 function anosDisponiveis(){
   const set = new Set();
-  scoreableFiltradas().forEach(q=>{ if(q.ar) set.add(String(q.ar)); });
+  scoreableFiltradas().forEach(q=>{ const a = anoRealDaQuestao(q); if(a) set.add(String(a)); });
   return Array.from(set).sort();
 }
 function bancasDisponiveis(){
@@ -216,7 +217,7 @@ function render(){
     ${STATE.focusMode ? '' : renderLetterhead()}
     ${STATE.focusMode ? '' : renderAvisoSyncAusente()}
     ${STATE.avisoStorage ? renderAvisoStorage() : ''}
-    ${STATE.viewImportar || ALL_QUESTIONS.length===0 ? renderImportarPage() : renderMateriaPage()}
+    ${STATE.viewAuditoria ? renderAuditoriaPage() : (STATE.viewImportar || ALL_QUESTIONS.length===0 ? renderImportarPage() : renderMateriaPage())}
     ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)} · Versão ${esc(window.__TCDF_BUILD__.versao)} (${esc(window.__TCDF_BUILD__.build)}) · armazenamento: ${esc(STORAGE_MODE==='local' ? 'IndexedDB' : STORAGE_MODE)}</div>`}
   `;
   attachHandlers();
@@ -344,7 +345,7 @@ function bancaCargoAnoLine(q){
     ano = prova.ano;
   } else {
     banca = bancaCurta(q.bc);
-    ano = q.ar || (q.an && q.an.length ? Math.max(...q.an) : null);
+    ano = anoRealDaQuestao(q) || (q.an && q.an.length ? Math.max(...q.an) : null);
     cargo = cargoCurto(q.bc);
     // remove um ano já embutido no fim do texto do cargo (ex.: "Agente
     // Administrativo — 2025") pra não duplicar com a linha "Ano:" seguinte
@@ -373,13 +374,18 @@ function incidenciaSimbolo(q){
 // para decidir o que conta como "últimos dois anos" nos dados daquela matéria
 function anoMaisRecente(materiaKey){
   let max = 0;
-  ALL_QUESTIONS.forEach(q=>{ if((!materiaKey || q.materia===materiaKey) && q.ar && q.ar>max) max=q.ar; });
+  ALL_QUESTIONS.forEach(q=>{
+    if(materiaKey && q.materia!==materiaKey) return;
+    const a = anoRealDaQuestao(q);
+    if(a && a>max) max=a;
+  });
   return max;
 }
 function tendenciaQuente(q){
-  if(!q.td || q.td.indexOf('↑')===-1 || !q.ar) return false;
+  const anoQ = anoRealDaQuestao(q);
+  if(!q.td || q.td.indexOf('↑')===-1 || !anoQ) return false;
   const maxAno = anoMaisRecente(q.materia);
-  return maxAno>0 && q.ar >= maxAno-1;
+  return maxAno>0 && anoQ >= maxAno-1;
 }
 function alertaTendenciaTag(q){
   if(!tendenciaQuente(q)) return '';
@@ -397,6 +403,156 @@ function isInedita(q){
 function ineditaBadge(q){
   if(!isInedita(q)) return '';
   return `<span class="tag tag-inedita" title="Questão gerada por IA para completar o simulado — não é de banca real">🟥🟨 INÉDITA 🟨🟥</span>`;
+}
+
+/* ================= AUDITORIA DE DADOS (todas as matérias) =================
+   Varre TODAS as questões reais (não-inéditas) de TODAS as matérias já
+   importadas neste aparelho/conta, procurando os mesmos tipos de problema
+   encontrados manualmente na v131/v132: ano divergente, cargo que parece ser
+   só a área/matéria (sem cargo/órgão de verdade) e banca não identificada.
+   Não corrige nada sozinha — só aponta, pra decisão humana sobre cada caso. */
+// áreas/disciplinas genéricas comuns em concursos — se o "cargo" extraído for
+// EXATAMENTE uma destas (sem nenhum pedaço de órgão/sigla junto), é sinal de
+// que a área vazou pro campo de cargo em vez do cargo de verdade
+const AREAS_GENERICAS_SUSPEITAS = [
+  'direito','contabilidade','administração','administracao','economia',
+  'engenharia','tecnologia da informação','ti','gestão','gestao','finanças',
+  'financas','previdência','previdencia','auditoria','contábeis','contabeis',
+];
+function auditarDados(){
+  const porMateria = {};
+  const divergenciasAno = [];
+  const cargosSuspeitos = [];
+  const bancasAusentes = [];
+  const semGabarito = [];
+
+  ALL_QUESTIONS.forEach(q=>{
+    if(isInedita(q)) return; // inéditas não têm banca/cargo real — fora do escopo
+    if(!porMateria[q.materia]) porMateria[q.materia] = { total:0, divergenciaAno:0, cargoSuspeito:0, bancaAusente:0, semGabarito:0 };
+    const stat = porMateria[q.materia];
+    stat.total++;
+
+    const anoEmbutido = anoRealDaQuestao(q);
+    if(q.ar && anoEmbutido && q.ar !== anoEmbutido){
+      stat.divergenciaAno++;
+      divergenciasAno.push({ uid:q.uid, materia:q.materia, n:q.n, bc:q.bc, arSalvo:q.ar, anoEmbutido });
+    }
+
+    const { banca, cargo } = extrairBancaECargo(q.bc);
+    if(!banca || banca==='—'){
+      stat.bancaAusente++;
+      bancasAusentes.push({ uid:q.uid, materia:q.materia, n:q.n, bc:q.bc });
+    }
+    const cargoNorm = (cargo||'').trim().toLowerCase();
+    const pareceArea = !!cargoNorm && AREAS_GENERICAS_SUSPEITAS.includes(cargoNorm);
+    if(!cargo || pareceArea){
+      stat.cargoSuspeito++;
+      cargosSuspeitos.push({ uid:q.uid, materia:q.materia, n:q.n, bc:q.bc, cargoExtraido: cargo||'(vazio)' });
+    }
+
+    if(!q.g){
+      stat.semGabarito++;
+      semGabarito.push({ uid:q.uid, materia:q.materia, n:q.n, bc:q.bc });
+    }
+  });
+
+  return { porMateria, divergenciasAno, cargosSuspeitos, bancasAusentes, semGabarito };
+}
+function gerarMarkdownAuditoria(rel){
+  const materias = Object.keys(rel.porMateria).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  let md = `# Auditoria de dados — TCDF Plataforma\n\nGerado em ${new Date().toLocaleString('pt-BR')}\n\n`;
+  md += `## Resumo por matéria\n\n| Matéria | Total | Ano divergente | Cargo suspeito | Banca ausente | Sem gabarito |\n|---|---|---|---|---|---|\n`;
+  materias.forEach(m=>{
+    const s = rel.porMateria[m];
+    md += `| ${m} | ${s.total} | ${s.divergenciaAno} | ${s.cargoSuspeito} | ${s.bancaAusente} | ${s.semGabarito} |\n`;
+  });
+  function secao(titulo, itens){
+    md += `\n## ${titulo} (${itens.length})\n\n`;
+    if(itens.length===0){ md += `Nenhuma ocorrência.\n`; return; }
+    itens.forEach(it=>{
+      md += `- **${it.materia}** · Q${it.n} · \`${it.bc||''}\``;
+      if(it.arSalvo!==undefined) md += ` — ano salvo: ${it.arSalvo}, ano correto (da Banca/Cargo): ${it.anoEmbutido}`;
+      if(it.cargoExtraido!==undefined) md += ` — cargo extraído: "${it.cargoExtraido}"`;
+      md += `\n`;
+    });
+  }
+  secao('Ano salvo ≠ ano escrito na linha Banca/Cargo', rel.divergenciasAno);
+  secao('Cargo extraído parece ser só a área/matéria (sem cargo/órgão reais)', rel.cargosSuspeitos);
+  secao('Banca não identificada', rel.bancasAusentes);
+  secao('Sem gabarito identificado', rel.semGabarito);
+  return md;
+}
+function downloadRelatorioAuditoria(){
+  const rel = auditarDados();
+  const md = gerarMarkdownAuditoria(rel);
+  const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `auditoria-dados-${new Date().toISOString().slice(0,10)}.md`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function renderAuditoriaPage(){
+  const rel = auditarDados();
+  const materias = Object.keys(rel.porMateria).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const totalQ = materias.reduce((s,m)=>s+rel.porMateria[m].total,0);
+  const totalProblemas = rel.divergenciasAno.length + rel.cargosSuspeitos.length + rel.bancasAusentes.length + rel.semGabarito.length;
+
+  const linhasTabela = materias.map(m=>{
+    const s = rel.porMateria[m];
+    const temProblema = (s.divergenciaAno+s.cargoSuspeito+s.bancaAusente+s.semGabarito) > 0;
+    return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${temProblema?'#fbeeec':'#eef6f0'};border-left:4px solid ${temProblema?'var(--stamp-red)':'var(--stamp-green)'};border-radius:4px;padding:8px 10px 8px 12px;margin-bottom:6px;">
+      <div style="flex:1;min-width:120px;font-weight:600;font-size:13px;">${esc(m)}</div>
+      <div style="width:76px;text-align:right;font-size:11.5px;" title="Questões reais auditadas">${s.total} quest.</div>
+      <div style="width:70px;text-align:right;font-size:11.5px;" title="Ano salvo divergente do ano escrito na linha Banca/Cargo">📅 ${s.divergenciaAno}</div>
+      <div style="width:70px;text-align:right;font-size:11.5px;" title="Cargo extraído parece ser só a área/matéria, sem cargo/órgão">🧑‍💼 ${s.cargoSuspeito}</div>
+      <div style="width:60px;text-align:right;font-size:11.5px;" title="Banca não identificada">🏢 ${s.bancaAusente}</div>
+      <div style="width:60px;text-align:right;font-size:11.5px;" title="Sem gabarito identificado">❓ ${s.semGabarito}</div>
+    </div>`;
+  }).join('');
+
+  function listaDetalhe(titulo, itens, icone){
+    if(itens.length===0) return '';
+    return `<details style="margin-top:14px;">
+      <summary style="cursor:pointer;font-weight:600;font-size:13px;">${icone} ${esc(titulo)} (${itens.length})</summary>
+      <div style="margin-top:8px;max-height:320px;overflow:auto;font-family:var(--font-mono);font-size:11.5px;border:1px solid var(--paper-line);border-radius:6px;">
+        ${itens.slice(0,300).map(it=>`<div style="padding:5px 8px;border-bottom:1px solid var(--paper-line);">
+          <b>${esc(it.materia)}</b> · Q${it.n} · <span style="opacity:.75;">${esc(it.bc||'')}</span>
+          ${it.arSalvo!==undefined ? ` — salvo: <b>${it.arSalvo}</b>, correto: <b>${it.anoEmbutido}</b>` : ''}
+          ${it.cargoExtraido!==undefined ? ` — cargo extraído: <b>${esc(it.cargoExtraido)}</b>` : ''}
+        </div>`).join('')}
+        ${itens.length>300 ? `<div style="padding:6px 8px;opacity:.7;">… e mais ${itens.length-300} (baixe o relatório completo).</div>` : ''}
+      </div>
+    </details>`;
+  }
+
+  return `
+  <div class="section-eyebrow">Diagnóstico</div>
+  <h2 class="section-title">🔍 Auditoria de dados</h2>
+  <p class="section-desc">Verifica, em TODAS as matérias já importadas neste aparelho/conta, o mesmo tipo de inconsistência de banca/cargo/ano encontrado e corrigido na v131/v132. Não corrige nada sozinha — só aponta, pra você decidir caso a caso.</p>
+  <div class="card-block" style="margin-top:16px;">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
+      <div class="stat-chip" style="background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;">
+        <div style="font-size:11px;color:var(--ink-soft);">Questões reais auditadas</div>
+        <div style="font-size:16px;font-weight:700;">${totalQ}</div>
+      </div>
+      <div class="stat-chip" style="background:${totalProblemas>0?'#fbeeec':'#eef6f0'};border-radius:8px;padding:8px 12px;">
+        <div style="font-size:11px;color:var(--ink-soft);">Ocorrências encontradas</div>
+        <div style="font-size:16px;font-weight:700;color:${totalProblemas>0?'var(--stamp-red)':'var(--stamp-green)'};">${totalProblemas}</div>
+      </div>
+    </div>
+    ${linhasTabela || '<p style="font-size:12.5px;color:var(--ink-soft);">Nenhuma questão real encontrada ainda — importe alguma matéria primeiro.</p>'}
+    ${listaDetalhe('Ano salvo ≠ ano escrito na linha Banca/Cargo', rel.divergenciasAno, '📅')}
+    ${listaDetalhe('Cargo extraído parece ser só a área/matéria (sem cargo/órgão reais)', rel.cargosSuspeitos, '🧑‍💼')}
+    ${listaDetalhe('Banca não identificada', rel.bancasAusentes, '🏢')}
+    ${listaDetalhe('Sem gabarito identificado', rel.semGabarito, '❓')}
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
+      <button class="btn btn-ghost btn-sm" id="btn-baixar-auditoria">⬇ Baixar relatório completo (.md)</button>
+      <button class="btn btn-ghost btn-sm" id="btn-voltar-materia">← Voltar</button>
+    </div>
+  </div>
+  `;
 }
 
 // extrai referências legais citadas num texto (artigos, súmulas, leis), pra
@@ -685,7 +841,7 @@ function renderLetterhead(){
 function renderMateriaTopStrip(){
   const materias = materiasDisponiveis();
   const aberto = STATE.materiaMenuAberto;
-  const labelAtual = STATE.viewImportar ? '+ Importar questões' : (STATE.materia || 'Selecione uma matéria');
+  const labelAtual = STATE.viewAuditoria ? '🔍 Auditoria de dados' : (STATE.viewImportar ? '+ Importar questões' : (STATE.materia || 'Selecione uma matéria'));
   return `<div class="sidebar-block"><div class="sb-pad">
     <button type="button" class="assunto-toggle" id="btn-toggle-materia-menu">
       <span class="sidebar-label" style="margin-bottom:0;">Matéria</span>
@@ -694,9 +850,10 @@ function renderMateriaTopStrip(){
     <div class="assunto-atual-label">${esc(labelAtual)}</div>
     ${aberto ? `<div class="subject-tabs" style="margin-top:10px;">
       <button class="subject-tab ${STATE.viewImportar?'active':''}" data-macro-importar="1">+ Importar questões</button>
+      <button class="subject-tab ${STATE.viewAuditoria?'active':''}" data-macro-auditoria="1" title="Verifica banca/cargo/ano inconsistentes em TODAS as matérias importadas">🔍 Auditoria de dados</button>
       ${materias.map(m=>{
         const n = ALL_QUESTIONS.filter(q=>q.materia===m && !q.duplicataOculta).length;
-        const ativo = !STATE.viewImportar && STATE.materia===m;
+        const ativo = !STATE.viewImportar && !STATE.viewAuditoria && STATE.materia===m;
         const s = computeSnapshotMateria(m);
         const statsTxt = (s.ac+s.erradas)>0 ? `${s.taxa}% · ${s.ac} certas · ${s.erradas} erradas · ${s.totalPontuavel} total` : `${s.totalPontuavel} pontuáveis · ainda sem tentativas`;
         return `<button class="subject-tab materia-tab-btn ${ativo?'active':''}" data-macro-materia="${esc(m)}">
@@ -995,7 +1152,7 @@ function pool(){
   const setup = getSetup(STATE.materia);
   return scoreableFiltradas().filter(q =>
     setup.niveis.has(q.nv) &&
-    !setup.anosExcluidos.has(String(q.ar||'')) &&
+    !setup.anosExcluidos.has(String(anoRealDaQuestao(q)||'')) &&
     !setup.bancasExcluidas.has(bancaCurta(q.bc)) &&
     !setup.cargosExcluidos.has(cargoCurto(q.bc)) &&
     !setup.tendenciasExcluidas.has(tendenciaCurta(q.td)) &&

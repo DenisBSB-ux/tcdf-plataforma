@@ -42,6 +42,7 @@ function attachHandlers(){
       STATE.materia = novaMateria;
       STATE.tema = 'todos';
       STATE.viewImportar = false;
+      STATE.viewAuditoria = false;
       STATE.flashDeck = null;
       STATE.setupDrawerOpen = false;
       STATE.mostrarConfigSimulado = false;
@@ -53,7 +54,11 @@ function attachHandlers(){
     });
   });
   const btnMacroImportar = document.querySelector('[data-macro-importar]');
-  if(btnMacroImportar) btnMacroImportar.addEventListener('click', ()=>{ STATE.viewImportar = true; STATE.importLog = null; STATE.materiaMenuAberto = false; render(); });
+  if(btnMacroImportar) btnMacroImportar.addEventListener('click', ()=>{ STATE.viewImportar = true; STATE.viewAuditoria = false; STATE.importLog = null; STATE.materiaMenuAberto = false; render(); });
+  const btnMacroAuditoria = document.querySelector('[data-macro-auditoria]');
+  if(btnMacroAuditoria) btnMacroAuditoria.addEventListener('click', ()=>{ STATE.viewAuditoria = true; STATE.viewImportar = false; STATE.materiaMenuAberto = false; render(); });
+  const btnBaixarAuditoria = document.getElementById('btn-baixar-auditoria');
+  if(btnBaixarAuditoria) btnBaixarAuditoria.addEventListener('click', downloadRelatorioAuditoria);
 
   const btnExportarProgresso = document.getElementById('btn-exportar-progresso');
   if(btnExportarProgresso) btnExportarProgresso.addEventListener('click', exportarProgresso);
@@ -87,7 +92,7 @@ function attachHandlers(){
   if(btnDispensarAvisoSync) btnDispensarAvisoSync.addEventListener('click', ()=>{ STATE.avisoSyncDispensado = true; render(); });
 
   const btnVoltarMateria = document.getElementById('btn-voltar-materia');
-  if(btnVoltarMateria) btnVoltarMateria.addEventListener('click', ()=>{ STATE.viewImportar = false; render(); });
+  if(btnVoltarMateria) btnVoltarMateria.addEventListener('click', ()=>{ STATE.viewImportar = false; STATE.viewAuditoria = false; render(); });
 
   root.querySelectorAll('[data-local-tab]').forEach(el=>{
     el.addEventListener('click', ()=>{
