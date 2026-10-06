@@ -941,6 +941,39 @@ async function loadProgress(){
   // matérias públicas (publicadas pelo administrador) aparecem para TODOS os usuários,
   // conectados ou não a um código de sincronização pessoal
   await sincronizarMateriasPublicas();
+
+  // CORREÇÃO DE DADOS (não só de exibição): grava no próprio campo "ar" o ano
+  // real da questão (o ano embutido no texto de Banca/Cargo — anoRealDaQuestao,
+  // ver nucleo.js). Até aqui, só a EXIBIÇÃO usava anoRealDaQuestao(); o campo
+  // salvo (q.ar) continuava com o valor antigo (às vezes o ano em que a
+  // questão foi importada/gerada, não o ano da prova). Autoexecuta uma vez por
+  // abertura: se não houver nada desatualizado (já corrigido antes, ou matéria
+  // recém-importada já usa o ano certo desde o parser — ver importacao.js),
+  // não faz nada e nenhum aviso aparece.
+  await corrigirCamposAnoDesatualizados();
+}
+
+async function corrigirCamposAnoDesatualizados(){
+  const materiasAfetadas = new Set();
+  let corrigidas = 0;
+  ALL_QUESTIONS.forEach(q=>{
+    if(q.origem !== 'importado') return; // matérias nativas (embutidas) não têm esse campo solto
+    const anoReal = anoRealDaQuestao(q);
+    if(anoReal && q.ar !== anoReal){
+      q.ar = anoReal;
+      corrigidas++;
+      materiasAfetadas.add(q.materia);
+    }
+  });
+  if(corrigidas===0) return;
+  reindex();
+  await saveCustomQuestions();
+  // marca as matérias afetadas como atualizadas: o ciclo de autosave de 5min
+  // (ver init.js) publica a correção na nuvem respeitando a cota do Firestore,
+  // do mesmo jeito que qualquer outra edição local
+  materiasAfetadas.forEach(m => marcarMateriaAtualizada(m));
+  const nomes = Array.from(materiasAfetadas).join(', ');
+  STATE.avisoCorrecaoAno = `Campo "Ano" corrigido em ${corrigidas} questão${corrigidas===1?'':'es'} (${nomes}) — o valor salvo estava desatualizado; agora reflete o ano real da prova, já presente na própria lista (ano embutido em Banca/Cargo). A correção foi salva neste aparelho e será publicada na nuvem no próximo ciclo automático.`;
 }
 
 // Busca matérias publicadas por outros dispositivos. Roda na abertura e

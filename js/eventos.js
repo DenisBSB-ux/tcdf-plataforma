@@ -29,6 +29,8 @@ function attachHandlers(){
   });
   const btnDispensarAviso = document.getElementById('btn-dispensar-aviso-storage');
   if(btnDispensarAviso) btnDispensarAviso.addEventListener('click', ()=>{ STATE.avisoStorage = null; render(); });
+  const btnDispensarAvisoAno = document.getElementById('btn-dispensar-aviso-correcao-ano');
+  if(btnDispensarAvisoAno) btnDispensarAvisoAno.addEventListener('click', ()=>{ STATE.avisoCorrecaoAno = null; render(); });
   const btnToggleMateriaMenu = document.getElementById('btn-toggle-materia-menu');
   if(btnToggleMateriaMenu) btnToggleMateriaMenu.addEventListener('click', ()=>{ STATE.materiaMenuAberto = !STATE.materiaMenuAberto; render(); });
   root.querySelectorAll('[data-macro-materia]').forEach(el=>{

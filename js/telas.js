@@ -58,6 +58,7 @@ let STATE = {
   salvandoTudo: false,
   ultimoSalvamentoGeral: null,
   avisoStorage: null,
+  avisoCorrecaoAno: null,
   importPendente: null,
   dedupInfo: null,
 };
@@ -217,6 +218,7 @@ function render(){
     ${STATE.focusMode ? '' : renderLetterhead()}
     ${STATE.focusMode ? '' : renderAvisoSyncAusente()}
     ${STATE.avisoStorage ? renderAvisoStorage() : ''}
+    ${STATE.avisoCorrecaoAno ? renderAvisoCorrecaoAno() : ''}
     ${STATE.viewAuditoria ? renderAuditoriaPage() : (STATE.viewImportar || ALL_QUESTIONS.length===0 ? renderImportarPage() : renderMateriaPage())}
     ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)} · Versão ${esc(window.__TCDF_BUILD__.versao)} (${esc(window.__TCDF_BUILD__.build)}) · armazenamento: ${esc(STORAGE_MODE==='local' ? 'IndexedDB' : STORAGE_MODE)}</div>`}
   `;
@@ -230,6 +232,16 @@ function renderAvisoStorage(){
     <span>⚠️ ${esc(STATE.avisoStorage)}</span>
     <button id="btn-tentar-salvar-de-novo" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer;font-size:12px;">Tentar salvar de novo</button>
     <button id="btn-dispensar-aviso-storage" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer;font-size:12px;">Dispensar</button>
+  </div>`;
+}
+
+// Banner informativo (não é erro): aparece uma única vez, na abertura em que
+// corrigirCamposAnoDesatualizados() (nuvem.js) de fato corrige algum campo
+// "Ano" desatualizado. Dispensável; não volta a aparecer depois de corrigido.
+function renderAvisoCorrecaoAno(){
+  return `<div style="position:sticky;top:0;z-index:500;background:#1f6f43;color:#fff;padding:10px 16px;font-size:13px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+    <span>✅ ${esc(STATE.avisoCorrecaoAno)}</span>
+    <button id="btn-dispensar-aviso-correcao-ano" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer;font-size:12px;">Dispensar</button>
   </div>`;
 }
 
