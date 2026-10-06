@@ -15,7 +15,12 @@
    simulado junta L e T no grupo "Lei seca".
 
    Matérias classificadas: RJU LC840 (piloto), Administrativo (geral) (299 questões),
-   Lei 14.133 (220 questões), Direito Civil (210 questões). */
+   Lei 14.133 (220 questões), Direito Civil (210 questões), Regimento Interno (200 questões).
+   Regimento Interno classificado a partir do arquivo enviado em 2026-10-06 (versão com
+   corrupções pontuais — "4X Conselheiros" etc. — mantida por instrução expressa do usuário,
+   que fará a correção textual depois); questões 105, 106 e 110 ficam com "?" porque o número
+   citado no enunciado está corrompido no arquivo-fonte (o valor da Resolução foi usado como
+   referência, mas a contagem exata não pôde ser confirmada letra a letra). */
 
 const COBRANCA_TIPOS = {
   L: ['📜', 'Literal', 'Cópia do texto da lei (lei seca)'],
@@ -139,6 +144,27 @@ const COBRANCA = {
   'direito-civil-181':'L', 'direito-civil-182':'L', 'direito-civil-183':'L', 'direito-civil-184':'L', 'direito-civil-185':'L', 'direito-civil-186':'L', 'direito-civil-187':'L', 'direito-civil-188':'L', 'direito-civil-189':'L', 'direito-civil-190':'T:ext',
   'direito-civil-191':'T:inv', 'direito-civil-192':'L', 'direito-civil-193':'T:inv', 'direito-civil-194':'L', 'direito-civil-195':'J', 'direito-civil-196':'L', 'direito-civil-197':'L', 'direito-civil-198':'L', 'direito-civil-199':'L', 'direito-civil-200':'L',
   'direito-civil-201':'L', 'direito-civil-202':'T:inv', 'direito-civil-203':'L', 'direito-civil-204':'L', 'direito-civil-205':'L', 'direito-civil-206':'L', 'direito-civil-207':'T:inv', 'direito-civil-208':'J', 'direito-civil-209':'J', 'direito-civil-210':'J',
+
+  'reg-interno-1':'T:inv', 'reg-interno-2':'L', 'reg-interno-3':'L', 'reg-interno-4':'J:inv', 'reg-interno-5':'T:mis', 'reg-interno-6':'L', 'reg-interno-7':'H', 'reg-interno-8':'L', 'reg-interno-9':'L', 'reg-interno-10':'H',
+  'reg-interno-11':'L', 'reg-interno-12':'T:inv', 'reg-interno-13':'T:ext', 'reg-interno-14':'L', 'reg-interno-15':'T:inv', 'reg-interno-16':'I', 'reg-interno-17':'L', 'reg-interno-18':'L', 'reg-interno-19':'T:inv', 'reg-interno-20':'L',
+  'reg-interno-21':'T:num', 'reg-interno-22':'T:inv', 'reg-interno-23':'L', 'reg-interno-24':'T:mis', 'reg-interno-25':'L', 'reg-interno-26':'T:mis', 'reg-interno-27':'H', 'reg-interno-28':'H:num', 'reg-interno-29':'L', 'reg-interno-30':'T:inv',
+  'reg-interno-31':'H:inv', 'reg-interno-32':'T:inv', 'reg-interno-33':'T:mis', 'reg-interno-34':'H:num', 'reg-interno-35':'T:mis', 'reg-interno-36':'H', 'reg-interno-37':'T:ext', 'reg-interno-38':'L', 'reg-interno-39':'L', 'reg-interno-40':'T:num',
+  'reg-interno-41':'L', 'reg-interno-42':'T:inv', 'reg-interno-43':'L', 'reg-interno-44':'T:mis', 'reg-interno-45':'L', 'reg-interno-46':'L', 'reg-interno-47':'L', 'reg-interno-48':'L', 'reg-interno-49':'T:mis', 'reg-interno-50':'T:mis',
+  'reg-interno-51':'T:inv', 'reg-interno-52':'L', 'reg-interno-53':'L', 'reg-interno-54':'T:mis', 'reg-interno-55':'T:num', 'reg-interno-56':'L', 'reg-interno-57':'T:inv', 'reg-interno-58':'L', 'reg-interno-59':'L', 'reg-interno-60':'T:mis',
+  'reg-interno-61':'T:inv', 'reg-interno-62':'T:num', 'reg-interno-63':'L', 'reg-interno-64':'H', 'reg-interno-65':'L', 'reg-interno-66':'H', 'reg-interno-67':'T:ter', 'reg-interno-68':'T:inv', 'reg-interno-69':'L', 'reg-interno-70':'L',
+  'reg-interno-71':'L', 'reg-interno-72':'T:mis', 'reg-interno-73':'L', 'reg-interno-74':'L', 'reg-interno-75':'L', 'reg-interno-76':'T:mis', 'reg-interno-77':'L', 'reg-interno-78':'L', 'reg-interno-79':'L', 'reg-interno-80':'T:ter',
+  'reg-interno-81':'T:inv', 'reg-interno-82':'L', 'reg-interno-83':'L', 'reg-interno-84':'L', 'reg-interno-85':'T:num', 'reg-interno-86':'T:inv', 'reg-interno-87':'T:mis', 'reg-interno-88':'L', 'reg-interno-89':'L', 'reg-interno-90':'L',
+  'reg-interno-91':'L', 'reg-interno-92':'L', 'reg-interno-93':'T:inv', 'reg-interno-94':'L', 'reg-interno-95':'L', 'reg-interno-96':'L', 'reg-interno-97':'T:inv', 'reg-interno-98':'L', 'reg-interno-99':'T:inv', 'reg-interno-100':'T:mis',
+  'reg-interno-101':'T:inv', 'reg-interno-102':'T:ter', 'reg-interno-103':'L', 'reg-interno-104':'T:inv', 'reg-interno-105':'T:num?', 'reg-interno-106':'T:num?', 'reg-interno-107':'T:ext', 'reg-interno-108':'T:mis', 'reg-interno-109':'T:inv', 'reg-interno-110':'T:num?',
+  'reg-interno-111':'L', 'reg-interno-112':'T:inv', 'reg-interno-113':'T:ter', 'reg-interno-114':'T:inv', 'reg-interno-115':'T:ter', 'reg-interno-116':'T:inv', 'reg-interno-117':'T:mis', 'reg-interno-118':'T:inv', 'reg-interno-119':'T:inv', 'reg-interno-120':'T:inv',
+  'reg-interno-121':'L', 'reg-interno-122':'L', 'reg-interno-123':'T:inv', 'reg-interno-124':'T:inv', 'reg-interno-125':'T:num', 'reg-interno-126':'T:inv', 'reg-interno-127':'T:mis', 'reg-interno-128':'T:inv', 'reg-interno-129':'T:num', 'reg-interno-130':'T:inv',
+  'reg-interno-131':'T:inv', 'reg-interno-132':'T:ext', 'reg-interno-133':'T:num', 'reg-interno-134':'T:num', 'reg-interno-135':'T:inv', 'reg-interno-136':'T:inv', 'reg-interno-137':'T:mis', 'reg-interno-138':'T:mis', 'reg-interno-139':'T:mis', 'reg-interno-140':'T:inv',
+  'reg-interno-141':'L', 'reg-interno-142':'T:inv', 'reg-interno-143':'T:inv', 'reg-interno-144':'T:ext', 'reg-interno-145':'T:mis', 'reg-interno-146':'T:mis', 'reg-interno-147':'T:inv', 'reg-interno-148':'L', 'reg-interno-149':'T:mis', 'reg-interno-150':'T:ext',
+  'reg-interno-151':'T:mis', 'reg-interno-152':'T:inv', 'reg-interno-153':'L', 'reg-interno-154':'T:ter', 'reg-interno-155':'T:num', 'reg-interno-156':'T:inv', 'reg-interno-157':'T:inv', 'reg-interno-158':'T:num', 'reg-interno-159':'T:inv', 'reg-interno-160':'T:ter',
+  'reg-interno-161':'T:ter', 'reg-interno-162':'T:inv', 'reg-interno-163':'T:num', 'reg-interno-164':'T:num', 'reg-interno-165':'T:inv', 'reg-interno-166':'T:num', 'reg-interno-167':'T:num', 'reg-interno-168':'T:num', 'reg-interno-169':'T:ter', 'reg-interno-170':'T:inv',
+  'reg-interno-171':'T:num', 'reg-interno-172':'T:inv', 'reg-interno-173':'T:inv', 'reg-interno-174':'T:ext', 'reg-interno-175':'L', 'reg-interno-176':'L', 'reg-interno-177':'L', 'reg-interno-178':'L', 'reg-interno-179':'L', 'reg-interno-180':'L',
+  'reg-interno-181':'L', 'reg-interno-182':'L', 'reg-interno-183':'T:inv', 'reg-interno-184':'T:ext', 'reg-interno-185':'T:ext', 'reg-interno-186':'T:inv', 'reg-interno-187':'T:res', 'reg-interno-188':'T:ext', 'reg-interno-189':'T:num', 'reg-interno-190':'T:res',
+  'reg-interno-191':'T:mis', 'reg-interno-192':'T:inv', 'reg-interno-193':'L', 'reg-interno-194':'I', 'reg-interno-195':'T:inv', 'reg-interno-196':'T:inv', 'reg-interno-197':'T:mis', 'reg-interno-198':'L', 'reg-interno-199':'L', 'reg-interno-200':'L',
 };
 
 function cobrancaDaQuestao(q){

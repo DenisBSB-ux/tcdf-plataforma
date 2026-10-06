@@ -735,6 +735,7 @@ function renderErros(){
       // só o texto da questão (sem estrelas, tendência, tentativas, banca, assunto)
       return `<div class="error-row">
         <span class="num">${esc(String(q.n).padStart(3,'0'))}</span>
+        ${cobrancaTag(q) || `<span class="tag tag-cobranca-ausente" title="Esta questão ainda não tem o rótulo de tipo de cobrança (Literal, Interpretativa etc.) classificado">❔ Sem rótulo</span>`}
         <div class="summary">${esc(limparEnunciado(q.q, q.t) || q.rf || '')}</div>
         <button class="btn btn-gold btn-sm" data-refazer="${uid}">Refazer</button>
       </div>`;
@@ -754,6 +755,7 @@ function renderErros(){
       return `<div class="error-row">
         <span class="num">${esc(String(q.n).padStart(3,'0'))}</span>
         ${statusChip}
+        ${cobrancaTag(q) || `<span class="tag tag-cobranca-ausente" title="Esta questão ainda não tem o rótulo de tipo de cobrança (Literal, Interpretativa etc.) classificado">❔ Sem rótulo</span>`}
         <div class="summary">${esc(limparEnunciado(q.q, q.t) || q.rf || '')}</div>
         <button class="btn btn-ghost btn-sm" data-desmarcar-chute="${uid}" title="Remover da lista de chutes">✕ Desmarcar</button>
         <button class="btn btn-gold btn-sm" data-refazer="${uid}">Refazer</button>
