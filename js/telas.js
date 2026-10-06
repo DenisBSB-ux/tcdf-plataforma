@@ -79,51 +79,72 @@ function getSetup(materiaKey){
   }
   return STATE.setupByMateria[materiaKey];
 }
-// extrai banca/cargo de q.bc, aceitando três formatos:
-// 1) clássico "BANCA, cargo (órgão)" — usado no material embutido e no parser padrão
-// 2) "BANCA - cargo_abrev (ÓRGÃO)/ÓRGÃO/formação/ano" — visto em matérias como a
-//    AFO. PRECISA ser checado ANTES dos outros dois formatos, por dois motivos
-//    encontrados na prática: (a) a lista de formação do cargo às vezes tem
-//    vírgulas no meio (ex.: "Administração, Economia ou Direito"), o que fazia o
-//    formato clássico (que corta na PRIMEIRA vírgula do texto inteiro) cortar no
-//    lugar errado e virar uma "banca" gigante e sem sentido; (b) sem esse
-//    formato dedicado, o formato alternativo abaixo pegava a SIGLA DO ÓRGÃO
-//    (ex.: "ANM", "UDESC") como se fosse banca, descartando a banca real
-//    (ex.: "CEBRASPE (CESPE)") — que nem aparecia como opção de filtro.
-// 3) alternativo "cargo abrev (órgão)/ÓRGÃO/área/cargo completo/ano" — visto em
-//    matérias importadas cujo texto de origem não usa vírgula nem " - "; nesse
-//    caso o campo logo após a primeira barra costuma ser a sigla do órgão/concurso,
-//    que é o que dá pra usar como "banca" pra fins de filtro
+// extrai banca/cargo de q.bc. Reescrita (v137) depois de auditar os arquivos
+// de origem REALMENTE usados nas importações (não só a amostra que motivou a
+// versão anterior) — achou-se formatos adicionais em que o cargo saía vazio
+// ou a banca vinha poluída com cargo/órgão/ano junto. Cobre:
+// 1) clássico "BANCA, cargo (órgão)" — sem hífen algum, usado no material
+//    embutido e em listas antigas.
+// 2) "BANCA - cargo_abrev (ÓRGÃO)/ÓRGÃO/formação/ano" — barras depois do
+//    hífen (matérias como AFO/Tributário).
+// 3) "BANCA - ÓRGÃO - cargo - ano" — só hífens, sem barra nem vírgula (ex.:
+//    Lei 14.133): o código antigo não reconhecia esse formato e devolvia a
+//    LINHA INTEIRA como banca, com cargo vazio.
+// 4) "BANCA — cargo (área), ÓRGÃO, ano" — hífen seguido de vírgulas (ex.:
+//    Direito Civil): o código antigo cortava na primeira vírgula do texto
+//    INTEIRO (sem considerar o hífen antes), poluindo a banca com o cargo e
+//    perdendo pedaços do cargo real.
+// 5) "Elaboração própria — ÓRGÃO - cargo" (questões inéditas) — mesma lógica
+//    de separação, banca vira o rótulo "Elaboração própria" (ver isInedita).
+// Em qualquer formato, um sufixo fixo acrescentado pelo gerador de questões
+// (", Auditor de Controle Externo, TCDF") é descartado antes de parsear —
+// não é parte da classificação original, e identificarProva() (previsao.js)
+// já fazia o mesmo descarte só pra fins de estatística.
 function extrairBancaECargo(bc){
   if(!bc) return { banca:'—', cargo:'' };
-  const txt = String(bc).trim();
+  let txt = String(bc).trim();
+  txt = txt.replace(/,\s*Auditor de Controle Externo,\s*TCDF\s*$/i, '').trim();
+  if(!txt) return { banca:'—', cargo:'' };
 
-  // aceita hífen comum "-", en dash "–" e em dash "—" como separador —
-  // material gerado em Markdown normalmente usa "—" (ex.: "CEBRASPE (CESPE)
-  // — AJ (TJ PA)/TJ PA/Direito/2025"); antes só "-" era reconhecido, e esse
-  // formato caía no branch de barra genérico (sem banca antes), que pegava o
-  // órgão como banca e a ÁREA (ex.: "Direito") como se fosse o cargo inteiro
-  const mHifen = txt.match(/^([^,\/]+?)\s+[-–—]\s+(.+\/.+)$/);
-  if(mHifen){
-    const banca = mHifen[1].trim() || '—';
-    const partes = mHifen[2].trim().split('/').map(p=>p.trim()).filter(Boolean);
-    const semAno = (partes.length>1 && /^\d{4}$/.test(partes[partes.length-1])) ? partes.slice(0,-1) : partes.slice();
-    const cargo = semAno.join(' — ');
-    return { banca, cargo };
-  }
-  if(txt.indexOf(',') !== -1){
+  // separador banca|resto: hífen comum "-", en dash "–" ou em dash "—" tem
+  // prioridade sobre vírgula — é o separador mais específico (a banca nunca
+  // tem hífen no nome); sem ele, cai pro formato clássico só com vírgula
+  const mDash = txt.match(/^([^,\/]+?)\s+[-–—]\s+(.+)$/);
+  let banca, resto;
+  if(mDash){
+    banca = mDash[1].trim() || '—';
+    resto = mDash[2].trim();
+  } else if(txt.indexOf(',') !== -1){
     const idx = txt.indexOf(',');
-    return { banca: txt.slice(0, idx).trim() || '—', cargo: txt.slice(idx+1).trim() };
+    banca = txt.slice(0, idx).trim() || '—';
+    resto = txt.slice(idx+1).trim();
+  } else {
+    return { banca: txt, cargo: '' };
   }
-  if(txt.indexOf('/') !== -1){
-    const partes = txt.split('/').map(p=>p.trim()).filter(Boolean);
-    const semAno = (partes.length>1 && /^\d{4}$/.test(partes[partes.length-1])) ? partes.slice(0,-1) : partes.slice();
-    if(semAno.length===0) return { banca:'—', cargo:'' };
-    const banca = semAno[1] || semAno[0] || '—';
-    const cargo = semAno.length>2 ? semAno.slice(2).join(' — ') : (semAno[0] || '');
-    return { banca, cargo };
+  if(!resto) return { banca, cargo: '' };
+
+  // dentro do "resto", o separador usado varia por lote de importação —
+  // barra, hífen de novo, ou vírgula; tenta nessa ordem e usa o primeiro que
+  // aparecer (um texto não mistura dois desses três no mesmo campo)
+  let partes;
+  if(resto.indexOf('/') !== -1){
+    partes = resto.split('/');
+  } else if(/\s[-–—]\s/.test(resto)){
+    partes = resto.split(/\s[-–—]\s/);
+  } else if(resto.indexOf(',') !== -1){
+    partes = resto.split(',');
+  } else {
+    partes = [resto];
   }
-  return { banca: txt, cargo: '' };
+  partes = partes.map(p=>p.trim()).filter(Boolean);
+  // último pedaço só-ano (ex.: "2026") é o ano da prova — já extraído à parte
+  // (ver anoRealDaQuestao()/identificarProva()), não faz parte do cargo
+  if(partes.length>1 && /^\d{4}$/.test(partes[partes.length-1])) partes = partes.slice(0,-1);
+  // sobrou só um pedaço e ele termina com um ano solto, sem separador próprio
+  // (ex.: "TCDF 2026"): remove o ano do final mesmo assim
+  if(partes.length===1) partes[0] = partes[0].replace(/\s+(19|20)\d{2}\s*$/, '').trim();
+  const cargo = partes.filter(Boolean).join(' — ');
+  return { banca, cargo };
 }
 function bancaCurta(bc){
   return extrairBancaECargo(bc).banca;
