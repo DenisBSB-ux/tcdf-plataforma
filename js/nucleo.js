@@ -305,6 +305,23 @@ function extrairAssuntoDaFonte(fonte){
 function normalizarParaComparacao(texto){
   return (texto||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
 }
+// ano "real" da prova (pra ordenar/desempatar duplicatas, filtro de ano etc.):
+// prefere o \u00daLTIMO ano de 4 d\u00edgitos escrito no pr\u00f3prio texto de banca/cargo
+// (q.bc) \u2014 que \u00e9 o ano da prova de fato \u2014 em vez do campo solto "ar". Alguns
+// formatos de importa\u00e7\u00e3o (Markdown com campo "**Ano:**" separado) preenchem
+// esse campo com o ano em que a quest\u00e3o foi GERADA (quase sempre o ano
+// corrente), n\u00e3o o ano da prova, o que bagun\u00e7a filtro de ano, ordena\u00e7\u00e3o por
+// rec\u00eancia e o alerta de "tend\u00eancia de alta recente". Fun\u00e7\u00e3o isolada aqui
+// (em vez de reaproveitar identificarProva()/anoDaQuestao() de previsao.js)
+// porque este arquivo carrega ANTES de previsao.js \u2014 nucleo.js roda
+// reindex() assim que \u00e9 lido, antes dos demais scripts existirem.
+function anoRealDaQuestao(q){
+  if(q && q.bc){
+    const anos = String(q.bc).match(/\b(19|20)\d{2}\b/g);
+    if(anos && anos.length) return parseInt(anos[anos.length-1], 10);
+  }
+  return (q && q.ar) || null;
+}
 // questões com o MESMO enunciado (exatamente a mesma pergunta), dentro da MESMA
 // matéria, cobradas em provas/anos diferentes — mantém só a mais recente
 // (maior ano) selecionável, marcando as demais como duplicataOculta. Nada é
@@ -326,7 +343,8 @@ function marcarDuplicatas(){
       // mais recente primeiro (ano ausente conta como o mais antigo do grupo);
       // em caso de empate no ano, mantém a que tem gabarito/resolução mais completos
       lista.sort((a,b)=>{
-        if((b.ar||0)!==(a.ar||0)) return (b.ar||0)-(a.ar||0);
+        const anoA = anoRealDaQuestao(a)||0, anoB = anoRealDaQuestao(b)||0;
+        if(anoB!==anoA) return anoB-anoA;
         return ((b.r||'').length+(b.rf||'').length) - ((a.r||'').length+(a.rf||'').length);
       });
       lista.forEach((q,i)=>{ if(i>0) q.duplicataOculta = true; });

@@ -799,7 +799,7 @@ function gerarMarkdownDaMateria(materiaKey){
     md += `## QUESTÃO ${q.n}\n\n`;
     md += `**ID:** ${q.uid}\n`;
     md += `**Banca/Cargo:** ${q.bc||'—'}\n`;
-    md += `**Ano:** ${q.ar||'—'} | **Nível:** ${NIVEL_LABEL[q.nv]||'Média'} | **Tendência:** ${tendenciaCurta(q.td)}\n`;
+    md += `**Ano:** ${anoRealDaQuestao(q)||'—'} | **Nível:** ${NIVEL_LABEL[q.nv]||'Média'} | **Tendência:** ${tendenciaCurta(q.td)}\n`;
     md += `**Assunto:** ${q.tema||'Geral'}\n\n`;
     md += `### Enunciado\n${textoEfetivoDoCampo(q,'q')}\n\n`;
     if(q.t==='MC' && q.alt){

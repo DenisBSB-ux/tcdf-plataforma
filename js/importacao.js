@@ -162,8 +162,14 @@ function parseMarkdownQuestoes(content){
     const n = parseInt(numMatch[1], 10);
     const bancaCargoMatch = bloco.match(/\*\*Banca\/Cargo:\*\*\s*(.+)/i);
     const bancaCargoTxt = bancaCargoMatch ? bancaCargoMatch[1].trim() : '';
+    // o ano da PROVA é o que está escrito no próprio texto de Banca/Cargo
+    // (ex.: ".../Direito/2024") — prioriza isso sobre o campo solto "**Ano:**",
+    // que em materiais gerados por IA às vezes traz o ano em que a questão foi
+    // GERADA (quase sempre o ano corrente), não o ano da prova de fato
+    const anosNoBancaCargo = bancaCargoTxt.match(/\b(19|20)\d{2}\b/g);
     const anoMatch = bloco.match(/\*\*Ano:\*\*\s*(\d{4})/i);
-    const ano = anoMatch ? parseInt(anoMatch[1], 10) : null;
+    const ano = anosNoBancaCargo ? parseInt(anosNoBancaCargo[anosNoBancaCargo.length-1], 10)
+      : (anoMatch ? parseInt(anoMatch[1], 10) : null);
     const nivelMatch = bloco.match(/\*\*N[ií]vel:\*\*\s*(\w+)/i);
     const nivelTxt = nivelMatch ? nivelMatch[1].trim().toLowerCase() : '';
     const nivel = nivelTxt.includes('alta') ? 'alta' : (nivelTxt.includes('baixa') ? 'baixa' : 'media');
@@ -838,7 +844,8 @@ function somarProgressoDaQuestao(pPara, pDe){
 // pelo enunciado mais completo (com o texto de contexto/caso, sem o qual o
 // item pode ficar incompreensível) e depois pela resolução mais completa
 function questaoMaisAtual(a, b){
-  if((a.ar||0)!==(b.ar||0)) return (a.ar||0)>(b.ar||0) ? a : b;
+  const anoA = anoRealDaQuestao(a)||0, anoB = anoRealDaQuestao(b)||0;
+  if(anoA!==anoB) return anoA>anoB ? a : b;
   const ca = chaveDeEnunciado(a.q).length, cb = chaveDeEnunciado(b.q).length;
   if(ca!==cb) return ca>cb ? a : b;
   return ((a.r||'').length+(a.rf||'').length) >= ((b.r||'').length+(b.rf||'').length) ? a : b;
@@ -930,8 +937,9 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
       const pOrigem = bucketOrigem.perguntas[q.uid];
 
       if(equivalente){
-        const origemMaisNova = (q.ar||0) > (equivalente.ar||0) ||
-          ((q.ar||0)===(equivalente.ar||0) && ((q.r||'').length+(q.rf||'').length) > ((equivalente.r||'').length+(equivalente.rf||'').length));
+        const anoQ = anoRealDaQuestao(q)||0, anoEq = anoRealDaQuestao(equivalente)||0;
+        const origemMaisNova = anoQ > anoEq ||
+          (anoQ===anoEq && ((q.r||'').length+(q.rf||'').length) > ((equivalente.r||'').length+(equivalente.rf||'').length));
         if(origemMaisNova){
           const idx = ALL_QUESTIONS.findIndex(x=>x.uid===equivalente.uid);
           if(idx!==-1) ALL_QUESTIONS[idx] = { ...q, materia: nomeDestino, uid: equivalente.uid, origem: equivalente.origem };
