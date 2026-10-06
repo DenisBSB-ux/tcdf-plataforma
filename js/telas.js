@@ -351,6 +351,14 @@ function bancaCargoAnoLine(q){
     // Administrativo — 2025") pra não duplicar com a linha "Ano:" seguinte
     if(cargo && ano) cargo = cargo.replace(new RegExp(`[\\s\\u2014-]*${ano}\\s*$`), '').trim();
   }
+  // a ÚNICA fonte literal de ano, no formato de dado original (item 7 do
+  // prompt de classificação: "Banca, cargo: {banca}, {cargo e órgão}"), é o
+  // ano escrito dentro da PRÓPRIA linha Banca/Cargo — não existe um campo
+  // "Ano" separado nesse formato canônico. O campo solto "ar"/"**Ano:**" que
+  // aparece em alguns materiais é derivado (ex.: eco do que já estava salvo,
+  // ou ano de geração), não um dado independente — por isso NUNCA sobrepõe o
+  // ano literal da lista de questões, sempre priorizado aqui via
+  // anoRealDaQuestao()/identificarProva().
   const linhas = [];
   if(banca) linhas.push(`<div class="q-meta-line"><span class="lbl-inline">Banca:</span> ${esc(banca)}</div>`);
   if(cargo) linhas.push(`<div class="q-meta-line"><span class="lbl-inline">Cargo:</span> ${esc(cargo)}</div>`);
@@ -471,7 +479,7 @@ function gerarMarkdownAuditoria(rel){
     if(itens.length===0){ md += `Nenhuma ocorrência.\n`; return; }
     itens.forEach(it=>{
       md += `- **${it.materia}** · Q${it.n} · \`${it.bc||''}\``;
-      if(it.arSalvo!==undefined) md += ` — ano salvo: ${it.arSalvo}, ano correto (da Banca/Cargo): ${it.anoEmbutido}`;
+      if(it.arSalvo!==undefined) md += ` — ano da lista (Banca/Cargo, prevalece): ${it.anoEmbutido} · campo salvo desatualizado: ${it.arSalvo}`;
       if(it.cargoExtraido!==undefined) md += ` — cargo extraído: "${it.cargoExtraido}"`;
       md += `\n`;
     });
@@ -519,7 +527,7 @@ function renderAuditoriaPage(){
       <div style="margin-top:8px;max-height:320px;overflow:auto;font-family:var(--font-mono);font-size:11.5px;border:1px solid var(--paper-line);border-radius:6px;">
         ${itens.slice(0,300).map(it=>`<div style="padding:5px 8px;border-bottom:1px solid var(--paper-line);">
           <b>${esc(it.materia)}</b> · Q${it.n} · <span style="opacity:.75;">${esc(it.bc||'')}</span>
-          ${it.arSalvo!==undefined ? ` — salvo: <b>${it.arSalvo}</b>, correto: <b>${it.anoEmbutido}</b>` : ''}
+          ${it.arSalvo!==undefined ? ` — ano da lista (prevalece): <b>${it.anoEmbutido}</b> · campo salvo desatualizado: <b>${it.arSalvo}</b>` : ''}
           ${it.cargoExtraido!==undefined ? ` — cargo extraído: <b>${esc(it.cargoExtraido)}</b>` : ''}
         </div>`).join('')}
         ${itens.length>300 ? `<div style="padding:6px 8px;opacity:.7;">… e mais ${itens.length-300} (baixe o relatório completo).</div>` : ''}
@@ -530,7 +538,7 @@ function renderAuditoriaPage(){
   return `
   <div class="section-eyebrow">Diagnóstico</div>
   <h2 class="section-title">🔍 Auditoria de dados</h2>
-  <p class="section-desc">Verifica, em TODAS as matérias já importadas neste aparelho/conta, o mesmo tipo de inconsistência de banca/cargo/ano encontrado e corrigido na v131/v132. Não corrige nada sozinha — só aponta, pra você decidir caso a caso.</p>
+  <p class="section-desc">Verifica, em TODAS as matérias já importadas neste aparelho/conta, o mesmo tipo de inconsistência de banca/cargo/ano já visto antes (v131/v132). Não resolve nada sozinha — ano divergente em especial não tem como ser decidido sem o edital/fonte oficial em mãos. Só aponta, pra você decidir caso a caso.</p>
   <div class="card-block" style="margin-top:16px;">
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
       <div class="stat-chip" style="background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;">
