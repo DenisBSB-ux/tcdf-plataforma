@@ -487,6 +487,10 @@ body:not(.theme-light) .tag-cobranca-T{ color:#e0b865; }
 body:not(.theme-light) .tag-cobranca-R{ color:#8fd1a3; }
 body:not(.theme-light) .tag-cobranca-H, body:not(.theme-light) .tag-cobranca-I{ color:#c3a6e6; }
 body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
+/* rótulo de "tipo de cobrança" ainda não classificado — caderno de erros/chutes
+   (ver cobranca.js: só parte das matérias tem COBRANCA preenchido; isso torna
+   visível, por questão, o que falta classificar, em vez de simplesmente sumir) */
+.tag-cobranca-ausente{ text-transform:none; letter-spacing:0; font-size:11px; color:var(--ink-soft); border:1px dashed var(--paper-line); border-radius:4px; padding:1px 6px; }
 .tag-inedita{
   background:#fff3b0;
   border:2px solid #b23a2e;
@@ -604,6 +608,17 @@ body:not(.theme-light) .tag-cobranca-J{ color:#e39c9c; }
   border-radius:6px; padding:6px 10px; margin-bottom:8px;
 }
 body:not(.theme-light) .chute-hint{ background:rgba(224,184,101,0.14); color:#e0b865; }
+/* painel "Dica de chute" (🎯, js/heuristica.js) — deixa claro que é estatística
+   de como a questão foi escrita, nunca uma leitura do conteúdo jurídico */
+.dica-chute-panel{
+  margin-top:10px; padding:10px 12px; border:1.5px dashed #7a8fa6;
+  border-radius:8px; background:#eef3f8; font-size:12.5px; line-height:1.5;
+}
+body:not(.theme-light) .dica-chute-panel{ background:rgba(122,143,166,0.12); border-color:#5c7691; }
+.dica-chute-titulo{ font-weight:700; margin-bottom:4px; }
+.dica-chute-aviso{ font-weight:400; font-size:11px; color:var(--ink-soft); }
+.dica-chute-texto{ color:var(--ink); }
+.dica-chute-texto b{ color:var(--gold-dark, #8a6a1c); }
 /* linha de edição de uma alternativa (múltipla escolha): letra fixa + campo editável */
 .answer-opt-edit{
   display:flex; gap:12px; align-items:flex-start;
