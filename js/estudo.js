@@ -391,6 +391,7 @@ function pickAnswer(opt){
   const correct = opt === gabaritoEfetivo(q);
   quiz.respostas[uid] = { picked: opt, correct };
   registrarResposta(quiz.materia, uid, correct);
+  registrarResultadoHeuristica(q); // js/heuristica.js — autoavaliação da "dica de chute" com o uso real
   if(dicaChuteAberta === uid) dicaChuteAberta = null;
   // se o "Chute" estava armado pra esta questão, a resposta que acabou de ser
   // escolhida é que entra no histórico de chutes — e desarma pra próxima

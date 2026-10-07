@@ -79,7 +79,9 @@ const HEUR_CE_MARCADORES = [
   {
     id: 'condicional',
     nome: 'Condicional',
-    re: /\b(se |caso |desde que)\b/i,
+    // (?<!-) evita falso positivo em pronome reflexivo grudado por hífen
+    // ("restringe-se", "aplica-se" etc.), que não é a conjunção condicional "se"
+    re: /(?<!-)\b(se|caso|desde que)\b(?!-)/i,
     efeito: 'certo',
     desvioPp: 4.4,
     confirmaEm: '14 de 19 matérias — sinal moderado',
@@ -161,7 +163,90 @@ function dicaChutePanelHtml(q){
     ? `<div class="dica-chute-texto">${d.texto}</div><div class="checklist-lista">${d.checklistHtml}</div>`
     : `<div class="dica-chute-texto">${d.texto}</div>`;
   return `<div class="dica-chute-panel">
-    <div class="dica-chute-titulo">🎯 Lista de verificação — dica de chute <span class="dica-chute-aviso">— estatística de como a questão foi escrita, não é IA e não leu o enunciado</span></div>
+    <div class="dica-chute-titulo">🎯 Lista de verificação — dica de chute <span class="dica-chute-aviso">— busca mecânica de palavras-chave (regex), não é IA e não entende o conteúdo jurídico do enunciado</span></div>
     ${corpo}
+    ${heurStatsResumoHtml(d.tipo)}
   </div>`;
+}
+
+/* ================= AUTOAVALIAÇÃO (a dica "se mede" com o seu uso real) =================
+   Os pesos dos marcadores acima (ABSOLUTO, DUPLA_NEGATIVA, CONDICIONAL) são
+   fixos — calculados uma vez, fora da plataforma, sobre as 3.754 questões já
+   importadas. Isso NÃO muda sozinho. O que esta seção faz é diferente e mais
+   modesto: toda vez que você responde uma questão que teve sugestão, grava
+   se ela bateu ou não com o gabarito, e mostra essa taxa pra VOCÊ — uma
+   autoavaliação com os seus próprios dados, não um recálculo dos pesos do
+   modelo. Para os pesos mudarem de verdade seria preciso reprocessar o banco
+   inteiro de novo (fora da plataforma), não só acumular alguns acertos/erros
+   de uma sessão de estudo. */
+const HEUR_STATS_KEY = 'tcdf-heuristica-stats-v1';
+let HEUR_STATS = {
+  ce: { sugestaoCerta: 0, sugestaoErrada: 0, semSugestao: 0, marcadores: {} }, // marcadores[id] = {certa,errada}
+  mc: { sugestaoCerta: 0, sugestaoErrada: 0 },
+};
+let salvarHeurStatsTimer = null;
+function salvarHeurStats(){
+  clearTimeout(salvarHeurStatsTimer);
+  salvarHeurStatsTimer = setTimeout(()=>{
+    storageSet(HEUR_STATS_KEY, JSON.stringify(HEUR_STATS)).catch(e=>console.error('Falha ao salvar estatísticas da dica de chute', e));
+  }, 300);
+}
+async function carregarHeurStats(){
+  try{
+    const res = await storageGet(HEUR_STATS_KEY);
+    if(res && res.value){
+      const parsed = JSON.parse(res.value);
+      if(parsed && parsed.ce && parsed.mc) HEUR_STATS = parsed;
+    }
+  }catch(e){ /* nenhuma estatística salva ainda neste aparelho */ }
+}
+
+// Chamado em pickAnswer() (js/estudo.js), uma única vez por questão (a
+// própria pickAnswer já impede responder 2x a mesma uid). Registra se a
+// sugestão bateu com o gabarito EFETIVO (considera gabarito corrigido
+// manualmente, se houver).
+function registrarResultadoHeuristica(q){
+  if(!q) return;
+  const d = dicaChuteQuestao(q);
+  if(!d) return;
+  const gabarito = gabaritoEfetivo(q);
+  if(d.tipo === 'ce'){
+    if(!d.sugestao){ HEUR_STATS.ce.semSugestao++; salvarHeurStats(); return; }
+    const bateu = d.sugestao === gabarito;
+    if(bateu) HEUR_STATS.ce.sugestaoCerta++; else HEUR_STATS.ce.sugestaoErrada++;
+    const { passos } = avaliarChecklistCE(q);
+    passos.filter(p=>p.achou).forEach(p=>{
+      if(!HEUR_STATS.ce.marcadores[p.id]) HEUR_STATS.ce.marcadores[p.id] = { certa:0, errada:0 };
+      const direcao = p.efeito==='errado' ? 'Errado' : 'Certo';
+      if(direcao===gabarito) HEUR_STATS.ce.marcadores[p.id].certa++; else HEUR_STATS.ce.marcadores[p.id].errada++;
+    });
+  } else if(d.tipo === 'mc'){
+    const bateu = d.sugestao === gabarito;
+    if(bateu) HEUR_STATS.mc.sugestaoCerta++; else HEUR_STATS.mc.sugestaoErrada++;
+  }
+  salvarHeurStats();
+}
+
+// resumo mostrado no rodapé do painel — só com volume mínimo de 5 respostas
+// pra não mostrar um "100%" ou "0%" enganoso logo na primeira resposta
+function heurStatsResumoHtml(tipo){
+  if(tipo==='ce'){
+    const s = HEUR_STATS.ce;
+    const total = s.sugestaoCerta + s.sugestaoErrada;
+    if(total < 5){
+      return `<div class="heur-stats-resumo">📊 Ainda sem dados suficientes das SUAS respostas (${total} questão${total===1?'':'ões'} com sugestão até agora) — a taxa real medida com o seu uso aparece aqui a partir de 5 respostas.</div>`;
+    }
+    const pctNum = (s.sugestaoCerta/total)*100;
+    return `<div class="heur-stats-resumo">📊 Nas SUAS respostas até agora: a sugestão bateu com o gabarito em <b>${s.sugestaoCerta} de ${total}</b> (${pctNum.toFixed(1)}%)${s.semSugestao?` · +${s.semSugestao} sem sugestão (sinais se cancelaram)`:''}.</div>`;
+  }
+  if(tipo==='mc'){
+    const s = HEUR_STATS.mc;
+    const total = s.sugestaoCerta + s.sugestaoErrada;
+    if(total < 5){
+      return `<div class="heur-stats-resumo">📊 Ainda sem dados suficientes das SUAS respostas (${total} até agora) — a taxa real aparece aqui a partir de 5 respostas.</div>`;
+    }
+    const pctNum = (s.sugestaoCerta/total)*100;
+    return `<div class="heur-stats-resumo">📊 Nas SUAS respostas até agora: a alternativa sugerida bateu em <b>${s.sugestaoCerta} de ${total}</b> (${pctNum.toFixed(1)}%).</div>`;
+  }
+  return '';
 }

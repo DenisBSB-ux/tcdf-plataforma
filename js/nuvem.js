@@ -881,6 +881,8 @@ async function loadProgress(){
     if(resTx && resTx.value) TEXTOS_ORIGINAIS = JSON.parse(resTx.value) || {};
   }catch(e){ /* nenhum texto original salvo localmente ainda */ }
 
+  await carregarHeurStats(); // js/heuristica.js — estatísticas da "dica de chute" (própria função já trata ausência)
+
   try{
     try{
       const resPp = await storageGet(PUBLICACAO_PENDENTE_KEY);
