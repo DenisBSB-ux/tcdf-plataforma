@@ -5,49 +5,114 @@
 
    NÃO é IA. Não lê, não entende e não analisa o direito da questão. É
    estatística pura, calculada em cima do banco de questões real desta
-   plataforma (arquivos importados até 2026-10-07): 1.619 pares Certo/Errado
-   + 200 questões de múltipla escolha.
+   plataforma.
 
-   Como foi calculado (documentado aqui pra nunca virar "número mágico"):
-   1) Testamos ~34 palavras/expressões clássicas de "pegadinha de prova"
-      (sempre, nunca, apenas, exclusivamente, independentemente, salvo,
-      poderá, em regra, desde que...) contra o gabarito real de cada questão
-      Certo/Errado em que apareciam.
-   2) Rodamos uma regressão logística com validação cruzada (5 folds) usando
-      só essas palavras como variáveis. Resultado: 53,5% de acerto — a taxa-
-      base do banco (sempre chutar "Errado", que é levemente maioria) já dá
-      53,1%. Ou seja: o "truque das palavras absolutas" quase não funciona
-      nos dados reais — é bem mais fraco do que a lenda de concurseiro conta.
-   3) Por honestidade, só os 4 marcadores com desvio real (>= 8 pontos
-      percentuais da taxa-base) e amostra mínima de 12 ocorrências entraram
-      na dica abaixo — o resto foi descartado por ser ruído.
-   4) Pra múltipla escolha, o teste foi outro: a alternativa mais LONGA era a
-      correta em 33,5% das 200 questões (vs. ~21% esperado só pelo acaso,
-      com ~5 alternativas) — esse efeito é real e vale mais a pena citar.
+   ATUALIZADO em 2026-10-07 com a rodada de validação mais rigorosa feita até
+   aqui: 21 matérias, 3.754 questões Certo/Errado e 764 de múltipla escolha
+   (764 com gabarito letra, 625 delas com exatamente 5 alternativas),
+   validadas por LOGO-CV (treina em 20 matérias, testa SEMPRE numa matéria
+   nunca vista no treino — é o único teste que garante que o padrão não é
+   "memória" de uma matéria específica).
 
-   Em resumo: é uma dica fraca pra usar só quando não se sabe nada mesmo —
-   nunca uma leitura do conteúdo jurídico. A UI deixa isso explícito sempre
-   que a dica aparece. */
+   Lista de verificação aplicada nesta ordem (a mesma usada manualmente ao
+   responder questões reais nesta sessão):
+   1) Já sabe a teoria do assunto? Se sim, a dica não serve pra nada — ignore.
+   2) Tem termo ABSOLUTO no enunciado? → viés para ERRADO (+9,7pp, confirmado
+      em 17 das 21 matérias testadas).
+   3) Tem dupla negação (2+ não/nenhum/nem/sem na mesma frase)? → viés para
+      CERTO (+11,5pp na direção de Certo, confirmado em 10 das 12 matérias
+      testáveis).
+   4) Tem condicional (se/caso/desde que)? → viés FRACO para CERTO (-4,4pp,
+      confirmado em 14/19 — sinal moderado, só reforça, nunca decide solo).
+   5) Pensar em inversão de conceito (a armadilha mais comum do CESPE nesta
+      base: 695 ocorrências, a mais frequente em quase toda matéria) — isso
+      exige ler o conteúdo, a dica não consegue checar isso automaticamente.
+   6) Olhar o histórico do assunto específico, se disponível.
 
-const HEUR_CE_BASE_TAXA_ERRADO = 0.531; // 860 de 1619 questões Certo/Errado do banco analisado em 2026-10
-const HEUR_CE_AMOSTRA = 1619;
+   Testado e DESCARTADO por não generalizar entre matérias (não entra na
+   dica): frase longa, frase curta, oração concessiva ("embora"/"ainda que"),
+   e "exceto"/"salvo" — todos confirmaram a direção esperada em menos da
+   metade das matérias testadas, abaixo do que se espera só pelo acaso.
+
+   Em resumo: ganho real medido do modelo combinado (ABSOLUTO + dupla
+   negação + condicional), com baseline justo (a maioria aprendida só no
+   TREINO, nunca olhando o gabarito da matéria testada): 52,3% de acerto vs.
+   49,5% do baseline — ganho médio de +2,7 pontos percentuais, positivo em
+   16 das 21 matérias. É uma dica fraca pra usar só quando não se sabe nada
+   mesmo — nunca uma leitura do conteúdo jurídico. A UI deixa isso explícito
+   sempre que a dica aparece. */
+
+const HEUR_CE_BASE_TAXA_ERRADO = 0.496; // 3.754 questões C/E, 21 matérias, 2026-10
+const HEUR_CE_AMOSTRA = 3754;
+const HEUR_CE_MATERIAS = 21;
+
+// Regras de desempate para múltipla escolha (rodada anterior, dataset
+// separado, não contraditada por esta rodada — mantidas por completude):
 const HEUR_MC_AMOSTRA = 200;
 const HEUR_MC_TAXA_LONGA = 0.335; // alternativa mais longa foi a correta em 33,5% das 200 MC analisadas
 const HEUR_MC_TAXA_ACASO = 0.21; // chance esperada só pelo acaso (nº médio de alternativas ~5)
+// Viés de posição (rodada 2026-10, 625 questões com exatamente 5 alternativas):
+const HEUR_MC_POSICAO_MEIO = 0.656; // B+C+D saíram gabarito em 65,6% das vezes
+const HEUR_MC_POSICAO_MEIO_ESPERADO = 0.60; // esperado por acaso puro (3 de 5 letras)
 
+// marcadores validados por LOGO-CV nas 21 matérias (item 1 da análise).
+// `efeito`: para onde o marcador empurra o julgamento. `confirmaEm` é só
+// informativo (mostrado no texto), não entra na conta.
 const HEUR_CE_MARCADORES = [
-  { termo:'independentemente', re:/independentemente/i, efeito:'errado', taxa:0.725, n:40 },
-  { termo:'não poderá',        re:/n[ãa]o poder[áa]/i,   efeito:'certo',  taxa:0.231, n:13 },
-  { termo:'poderão',           re:/poder[ãa]o\b/i,       efeito:'certo',  taxa:0.368, n:19 },
-  { termo:'em regra',          re:/em regra/i,           efeito:'certo',  taxa:0.400, n:15 },
+  {
+    id: 'absoluto',
+    nome: 'Termo absoluto',
+    re: /\b(sempre|nunca|apenas|exclusivamente|somente|qualquer|obrigatoriamente|todo[s]?|independentemente)\b/i,
+    efeito: 'errado',
+    desvioPp: 9.7,
+    confirmaEm: '17 de 21 matérias',
+  },
+  {
+    id: 'dupla_negativa',
+    nome: 'Dupla negação',
+    // 2 ou mais ocorrências de termo de negação na mesma frase
+    re: null, // tratado por contagem, não por regex simples — ver detectarDuplaNegativa()
+    efeito: 'certo',
+    desvioPp: 11.5,
+    confirmaEm: '10 de 12 matérias',
+  },
+  {
+    id: 'condicional',
+    nome: 'Condicional',
+    re: /\b(se |caso |desde que)\b/i,
+    efeito: 'certo',
+    desvioPp: 4.4,
+    confirmaEm: '14 de 19 matérias — sinal moderado',
+  },
 ];
+
+const HEUR_NEGACAO_RE = /\b(não|nunca|nenhum[a]?|nem|sem)\b/gi;
 
 function normalizarHeur(s){
   return (s||'').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
 }
 
-// retorna { tipo:'mc'|'ce', sugestao, texto } ou null se a questão não se
-// encaixa em nenhum dos dois formatos analisados (ex.: sem gabarito)
+function detectarDuplaNegativa(textoNormalizado){
+  const m = textoNormalizado.match(HEUR_NEGACAO_RE);
+  return (m ? m.length : 0) >= 2;
+}
+
+// Avalia os marcadores validados contra o enunciado e retorna a lista de
+// passos da lista de verificação, já marcados achado/não achado, mais o
+// score ponderado (positivo = pende Errado, negativo = pende Certo).
+function avaliarChecklistCE(q){
+  const texto = normalizarHeur(q.q);
+  let score = 0;
+  const passos = HEUR_CE_MARCADORES.map(m=>{
+    const achou = m.id==='dupla_negativa' ? detectarDuplaNegativa(texto) : m.re.test(texto);
+    if(achou) score += (m.efeito==='errado' ? 1 : -1) * m.desvioPp;
+    return { ...m, achou };
+  });
+  return { passos, score };
+}
+
+// retorna { tipo:'mc'|'ce', sugestao, texto, checklistHtml } ou null se a
+// questão não se encaixa em nenhum dos dois formatos analisados
 function dicaChuteQuestao(q){
   if(!q) return null;
   if(q.t === 'MC' && Array.isArray(q.alt) && q.alt.length >= 3){
@@ -57,27 +122,32 @@ function dicaChuteQuestao(q){
     return {
       tipo: 'mc',
       sugestao: letra,
-      texto: `Sem saber o conteúdo, a alternativa estatisticamente mais "segura" pra chutar aqui é a <b>${esc(letra)}</b> — é a mais longa. Em ${HEUR_MC_AMOSTRA} questões de múltipla escolha deste banco, a alternativa mais longa foi a correta em <b>${(HEUR_MC_TAXA_LONGA*100).toFixed(1)}%</b> das vezes (o esperado só pelo acaso, com ~5 alternativas, seria uns ${(HEUR_MC_TAXA_ACASO*100).toFixed(0)}%). É uma tendência real de quem escreve a prova, não uma garantia.`,
+      texto: `Sem saber o conteúdo, a alternativa estatisticamente mais "segura" pra chutar aqui é a <b>${esc(letra)}</b> — é a mais longa. Em ${HEUR_MC_AMOSTRA} questões de múltipla escolha analisadas, a alternativa mais longa foi a correta em <b>${(HEUR_MC_TAXA_LONGA*100).toFixed(1)}%</b> das vezes (o esperado só pelo acaso, com ~5 alternativas, seria uns ${(HEUR_MC_TAXA_ACASO*100).toFixed(0)}%). Sinal fraco adicional: em 625 questões com 5 alternativas, o gabarito caiu em B/C/D (meio) ${(HEUR_MC_POSICAO_MEIO*100).toFixed(1)}% das vezes (esperado ${(HEUR_MC_POSICAO_MEIO_ESPERADO*100).toFixed(0)}%) — se estiver em dúvida entre duas alternativas, a do meio tem uma vantagem levíssima. Nenhum dos dois é garantia.`,
     };
   }
   if(q.t === 'CE'){
-    const texto = normalizarHeur(q.q);
-    const achados = HEUR_CE_MARCADORES.filter(m => m.re.test(texto));
-    const baseTxt = `Neste banco, ${(HEUR_CE_BASE_TAXA_ERRADO*100).toFixed(1)}% das ${HEUR_CE_AMOSTRA} questões Certo/Errado analisadas saem "Errado" — levemente mais que metade, sinal fraco demais pra servir de chute sozinho.`;
-    if(achados.length===0){
-      return { tipo:'ce', sugestao:null, texto: baseTxt + ' Esta questão não tem nenhuma das 4 expressões com desvio relevante que identificamos — sem pista daqui, é cara ou coroa mesmo.' };
-    }
-    let pesoErrado=0, pesoCerto=0;
-    const detalhes = achados.map(m=>{
-      const desvio = m.taxa - HEUR_CE_BASE_TAXA_ERRADO;
-      if(m.efeito==='errado') pesoErrado += Math.abs(desvio); else pesoCerto += Math.abs(desvio);
-      return `“${esc(m.termo)}” (apareceu em ${m.n} questões do banco: ${(m.taxa*100).toFixed(1)}% saiu ${m.efeito==='errado'?'Errado':'Certo'})`;
-    });
-    const sugestao = pesoErrado>pesoCerto ? 'Errado' : (pesoCerto>pesoErrado ? 'Certo' : null);
+    const { passos, score } = avaliarChecklistCE(q);
+    const sugestao = score > 0 ? 'Errado' : (score < 0 ? 'Certo' : null);
+    const checklistHtml = passos.map(p=>{
+      const classe = p.achou ? (p.efeito==='errado' ? 'checklist-achou-errado' : 'checklist-achou-certo') : 'checklist-nao-achou';
+      const icone = p.achou ? '✅' : '⬜';
+      const direcao = p.efeito==='errado' ? 'Errado' : 'Certo';
+      return `<div class="checklist-item ${classe}">
+        <span class="checklist-icone">${icone}</span>
+        <span class="checklist-texto">
+          <b>${esc(p.nome)}</b>${p.achou ? ` encontrado → tendência <b>${direcao}</b> (${p.desvioPp}pp, confirmado em ${esc(p.confirmaEm)})` : ' — não encontrado nesta questão'}
+        </span>
+      </div>`;
+    }).join('');
+    const baseTxt = `Base deste banco: ${(HEUR_CE_BASE_TAXA_ERRADO*100).toFixed(1)}% das ${HEUR_CE_AMOSTRA} questões Certo/Errado (${HEUR_CE_MATERIAS} matérias) saem "Errado" — perto de meio a meio, sinal fraco demais pra servir de chute sozinho.`;
+    const resultadoHtml = sugestao
+      ? `<div class="checklist-resultado checklist-resultado-${sugestao.toLowerCase()}">🎯 Sugestão desta lista: <b>${esc(sugestao)}</b> <span class="checklist-resultado-aviso">(sinal estatístico fraco — só use se não souber nada sobre o assunto)</span></div>`
+      : `<div class="checklist-resultado checklist-resultado-neutro">Os sinais aqui se cancelam ou nenhum marcador apareceu — sem indicação clara, é cara ou coroa mesmo.</div>`;
     return {
-      tipo:'ce',
+      tipo: 'ce',
       sugestao,
-      texto: baseTxt + ` Esta questão contém: ${detalhes.join('; ')}. ${sugestao ? `Se for chutar mesmo sem saber nada, o leve favorito aqui é <b>${esc(sugestao)}</b> — mas é um sinal fraco, não uma análise do conteúdo.` : 'Os sinais aqui se cancelam — sem indicação clara.'}`,
+      texto: baseTxt,
+      checklistHtml: checklistHtml + resultadoHtml,
     };
   }
   return null;
@@ -87,8 +157,11 @@ function dicaChuteQuestao(q){
 function dicaChutePanelHtml(q){
   const d = dicaChuteQuestao(q);
   if(!d) return '';
+  const corpo = d.tipo === 'ce'
+    ? `<div class="dica-chute-texto">${d.texto}</div><div class="checklist-lista">${d.checklistHtml}</div>`
+    : `<div class="dica-chute-texto">${d.texto}</div>`;
   return `<div class="dica-chute-panel">
-    <div class="dica-chute-titulo">🎯 Dica de chute <span class="dica-chute-aviso">— estatística de como a questão foi escrita, não é IA e não leu o enunciado</span></div>
-    <div class="dica-chute-texto">${d.texto}</div>
+    <div class="dica-chute-titulo">🎯 Lista de verificação — dica de chute <span class="dica-chute-aviso">— estatística de como a questão foi escrita, não é IA e não leu o enunciado</span></div>
+    ${corpo}
   </div>`;
 }
