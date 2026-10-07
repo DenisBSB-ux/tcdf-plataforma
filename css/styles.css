@@ -638,6 +638,12 @@ body:not(.theme-light) .dica-chute-panel{ background:rgba(122,143,166,0.12); bor
 body:not(.theme-light) .checklist-resultado{ background:rgba(224,184,101,0.14); }
 body:not(.theme-light) .checklist-resultado-certo{ background:rgba(63,196,120,0.14); }
 body:not(.theme-light) .checklist-resultado-errado{ background:rgba(255,107,116,0.14); }
+/* rodapé do painel: autoavaliação com as respostas reais do usuário (js/heuristica.js) */
+.heur-stats-resumo{
+  margin-top:8px; padding-top:8px; border-top:1px dashed var(--paper-line);
+  font-size:11.5px; color:var(--ink-soft);
+}
+.heur-stats-resumo b{ color:var(--ink); }
 /* linha de edição de uma alternativa (múltipla escolha): letra fixa + campo editável */
 .answer-opt-edit{
   display:flex; gap:12px; align-items:flex-start;
