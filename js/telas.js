@@ -1349,6 +1349,11 @@ function ordenarFilaSimulado(candidatos, materia, modo){
 function reordenarQuizEmAndamento(quiz, modo){
   if(!quiz || quiz.finished || quiz.origemErros || quiz.reaberto) return false;
   const bucket = getBucket(quiz.materia);
+  // repõe respostas do histórico ANTES de decidir quais questões são "feitas"
+  // -- senão uma questão respondida em outro ponto (fora deste quiz.respostas)
+  // seria tratada como "ainda não feita" e embaralhada junto com as novas,
+  // perdendo a marcação visual ao reordenar
+  curarRespostasDoHistorico(quiz);
   const feitas = quiz.queue.filter(u => quiz.respostas[u]);
   const resto = quiz.queue.filter(u => !quiz.respostas[u]).map(u => BY_UID[u]).filter(Boolean);
   let restoOrdenado;

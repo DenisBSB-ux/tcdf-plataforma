@@ -76,6 +76,7 @@ let MATERIAS_OCULTAS = new Set(); // matérias NATIVAS (embutidas no código) qu
   // embutida é guardar o nome dela aqui e filtrar toda vez que a base nativa for recriada no carregamento
 let edicaoAtual = null; // uid da questão em modo de edição agora (todos os campos — enunciado, resolução, resumo flash — ficam editáveis juntos)
 let chuteArmado = null; // uid da questão com o botão "Chute" armado, aguardando o clique na resposta de verdade
+let dicaChuteAberta = null; // uid da questão com o painel "Dica de chute" (js/heuristica.js) aberto agora
 let saveEdicoesTimer = null;
 function salvarEdicoesUsuario(){
   clearTimeout(saveEdicoesTimer);
@@ -222,5 +223,43 @@ function getBucket(materiaKey){
   // de matéria antiga carregado do storage não tem esse campo ainda)
   if(!PROGRESS[materiaKey].chutes) PROGRESS[materiaKey].chutes = {};
   return PROGRESS[materiaKey];
+}
+
+// AUTOCURA de quiz.respostas a partir do histórico persistido (bucket.perguntas).
+// quiz.respostas só guarda as respostas dadas NESTA sessão/objeto de simulado;
+// bucket.perguntas é o histórico oficial e duradouro (usado em
+// computeSnapshotMateria, que gera os números "Total Respondidas" no topo).
+// Sem isso, uma questão já respondida (contando no total oficial) pode voltar
+// a aparecer "em branco" — botões de novo, célula branca no grid — sempre que
+// o objeto de quiz não carregou aquela resposta específica: ao reordenar a
+// fila ("Configurar simulado"), ao retomar um simulado antigo, ou depois de um
+// merge de outro aparelho. Chamar isto antes de usar quiz.respostas garante
+// que a marcação nunca se perde, qualquer que seja a ordem da fila.
+// Retorna true se recuperou alguma resposta (quem chama decide se salva).
+function curarRespostasDoHistorico(quiz){
+  if(!quiz || !quiz.materia) return false;
+  const bucket = getBucket(quiz.materia);
+  let curouAlgo = false;
+  (quiz.queue||[]).forEach(u => {
+    if(quiz.respostas[u]) return;
+    const hist = bucket.perguntas[u];
+    if(!hist || !hist.tentativas || hist.ultimoResultado==null) return;
+    const q = typeof BY_UID !== 'undefined' ? BY_UID[u] : null;
+    if(!q) return;
+    const gEf = gabaritoEfetivo(q);
+    let picked = null;
+    if(hist.ultimoResultado){
+      picked = gEf; // acertou: só pode ter marcado o próprio gabarito
+    } else if(q.t==='CE'){
+      picked = gEf==='Certo' ? 'Errado' : 'Certo'; // C/E é binário: errou = marcou o outro
+    }
+    // em MC errada não dá pra saber COM CERTEZA qual alternativa foi marcada
+    // (só que não foi a correta) — picked fica null; a questão ainda é
+    // mostrada revelada e contada corretamente, só sem destacar qual
+    // alternativa específica foi a escolhida
+    quiz.respostas[u] = { picked, correct: hist.ultimoResultado, recuperadaDoHistorico: true };
+    curouAlgo = true;
+  });
+  return curouAlgo;
 }
 

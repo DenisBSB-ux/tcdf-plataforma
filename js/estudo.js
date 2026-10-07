@@ -62,6 +62,12 @@ function renderQuiz(){
     }
   }
 
+  // repõe respostas que já constam no histórico oficial da matéria mas não
+  // neste objeto de quiz específico (ver armazenamento.js) -- sem isso, uma
+  // questão já respondida podia voltar a aparecer "em branco" depois de
+  // reordenar a fila ou retomar um simulado antigo
+  if(curarRespostasDoHistorico(quiz)) salvarQuizEmAndamento();
+
   const uid = quiz.queue[quiz.idx];
   const q = BY_UID[uid];
   const resposta = quiz.respostas[uid];
@@ -92,6 +98,10 @@ function renderQuiz(){
     <span class="letter">🎲</span>
   </button>`;
   const chuteHint = chuteArmadoAqui ? `<div class="chute-hint">🎲 Chute armado — agora escolha sua resposta</div>` : '';
+  // "Dica de chute" (js/heuristica.js): só faz sentido ANTES de responder —
+  // depois de revelado o gabarito já está ali, a dica perderia o sentido
+  const dicaChuteBtnHtml = !revelado ? `<button class="icon-btn" id="btn-dica-chute" title="Dica de chute — estatística de como a questão foi escrita (não é IA, não analisa o conteúdo)">🎯</button>` : '';
+  const dicaChutePainelHtmlAtual = (!revelado && dicaChuteAberta === uidAtual) ? dicaChutePanelHtml(q) : '';
   if(q.t === 'CE'){
     // respondida: fica só o botão escolhido — verde se acertou, vermelho se errou
     const opcoesCE = revelado ? ['Certo','Errado'].filter(opt => opt===resposta.picked) : ['Certo','Errado'];
@@ -131,6 +141,7 @@ function renderQuiz(){
   } else {
     optionsHtml = `<p style="font-size:13px;color:var(--ink-soft);padding:8px 0;">Questão sem gabarito identificado — não pontuável. Use as setas para navegar.</p>`;
   }
+  optionsHtml += dicaChutePainelHtmlAtual;
 
   if(STATE.focusMode){
     // modo foco: sem menus nem paginação, mas com as informações da questão
@@ -159,6 +170,7 @@ function renderQuiz(){
           <span class="toolbar-divider"></span>
           <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
           ${btnChuteHtml(quiz.materia, uidAtual, revelado)}
+          ${dicaChuteBtnHtml}
           <span class="toolbar-divider"></span>
           <button class="icon-btn" id="btn-focus-toggle" title="Sair do modo foco">✕</button>
           <button class="theme-toggle-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro" style="width:36px;height:36px;">${STATE.theme==='light'?'🌙':'☀️'}</button>
@@ -218,6 +230,7 @@ function renderQuiz(){
         <span class="toolbar-divider"></span>
         <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
         ${btnChuteHtml(quiz.materia, uidAtual, revelado)}
+        ${dicaChuteBtnHtml}
         <button class="icon-btn" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
         <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
         <span class="toolbar-divider"></span>
@@ -378,6 +391,7 @@ function pickAnswer(opt){
   const correct = opt === gabaritoEfetivo(q);
   quiz.respostas[uid] = { picked: opt, correct };
   registrarResposta(quiz.materia, uid, correct);
+  if(dicaChuteAberta === uid) dicaChuteAberta = null;
   // se o "Chute" estava armado pra esta questão, a resposta que acabou de ser
   // escolhida é que entra no histórico de chutes — e desarma pra próxima
   if(chuteArmado === uid){ toggleChute(quiz.materia, uid, correct); chuteArmado = null; }
@@ -402,17 +416,29 @@ function toggleChuteArmado(){
   render();
 }
 
+// botão "Dica de chute" (🎯, js/heuristica.js): abre/fecha o painel com a
+// estatística — não responde nada, só mostra texto. Só faz sentido antes de
+// a questão estar revelada (senão o gabarito real já está ali do lado)
+function toggleDicaChute(){
+  const quiz = STATE.quiz;
+  if(!quiz) return;
+  const uid = quiz.queue[quiz.idx];
+  if(quiz.respostas[uid]) return;
+  dicaChuteAberta = (dicaChuteAberta===uid) ? null : uid;
+  render();
+}
+
 function goPrev(){
   const quiz = STATE.quiz;
-  if(quiz.idx>0){ chuteArmado=null; quiz.idx -= 1; salvarQuizEmAndamento(); render(); }
+  if(quiz.idx>0){ chuteArmado=null; dicaChuteAberta=null; quiz.idx -= 1; salvarQuizEmAndamento(); render(); }
 }
 function goNext(){
   const quiz = STATE.quiz;
-  if(quiz.idx < quiz.queue.length-1){ chuteArmado=null; quiz.idx += 1; salvarQuizEmAndamento(); render(); }
+  if(quiz.idx < quiz.queue.length-1){ chuteArmado=null; dicaChuteAberta=null; quiz.idx += 1; salvarQuizEmAndamento(); render(); }
 }
 function goToQuestion(i){
   const quiz = STATE.quiz;
-  if(i>=0 && i<quiz.queue.length){ chuteArmado=null; quiz.idx = i; salvarQuizEmAndamento(); render(); }
+  if(i>=0 && i<quiz.queue.length){ chuteArmado=null; dicaChuteAberta=null; quiz.idx = i; salvarQuizEmAndamento(); render(); }
 }
 
 // acha o índice, na fila atual, da última questão já respondida (percorrendo do
