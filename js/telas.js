@@ -673,6 +673,11 @@ function renderEstatisticasPorMateria(){
     const temSimuladoEmAndamento = q && !q.finished;
     return { nome: m, acertos: s.ac, erros: s.erradas, pct: s.taxa, respondidas, total: s.totalPontuavel, ativa: m===STATE.materia, temSimuladoEmAndamento, ultimaRespostaTs: s.ultimaRespostaTs };
   }).sort((a,b)=>{
+    // matéria 100% respondida (Respondidas === Total) fica sempre no topo,
+    // independentemente da ordenação ativa (A–Z ou Última resposta)
+    const aCompleta = a.total>0 && a.respondidas>=a.total;
+    const bCompleta = b.total>0 && b.respondidas>=b.total;
+    if(aCompleta !== bCompleta) return aCompleta ? -1 : 1;
     // "ultima": última resposta mais recente primeiro; nunca respondidas no fim
     if(STATE.ordemMaterias==='ultima' && (a.ultimaRespostaTs||0)!==(b.ultimaRespostaTs||0)) return (b.ultimaRespostaTs||0) - (a.ultimaRespostaTs||0);
     return a.nome.localeCompare(b.nome,'pt-BR') || b.respondidas - a.respondidas || b.pct - a.pct;
