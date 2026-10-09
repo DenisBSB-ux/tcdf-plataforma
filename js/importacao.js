@@ -178,6 +178,10 @@ function parseMarkdownQuestoes(content){
     const tendencia = tendTxt.includes('cresc') ? '↑ Crescente' : (tendTxt.includes('decresc') ? '↓ Decrescente' : '→ Estável');
     const assuntoMatch = bloco.match(/\*\*Assunto:\*\*\s*(.+)/i);
     const assunto = assuntoMatch ? assuntoMatch[1].trim() : null;
+    // rótulo opcional de tipo de cobrança (ex.: "T:inv", "H", "I?") — vale mesmo
+    // que o uid da questão mude ao importar
+    const cobMatch = bloco.match(/\*\*Cobran[çc]a:\*\*\s*([A-Z](?::\w+)?\??)/i);
+    const cob = cobMatch ? cobMatch[1].toUpperCase() : null;
 
     const enunciado = blockFieldMd('Enunciado', bloco);
     const resolucao = blockFieldMd('Resolu[çc][ãa]o', bloco);
@@ -215,7 +219,7 @@ function parseMarkdownQuestoes(content){
     results.push({
       n, bc: bancaCargoTxt || '—', es: 'literal', ft: '', nv: nivel, td: tendencia, fr: '',
       q: enunciado, t: tipo, alt: alternativas, g: gabarito, r: resolucao || '', rf: resumo || '',
-      ar: ano, tema: assunto,
+      ar: ano, tema: assunto, ...(cob ? { cob } : {}),
     });
   });
   return { results, ignoradas, semGabarito };

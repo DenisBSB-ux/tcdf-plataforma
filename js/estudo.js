@@ -103,14 +103,20 @@ function renderQuiz(){
   const dicaChuteBtnHtml = !revelado ? `<button class="icon-btn" id="btn-dica-chute" title="Dica de chute — estatística de como a questão foi escrita (não é IA, não analisa o conteúdo)">🎯</button>` : '';
   const dicaChutePainelHtmlAtual = (!revelado && dicaChuteAberta === uidAtual) ? dicaChutePanelHtml(q) : '';
   if(q.t === 'CE'){
-    // respondida: fica só o botão escolhido — verde se acertou, vermelho se errou
-    const opcoesCE = revelado ? ['Certo','Errado'].filter(opt => opt===resposta.picked) : ['Certo','Errado'];
-    optionsHtml = chuteHint + `<div class="ce-buttons-row">` + opcoesCE.map(opt=>{
+    // modelo de layout: as duas opções ficam em linhas largas (letra C/E + texto);
+    // depois de responder, a correta fica verde e a escolhida errada, vermelha
+    const gCE = gEfetivo;
+    optionsHtml = chuteHint + `<div class="ce-buttons-row">` + ['Certo','Errado'].map(opt=>{
       let cls='answer-opt ce-btn ' + (opt==='Certo' ? 'ce-certo' : 'ce-errado');
-      if(revelado) cls += ' picked ' + (resposta.correct ? 'correct' : 'incorrect');
+      if(revelado){
+        const escolhida = opt===resposta.picked;
+        if(escolhida) cls += ' picked';
+        if(opt===gCE) cls += ' correct';
+        else if(escolhida) cls += ' incorrect';
+      }
       if(riscadas.includes(opt)) cls+=' riscado';
       return `<button class="${cls}" data-opt="${opt}" ${revelado?'disabled':''} title="${opt} (2 cliques risca)">
-        <span class="letter">${opt==='Certo'?'✓':'✗'}</span>
+        <span class="letter">${opt==='Certo'?'C':'E'}</span><span class="opt-text">${opt}</span>
       </button>`;
     }).join('') + (revelado ? chuteChip : btnChutarHtml) + `</div>`;
   } else if(q.t==='MC' && q.alt){
@@ -191,18 +197,29 @@ function renderQuiz(){
   const idxUltimaRespondida = acharIdxUltimaRespondida(quiz);
   const idxProximoAssunto = acharIdxProximoAssunto(quiz);
 
+  const snapM = computeSnapshotMateria(quiz.materia);
+  const resolvidasM = snapM.ac + snapM.erradas;
   return `
+  <div class="qm-breadcrumb">Estudo <span>›</span> ${esc(quiz.materia||'')} <span>›</span> Questões</div>
   <div class="case-file">
-    <div class="case-header">
-      <div class="q-number-row">
-        ${bancaCargoAnoLine(q)}
-        ${historicoHtml}
+    <div class="case-header qm-header">
+      <div class="qm-title">
+        <div class="qm-numero">Questão ${quiz.idx+1} de ${quiz.queue.length}
+          <small>(${resolvidasM} Resolvidas, <b class="qm-ac">${snapM.ac}</b> Acertos e <b class="qm-er">${snapM.erradas}</b> Erros)</small></div>
+        <div class="qm-linha"><span class="qm-rot">Matéria:</span> ${esc(q.materia||quiz.materia||'')}</div>
+        ${q.tema && q.tema!=='Geral' ? `<div class="qm-linha"><span class="qm-rot">Assunto:</span> ${esc(q.tema)}</div>` : ''}
       </div>
-      ${temaLinha}
-      <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
-      <div class="tag-row">
+      <div class="qm-tags">
         ${freqBadge(q.fr)}
         ${ineditaBadge(q)}
+        <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
+      </div>
+    </div>
+    <div class="qm-provabar">
+      <div class="qm-prova">${bancaCargoAnoLine(q)}</div>
+      <div class="qm-nav">
+        <button class="icon-btn" id="btn-prev-top" title="Questão anterior" ${quiz.idx===0?'disabled':''}>←</button>
+        <button class="icon-btn" id="btn-next-top" title="Próxima questão" ${quiz.idx===quiz.queue.length-1?'disabled':''}>→</button>
       </div>
     </div>
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
@@ -829,7 +846,9 @@ function gerarMarkdownDaMateria(materiaKey){
     md += `**ID:** ${q.uid}\n`;
     md += `**Banca/Cargo:** ${q.bc||'—'}\n`;
     md += `**Ano:** ${anoRealDaQuestao(q)||'—'} | **Nível:** ${NIVEL_LABEL[q.nv]||'Média'} | **Tendência:** ${tendenciaCurta(q.td)}\n`;
-    md += `**Assunto:** ${q.tema||'Geral'}\n\n`;
+    md += `**Assunto:** ${q.tema||'Geral'}\n`;
+    { const cobv = (typeof COBRANCA!=='undefined' && COBRANCA[q.uid]) || q.cob; if(cobv) md += `**Cobrança:** ${cobv}\n`; }
+    md += `\n`;
     md += `### Enunciado\n${textoEfetivoDoCampo(q,'q')}\n\n`;
     if(q.t==='MC' && q.alt){
       md += `### Alternativas\n`;

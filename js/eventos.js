@@ -217,6 +217,10 @@ function attachHandlers(){
   if(btnDicaChute) btnDicaChute.addEventListener('click', toggleDicaChute);
   const btnPrev = document.getElementById('btn-prev');
   if(btnPrev) btnPrev.addEventListener('click', goPrev);
+  const btnPrevTop = document.getElementById('btn-prev-top');
+  if(btnPrevTop) btnPrevTop.addEventListener('click', goPrev);
+  const btnNextTop = document.getElementById('btn-next-top');
+  if(btnNextTop) btnNextTop.addEventListener('click', goNext);
   const btnNextArrow = document.getElementById('btn-next-arrow');
   if(btnNextArrow) btnNextArrow.addEventListener('click', goNext);
   const btnProximaRapida = document.getElementById('btn-proxima-rapida');

@@ -551,7 +551,7 @@ const COBRANCA = {
 };
 
 function cobrancaDaQuestao(q){
-  const v = q && COBRANCA[q.uid];
+  const v = q && (COBRANCA[q.uid] || q.cob);
   const m = v && v.match(/^([A-Z])(?::(\w+))?(\?)?$/);
   return m ? { tipo: m[1], armadilha: m[2] || null, duvida: !!m[3] } : null;
 }
@@ -562,7 +562,7 @@ function grupoCobranca(q){
   return g ? g[0] : null;
 }
 function materiaTemCobranca(materia){
-  return ALL_QUESTIONS.some(q => q.materia===materia && COBRANCA[q.uid]);
+  return ALL_QUESTIONS.some(q => q.materia===materia && (COBRANCA[q.uid] || q.cob));
 }
 // etiqueta mostrada depois de responder
 function cobrancaTag(q){
