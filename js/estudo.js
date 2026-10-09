@@ -151,7 +151,16 @@ function renderQuiz(){
   const idxUltimaRespondida = acharIdxUltimaRespondida(quiz);
   const idxProximoAssunto = acharIdxProximoAssunto(quiz);
 
-  const snapM = computeSnapshotMateria(quiz.materia);
+  // contagem restrita às questões DESTA fila (mesma regra do grid de paginação):
+  // assim "Questão 12 de 233" e "N resolvidas" falam do mesmo conjunto
+  const bucketQ = getBucket(quiz.materia);
+  const snapM = { ac:0, erradas:0 };
+  quiz.queue.forEach(u=>{
+    const r = quiz.respostas[u];
+    if(r){ r.correct ? snapM.ac++ : snapM.erradas++; return; }
+    const h = BY_UID[u] ? bucketQ.perguntas[u] : null;
+    if(h && h.tentativas>0){ h.ultimoResultado ? snapM.ac++ : snapM.erradas++; }
+  });
   const resolvidasM = snapM.ac + snapM.erradas;
   const pctAcM = resolvidasM ? Math.round(snapM.ac*100/resolvidasM) : 0;
   const pctErM = resolvidasM ? 100 - pctAcM : 0;
@@ -161,7 +170,7 @@ function renderQuiz(){
     <div class="case-header qm-header">
       <div class="qm-title">
         <div class="qm-numero">Questão ${quiz.idx+1} de ${quiz.queue.length}
-          <small>(${resolvidasM} Resolvidas, <b class="qm-ac">${snapM.ac}</b> Acertos${resolvidasM?` (${pctAcM}%)`:''} e <b class="qm-er">${snapM.erradas}</b> Erros${resolvidasM?` (${pctErM}%)`:''})</small></div>
+          <small><b class="qm-ac">${snapM.ac}</b> Acertos (${pctAcM}%) / <b class="qm-er">${snapM.erradas}</b> Erros (${pctErM}%)</small></div>
         ${q.tema && q.tema!=='Geral' ? `<div class="qm-linha"><span class="qm-rot">Assunto:</span> ${esc(q.tema)}</div>` : ''}
       </div>
       <div class="qm-tags">
