@@ -254,3 +254,13 @@ function formatarTextoComDestaque(texto, palavrasExtras){
   return frases.map(f => `<p>${destacarPalavrasChave(f, palavrasExtras)}</p>`).join('');
 }
 
+
+// tela cheia (navegador): vale para o modo normal e o modo foco; o ícone do
+// botão é redesenhado quando o estado muda (inclusive ao sair com Esc)
+function alternarTelaCheia(){
+  try{
+    if(document.fullscreenElement) document.exitFullscreen();
+    else (document.documentElement.requestFullscreen||function(){return Promise.reject();}).call(document.documentElement).catch(()=>{});
+  }catch(_){}
+}
+document.addEventListener('fullscreenchange', ()=>{ try{ if(typeof render==='function' && STATE.quiz) render(); }catch(_){} });

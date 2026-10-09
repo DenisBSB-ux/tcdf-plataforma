@@ -213,8 +213,6 @@ function attachHandlers(){
   });
   const btnChutarArmar = document.getElementById('btn-chute-armar');
   if(btnChutarArmar) btnChutarArmar.addEventListener('click', toggleChuteArmado);
-  const btnDicaChute = document.getElementById('btn-dica-chute');
-  if(btnDicaChute) btnDicaChute.addEventListener('click', toggleDicaChute);
   const btnPrev = document.getElementById('btn-prev');
   if(btnPrev) btnPrev.addEventListener('click', goPrev);
   const btnPrevTop = document.getElementById('btn-prev-top');
@@ -404,6 +402,8 @@ function attachHandlers(){
   root.querySelectorAll('[data-cor-tema]').forEach(el=>{
     el.addEventListener('click', ()=> escolherCorTema(el.dataset.corTema));
   });
+  const btnFullscreen = document.getElementById('btn-fullscreen');
+  if(btnFullscreen) btnFullscreen.addEventListener('click', alternarTelaCheia);
   const btnFocusToggle = document.getElementById('btn-focus-toggle');
   if(btnFocusToggle) btnFocusToggle.addEventListener('click', ()=>{ STATE.focusMode = !STATE.focusMode; render(); });
 

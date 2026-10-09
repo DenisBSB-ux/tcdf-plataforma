@@ -98,10 +98,6 @@ function renderQuiz(){
     <span class="letter">🎲</span>
   </button>`;
   const chuteHint = chuteArmadoAqui ? `<div class="chute-hint">🎲 Chute armado — agora escolha sua resposta</div>` : '';
-  // "Dica de chute" (js/heuristica.js): só faz sentido ANTES de responder —
-  // depois de revelado o gabarito já está ali, a dica perderia o sentido
-  const dicaChuteBtnHtml = !revelado ? `<button class="icon-btn" id="btn-dica-chute" title="Dica de chute — estatística de como a questão foi escrita (não é IA, não analisa o conteúdo)">🎯</button>` : '';
-  const dicaChutePainelHtmlAtual = (!revelado && dicaChuteAberta === uidAtual) ? dicaChutePanelHtml(q) : '';
   if(q.t === 'CE'){
     // modelo de layout: as duas opções ficam em linhas largas (letra C/E + texto);
     // depois de responder, a correta fica verde e a escolhida errada, vermelha
@@ -146,48 +142,6 @@ function renderQuiz(){
     }).join('') + (emEdicaoAlt ? '' : (revelado ? `<div class="chute-chip-row">${chuteChip}</div>` : btnChutarHtml));
   } else {
     optionsHtml = `<p style="font-size:13px;color:var(--ink-soft);padding:8px 0;">Questão sem gabarito identificado — não pontuável. Use as setas para navegar.</p>`;
-  }
-  optionsHtml += dicaChutePainelHtmlAtual;
-
-  if(STATE.focusMode){
-    // modo foco: sem menus nem paginação, mas com as informações da questão
-    // (banca/cargo/ano, assunto, frequência/estimativa) e o progresso da
-    // matéria na barra de baixo
-    return `
-    <div class="case-file focus-simple" style="zoom:${STATE.zoomLevel};">
-      <div class="case-header">
-        <div class="q-number-row">${bancaCargoAnoLine(q)}</div>
-        ${q.tema && q.tema!=='Geral' ? `<div class="q-tema-line">${esc(q.tema)}</div>` : ''}
-        <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
-      </div>
-      <div class="case-body">
-        <div class="enunciado ${revelado?'com-selo':''}">
-          ${revelado ? `<div class="tag-cobranca-corner">${cobrancaTag(q)}</div>` : ''}
-          ${blocoEnunciadoEditavel(q)}
-        </div>
-      </div>
-      <div class="answers">${optionsHtml}</div>
-      ${revelado ? `<div class="case-body focus-justificativa">${renderResolucao(q, resposta, quiz)}</div>` : ''}
-      <div class="quiz-toolbar">
-        <div class="toolbar-btn-row">
-          <button class="icon-btn" id="btn-prev" title="Questão anterior (seta ← ou Shift)" ${quiz.idx===0?'disabled':''}>←</button>
-          <span class="q-jump-label">${quiz.idx+1} / ${quiz.queue.length}</span>
-          <button class="icon-btn" id="btn-next-arrow" title="Próxima questão (seta → ou espaço)" ${quiz.idx===quiz.queue.length-1?'disabled':''}>→</button>
-          <span class="toolbar-divider"></span>
-          <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
-          ${btnChuteHtml(quiz.materia, uidAtual, revelado)}
-          ${dicaChuteBtnHtml}
-          <span class="toolbar-divider"></span>
-          <button class="icon-btn" id="btn-focus-toggle" title="Sair do modo foco">✕</button>
-          <button class="theme-toggle-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro" style="width:36px;height:36px;">${STATE.theme==='light'?'🌙':'☀️'}</button>
-          ${renderZoomControl()}
-        </div>
-        <div class="toolbar-meta-row">
-          <span class="toolbar-meta-info">${renderProgressoMateriaToolbar(quiz.materia)}</span>
-        </div>
-      </div>
-    </div>
-    `;
   }
 
   const respondidas = Object.keys(quiz.respostas).length;
@@ -242,8 +196,9 @@ function renderQuiz(){
         <span class="toolbar-divider"></span>
         <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
         ${btnChuteHtml(quiz.materia, uidAtual, revelado)}
-        ${dicaChuteBtnHtml}
         <button class="icon-btn" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
+        <button class="icon-btn" id="btn-fullscreen" title="${document.fullscreenElement?'Sair da tela cheia':'Tela cheia'}">${document.fullscreenElement?'🗗':'⛶'}</button>
+        ${STATE.focusMode ? `<button class="icon-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro">${STATE.theme==='light'?'🌙':'☀️'}</button>` : ''}
         <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
         <span class="toolbar-divider"></span>
         ${renderZoomControl()}
@@ -428,17 +383,6 @@ function toggleChuteArmado(){
   render();
 }
 
-// botão "Dica de chute" (🎯, js/heuristica.js): abre/fecha o painel com a
-// estatística — não responde nada, só mostra texto. Só faz sentido antes de
-// a questão estar revelada (senão o gabarito real já está ali do lado)
-function toggleDicaChute(){
-  const quiz = STATE.quiz;
-  if(!quiz) return;
-  const uid = quiz.queue[quiz.idx];
-  if(quiz.respostas[uid]) return;
-  dicaChuteAberta = (dicaChuteAberta===uid) ? null : uid;
-  render();
-}
 
 function goPrev(){
   const quiz = STATE.quiz;
