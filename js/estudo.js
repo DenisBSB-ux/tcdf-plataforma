@@ -153,13 +153,15 @@ function renderQuiz(){
 
   const snapM = computeSnapshotMateria(quiz.materia);
   const resolvidasM = snapM.ac + snapM.erradas;
+  const pctAcM = resolvidasM ? Math.round(snapM.ac*100/resolvidasM) : 0;
+  const pctErM = resolvidasM ? 100 - pctAcM : 0;
   return `
   <div class="qm-breadcrumb">Estudo <span>›</span> ${esc(quiz.materia||'')} <span>›</span> Questões</div>
   <div class="case-file">
     <div class="case-header qm-header">
       <div class="qm-title">
         <div class="qm-numero">Questão ${quiz.idx+1} de ${quiz.queue.length}
-          <small>(${resolvidasM} Resolvidas, <b class="qm-ac">${snapM.ac}</b> Acertos e <b class="qm-er">${snapM.erradas}</b> Erros)</small></div>
+          <small>(${resolvidasM} Resolvidas, <b class="qm-ac">${snapM.ac}</b> Acertos${resolvidasM?` (${pctAcM}%)`:''} e <b class="qm-er">${snapM.erradas}</b> Erros${resolvidasM?` (${pctErM}%)`:''})</small></div>
         ${q.tema && q.tema!=='Geral' ? `<div class="qm-linha"><span class="qm-rot">Assunto:</span> ${esc(q.tema)}</div>` : ''}
       </div>
       <div class="qm-tags">
