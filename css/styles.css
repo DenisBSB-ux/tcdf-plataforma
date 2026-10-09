@@ -1663,3 +1663,6 @@ body .ce-btn.picked .letter, body .ce-btn.picked.correct .letter, body .ce-btn.p
 body:not(.theme-light) .qm-numero, body:not(.theme-light) .qm-linha{ color:#f2f4f8; }
 body:not(.theme-light) .qm-numero small, body:not(.theme-light) .qm-rot, body:not(.theme-light) .qm-breadcrumb{ color:#a9b6cc; }
 body:not(.theme-light) .qm-provabar{ background:var(--black-900); border-bottom-color:rgba(255,255,255,0.12); }
+
+/* v157: sem elementos repetidos — placeholder vazio da resolução some antes de responder */
+.case-columns.nao-revelado .case-col-right{ display:none !important; }
