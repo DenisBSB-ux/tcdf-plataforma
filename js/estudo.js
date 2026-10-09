@@ -206,7 +206,6 @@ function renderQuiz(){
       <div class="qm-title">
         <div class="qm-numero">Questão ${quiz.idx+1} de ${quiz.queue.length}
           <small>(${resolvidasM} Resolvidas, <b class="qm-ac">${snapM.ac}</b> Acertos e <b class="qm-er">${snapM.erradas}</b> Erros)</small></div>
-        <div class="qm-linha"><span class="qm-rot">Matéria:</span> ${esc(q.materia||quiz.materia||'')}</div>
         ${q.tema && q.tema!=='Geral' ? `<div class="qm-linha"><span class="qm-rot">Assunto:</span> ${esc(q.tema)}</div>` : ''}
       </div>
       <div class="qm-tags">
@@ -217,10 +216,6 @@ function renderQuiz(){
     </div>
     <div class="qm-provabar">
       <div class="qm-prova">${bancaCargoAnoLine(q)}</div>
-      <div class="qm-nav">
-        <button class="icon-btn" id="btn-prev-top" title="Questão anterior" ${quiz.idx===0?'disabled':''}>←</button>
-        <button class="icon-btn" id="btn-next-top" title="Próxima questão" ${quiz.idx===quiz.queue.length-1?'disabled':''}>→</button>
-      </div>
     </div>
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
@@ -258,7 +253,6 @@ function renderQuiz(){
         <span class="toolbar-meta-info">
           ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvo automaticamente neste aparelho a cada resposta">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
           ${(()=>{ const e = estadoSincronizacaoProgresso(); return `<span id="indicador-nuvem" class="indicador-nuvem ${e.classe}" title="${esc(e.texto)}">${e.icone}</span>`; })()}
-          ${renderProgressoMateriaToolbar(quiz.materia)}
         </span>
       </div>
     </div>
