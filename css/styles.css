@@ -65,9 +65,10 @@ body.theme-light .footer-note{ color:#7a8290; }
 
 /* ---------- Letterhead ---------- */
 .app{
-  max-width:1560px;
+  max-width:none;
+  width:100%;
   margin:0 auto;
-  padding:18px 26px 40px;
+  padding:12px 16px 32px;
 }
 
 .letterhead{
@@ -1089,7 +1090,7 @@ body:not(.theme-light) .stat-card{ border-top-color:var(--gold-bright); }
 }
 
 /* ---------- modo foco ---------- */
-body.focus-mode .app{ padding-top:14px; max-width:1240px; }
+body.focus-mode .app{ padding-top:10px; max-width:none; }
 
 .quiz-toolbar{
   display:flex; flex-direction:column; gap:10px;
@@ -1666,3 +1667,11 @@ body:not(.theme-light) .qm-provabar{ background:var(--black-900); border-bottom-
 
 /* v157: sem elementos repetidos — placeholder vazio da resolução some antes de responder */
 .case-columns.nao-revelado .case-col-right{ display:none !important; }
+
+/* v163: tela maximizada + matérias concluídas (100% respondidas) em azul */
+.app-shell{ grid-template-columns: 200px minmax(0,1fr); }
+.letterhead, .app > .letterhead{ max-width:none; }
+.subject-tab.materia-concluida{ background:#dbeafe !important; border-color:#2563eb !important; color:#173e72 !important; border-left:4px solid #2563eb !important; }
+.subject-tab.materia-concluida .materia-tab-stats, .subject-tab.materia-concluida .cnt{ color:#1e4f8f !important; }
+body:not(.theme-light) .subject-tab.materia-concluida{ background:rgba(37,99,235,.22) !important; color:#dbeafe !important; }
+body:not(.theme-light) .subject-tab.materia-concluida .materia-tab-stats, body:not(.theme-light) .subject-tab.materia-concluida .cnt{ color:#bfd6ff !important; }
