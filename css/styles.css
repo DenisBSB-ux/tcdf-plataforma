@@ -1669,7 +1669,11 @@ body:not(.theme-light) .qm-provabar{ background:var(--black-900); border-bottom-
 .case-columns.nao-revelado .case-col-right{ display:none !important; }
 
 /* v163: tela maximizada + matérias concluídas (100% respondidas) em azul */
-.app-shell{ grid-template-columns: 200px minmax(0,1fr); }
+.app{ width:80%; max-width:none; }
+body.focus-mode .app{ width:80%; }
+@media (max-width:1100px){ .app, body.focus-mode .app{ width:100%; } }
+.app-shell{ grid-template-columns: 240px minmax(0,1fr); }
+.compact-side .nav-tab, .compact-side .tab-btn, .compact-side .side-nav-btn{ white-space:nowrap; }
 .letterhead, .app > .letterhead{ max-width:none; }
 .subject-tab.materia-concluida{ background:#dbeafe !important; border-color:#2563eb !important; color:#173e72 !important; border-left:4px solid #2563eb !important; }
 .subject-tab.materia-concluida .materia-tab-stats, .subject-tab.materia-concluida .cnt{ color:#1e4f8f !important; }
