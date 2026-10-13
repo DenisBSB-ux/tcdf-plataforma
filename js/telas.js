@@ -749,7 +749,9 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
       <div style="width:90px;text-align:right;">Última resposta</div>
     </div>
     ${linhas.map((l,i)=>{
-      const cor = faixaCorPct(l.pct, l.respondidas);
+      // matéria concluída (100% respondida) = azul, independentemente do % de acerto
+      const concluida = l.total>0 && l.respondidas>=l.total;
+      const cor = concluida ? { bg:'#dbeafe', fg:'#1e4f8f', fgForte:'#173e72' } : faixaCorPct(l.pct, l.respondidas);
       // marcador lateral (faixa de acerto) em vez do preenchimento em
       // gradiente na linha inteira — mais legível, o texto nunca fica em
       // cima de um fundo colorido variável
@@ -901,8 +903,9 @@ function renderMateriaTopStrip(){
         const n = ALL_QUESTIONS.filter(q=>q.materia===m && !q.duplicataOculta).length;
         const ativo = !STATE.viewImportar && !STATE.viewAuditoria && STATE.materia===m;
         const s = computeSnapshotMateria(m);
+        const concluidaM = s.totalPontuavel>0 && (s.ac+s.erradas)>=s.totalPontuavel;
         const statsTxt = (s.ac+s.erradas)>0 ? `${s.taxa}% · ${s.ac} certas · ${s.erradas} erradas · ${s.totalPontuavel} total` : `${s.totalPontuavel} pontuáveis · ainda sem tentativas`;
-        return `<button class="subject-tab materia-tab-btn ${ativo?'active':''}" data-macro-materia="${esc(m)}">
+        return `<button class="subject-tab materia-tab-btn ${ativo?'active':''} ${concluidaM?'materia-concluida':''}" data-macro-materia="${esc(m)}">
           <span class="materia-tab-row1"><span>${esc(m)}</span><span class="cnt">${n}</span></span>
           <span class="materia-tab-stats">${statsTxt}</span>
         </button>`;
