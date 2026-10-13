@@ -1679,3 +1679,9 @@ body.focus-mode .app{ width:80%; }
 .subject-tab.materia-concluida .materia-tab-stats, .subject-tab.materia-concluida .cnt{ color:#1e4f8f !important; }
 body:not(.theme-light) .subject-tab.materia-concluida{ background:rgba(37,99,235,.22) !important; color:#dbeafe !important; }
 body:not(.theme-light) .subject-tab.materia-concluida .materia-tab-stats, body:not(.theme-light) .subject-tab.materia-concluida .cnt{ color:#bfd6ff !important; }
+
+/* v165: figuras dentro das edições (enunciado/resolução/resumo flash) */
+.campo-editavel-conteudo img{ max-width:100%; height:auto; display:block; margin:8px 0; border-radius:6px; border:1px solid var(--paper-line); }
+.campo-editavel-conteudo[contenteditable="true"] img{ cursor:default; outline:1px dashed transparent; }
+.campo-editavel-conteudo[contenteditable="true"] img:hover{ outline-color:var(--gold); }
+.campo-editavel-conteudo img[data-pendente]{ min-height:40px; min-width:120px; background:rgba(128,128,128,.15); }
