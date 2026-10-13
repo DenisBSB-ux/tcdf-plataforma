@@ -247,7 +247,7 @@ async function limparDadosDoUsuarioNoAparelho(){
   STATE.flashDeck = null;
   STATE.syncCode = '';
   STATE.syncStatus = null;
-  const escritas = [[STORAGE_KEY, '{}'], [EDICOES_KEY, '{}'], [SYNC_CODE_KEY, ''], [LAST_SYNC_KEY, ''], [CONTA_DO_APARELHO_KEY, '']];
+  const escritas = [[STORAGE_KEY, '{}'], [EDICOES_KEY, '{}'], [IMAGENS_KEY, '{}'], [IMAGENS_ENVIADAS_KEY, '[]'], [SYNC_CODE_KEY, ''], [LAST_SYNC_KEY, ''], [CONTA_DO_APARELHO_KEY, '']];
   chavesQuiz.forEach(k => escritas.push([quizStorageKey(k), '']));
   for(const [chave, valor] of escritas){
     try{ await storageSet(chave, valor); }catch(e){ console.warn('Falha ao limpar '+chave, e); }
@@ -712,6 +712,7 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
 
 async function pushToCloud(){
   if(!sincronizacaoAtiva()) return;
+  enviarImagensPendentes(); // figuras novas das edições (coleção progresso, 1 doc por figura)
   // Nada mudou desde o último envio: nenhuma chamada à nuvem (economiza a cota
   // diária gratuita do Firestore).
   if(MATERIAS_PROGRESSO_SUJAS.size===0) return;
@@ -870,6 +871,8 @@ async function loadProgress(){
     const resEd = await storageGet(EDICOES_KEY);
     if(resEd && resEd.value) EDICOES_USUARIO = JSON.parse(resEd.value);
   }catch(e){ /* nenhuma edição manual salva ainda */ }
+
+  await carregarImagensLocais();
 
   try{
     const resGab = await storageGet(GABARITOS_ALTERADOS_KEY);

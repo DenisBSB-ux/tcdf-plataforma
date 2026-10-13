@@ -118,7 +118,7 @@ function renderQuiz(){
   } else if(q.t==='MC' && q.alt){
     optionsHtml = chuteHint + q.alt.map((a,idx)=>{
       const letraUp = a.letra.toUpperCase();
-      const customAlt = EDICOES_USUARIO[uidAtual] && EDICOES_USUARIO[uidAtual]['alt'+idx] && limparHtmlEditado(EDICOES_USUARIO[uidAtual]['alt'+idx]);
+      const customAlt = EDICOES_USUARIO[uidAtual] && EDICOES_USUARIO[uidAtual]['alt'+idx] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uidAtual]['alt'+idx]));
       const textoHtml = customAlt || esc(a.texto);
       if(emEdicaoAlt){
         return `<div class="answer-opt-edit">
@@ -291,6 +291,7 @@ function editorToolbarHtml(uid){
     <button data-editar-acao="ul" title="Lista com marcadores">• Lista</button>
     <button data-editar-acao="ol" title="Lista numerada">1. Lista</button>
     <button data-editar-acao="citacao" title="Citação em bloco">❝</button>
+    <button data-editar-acao="figura" title="Inserir figura (ou cole com Ctrl+V / arraste um arquivo de imagem para dentro do campo)">🖼 Figura</button>
     <span class="editor-toolbar-sep"></span>
     <button data-editar-acao="desfazer" title="Desfazer (Ctrl+Z)">↶</button>
     <button data-editar-acao="refazer" title="Refazer (Ctrl+Y)">↷</button>
@@ -303,7 +304,7 @@ function editorToolbarHtml(uid){
 // questão inteira (usado igual no modo Normal e no modo Foco)
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
-  const custom = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid]['q']);
+  const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
   const emEdicao = edicaoAtual === uid;
   const htmlAuto = destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)));
   const conteudo = custom || htmlAuto;
@@ -322,7 +323,7 @@ function blocoEnunciadoEditavel(q){
 // em edição junto quando a questão inteira está em edição (edicaoAtual===uid)
 function campoEditavelSimples(q, campo, htmlAuto){
   const uid = q.uid;
-  const custom = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid][campo]);
+  const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid][campo]));
   const emEdicao = edicaoAtual === uid;
   const conteudo = custom || htmlAuto;
   return `
@@ -910,8 +911,8 @@ function renderFlashcards(){
   // botão "Salvar" da barra já grava qualquer campo "conteudo-{campo}-{uid}"
   // presente na página, então um único toolbar no verso cobre os dois lados
   const emEdicao = edicaoAtual === uid;
-  const customQ = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid]['q']);
-  const customRf = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid]['rf']);
+  const customQ = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
+  const customRf = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['rf']));
   const qHtml = customQ || destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)));
   const rfHtml = customRf || formatarTextoComDestaque(q.rf, palavrasChaveDaRespostaCorreta(q));
 
