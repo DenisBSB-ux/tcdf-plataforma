@@ -1695,7 +1695,6 @@ body:not(.theme-light) .subject-tab.materia-concluida .materia-tab-stats, body:n
 .arm-rot{font-size:.78rem;font-weight:700;text-transform:uppercase;color:#64748b;letter-spacing:.03em;}
 .arm-nc,.arm-origem{font-size:.78rem;color:#64748b;}
 .arm-origem{margin-left:auto;}
-.arm-btn-edit,.btn-editar-grande{border:1px solid #d6a73a;background:#fff8e6;color:#6f4b0a;cursor:pointer;font-size:.95rem;font-weight:700;padding:5px 12px;border-radius:8px;}
 .arm-edit-txt{display:block;margin:8px 0;font-size:.9rem;font-weight:600;}
 .arm-edit-txt textarea{display:block;width:100%;margin-top:4px;font-size:1.15rem;line-height:1.5;padding:8px;border-radius:8px;border:1px solid #d6a73a;box-sizing:border-box;}
 .arm-expl{margin-top:8px;font-size:1.3rem;line-height:1.55;}
@@ -1754,22 +1753,23 @@ mark.arm-trecho{background:#fee2e2;color:#b91c1c;}
 
 .kw-chave{font-weight:700;color:inherit;background:none;}
 
-/* ---------- padrão único de botões (escala: 14px / peso 700 / altura mín. 34px / raio 8px) ---------- */
+/* ---------- padrão único de botões: pílula azul-ardósia (modelo "Literal") ---------- */
 .btn-ui, .editor-toolbar button.btn-ui{
   display:inline-flex; align-items:center; justify-content:center; gap:6px;
-  font-family:var(--font-body); font-size:14px; font-weight:700; line-height:1.2;
-  min-height:34px; padding:6px 14px; border-radius:8px; cursor:pointer; opacity:1;
-  background:#fff8e6; color:#6f4b0a; border:1px solid #d6a73a;
-  transition:background .15s, box-shadow .15s;
+  font-family:var(--font-mono); font-size:13px; font-weight:700; line-height:1.2;
+  min-height:34px; padding:6px 16px; border-radius:20px; cursor:pointer; opacity:1;
+  background:#3a6b8c; color:#fff; border:1.5px solid #fff;
+  box-shadow:0 3px 8px rgba(20,24,32,.22);
+  transition:filter .15s, transform .05s;
 }
-.btn-ui:hover, .editor-toolbar button.btn-ui:hover{ background:#ffefc2; box-shadow:0 1px 3px rgba(0,0,0,.15); }
-.btn-ui:focus-visible{ outline:2px solid #d6a73a; outline-offset:2px; }
-.btn-ui.btn-ui-salvar, .editor-toolbar button.btn-ui.btn-ui-salvar{ background:#2f7d4a !important; color:#fff; border:1px solid #2f7d4a !important; margin-left:0; }
-.btn-ui.btn-ui-salvar:hover{ background:#276a3e !important; }
-.btn-ui.btn-cancelar-edicao{ color:#9b2c2c; border-color:#e0a3a3; background:#fff5f5; }
-body:not(.theme-light) .btn-ui{ background:#3a2f14; color:#f3d98b; border-color:#a47f2a; }
-body:not(.theme-light) .btn-ui:hover{ background:#4a3b18; }
-body:not(.theme-light) .btn-ui.btn-cancelar-edicao{ background:#3b1d1d; color:#ffb4b4; border-color:#8a3a3a; }
+.btn-ui:hover, .editor-toolbar button.btn-ui:hover{ background:#3a6b8c; filter:brightness(1.12); }
+.btn-ui:active{ transform:translateY(1px); }
+.btn-ui:focus-visible{ outline:2px solid #3a6b8c; outline-offset:2px; }
+.btn-ui.btn-ui-salvar, .editor-toolbar button.btn-ui.btn-ui-salvar{ background:#4c7a5c !important; color:#fff; border:1.5px solid #fff !important; margin-left:0; }
+.btn-ui.btn-cancelar-edicao, .editor-toolbar button.btn-ui.btn-cancelar-edicao{ background:#9c5a5a; color:#fff; border:1.5px solid #fff; }
+body:not(.theme-light) .btn-ui, body:not(.theme-light) .editor-toolbar button.btn-ui{ background:#3a6b8c; color:#fff; border-color:var(--black-800,#1c2230); }
+body:not(.theme-light) .btn-ui.btn-ui-salvar{ background:#4c7a5c !important; border-color:var(--black-800,#1c2230) !important; }
+body:not(.theme-light) .btn-ui.btn-cancelar-edicao{ background:#9c5a5a; border-color:var(--black-800,#1c2230); }
 .campo-salvar-barra{ justify-content:flex-end; margin-top:10px; }
 .campo-editavel-acoes{ gap:8px; }
 /* justificativa: fundo por categoria */
@@ -1783,3 +1783,5 @@ body:not(.theme-light) .btn-ui.btn-cancelar-edicao{ background:#3b1d1d; color:#f
 .kw-gabarito{ background:rgba(250,204,21,.38); padding:0 3px; border-radius:4px; }
 /* escala tipográfica: corpo 16px+, rótulos 12-13px, botões 14px */
 .arm-rot{ font-size:.8rem; }
+body:not(.theme-light) .editor-toolbar button.btn-ui.btn-cancelar-edicao{ background:#9c5a5a; }
+body:not(.theme-light) .editor-toolbar button.btn-ui.btn-ui-salvar{ background:#4c7a5c !important; }
