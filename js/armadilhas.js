@@ -146,7 +146,7 @@ function armPainelHtml(q){
   if(!a) return '';
   const uid = q.uid;
   const editando = STATE.armEditUid === uid;
-  const lapis = `<button class="arm-btn-edit" data-arm-edit="${esc(uid)}" title="Editar a classificação, o trecho e a explicação desta armadilha">✏️ Editar</button>`;
+  const lapis = `<button class="arm-btn-edit btn-ui" data-arm-edit="${esc(uid)}" title="Editar a classificação, o trecho e a explicação desta armadilha">✏️ Editar</button>`;
   if(editando) return armEditorHtml(q, a);
   const origemTxt = a.origem==='manual' ? 'manual' : (a.origem==='gemini' ? 'Gemini' : 'IA');
   if(!a.classificada){
@@ -181,9 +181,9 @@ function armEditorHtml(q, a){
     ${a.errado ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão)<textarea id="arm-txt-tr" rows="2">${esc(a.trecho||'')}</textarea></label>
     <label class="arm-edit-txt">Explicação da armadilha<textarea id="arm-txt-ex" rows="3">${esc(a.expl||'')}</textarea></label>` : ''}
     <div class="arm-edit-acoes">
-      <button class="btn btn-gold btn-sm" data-arm-save="${esc(uid)}">💾 Salvar (origem: manual)</button>
-      <button class="btn btn-ghost btn-sm" data-arm-cancel="1">Cancelar</button>
-      ${a.origem==='manual' ? `<button class="btn btn-ghost btn-sm" data-arm-reset="${esc(uid)}">↺ Voltar à original</button>` : ''}
+      <button class="btn-ui btn-ui-salvar" data-arm-save="${esc(uid)}">💾 Salvar (origem: manual)</button>
+      <button class="btn-ui" data-arm-cancel="1">Cancelar</button>
+      ${a.origem==='manual' ? `<button class="btn-ui" data-arm-reset="${esc(uid)}">↺ Voltar à original</button>` : ''}
     </div>
   </div>`;
 }

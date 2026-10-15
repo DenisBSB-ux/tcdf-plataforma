@@ -281,9 +281,35 @@ function destacarPalavrasChaveQuestao(htmlEscapado){
   // só mexe no texto entre tags (nunca dentro de <u ...> etc.)
   return html.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(_reChave, x => `<b class="kw-chave">${x}</b>`));
 }
+// Justificativa: fundo de cor por categoria (negrito + cor de fundo suave)
+//  hl-abs vermelho = absolutos/negação/exceção · hl-causa azul = causa/conexão ·
+//  hl-norma verde = dever/poder/competência · hl-qtd âmbar = quantidade/tempo/prazo ·
+//  hl-verbo roxo = verbos/adjetivos-chave · hl-adv laranja = advérbios em -mente
+const _CAT_ABS = new Set([...TERMOS_DECISIVOS,'exclusivo','exclusiva','nem','sem','tampouco','só','exceto','salvo','ressalvado','ressalvada','não se aplica','não se aplicam','absoluto','absoluta','independentemente','independe','independem','por si só','suficiente','suficientes','basta','bastando','dispensa','dispensada','dispensado','dispensável','afasta','afastada','afastado','afastam','afastamento','ilimitado','ilimitada','nulo','nula','ilegal','inválido','inválida']);
+const _CAT_CAUSA = new Set(['visto que','uma vez que','já que','porque','pois','por força de','de tal modo que','de modo que','em razão de','por causa de','ocasionando','ocasionado','ocasiona','causa','causando','decorre','decorrente','resulta','resultando','implica','acarreta','provoca','consequência','consequentemente','sobretudo','principalmente','inclusive','mesmo que','ainda que','embora','contudo','porém','entretanto','todavia','desde que','apesar de','ao passo que','enquanto','tal como','assim como','bem como','pressupõe','condiciona']);
+const _CAT_NORMA = new Set(['pode','podem','poderá','poderão','deve','devem','deverá','deverão','dever','tem de','precisa','precisam','vedado','vedada','proibido','proibida','permitido','permitida','obrigatório','obrigatória','facultativo','facultativa','privativa','privativo','compete','cabe','caberá','competência','atribuição','discricionário','discricionária','discricionariedade','vinculado','vinculada','vinculação','vincula','vinculante','obriga','veda','proíbe','permite','autoriza','impede','impõe','faculta','em regra','via de regra','geralmente','normalmente','tende','tendem','costuma','frequentemente','eventualmente','em geral','necessário','necessária','necessários','necessárias','necessariamente']);
+const _CAT_QTD = new Set(['aumento','redução','diminuição','queda','elevação','ampliação','restrição','majoração','maior','menor','máximo','mínimo','máxima','mínima','integral','integralmente','parcial','parcialmente','imediato','imediatamente','automático','automaticamente','prévio','prévia','posterior','anterior','antes','depois','após','prazo','limite','limites','limitado','limitada','limita']);
+let _reHL = null;
+function _classeHL(m){
+  const t = m.toLowerCase().replace(/\s+/g,' ');
+  if(_CAT_ABS.has(t)) return 'hl-abs';
+  if(_CAT_CAUSA.has(t)) return 'hl-causa';
+  if(_CAT_NORMA.has(t)) return 'hl-norma';
+  if(_CAT_QTD.has(t)) return 'hl-qtd';
+  if(/mente$/.test(t)) return 'hl-adv';
+  return 'hl-verbo';
+}
+function destacarJustificativa(htmlEscapado){
+  if(!htmlEscapado) return '';
+  if(!_reHL){
+    const alt = [...new Set([...TERMOS_CHAVE, ..._CAT_ABS, ..._CAT_CAUSA, ..._CAT_NORMA, ..._CAT_QTD])].sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+')).join('|');
+    _reHL = new RegExp('(?<![\\p{L}\\p{N}])(?:' + alt + '|\\p{L}{4,}mente)(?![\\p{L}\\p{N}])', 'giu');
+  }
+  return htmlEscapado.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(_reHL, x => `<span class="hl ${_classeHL(x)}">${x}</span>`));
+}
 function destacarPalavrasChave(texto, palavrasExtras){
   if(!texto) return '';
-  let html = destacarTermosDecisivos(esc(texto));
+  let html = destacarJustificativa(esc(texto));
   // negrito só nas palavras-chave extraídas estritamente da resposta correta —
   // nada de padrão genérico (referência legal, conector modal etc.) que não vem
   // diretamente do gabarito da questão
@@ -336,16 +362,23 @@ function limparResolucao(r){
   const VER = '(?:certo|errado|correto|incorreto|certa|errada|correta|incorreta|falso|falsa|verdadeiro|verdadeira)';
   const soVeredito = new RegExp('^(?:portanto|assim|logo|dessa forma|desse modo|em suma|conclus[ãa]o)?[,:;\\s-]*(?:o\\s+|a\\s+)?(?:item|assertiva|afirmativa|afirma[çc][ãa]o|proposi[çc][ãa]o|quest[ãa]o|gabarito)\\b[^.\\n]{0,50}?\\b'+VER+'\\s*[.!]*$','i');
   const iniVeredito = new RegExp('^\\s*(?:(?:o|a)\\s+(?:item|assertiva|afirmativa|afirma[çc][ãa]o)\\s+(?:est[áa]|[ée]|fica)\\s+'+VER+'|gabarito\\s*:\\s*'+VER+')\\s*[.:!;]\\s*','i');
+  const ALT = '(?:a\\s+)?(?:alternativa|op[çc][ãa]o|letra|resposta(?:\\s+correta)?)\\s+(?:correta\\s+)?(?:[ée]\\s+)?(?:a\\s+)?(?:letra\\s+)?\\(?[A-E]\\)?(?:\\s+(?:est[áa]\\s+|[ée]\\s+)?(?:a\\s+)?(?:correta|certa|o\\s+gabarito|a\\s+resposta(?:\\s+correta)?))?';
+  const soAlt = new RegExp('^(?:portanto|assim|logo|dessa forma|desse modo)?[,:;\\s-]*'+ALT+'\\s*[.!]*$','i');
+  const iniAlt = new RegExp('^\\s*'+ALT+'\\s*[.:!;]\\s*','i');
+  const soGab = /^\s*gabarito\s*:\s*\(?[A-E]\)?\s*[.!]*$/i;
   const vistos = new Set();
   const out = [];
   String(r).split(/\n+/).forEach(linha=>{
     let l = linha.replace(/\*\*([^*\n]+)\*\*/g,'\u0001$1\u0002').replace(/(^|\s)\*(?=\S)([^*\n]+)\*/g,'$1$2');
     const plano = l.replace(/[\u0001\u0002]/g,'').trim();
     if(!plano) return;
-    if(plano.length <= 110 && soVeredito.test(plano)) return;
+    if(plano.length <= 110 && (soVeredito.test(plano) || soAlt.test(plano) || soGab.test(plano))) return;
     let p = plano, prev;
-    do { prev = p; p = p.replace(iniVeredito,''); } while(p !== prev);
-    if(p !== plano){ l = l.replace(/[\u0001\u0002]/g,''); do { prev = l; l = l.replace(iniVeredito,''); } while(l !== prev); }
+    do { prev = p; p = p.replace(iniVeredito,'').replace(iniAlt,''); } while(p !== prev);
+    if(p !== plano){ l = l.replace(/[\u0001\u0002]/g,''); do { prev = l; l = l.replace(iniVeredito,'').replace(iniAlt,''); } while(l !== prev); }
+    // também frase a frase: "...Portanto, o item está errado." no meio/fim do parágrafo
+    l = dividirEmFrases(l).filter(f=>{ const pf = f.replace(/[\u0001\u0002]/g,'').trim(); return pf && !(pf.length <= 110 && (soVeredito.test(pf) || soAlt.test(pf) || soGab.test(pf))); }).join(' ');
+    if(!l.replace(/[\u0001\u0002\s]/g,'')) return;
     const chave = l.replace(/[\u0001\u0002]/g,'').toLowerCase().replace(/[^a-z0-9à-ÿ]+/g,' ').trim();
     if(!chave || vistos.has(chave)) return;
     vistos.add(chave);
