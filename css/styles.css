@@ -1861,3 +1861,10 @@ body:not(.theme-light) .setup-sub, body:not(.theme-light) .setup-dica, body:not(
 .ajuste-ok{ color:#2f7d4a; font-weight:600; }
 body:not(.theme-light) .ajuste-andamento{ background:#1d2434; border-color:#2a3142; }
 body:not(.theme-light) .ajuste-andamento > label, body:not(.theme-light) .ajuste-cab{ color:#f5f7fb; }
+
+/* v176 — Editar + Corrigir gabarito agrupados na barra de feedback */
+.answer-feedback{ display:flex; align-items:center; flex-wrap:wrap; gap:10px; }
+.answer-feedback .acoes-questao{ display:inline-flex; gap:8px; flex-wrap:wrap; margin-left:auto; }
+.arm-box .arm-def{ font-size:18px; }
+.arm-edit-txt textarea.arm-autosize{ overflow:hidden; resize:vertical; min-height:3em; }
+.arm-edit-txt .btn-ui{ margin-left:8px; font-size:12px; padding:3px 10px; }
