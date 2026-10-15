@@ -1785,3 +1785,9 @@ body:not(.theme-light) .btn-ui.btn-cancelar-edicao{ background:#9c5a5a; border-c
 .arm-rot{ font-size:.8rem; }
 body:not(.theme-light) .editor-toolbar button.btn-ui.btn-cancelar-edicao{ background:#9c5a5a; }
 body:not(.theme-light) .editor-toolbar button.btn-ui.btn-ui-salvar{ background:#4c7a5c !important; }
+/* tamanhos de texto: questão 20px · armadilha 18px · justificativa 18px */
+body .enunciado .campo-editavel-conteudo, body .case-body .campo-editavel-conteudo{ font-size:20px; line-height:1.6; }
+.arm-box, .arm-box .arm-expl, .arm-box .arm-macete, .arm-box .arm-expl-inline{ font-size:18px; line-height:1.55; }
+.resolucao-box, .resolucao-box p, .resolucao-box .campo-editavel-conteudo{ font-size:18px; line-height:1.65; }
+/* justificativa sem cores nem negrito de destaque (inclui textos já salvos) */
+.resolucao-box .hl, .resolucao-box .kw-gabarito, .resolucao-box .kw-decisivo, .resolucao-box .kw-chave{ background:none !important; color:inherit !important; font-weight:inherit !important; padding:0; border:0; text-decoration:none; }
