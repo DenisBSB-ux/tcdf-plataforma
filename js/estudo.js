@@ -170,7 +170,7 @@ function renderQuiz(){
   <div class="case-file">
     <div class="case-header qm-header">
       <div class="qm-title">
-        <div class="qm-numero">Questão ${quiz.idx+1} de ${quiz.queue.length}
+        <div class="qm-numero" title="Posição na fila: ${quiz.idx+1}">Questão ${resolvidasM} de ${quiz.queue.length}
           <small><b class="qm-ac">${snapM.ac}</b> Certas (${pctAcM}%) / <b class="qm-er">${snapM.erradas}</b> Erradas (${pctErM}%)</small></div>
         ${q.tema && q.tema!=='Geral' ? `<div class="qm-linha"><span class="qm-rot">Assunto:</span> ${esc(q.tema)}</div>` : ''}
       </div>
