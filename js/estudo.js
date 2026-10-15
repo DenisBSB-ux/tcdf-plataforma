@@ -302,6 +302,10 @@ function editorToolbarHtml(uid){
 }
 // bloco do enunciado: traz o único botão que ativa o modo de edição da
 // questão inteira (usado igual no modo Normal e no modo Foco)
+// botão único de edição: abre enunciado, armadilha, justificativa e resumo flash de uma vez
+function botaoEditarTudo(uid){
+  return `<button class="btn-editar-campo btn-ui" data-uid="${esc(uid)}" title="Editar todos os campos desta questão: enunciado, armadilha, justificativa e resumo flash">✏️ Editar</button>`;
+}
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
   const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
@@ -316,7 +320,7 @@ function blocoEnunciadoEditavel(q){
   return `
     <div class="campo-editavel-header" style="justify-content:flex-end;">
       <span class="campo-editavel-acoes">
-        ${emEdicao ? '' : `<button class="btn-editar-campo btn-ui" data-uid="${esc(uid)}" title="Editar enunciado, resolução e resumo flash desta questão">✏️ Editar</button>`}
+        ${(emEdicao || (STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uid])) ? '' : botaoEditarTudo(uid)}
       </span>
     </div>
     ${emEdicao ? editorToolbarHtml(uid) : ''}
@@ -330,7 +334,7 @@ function campoEditavelSimples(q, campo, htmlAuto){
   const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid][campo]));
   const emEdicao = edicaoAtual === uid;
   const conteudo = custom || htmlAuto;
-  const btnEditar = (!emEdicao && campo==='r') ? `<button class="btn-editar-campo btn-ui" data-uid="${esc(uid)}" title="Editar a justificativa (e o enunciado) desta questão">✏️ Editar</button>` : '';
+  const btnEditar = '';
   const btnRest = (!emEdicao && custom && campo!=='r') ? `<button class="btn-restaurar-campo btn-ui" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button>` : '';
   const barraSalvar = (emEdicao && campo==='r') ? `<div class="campo-editavel-acoes campo-salvar-barra"><button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar</button><button class="btn-ui btn-cancelar-edicao" data-editar-acao="cancelar">✕ Cancelar</button></div>` : '';
   return `
@@ -354,7 +358,10 @@ function renderResolucao(q, resposta, quiz){
   return `
   <div class="answer-feedback ${feedbackClass}">
     ${correto ? 'Você acertou' : 'Você errou'} — gabarito: ${esc(gabaritoEfetivo(q))}
-    <button class="btn-corrigir-gabarito btn-ui" data-alterar-gabarito="${esc(q.uid)}" title="Corrigir o gabarito desta questão (com justificativa) — não muda tentativas já registradas" >✏️ Corrigir gabarito</button>
+    <span class="acoes-questao">
+      ${edicaoAtual===q.uid ? '' : botaoEditarTudo(q.uid)}
+      <button class="btn-corrigir-gabarito btn-ui" data-alterar-gabarito="${esc(q.uid)}" title="Corrigir o gabarito desta questão (com justificativa) — não muda tentativas já registradas" >✏️ Corrigir gabarito</button>
+    </span>
   </div>
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   ${armPainelHtml(q)}

@@ -146,7 +146,7 @@ function armPainelHtml(q){
   if(!a) return '';
   const uid = q.uid;
   const editando = STATE.armEditUid === uid;
-  const lapis = `<button class="arm-btn-edit btn-ui" data-arm-edit="${esc(uid)}" title="Editar a classificação, o trecho e a explicação desta armadilha">✏️ Editar</button>`;
+  const lapis = ''; // edição unificada: o botão único "Editar" fica junto de "Corrigir gabarito"
   if(editando) return armEditorHtml(q, a);
   const origemTxt = a.origem==='manual' ? 'manual' : (a.origem==='gemini' ? 'Gemini' : 'IA');
   if(!a.classificada){
@@ -158,6 +158,7 @@ function armPainelHtml(q){
     return `<div class="arm-box">
       <div class="arm-linha"><span class="arm-rot">Armadilha da banca</span> ${cods.map(c=>armChip(c,true)).join('<span class="arm-mais">+</span>')} ${lapis}<span class="arm-origem">classificação: ${origemTxt}</span></div>
       ${(a.trecho && !ARM_DESTACADOS.has(uid)) ? `<div class="arm-expl"><b>Trecho:</b> <mark class="arm-trecho">${esc(a.trecho.replace(/ \| /g,' … '))}</mark></div>` : ''}
+      ${cods.map(c=>ARM_TIPOS[c]?`<div class="arm-expl arm-def"><b>${esc(ARM_TIPOS[c].nome)}</b> — ${esc(ARM_TIPOS[c].def)}</div>`:'').join('')}
       ${a.expl ? `<div class="arm-expl">${esc(a.expl)}</div>` : ''}
       ${p ? `<div class="arm-macete">💡 ${esc(p.nome)}: ${esc(p.macete)}</div>` : ''}
     </div>`;
@@ -178,16 +179,42 @@ function armEditorHtml(q, a){
         <label>Principal <select id="arm-sel-p">${opts(a.p,'— escolha —')}</select></label>
         <label>Secundária <select id="arm-sel-s">${opts(a.s,'— nenhuma —')}</select></label>
       </div>` : `<div class="arm-edit-grid"><label>Sinal de item certo <select id="arm-sel-sinal">${sinais}</select></label></div>`}
-    ${a.errado ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão)<textarea id="arm-txt-tr" rows="2">${esc(a.trecho||'')}</textarea></label>
-    <label class="arm-edit-txt">Explicação da armadilha<textarea id="arm-txt-ex" rows="3">${esc(a.expl||'')}</textarea></label>` : ''}
+    ${a.errado ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão) <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Preenche o campo com o texto completo do item">↧ Usar texto completo do item</button><textarea id="arm-txt-tr" class="arm-autosize" rows="2">${esc(a.trecho||'')}</textarea></label>
+    <label class="arm-edit-txt">Explicação da armadilha<textarea id="arm-txt-ex" class="arm-autosize" rows="3">${esc(a.expl||'')}</textarea></label>` : ''}
     <div class="arm-edit-acoes">
-      <button class="btn-ui btn-ui-salvar" data-arm-save="${esc(uid)}">💾 Salvar (origem: manual)</button>
-      <button class="btn-ui" data-arm-cancel="1">Cancelar</button>
+      ${(typeof edicaoAtual!=='undefined' && edicaoAtual===uid) ? '' : `<button class="btn-ui btn-ui-salvar" data-arm-save="${esc(uid)}">💾 Salvar (origem: manual)</button>
+      <button class="btn-ui" data-arm-cancel="1">Cancelar</button>`}
       ${a.origem==='manual' ? `<button class="btn-ui" data-arm-reset="${esc(uid)}">↺ Voltar à original</button>` : ''}
     </div>
   </div>`;
 }
+/* aplica os campos do editor de armadilha (usado pelo Salvar da armadilha e pelo Salvar unificado). false = validação falhou */
+function armAplicarEdicao(q){
+  const uid = q.uid;
+  const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+  if(!document.getElementById('arm-sel-p') && !document.getElementById('arm-sel-sinal')) return true;
+  const errado = gabaritoEfetivo(q)==='Errado';
+  let p = g('arm-sel-p'), s = g('arm-sel-s'), sinal = g('arm-sel-sinal');
+  if(errado && !p){ alert('Todo item Errado precisa de pelo menos uma armadilha principal.'); return false; }
+  if(s===p) s = '';
+  if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
+  EDICOES_USUARIO[uid].arm = armCodificar(errado?p:'', errado?s:'', errado?'':sinal);
+  if(errado){
+    const orig = { tr: q.tr||'', ex: q.ex||'' };
+    const tr = g('arm-txt-tr').trim(), ex = g('arm-txt-ex').trim();
+    if(tr !== orig.tr) EDICOES_USUARIO[uid].arm_tr = tr; else delete EDICOES_USUARIO[uid].arm_tr;
+    if(ex !== orig.ex) EDICOES_USUARIO[uid].arm_ex = ex; else delete EDICOES_USUARIO[uid].arm_ex;
+  }
+  return true;
+}
+function armAutosize(){ document.querySelectorAll('textarea.arm-autosize').forEach(t=>{ t.style.height='auto'; t.style.height=(t.scrollHeight+4)+'px'; }); }
+document.addEventListener('input', e=>{ if(e.target.classList && e.target.classList.contains('arm-autosize')) armAutosize(); });
+new MutationObserver(()=>{ if(document.querySelector('textarea.arm-autosize')) armAutosize(); }).observe(document.documentElement,{childList:true,subtree:true});
 document.addEventListener('click', (ev)=>{
+  const f = ev.target.closest && ev.target.closest('[data-arm-fulltxt]');
+  if(f){ const q = BY_UID[f.dataset.armFulltxt]; const ta = document.getElementById('arm-txt-tr');
+    if(q && ta){ const d=document.createElement('div'); d.innerHTML=(EDICOES_USUARIO[q.uid]&&EDICOES_USUARIO[q.uid].q)||esc(limparEnunciado(q.q,q.t)); ta.value=(d.textContent||'').replace(/\s+/g,' ').trim(); armAutosize(); }
+    return; }
   const t = ev.target.closest && ev.target.closest('[data-arm-edit],[data-arm-save],[data-arm-cancel],[data-arm-reset]');
   if(!t) return;
   if(t.dataset.armEdit){ STATE.armEditUid = t.dataset.armEdit; render(); return; }
@@ -197,19 +224,7 @@ document.addEventListener('click', (ev)=>{
   if(t.dataset.armReset){
     if(EDICOES_USUARIO[uid]){ delete EDICOES_USUARIO[uid].arm; delete EDICOES_USUARIO[uid].arm_ex; delete EDICOES_USUARIO[uid].arm_tr; if(!Object.keys(EDICOES_USUARIO[uid]).length) delete EDICOES_USUARIO[uid]; }
   } else {
-    const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
-    const errado = gabaritoEfetivo(q)==='Errado';
-    let p = g('arm-sel-p'), s = g('arm-sel-s'), sinal = g('arm-sel-sinal');
-    if(errado && !p){ alert('Todo item Errado precisa de pelo menos uma armadilha principal.'); return; }
-    if(s===p) s = '';
-    if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
-    EDICOES_USUARIO[uid].arm = armCodificar(errado?p:'', errado?s:'', errado?'':sinal);
-    if(errado){
-      const orig = { tr: q.tr||'', ex: q.ex||'' };
-      const tr = g('arm-txt-tr').trim(), ex = g('arm-txt-ex').trim();
-      if(tr !== orig.tr) EDICOES_USUARIO[uid].arm_tr = tr; else delete EDICOES_USUARIO[uid].arm_tr;
-      if(ex !== orig.ex) EDICOES_USUARIO[uid].arm_ex = ex; else delete EDICOES_USUARIO[uid].arm_ex;
-    }
+    if(!armAplicarEdicao(q)) return;
   }
   salvarEdicoesUsuario();
   marcarProgressoSujo(q.materia); pushToCloud();

@@ -227,6 +227,8 @@ function attachHandlers(){
   root.querySelectorAll('.btn-editar-campo').forEach(el=>{
     el.addEventListener('click', ()=>{
       edicaoAtual = el.dataset.uid;
+      const qa = BY_UID[edicaoAtual];
+      if(qa && typeof armEfetiva==='function' && armEfetiva(qa)) STATE.armEditUid = edicaoAtual; // armadilha edita junto
       render();
     });
   });
@@ -265,9 +267,11 @@ function attachHandlers(){
       if(acao==='desfazer'){ document.execCommand('undo'); return; }
       if(acao==='refazer'){ document.execCommand('redo'); return; }
       if(acao==='limpar'){ document.execCommand('removeFormat'); return; }
-      if(acao==='cancelar'){ edicaoAtual = null; render(); return; }
+      if(acao==='cancelar'){ edicaoAtual = null; STATE.armEditUid = null; render(); return; }
       if(acao==='salvar'){
         const uid = el.dataset.uid;
+        if(STATE.armEditUid===uid && BY_UID[uid] && !armAplicarEdicao(BY_UID[uid])) return;
+        STATE.armEditUid = null;
         ['q','r','rf'].forEach(campo=>{
           const div = document.getElementById(`conteudo-${campo}-${uid}`);
           if(div){
