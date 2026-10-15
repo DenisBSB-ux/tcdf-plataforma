@@ -73,11 +73,11 @@ function ajustarZoom(direcao){
 // HTML de verdade, e também é sincronizado pela nuvem — então passa sempre por
 // aqui, que só deixa a formatação que o editor produz (negrito, itálico,
 // tachado, marca-texto). Sem o DOMPurify (CDN fora do ar), cai pra texto puro.
-const TAGS_EDICAO_PERMITIDAS = ['b','strong','i','em','s','strike','u','mark','span','font','br','p','div','ul','ol','li','sub','sup','blockquote'];
+const TAGS_EDICAO_PERMITIDAS = ['b','strong','i','em','s','strike','u','mark','span','font','br','p','div','ul','ol','li','sub','sup','blockquote','img'];
 function limparHtmlEditado(html){
   if(!html) return '';
   if(typeof DOMPurify !== 'undefined' && DOMPurify.sanitize){
-    return DOMPurify.sanitize(String(html), { ALLOWED_TAGS: TAGS_EDICAO_PERMITIDAS, ALLOWED_ATTR: ['style','class','color'] });
+    return DOMPurify.sanitize(String(html), { ALLOWED_TAGS: TAGS_EDICAO_PERMITIDAS, ALLOWED_ATTR: ['style','class','color','data-img','alt'] });
   }
   return esc(htmlParaTextoPlano(html));
 }
@@ -118,6 +118,52 @@ function separarContextoDoItem(texto){
   return texto.slice(0, fim).trimEnd() + '\n\n' + texto.slice(fim);
 }
 
+// tira da tela a frase-comando de abertura ("Com base em X, julgue o item a
+// seguir em certo (C) ou errado (E).") e deixa só o texto da questão. Frases
+// completas ANTES do comando (cenário/caso) são mantidas — sai só a frase que
+// contém o "julgue ...". Nada é apagado dos dados: é só exibição.
+const _ABREV_FRASE = new Set(['n','nº','no','art','arts','inc','incs','gov','fed','dr','dra','sr','sra','cf','cap','ex','par','ss','nr','av','obs','ref','pág','pp','vol','min','sec','dep','sen','prof','dist','al','alin','parág','párag','p','v','resp','cons']);
+function _fimDeFrase(t, i){
+  const c = t[i];
+  if(c!=='.' && c!=='!' && c!=='?' && c!==':') return false;
+  const nx = t[i+1];
+  if(nx!==undefined && !/\s/.test(nx)) return false;
+  if(c==='.'){
+    const resto = t.slice(i+1).replace(/^\s+/, '');
+    if(/^[a-zà-ÿ]/.test(resto)) return false;                                  // frase não recomeça com minúscula
+    const fechando = /[)"”»\]]$/.test(t.slice(0, i));                          // ... (LRF). / ... "x".
+    if(fechando) return true;
+    const prev = (t.slice(Math.max(0, i-10), i).match(/([A-Za-zÀ-ÿ0-9]+)$/) || [])[1] || '';
+    if(/^\d+$/.test(prev)) return true;
+    if(_ABREV_FRASE.has(prev.toLowerCase()) && !/^[A-ZÀ-Ý]{2,}$/.test(prev)) return false;   // n., art., Gov., Fed. ...
+  }
+  return true;
+}
+function removerComandoJulgue(texto){
+  if(!texto) return texto;
+  const m = /\bjulgues?\s+(?:\([^)]{0,25}\)\s*)?(?:o|os|a|as|esse|este|cada|item|itens|assertiva|afirmativa|proposição)\b|\bjulgue\s*[;:]|\bjulgue-[oa]s?\b/i.exec(texto);
+  if(!m || m.index > 3000) return texto;
+  // começo da frase que contém o "julgue"
+  let ini = 0;
+  for(let i = m.index-1; i >= 0; i--){ if(_fimDeFrase(texto, i)){ ini = i+1; break; } }
+  // fim dessa frase ("julgue;" / "julgue:" já fecha o comando)
+  let fim = texto.length;
+  const pt = /^julgue\s*[;:]/i.exec(texto.slice(m.index));
+  if(pt){ fim = m.index + pt[0].length; }
+  else { for(let i = m.index; i < texto.length; i++){ if(_fimDeFrase(texto, i)){ fim = i+1; break; } } }
+  if(!pt && fim === texto.length){ // "…de acordo com a CF.A condenação…" (ponto colado na próxima frase)
+    const g = /[A-Za-zà-ÿ)]\.(?=[A-ZÀ-Ý](?:[a-zà-ÿ]|\s))/.exec(texto.slice(m.index));
+    if(g) fim = m.index + g.index + 2;
+  }
+  const frase = texto.slice(ini, fim);
+  // só é comando se a frase for de fato uma instrução (e não o verbo "julgar" dentro do item)
+  if(frase.length > 420 || !/\b(item|itens|assertiva|afirmativa|seguinte|seguintes|subsequente|subsecutivo|a seguir|certo|errado)\b|\(C\)|C ou E|\bjulgue\s*[;:]|\bjulgue-[oa]s?\b/i.test(frase)) return texto;
+  const antes = texto.slice(0, ini).trim();
+  const depois = texto.slice(fim).trim();
+  if(depois.length < 15) return texto; // não deixa a questão vazia
+  return (antes ? antes + '\n\n' : '') + depois;
+}
+
 function limparEnunciado(texto, tipo){
   if(!texto) return '';
   let out = texto
@@ -129,6 +175,7 @@ function limparEnunciado(texto, tipo){
   // rodasse antes, a quebra dupla de parágrafo que ele insere seria engolida
   // pelo \s* da regex de itens romanos (que colapsa qualquer espaço/quebra
   // anterior a "I"/"II"/etc. em uma quebra simples só)
+  if(tipo!=='MC') out = removerComandoJulgue(out);
   out = quebrarItensRomanos(out);
   out = separarContextoDoItem(out);
   if(tipo==='MC'){
@@ -200,20 +247,69 @@ function destacarTermosDecisivos(htmlEscapado){
   });
   return html;
 }
+// palavras-chave do texto da questão (antes e depois de responder): além dos
+// termos absolutos/restritivos (sublinhado vermelho), marca causa/consequência,
+// suficiência/dispensa, relativização e direção/quantidade — as palavras onde a
+// banca costuma esconder a armadilha. Recebe HTML já escapado.
+const TERMOS_CHAVE = [
+  'por si só','suficiente','suficientes','basta','bastando','independentemente','independe','independem',
+  'dispensa','dispensada','dispensado','dispensável','afasta','afastada','afastado','afastam','afastamento',
+  'exceto','salvo','ressalvado','ressalvada','não se aplica','não se aplicam',
+  'visto que','uma vez que','já que','porque','pois','por força de','de tal modo que','de modo que','em razão de','por causa de',
+  'ocasionando','ocasionado','ocasiona','causa','causando','decorre','decorrente','resulta','resultando','implica','acarreta','provoca','consequência','consequentemente',
+  'sobretudo','principalmente','inclusive','mesmo que','ainda que','embora','contudo','porém','entretanto','todavia','desde que','apesar de',
+  'pode','podem','poderá','poderão','em regra','geralmente','via de regra','normalmente','tende','tendem','costuma','frequentemente','eventualmente','em geral',
+  'aumento','redução','diminuição','queda','elevação','ampliação','restrição','majoração','maior','menor','máximo','mínimo',
+  'integral','integralmente','parcial','parcialmente','imediato','imediatamente','automático','automaticamente','prévio','prévia','posterior','anterior','antes','depois','após',
+  'vedado','vedada','proibido','proibida','permitido','permitida','obrigatório','obrigatória','facultativo','facultativa','privativa','privativo','compete',
+  'necessário','necessária','necessariamente','necessários','necessárias','exclusivo','exclusiva','exclusivamente','somente','apenas','unicamente','só',
+  'sempre','nunca','jamais','todo','toda','todos','todas','qualquer','nenhum','nenhuma','nem','não','sem','tampouco','tal como','assim como','bem como',
+  'deve','devem','deverá','deverão','dever','tem de','precisa','precisam','vinculado','vinculada','vinculação','vincula','discricionário','discricionária','discricionariedade',
+  'competência','atribuição','prazo','mínimo','máxima','mínima','absoluto','absoluta','relativo','relativa','limite','limites','limitado','limitada','ilimitado','ilimitada',
+  'prevê','estabelece','determina','exige','admite','permite','autoriza','impede','veda','proíbe','garante','assegura','limita','submete','depende','dependem','constitui','constituem','configura','caracteriza','define','responde','respondem','responsabiliza','obriga','possui','possuem','cabe','caberá','abrange','alcança','pressupõe','condiciona','dispõe','impõe','faculta','reconhece','admitida','admitido','vinculante','aplicável','cabível','legítimo','legítima','legal','ilegal','nulo','nula','válido','válida','inválido','inválida','público','pública','privado','privada','geral','específico','específica','especial','principal','secundário','secundária','único','única','mesmo','mesma','próprio','própria','distintos',
+  'caracteriza-se','consiste','define-se','denomina-se','corresponde','equivale','equivalem','difere','diferente','distinto','distinta','ao passo que','enquanto',
+];
+let _reChave = null;
+function destacarPalavrasChaveQuestao(htmlEscapado){
+  let html = destacarTermosDecisivos(htmlEscapado);
+  if(!html) return '';
+  if(!_reChave){
+    const alt = [...TERMOS_CHAVE].sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+')).join('|');
+    // + advérbios em -mente e adjetivos em -ável/-ível
+    _reChave = new RegExp('(?<![\\p{L}\\p{N}])(?:' + alt + '|\\p{L}{4,}mente|\\p{L}{3,}[áí]vel|\\p{L}{3,}[áí]veis)(?![\\p{L}\\p{N}])', 'giu');
+  }
+  // só mexe no texto entre tags (nunca dentro de <u ...> etc.)
+  return html.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(_reChave, x => `<b class="kw-chave">${x}</b>`));
+}
+// Justificativa: fundo de cor por categoria (negrito + cor de fundo suave)
+//  hl-abs vermelho = absolutos/negação/exceção · hl-causa azul = causa/conexão ·
+//  hl-norma verde = dever/poder/competência · hl-qtd âmbar = quantidade/tempo/prazo ·
+//  hl-verbo roxo = verbos/adjetivos-chave · hl-adv laranja = advérbios em -mente
+const _CAT_ABS = new Set([...TERMOS_DECISIVOS,'exclusivo','exclusiva','nem','sem','tampouco','só','exceto','salvo','ressalvado','ressalvada','não se aplica','não se aplicam','absoluto','absoluta','independentemente','independe','independem','por si só','suficiente','suficientes','basta','bastando','dispensa','dispensada','dispensado','dispensável','afasta','afastada','afastado','afastam','afastamento','ilimitado','ilimitada','nulo','nula','ilegal','inválido','inválida']);
+const _CAT_CAUSA = new Set(['visto que','uma vez que','já que','porque','pois','por força de','de tal modo que','de modo que','em razão de','por causa de','ocasionando','ocasionado','ocasiona','causa','causando','decorre','decorrente','resulta','resultando','implica','acarreta','provoca','consequência','consequentemente','sobretudo','principalmente','inclusive','mesmo que','ainda que','embora','contudo','porém','entretanto','todavia','desde que','apesar de','ao passo que','enquanto','tal como','assim como','bem como','pressupõe','condiciona']);
+const _CAT_NORMA = new Set(['pode','podem','poderá','poderão','deve','devem','deverá','deverão','dever','tem de','precisa','precisam','vedado','vedada','proibido','proibida','permitido','permitida','obrigatório','obrigatória','facultativo','facultativa','privativa','privativo','compete','cabe','caberá','competência','atribuição','discricionário','discricionária','discricionariedade','vinculado','vinculada','vinculação','vincula','vinculante','obriga','veda','proíbe','permite','autoriza','impede','impõe','faculta','em regra','via de regra','geralmente','normalmente','tende','tendem','costuma','frequentemente','eventualmente','em geral','necessário','necessária','necessários','necessárias','necessariamente']);
+const _CAT_QTD = new Set(['aumento','redução','diminuição','queda','elevação','ampliação','restrição','majoração','maior','menor','máximo','mínimo','máxima','mínima','integral','integralmente','parcial','parcialmente','imediato','imediatamente','automático','automaticamente','prévio','prévia','posterior','anterior','antes','depois','após','prazo','limite','limites','limitado','limitada','limita']);
+let _reHL = null;
+function _classeHL(m){
+  const t = m.toLowerCase().replace(/\s+/g,' ');
+  if(_CAT_ABS.has(t)) return 'hl-abs';
+  if(_CAT_CAUSA.has(t)) return 'hl-causa';
+  if(_CAT_NORMA.has(t)) return 'hl-norma';
+  if(_CAT_QTD.has(t)) return 'hl-qtd';
+  if(/mente$/.test(t)) return 'hl-adv';
+  return 'hl-verbo';
+}
+function destacarJustificativa(htmlEscapado){
+  if(!htmlEscapado) return '';
+  if(!_reHL){
+    const alt = [...new Set([...TERMOS_CHAVE, ..._CAT_ABS, ..._CAT_CAUSA, ..._CAT_NORMA, ..._CAT_QTD])].sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+')).join('|');
+    _reHL = new RegExp('(?<![\\p{L}\\p{N}])(?:' + alt + '|\\p{L}{4,}mente)(?![\\p{L}\\p{N}])', 'giu');
+  }
+  return htmlEscapado.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(_reHL, x => `<span class="hl ${_classeHL(x)}">${x}</span>`));
+}
 function destacarPalavrasChave(texto, palavrasExtras){
   if(!texto) return '';
-  let html = destacarTermosDecisivos(esc(texto));
-  // negrito só nas palavras-chave extraídas estritamente da resposta correta —
-  // nada de padrão genérico (referência legal, conector modal etc.) que não vem
-  // diretamente do gabarito da questão
-  if(palavrasExtras && palavrasExtras.length){
-    const ordenadas = [...palavrasExtras].sort((a,b)=>b.length-a.length);
-    ordenadas.forEach(palavra=>{
-      const escapada = palavra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const re = new RegExp(`\\b(${escapada}\\w*)\\b`, 'gi');
-      html = html.replace(re, (m, offset) => /<[^>]*$/.test(html.slice(0, offset)) ? m : `<strong class="kw-gabarito">${m}</strong>`);
-    });
-  }
+  let html = esc(texto); // sem destaques: justificativa em texto limpo
   return html;
 }
 
@@ -247,11 +343,43 @@ function quebrarItensAlfabeticos(texto){
 
 // combina a quebra em frases (item 5) com o destaque de palavras-chave (item 6):
 // cada frase vira um parágrafo próprio, já com os termos relevantes marcados
+// Limpa a justificativa para exibição: tira a frase que só repete o veredito
+// ("O item está **Errado**.", "Gabarito: Errado.", "Portanto, o item está errado.")
+// — o veredito já aparece acima — e frases repetidas. **negrito** vira marcação.
+function limparResolucao(r){
+  if(!r) return r;
+  const VER = '(?:certo|errado|correto|incorreto|certa|errada|correta|incorreta|falso|falsa|verdadeiro|verdadeira)';
+  const soVeredito = new RegExp('^(?:portanto|assim|logo|dessa forma|desse modo|em suma|conclus[ãa]o)?[,:;\\s-]*(?:o\\s+|a\\s+)?(?:item|assertiva|afirmativa|afirma[çc][ãa]o|proposi[çc][ãa]o|quest[ãa]o|gabarito)\\b[^.\\n]{0,50}?\\b'+VER+'\\s*[.!]*$','i');
+  const iniVeredito = new RegExp('^\\s*(?:(?:o|a)\\s+(?:item|assertiva|afirmativa|afirma[çc][ãa]o)\\s+(?:est[áa]|[ée]|fica)\\s+'+VER+'|gabarito\\s*:\\s*'+VER+')\\s*[.:!;]\\s*','i');
+  const ALT = '(?:a\\s+)?(?:alternativa|op[çc][ãa]o|letra|resposta(?:\\s+correta)?)\\s+(?:correta\\s+)?(?:[ée]\\s+)?(?:a\\s+)?(?:letra\\s+)?\\(?[A-E]\\)?(?:\\s+(?:est[áa]\\s+|[ée]\\s+)?(?:a\\s+)?(?:correta|certa|o\\s+gabarito|a\\s+resposta(?:\\s+correta)?))?';
+  const soAlt = new RegExp('^(?:portanto|assim|logo|dessa forma|desse modo)?[,:;\\s-]*'+ALT+'\\s*[.!]*$','i');
+  const iniAlt = new RegExp('^\\s*'+ALT+'\\s*[.:!;]\\s*','i');
+  const soGab = /^\s*gabarito\s*:\s*\(?[A-E]\)?\s*[.!]*$/i;
+  const vistos = new Set();
+  const out = [];
+  String(r).split(/\n+/).forEach(linha=>{
+    let l = linha.replace(/\*\*([^*\n]+)\*\*/g,'\u0001$1\u0002').replace(/(^|\s)\*(?=\S)([^*\n]+)\*/g,'$1$2');
+    const plano = l.replace(/[\u0001\u0002]/g,'').trim();
+    if(!plano) return;
+    if(plano.length <= 110 && (soVeredito.test(plano) || soAlt.test(plano) || soGab.test(plano))) return;
+    let p = plano, prev;
+    do { prev = p; p = p.replace(iniVeredito,'').replace(iniAlt,''); } while(p !== prev);
+    if(p !== plano){ l = l.replace(/[\u0001\u0002]/g,''); do { prev = l; l = l.replace(iniVeredito,'').replace(iniAlt,''); } while(l !== prev); }
+    // também frase a frase: "...Portanto, o item está errado." no meio/fim do parágrafo
+    l = dividirEmFrases(l).filter(f=>{ const pf = f.replace(/[\u0001\u0002]/g,'').trim(); return pf && !(pf.length <= 110 && (soVeredito.test(pf) || soAlt.test(pf) || soGab.test(pf))); }).join(' ');
+    if(!l.replace(/[\u0001\u0002\s]/g,'')) return;
+    const chave = l.replace(/[\u0001\u0002]/g,'').toLowerCase().replace(/[^a-z0-9à-ÿ]+/g,' ').trim();
+    if(!chave || vistos.has(chave)) return;
+    vistos.add(chave);
+    out.push(l.trim());
+  });
+  return out.join('\n');
+}
 function formatarTextoComDestaque(texto, palavrasExtras){
   if(!texto) return '';
   const comQuebras = quebrarItensAlfabeticos(texto);
   const frases = dividirEmFrases(comQuebras);
-  return frases.map(f => `<p>${destacarPalavrasChave(f, palavrasExtras)}</p>`).join('');
+  return frases.map(f => `<p>${destacarPalavrasChave(f, palavrasExtras).replace(/[\u0001\u0002]/g,'')}</p>`).join('');
 }
 
 

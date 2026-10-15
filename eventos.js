@@ -190,6 +190,7 @@ function attachHandlers(){
     setup.cargosExcluidos = new Set();
     setup.tendenciasExcluidas = new Set();
     setup.incluirIneditas = true;
+    if(setup.armSel) setup.armSel.clear();
     setup.qtd = 20;
     render();
   });
@@ -270,6 +271,7 @@ function attachHandlers(){
         ['q','r','rf'].forEach(campo=>{
           const div = document.getElementById(`conteudo-${campo}-${uid}`);
           if(div){
+            prepararEditorParaSalvar(div);
             if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
             EDICOES_USUARIO[uid][campo] = limparHtmlEditado(div.innerHTML);
           }
@@ -281,6 +283,7 @@ function attachHandlers(){
           qSalva.alt.forEach((a,idx)=>{
             const div = document.getElementById(`conteudo-alt${idx}-${uid}`);
             if(div){
+              prepararEditorParaSalvar(div);
               if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
               EDICOES_USUARIO[uid]['alt'+idx] = limparHtmlEditado(div.innerHTML);
             }

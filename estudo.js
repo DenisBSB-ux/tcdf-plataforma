@@ -72,6 +72,7 @@ function renderQuiz(){
   const q = BY_UID[uid];
   const resposta = quiz.respostas[uid];
   const revelado = !!resposta;
+  if(!revelado && TEMPO_QUESTAO.uid !== uid){ TEMPO_QUESTAO.uid = uid; TEMPO_QUESTAO.ts = Date.now(); }
 
   const escLabel = ESCOPO_LABEL[q.es] || q.es;
   const escClass = ESCOPO_CLASS[q.es] || '';
@@ -118,7 +119,7 @@ function renderQuiz(){
   } else if(q.t==='MC' && q.alt){
     optionsHtml = chuteHint + q.alt.map((a,idx)=>{
       const letraUp = a.letra.toUpperCase();
-      const customAlt = EDICOES_USUARIO[uidAtual] && EDICOES_USUARIO[uidAtual]['alt'+idx] && limparHtmlEditado(EDICOES_USUARIO[uidAtual]['alt'+idx]);
+      const customAlt = EDICOES_USUARIO[uidAtual] && EDICOES_USUARIO[uidAtual]['alt'+idx] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uidAtual]['alt'+idx]));
       const textoHtml = customAlt || esc(a.texto);
       if(emEdicaoAlt){
         return `<div class="answer-opt-edit">
@@ -151,19 +152,29 @@ function renderQuiz(){
   const idxUltimaRespondida = acharIdxUltimaRespondida(quiz);
   const idxProximoAssunto = acharIdxProximoAssunto(quiz);
 
-  const snapM = computeSnapshotMateria(quiz.materia);
+  // contagem restrita às questões DESTA fila (mesma regra do grid de paginação):
+  // assim "Questão 12 de 233" e "N resolvidas" falam do mesmo conjunto
+  const bucketQ = getBucket(quiz.materia);
+  const snapM = { ac:0, erradas:0 };
+  quiz.queue.forEach(u=>{
+    const r = quiz.respostas[u];
+    if(r){ r.correct ? snapM.ac++ : snapM.erradas++; return; }
+    const h = BY_UID[u] ? bucketQ.perguntas[u] : null;
+    if(h && h.tentativas>0){ h.ultimoResultado ? snapM.ac++ : snapM.erradas++; }
+  });
   const resolvidasM = snapM.ac + snapM.erradas;
+  const pctAcM = resolvidasM ? Math.round(snapM.ac*100/resolvidasM) : 0;
+  const pctErM = resolvidasM ? 100 - pctAcM : 0;
   return `
   <div class="qm-breadcrumb">Estudo <span>›</span> ${esc(quiz.materia||'')} <span>›</span> Questões</div>
   <div class="case-file">
     <div class="case-header qm-header">
       <div class="qm-title">
         <div class="qm-numero">Questão ${quiz.idx+1} de ${quiz.queue.length}
-          <small>(${resolvidasM} Resolvidas, <b class="qm-ac">${snapM.ac}</b> Acertos e <b class="qm-er">${snapM.erradas}</b> Erros)</small></div>
+          <small><b class="qm-ac">${snapM.ac}</b> Acertos (${pctAcM}%) / <b class="qm-er">${snapM.erradas}</b> Erros (${pctErM}%)</small></div>
         ${q.tema && q.tema!=='Geral' ? `<div class="qm-linha"><span class="qm-rot">Assunto:</span> ${esc(q.tema)}</div>` : ''}
       </div>
       <div class="qm-tags">
-        ${freqBadge(q.fr)}
         ${ineditaBadge(q)}
         <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
       </div>
@@ -280,27 +291,32 @@ function editorToolbarHtml(uid){
     <button data-editar-acao="ul" title="Lista com marcadores">• Lista</button>
     <button data-editar-acao="ol" title="Lista numerada">1. Lista</button>
     <button data-editar-acao="citacao" title="Citação em bloco">❝</button>
+    <button data-editar-acao="figura" title="Inserir figura (ou cole com Ctrl+V / arraste um arquivo de imagem para dentro do campo)">🖼 Figura</button>
     <span class="editor-toolbar-sep"></span>
     <button data-editar-acao="desfazer" title="Desfazer (Ctrl+Z)">↶</button>
     <button data-editar-acao="refazer" title="Refazer (Ctrl+Y)">↷</button>
     <button data-editar-acao="limpar" title="Limpar formatação da seleção">🧹</button>
-    <button data-editar-acao="salvar" data-uid="${esc(uid)}" class="btn-salvar-edicao">💾 Salvar</button>
-    <button data-editar-acao="cancelar" class="btn-cancelar-edicao">✕ Cancelar</button>
+    <button data-editar-acao="salvar" data-uid="${esc(uid)}" class="btn-ui btn-ui-salvar btn-salvar-edicao">💾 Salvar</button>
+    <button data-editar-acao="cancelar" class="btn-ui btn-cancelar-edicao">✕ Cancelar</button>
   </div>`;
 }
 // bloco do enunciado: traz o único botão que ativa o modo de edição da
 // questão inteira (usado igual no modo Normal e no modo Foco)
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
-  const custom = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid]['q']);
+  const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
   const emEdicao = edicaoAtual === uid;
-  const htmlAuto = destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)));
-  const conteudo = custom || htmlAuto;
+  const htmlAuto = esc(limparEnunciado(q.q, q.t));
+  let conteudo = custom || htmlAuto;
+  // depois de responder, o trecho-chave da armadilha aparece destacado em vermelho
+  if(!emEdicao && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uid]){
+    const a = armEfetiva(q);
+    if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid);
+  }
   return `
     <div class="campo-editavel-header" style="justify-content:flex-end;">
       <span class="campo-editavel-acoes">
-        ${emEdicao ? '' : `<button class="btn-editar-campo" data-uid="${esc(uid)}" title="Editar enunciado, resolução e resumo flash desta questão">✏️ Editar questão</button>`}
-        ${(!emEdicao && custom) ? `<button class="btn-restaurar-campo" data-uid="${esc(uid)}" data-campo="q" title="Descartar edição do enunciado e voltar ao texto automático">↺ Restaurar enunciado</button>` : ''}
+        ${emEdicao ? '' : `<button class="btn-editar-campo btn-ui" data-uid="${esc(uid)}" title="Editar enunciado, resolução e resumo flash desta questão">✏️ Editar</button>`}
       </span>
     </div>
     ${emEdicao ? editorToolbarHtml(uid) : ''}
@@ -311,12 +327,16 @@ function blocoEnunciadoEditavel(q){
 // em edição junto quando a questão inteira está em edição (edicaoAtual===uid)
 function campoEditavelSimples(q, campo, htmlAuto){
   const uid = q.uid;
-  const custom = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid][campo]);
+  const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid][campo]));
   const emEdicao = edicaoAtual === uid;
   const conteudo = custom || htmlAuto;
+  const btnEditar = (!emEdicao && campo==='r') ? `<button class="btn-editar-campo btn-ui" data-uid="${esc(uid)}" title="Editar a justificativa (e o enunciado) desta questão">✏️ Editar</button>` : '';
+  const btnRest = (!emEdicao && custom && campo!=='r') ? `<button class="btn-restaurar-campo btn-ui" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button>` : '';
+  const barraSalvar = (emEdicao && campo==='r') ? `<div class="campo-editavel-acoes campo-salvar-barra"><button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar</button><button class="btn-ui btn-cancelar-edicao" data-editar-acao="cancelar">✕ Cancelar</button></div>` : '';
   return `
-    ${(!emEdicao && custom) ? `<div class="campo-editavel-header" style="justify-content:flex-end;"><button class="btn-restaurar-campo" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button></div>` : ''}
+    ${(btnEditar||btnRest) ? `<div class="campo-editavel-header" style="justify-content:flex-end;"><span class="campo-editavel-acoes">${btnEditar}${btnRest}</span></div>` : ''}
     <div class="campo-editavel-conteudo" ${emEdicao ? 'contenteditable="true"' : ''} id="conteudo-${campo}-${esc(uid)}">${conteudo}</div>
+    ${barraSalvar}
   `;
 }
 function renderResolucao(q, resposta, quiz){
@@ -334,14 +354,12 @@ function renderResolucao(q, resposta, quiz){
   return `
   <div class="answer-feedback ${feedbackClass}">
     ${correto ? 'Você acertou' : 'Você errou'} — gabarito: ${esc(gabaritoEfetivo(q))}
-    <button class="btn-corrigir-gabarito" data-alterar-gabarito="${esc(q.uid)}" title="Corrigir o gabarito desta questão (com justificativa) — não muda tentativas já registradas" style="margin-left:8px;">✏️ Corrigir gabarito</button>
+    <button class="btn-corrigir-gabarito btn-ui" data-alterar-gabarito="${esc(q.uid)}" title="Corrigir o gabarito desta questão (com justificativa) — não muda tentativas já registradas" >✏️ Corrigir gabarito</button>
   </div>
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
+  ${armPainelHtml(q)}
   <div class="resolucao-box ${tintClass}">
-    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(q.r, palavrasChave))}
-  </div>
-  <div class="resumo-flash-box">
-    ${campoEditavelSimples(q, 'rf', formatarTextoComDestaque(q.rf, palavrasChave))}
+    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(limparResolucao(q.r), palavrasChave))}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
     : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}
@@ -356,7 +374,9 @@ function pickAnswer(opt){
   const q = BY_UID[uid];
   const correct = opt === gabaritoEfetivo(q);
   quiz.respostas[uid] = { picked: opt, correct };
-  registrarResposta(quiz.materia, uid, correct);
+  // tempo gasto na questão (s), sem contar pausas longas: máx. 10 min
+  const seg = (TEMPO_QUESTAO.uid===uid && TEMPO_QUESTAO.ts) ? Math.min(600, Math.round((Date.now()-TEMPO_QUESTAO.ts)/1000)) : null;
+  registrarResposta(quiz.materia, uid, correct, seg);
   registrarResultadoHeuristica(q); // js/heuristica.js — autoavaliação da "dica de chute" com o uso real
   if(dicaChuteAberta === uid) dicaChuteAberta = null;
   // se o "Chute" estava armado pra esta questão, a resposta que acabou de ser
@@ -786,6 +806,12 @@ function gerarMarkdownDaMateria(materiaKey){
     md += `**Ano:** ${anoRealDaQuestao(q)||'—'} | **Nível:** ${NIVEL_LABEL[q.nv]||'Média'} | **Tendência:** ${tendenciaCurta(q.td)}\n`;
     md += `**Assunto:** ${q.tema||'Geral'}\n`;
     { const cobv = (typeof COBRANCA!=='undefined' && COBRANCA[q.uid]) || q.cob; if(cobv) md += `**Cobrança:** ${cobv}\n`; }
+    { const a = (typeof armEfetiva==='function') ? armEfetiva(q) : null;
+      if(a && a.classificada){
+        if(a.errado){ md += `**Armadilha:** ${[a.p,a.s].filter(Boolean).join(' + ')}\n`; if(a.trecho) md += `**Trecho:** ${a.trecho}\n`; if(a.expl) md += `**Explicação:** ${a.expl}\n`; }
+        else if(a.sinal) md += `**Sinal:** ${a.sinal}\n`;
+        md += `**Origem da classificação:** ${a.origem}\n`;
+      } }
     md += `\n`;
     md += `### Enunciado\n${textoEfetivoDoCampo(q,'q')}\n\n`;
     if(q.t==='MC' && q.alt){
@@ -899,9 +925,9 @@ function renderFlashcards(){
   // botão "Salvar" da barra já grava qualquer campo "conteudo-{campo}-{uid}"
   // presente na página, então um único toolbar no verso cobre os dois lados
   const emEdicao = edicaoAtual === uid;
-  const customQ = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid]['q']);
-  const customRf = EDICOES_USUARIO[uid] && limparHtmlEditado(EDICOES_USUARIO[uid]['rf']);
-  const qHtml = customQ || destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)));
+  const customQ = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
+  const customRf = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['rf']));
+  const qHtml = customQ || esc(limparEnunciado(q.q, q.t));
   const rfHtml = customRf || formatarTextoComDestaque(q.rf, palavrasChaveDaRespostaCorreta(q));
 
   return `
@@ -927,7 +953,7 @@ function renderFlashcards(){
           <span class="lbl">Resumo flash</span>
           ${emEdicao
             ? `<div class="campo-editavel-conteudo" contenteditable="true" id="conteudo-rf-${esc(uid)}" style="flex:1;">${rfHtml}</div>`
-            : `<div class="rf-text" style="zoom:${STATE.zoomLevel};">${rfHtml}</div>`}
+            : `<div class="rf-text" style="zoom:${STATE.zoomLevel};">${rfHtml}</div>${armFlashHtml(q)}`}
           <div class="gab-line">Gabarito: ${gabaritoDestacado(gabaritoEfetivo(q))} · ${esc(q.td||'')} ${tendenciaQuente(q)?'⚠ alta recente':''}</div>
         </div>
       </div>
