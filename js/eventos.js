@@ -480,6 +480,24 @@ function attachHandlers(){
 
   const btnAbrirConfig = document.getElementById('btn-abrir-config');
   if(btnAbrirConfig) btnAbrirConfig.addEventListener('click', ()=>{ STATE.mostrarConfigSimulado = true; render(); });
+  const btnAbrirConfig2 = document.getElementById('btn-abrir-config-2');
+  if(btnAbrirConfig2) btnAbrirConfig2.addEventListener('click', ()=>{ STATE.mostrarConfigSimulado = true; render(); });
+  // quantidade de questões do simulado: atalhos, campo livre e botão Aplicar
+  root.querySelectorAll('[data-qtd]').forEach(el=>{
+    el.addEventListener('click', ()=>{ getSetup(STATE.materia).qtd = parseInt(el.dataset.qtd,10)||0; render(); });
+  });
+  const aplicarQtd = ()=>{
+    const inp = document.getElementById('input-qtd'); if(!inp) return;
+    const max = pool().length;
+    let n = parseInt(inp.value,10);
+    if(!isFinite(n) || n<1) n = 0;
+    if(n>max) n = 0; // acima do disponível = todas
+    getSetup(STATE.materia).qtd = n; render();
+  };
+  const btnAplicarQtd = document.getElementById('btn-aplicar-qtd');
+  if(btnAplicarQtd) btnAplicarQtd.addEventListener('click', aplicarQtd);
+  const inputQtd = document.getElementById('input-qtd');
+  if(inputQtd) inputQtd.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); aplicarQtd(); } });
   const btnVoltarLanding = document.getElementById('btn-voltar-landing');
   if(btnVoltarLanding) btnVoltarLanding.addEventListener('click', ()=>{ STATE.mostrarConfigSimulado = false; render(); });
 

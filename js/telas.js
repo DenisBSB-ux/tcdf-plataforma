@@ -67,7 +67,7 @@ function getSetup(materiaKey){
   if(!STATE.setupByMateria[materiaKey]){
     STATE.setupByMateria[materiaKey] = {
       niveis: new Set(['baixa','media','alta']),
-      qtd: 20,
+      qtd: 0, // 0 = todas as questões do filtro
       anosExcluidos: new Set(),
       bancasExcluidas: new Set(),
       cargosExcluidos: new Set(),
@@ -1039,6 +1039,23 @@ function renderMainPanel(tabAtual){
 }
 
 /* ================= LANDING (simulado sem sessão ativa) ================= */
+// página principal: gráfico de barras com a composição do próximo simulado
+// (acompanha a quantidade e os filtros definidos em "Configurar simulado")
+function renderBlocoProximoSimulado(){
+  if(!STATE.materia) return '';
+  const setup = getSetup(STATE.materia);
+  const fila = filaSimuladoPrevia();
+  if(!fila.length) return '';
+  const disp = pool().length;
+  const ef = qtdEfetiva(setup, disp);
+  return `<div class="card-block bloco-prox-sim">
+    <div class="bloco-prox-cab">
+      <h3 style="margin:0;color:inherit;">📊 Próximo simulado</h3>
+      <button class="btn-ui" id="btn-abrir-config-2" title="Alterar quantidade, ordem e filtros">⚙ Quantidade: ${ef}${ef<disp?` de ${disp}`:' (todas)'}</button>
+    </div>
+    ${renderComposicaoSimulado(fila, 'Distribuição por assunto:')}
+  </div>`;
+}
 function renderLanding(){
   const s = computeSnapshot();
   const bucket = STATE.materia ? getBucket(STATE.materia) : { sessoes:[], perguntas:{} };
@@ -1078,6 +1095,7 @@ function renderLanding(){
     ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin-bottom:8px;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
     ${botoesAcao}
   </div>
+  ${renderBlocoProximoSimulado()}
   ${renderEstatisticasPorMateria()}
   ${renderDashboardAnalitico()}
   ${renderSimuladosSalvosBlock()}
@@ -1105,7 +1123,7 @@ function renderLanding(){
 }
 
 /* ================= SETUP (barra lateral) ================= */
-function renderCamposFiltro(idPrefix){
+function camposFiltroPartes(){
   const setup = getSetup(STATE.materia);
   const anos = anosDisponiveis();
   const bancas = bancasDisponiveis();
@@ -1113,7 +1131,9 @@ function renderCamposFiltro(idPrefix){
   const tendencias = tendenciasDisponiveis();
   const qtdIneditas = scoreableFiltradas().filter(isInedita).length;
   const ordemAtual = ORDENS_SIMULADO.find(o=>o[0]===STATE.ordemSimulado) || ORDENS_SIMULADO[0];
-  return `
+  const P = {};
+  P.qtd = renderCampoQuantidade();
+  P.ordem = `
     <div class="setup-mini-field">
       <label>Ordem das questões</label>
       <div class="chip-row" id="chip-ordem">
@@ -1122,30 +1142,40 @@ function renderCamposFiltro(idPrefix){
       <div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">${esc(ordemAtual[2])}.${(()=>{ const qa = STATE.quizzesEmAndamento[STATE.materia]; return qa && !qa.finished ? ' Vale também para o simulado em andamento (as já respondidas ficam onde estão).' : ''; })()}</div>
       ${STATE.avisoOrdem && Date.now()-STATE.avisoOrdem.ts < 8000 ? `<div style="font-size:11px;color:var(--stamp-green, #3a9d5c);margin-top:4px;">✓ Simulado em andamento reordenado.</div>` : ''}
     </div>
+`;
+  P.nivel = `
     <div class="setup-mini-field">
       <label>Nível de incidência</label>
       <div class="chip-row" id="chip-nivel">
         ${['alta','media','baixa'].map(k=>`<span class="chip ${setup.niveis.has(k)?'selected':''}" data-nivel="${k}">${NIVEL_STARS[k]} ${NIVEL_LABEL[k].split(' ')[0]}</span>`).join('')}
       </div>
     </div>
+`;
+  P.tend = `
     ${tendencias.length>1 ? `<div class="setup-mini-field">
       <label>Tendência</label>
       <div class="chip-row" id="chip-tendencia">
         ${tendencias.map(t=>`<span class="chip ${!setup.tendenciasExcluidas.has(t)?'selected':''}" data-tendencia="${t}">${t}</span>`).join('')}
       </div>
     </div>` : ''}
+`;
+  P.ano = `
     ${anos.length>1 ? `<div class="setup-mini-field">
       <label>Ano</label>
       <div class="chip-row" id="chip-ano">
         ${anos.map(a=>`<span class="chip ${!setup.anosExcluidos.has(a)?'selected':''}" data-ano="${a}">${a}</span>`).join('')}
       </div>
     </div>` : ''}
+`;
+  P.banca = `
     ${bancas.length>1 ? `<div class="setup-mini-field">
       <label>Banca</label>
       <div class="chip-row" id="chip-banca">
         ${bancas.map(b=>`<span class="chip ${!setup.bancasExcluidas.has(b)?'selected':''}" data-banca="${esc(b)}">${esc(b)}</span>`).join('')}
       </div>
     </div>` : ''}
+`;
+  P.cob = `
     ${materiaTemCobranca(STATE.materia) ? (()=>{
       const base = scoreableFiltradas();
       const cont = {}; base.forEach(q => { const g = grupoCobranca(q) || 'sem'; cont[g] = (cont[g]||0)+1; });
@@ -1158,13 +1188,19 @@ function renderCamposFiltro(idPrefix){
         ${chips.map(([k,rot,n])=>`<span class="chip ${!exc.has(k)?'selected':''}" data-cobranca="${k}">${rot} (${n})</span>`).join('')}
       </div>
     </div>`; })() : ''}
+`;
+  P.arm = `
     ${armChipsFiltroHtml(scoreableFiltradas(), setup)}
+`;
+  P.orig = `
     ${qtdIneditas>0 ? `<div class="setup-mini-field">
       <label>Origem</label>
       <div class="chip-row" id="chip-ineditas">
         <span class="chip ${setup.incluirIneditas?'selected':''}" data-toggle-ineditas="1" title="Questões geradas por IA para completar o banco, não pertencem a nenhuma banca real">🟥🟨 Incluir inéditas (${qtdIneditas})</span>
       </div>
     </div>` : ''}
+`;
+  P.cargo = `
     ${cargos.length>1 ? `<div class="setup-mini-field">
       <button type="button" class="assunto-toggle" id="btn-toggle-cargo-menu" style="width:100%;">
         <label style="margin-bottom:0;cursor:pointer;">Cargo (${cargos.length})</label>
@@ -1174,34 +1210,116 @@ function renderCamposFiltro(idPrefix){
         ${cargos.map(c=>`<span class="chip ${!setup.cargosExcluidos.has(c)?'selected':''}" data-cargo="${esc(c)}">${esc(c)}</span>`).join('')}
       </div>` : ''}
     </div>` : ''}
-  `;
+`;
+  return P;
 }
-
+function renderCamposFiltro(idPrefix){
+  const P = camposFiltroPartes();
+  return [P.ordem,P.nivel,P.tend,P.ano,P.banca,P.cob,P.arm,P.orig,P.cargo].join('');
+}
+// ---- quantidade de questões do simulado (0 = todas as do filtro) ----
+const QTD_PRESETS = [10, 20, 30, 50, 100];
+function qtdEfetiva(setup, disponiveis){
+  const n = setup.qtd|0;
+  return (n>0 && n<disponiveis) ? n : disponiveis;
+}
+function renderCampoQuantidade(){
+  const setup = getSetup(STATE.materia);
+  const disp = pool().length;
+  const ef = qtdEfetiva(setup, disp);
+  const todas = !(setup.qtd>0 && setup.qtd<disp);
+  return `<div class="setup-mini-field">
+    <label for="input-qtd">Quantidade de questões</label>
+    <div class="chip-row" id="chip-qtd">
+      ${QTD_PRESETS.filter(n=>n<disp).map(n=>`<span class="chip ${(!todas && setup.qtd===n)?'selected':''}" data-qtd="${n}">${n}</span>`).join('')}
+      <span class="chip ${todas?'selected':''}" data-qtd="0">Todas (${disp})</span>
+    </div>
+    <div class="qtd-custom">
+      <label for="input-qtd" class="qtd-custom-rot">Outro valor</label>
+      <input type="number" id="input-qtd" min="1" max="${Math.max(1,disp)}" step="1" inputmode="numeric" value="${todas?'':setup.qtd}" placeholder="${ef}" ${disp===0?'disabled':''}>
+      <button type="button" class="btn-ui" id="btn-aplicar-qtd" ${disp===0?'disabled':''}>Aplicar</button>
+    </div>
+    <div class="setup-dica">${disp===0 ? 'Nenhuma questão no filtro.' : `O simulado terá <b>${ef}</b> de ${disp} questões disponíveis.`}</div>
+  </div>`;
+}
+// fila que o próximo simulado vai usar (mesma lógica do startQuiz) — a prévia
+// mostrada na tela é exatamente a fila iniciada; fica em cache para a ordem
+// aleatória não mudar a cada redesenho
+function filaSimuladoPrevia(){
+  const setup = getSetup(STATE.materia);
+  const base = pool();
+  if(!base.length) return [];
+  const bucket = STATE.materia ? getBucket(STATE.materia) : null;
+  const espacada = STATE.ordemSimulado==='espacada';
+  const nao = (bucket && !espacada) ? base.filter(q => !(bucket.perguntas[q.uid] && bucket.perguntas[q.uid].tentativas>0)) : base;
+  const cand = nao.length>0 ? nao : base;
+  const chave = [STATE.materia, STATE.ordemSimulado, setup.qtd|0, cand.map(q=>q.uid).join(',')].join('|');
+  if(setup._sel && setup._sel.chave===chave) return setup._sel.queue;
+  let ord = ordenarFilaSimulado(cand, STATE.materia, STATE.ordemSimulado).map(q=>q.uid);
+  const n = setup.qtd|0;
+  if(n>0 && n<ord.length) ord = ord.slice(0, n);
+  setup._sel = { chave, queue: ord };
+  return ord;
+}
+// gráfico de barras: composição do simulado por assunto (edital)
+function renderComposicaoSimulado(queue, titulo){
+  if(!queue || !queue.length) return '';
+  const cont = {};
+  queue.forEach(u=>{ const q = BY_UID[u]; if(q){ const t = q.tema || 'Geral'; cont[t] = (cont[t]||0)+1; } });
+  const temas = temasDisponiveis(STATE.materia);
+  const ordem = Object.keys(cont).sort((a,b)=>{ const ia=temas.indexOf(a), ib=temas.indexOf(b); return (ia===-1?1e6:ia)-(ib===-1?1e6:ib) || a.localeCompare(b,'pt-BR'); });
+  const max = Math.max(...Object.values(cont));
+  return `<div class="composicao">
+    <div class="composicao-titulo">${esc(titulo||'Composição do simulado')} <b>${queue.length}</b> ${queue.length===1?'questão':'questões'}</div>
+    ${ordem.map(t=>`<div class="bar-row composicao-linha" title="${esc(t)}">
+      <div class="name">${esc(t)}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4, Math.round(cont[t]*100/max))}%;"></div></div>
+      <div class="pct">${cont[t]}</div>
+    </div>`).join('')}
+  </div>`;
+}
 function renderBotoesAcaoSetup(){
   const erroCount = getCadernoErros().length;
   const candidatos = pool();
+  const setup = getSetup(STATE.materia);
+  const ef = qtdEfetiva(setup, candidatos.length);
   return `
-    <div class="setup-mini-field">
-      <div class="sidebar-avail">${candidatos.length} ${candidatos.length===1?'questão disponível':'questões disponíveis'} com este filtro — o simulado inclui todas elas</div>
-    </div>
-
+    <div class="sidebar-avail"><b>${ef}</b> ${ef===1?'questão':'questões'} no simulado <span>· ${candidatos.length} disponíve${candidatos.length===1?'l':'is'} com este filtro</span></div>
     <button class="btn btn-primary" id="btn-iniciar" ${candidatos.length===0?'disabled':''}>Iniciar simulado →</button>
-    ${candidatos.length===0 ? `<div style="margin-top:10px;"><span id="setup-warn" style="font-size:12px;color:var(--stamp-red);display:block;margin-bottom:8px;">Nenhuma questão encontrada com esses filtros.</span><button class="btn-outline" id="btn-limpar-filtros" style="width:100%;justify-content:center;">Limpar filtros</button></div>` : `<span id="setup-warn"></span>`}
-    ${erroCount>0 ? `<button class="btn-outline" id="btn-simulado-erros" style="width:100%;justify-content:center;margin-top:8px;">Simulado só com erros (${erroCount})</button>` : ''}
-    <button class="btn-outline" id="btn-imprimir" ${candidatos.length===0?'disabled':''} style="width:100%;justify-content:center;margin-top:8px;" title="Gera uma versão para impressão com as questões do filtro atual">🖨️ Imprimir questões (${candidatos.length})</button>
+    ${candidatos.length===0 ? `<div style="margin-top:10px;"><span id="setup-warn" style="font-size:13px;color:var(--stamp-red);display:block;margin-bottom:8px;">Nenhuma questão encontrada com esses filtros.</span><button class="btn-outline" id="btn-limpar-filtros" style="width:100%;justify-content:center;">Limpar filtros</button></div>` : `<span id="setup-warn"></span>`}
+    <div class="setup-acoes-sec">
+      ${erroCount>0 ? `<button class="btn-outline" id="btn-simulado-erros" title="Refaz só as questões que você errou">Só com erros (${erroCount})</button>` : ''}
+      <button class="btn-outline" id="btn-imprimir" ${candidatos.length===0?'disabled':''} title="Gera uma versão para impressão com as questões do filtro atual">🖨️ Imprimir (${candidatos.length})</button>
+    </div>
   `;
 }
-
 function renderSetupInline(){
+  const P = camposFiltroPartes();
+  const fila = filaSimuladoPrevia();
+  const grupo = (num, titulo, sub, corpo) => corpo.trim() ? `<section class="setup-grupo">
+      <header class="setup-grupo-cab"><span class="setup-grupo-num">${num}</span><div><h3>${titulo}</h3><p>${sub}</p></div></header>
+      <div class="setup-grupo-corpo">${corpo}</div>
+    </section>` : '';
   return `
-  <button class="btn btn-ghost btn-sm" id="btn-voltar-landing" style="margin-bottom:14px;">← Voltar</button>
-  <div class="section-eyebrow">${esc(STATE.materia||'')}</div>
-  <h2 class="section-title">Configurar simulado</h2>
-  <div class="setup-inline-grid">
-    ${renderCamposFiltro()}
-  </div>
-  <div class="setup-inline-actions">
-    ${renderBotoesAcaoSetup()}
+  <div class="setup-page">
+    <button class="btn btn-ghost btn-sm" id="btn-voltar-landing" style="margin-bottom:14px;">← Voltar</button>
+    <div class="section-eyebrow">${esc(STATE.materia||'')}</div>
+    <h2 class="section-title">Configurar simulado</h2>
+    <p class="setup-sub">Defina o tamanho, a ordem e os filtros. O resumo ao lado mostra exatamente as questões que serão usadas.</p>
+    <div class="setup-layout">
+      <div class="setup-col-main">
+        ${grupo(1,'Tamanho e ordem','Quantas questões e em que sequência', P.qtd + P.ordem)}
+        ${grupo(2,'Filtros de conteúdo','Nível de incidência, tendência, ano, banca e cargo', P.nivel + P.tend + P.ano + P.banca + P.cargo)}
+        ${grupo(3,'Tipo de cobrança e armadilhas','Como a questão é redigida e onde a banca costuma pegar', P.cob + P.arm + P.orig)}
+      </div>
+      <aside class="setup-col-resumo">
+        <div class="setup-resumo-card">
+          <h3>Resumo do simulado</h3>
+          ${renderBotoesAcaoSetup()}
+          ${renderComposicaoSimulado(fila, 'Composição:')}
+        </div>
+      </aside>
+    </div>
   </div>
   `;
 }
@@ -1420,9 +1538,8 @@ function startQuiz(nums, opcoes){
   // Usa todos os candidatos do filtro (nunca um lote limitado): o simulado fica
   // aberto até responder tudo. Conjunto específico (refazer erros) mantém a
   // ordem dada; o resto segue a ordem escolhida em "Ordem das questões".
-  const ordenados = nums ? candidatos : ordenarFilaSimulado(candidatos, STATE.materia, STATE.ordemSimulado);
-  const queue = ordenados.map(q=>q.uid);
-  STATE.quiz = { queue, idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, ordem: nums ? null : STATE.ordemSimulado, ...(opcoes && opcoes.subconjunto ? { origemErros:true, treinoArmadilha: opcoes.rotulo||true } : {}) };
+  const queue = nums ? candidatos.map(q=>q.uid) : filaSimuladoPrevia(); // respeita a quantidade definida na configuração
+  STATE.quiz = { queue, idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, ordem: nums ? null : STATE.ordemSimulado, ...((!nums && getSetup(STATE.materia).qtd>0 && queue.length < pool().length) ? { limitado:true } : {}), ...(opcoes && opcoes.subconjunto ? { origemErros:true, treinoArmadilha: opcoes.rotulo||true } : {}) };
   STATE.setupDrawerOpen = false;
   STATE.mostrarConfigSimulado = false;
   STATE.simuladoSalvoMsg = false;

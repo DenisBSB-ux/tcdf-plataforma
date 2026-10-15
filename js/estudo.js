@@ -36,7 +36,7 @@ function renderQuiz(){
   // reconcilia a fila com as questões válidas ATUAIS da matéria: tira uids que
   // não existem mais e inclui os que faltam. Filas de "refazer erros"
   // (origemErros) são um subconjunto de propósito e não são tocadas.
-  if(!quiz.origemErros && quiz.materia){
+  if(!quiz.origemErros && !quiz.limitado && quiz.materia){
     const poolAtual = ALL_QUESTIONS.filter(q2=>q2.materia===quiz.materia && !q2.duplicataOculta && (q2.t==='CE'||q2.t==='MC'));
     const poolUids = new Set(poolAtual.map(q2=>q2.uid));
     const semOrfas = quiz.queue.filter(u=>poolUids.has(u));

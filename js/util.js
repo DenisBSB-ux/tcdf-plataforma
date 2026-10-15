@@ -309,18 +309,7 @@ function destacarJustificativa(htmlEscapado){
 }
 function destacarPalavrasChave(texto, palavrasExtras){
   if(!texto) return '';
-  let html = destacarJustificativa(esc(texto));
-  // negrito só nas palavras-chave extraídas estritamente da resposta correta —
-  // nada de padrão genérico (referência legal, conector modal etc.) que não vem
-  // diretamente do gabarito da questão
-  if(palavrasExtras && palavrasExtras.length){
-    const ordenadas = [...palavrasExtras].sort((a,b)=>b.length-a.length);
-    ordenadas.forEach(palavra=>{
-      const escapada = palavra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const re = new RegExp(`\\b(${escapada}\\w*)\\b`, 'gi');
-      html = html.replace(re, (m, offset) => /<[^>]*$/.test(html.slice(0, offset)) ? m : `<strong class="kw-gabarito">${m}</strong>`);
-    });
-  }
+  let html = esc(texto); // sem destaques: justificativa em texto limpo
   return html;
 }
 
@@ -390,7 +379,7 @@ function formatarTextoComDestaque(texto, palavrasExtras){
   if(!texto) return '';
   const comQuebras = quebrarItensAlfabeticos(texto);
   const frases = dividirEmFrases(comQuebras);
-  return frases.map(f => `<p>${destacarPalavrasChave(f, palavrasExtras).replace(/\u0001([^\u0002]*)\u0002/g,'<b>$1</b>').replace(/[\u0001\u0002]/g,'')}</p>`).join('');
+  return frases.map(f => `<p>${destacarPalavrasChave(f, palavrasExtras).replace(/[\u0001\u0002]/g,'')}</p>`).join('');
 }
 
 
