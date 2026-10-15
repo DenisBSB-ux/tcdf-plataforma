@@ -155,12 +155,18 @@ function armPainelHtml(q){
   if(a.errado){
     const cods = armCodigos(a);
     const p = ARM_TIPOS[a.p];
+    // não repete a explicação se ela já consta na justificativa
+    const rTxt = armNorm(typeof limparResolucao==='function' ? limparResolucao(q.r||'') : (q.r||''));
+    const exN = armNorm(a.expl||'');
+    const explRepetida = exN && rTxt.includes(exN);
+    // a definição só aparece quando a explicação não a substitui
+    const defs = cods.map(c=>ARM_TIPOS[c]?`<div class="arm-expl arm-def"><b>${esc(ARM_TIPOS[c].nome)}</b> — ${esc(ARM_TIPOS[c].def)}</div>`:'').join('');
     return `<div class="arm-box">
       <div class="arm-linha"><span class="arm-rot">Armadilha da banca</span> ${cods.map(c=>armChip(c,true)).join('<span class="arm-mais">+</span>')} ${lapis}<span class="arm-origem">classificação: ${origemTxt}</span></div>
       ${(a.trecho && !ARM_DESTACADOS.has(uid)) ? `<div class="arm-expl"><b>Trecho:</b> <mark class="arm-trecho">${esc(a.trecho.replace(/ \| /g,' … '))}</mark></div>` : ''}
-      ${cods.map(c=>ARM_TIPOS[c]?`<div class="arm-expl arm-def"><b>${esc(ARM_TIPOS[c].nome)}</b> — ${esc(ARM_TIPOS[c].def)}</div>`:'').join('')}
-      ${a.expl ? `<div class="arm-expl">${esc(a.expl)}</div>` : ''}
-      ${p ? `<div class="arm-macete">💡 ${esc(p.nome)}: ${esc(p.macete)}</div>` : ''}
+      ${defs}
+      ${(a.expl && !explRepetida) ? `<div class="arm-expl">${esc(a.expl)}</div>` : ''}
+      ${p ? `<div class="arm-macete">💡 ${esc(p.macete)}</div>` : ''}
     </div>`;
   }
   const s = ARM_SINAIS[a.sinal];

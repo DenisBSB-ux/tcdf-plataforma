@@ -171,7 +171,7 @@ function renderQuiz(){
     <div class="case-header qm-header">
       <div class="qm-title">
         <div class="qm-numero">Questão ${quiz.idx+1} de ${quiz.queue.length}
-          <small><b class="qm-ac">${snapM.ac}</b> Acertos (${pctAcM}%) / <b class="qm-er">${snapM.erradas}</b> Erros (${pctErM}%)</small></div>
+          <small><b class="qm-ac">${snapM.ac}</b> Certas (${pctAcM}%) / <b class="qm-er">${snapM.erradas}</b> Erradas (${pctErM}%)</small></div>
         ${q.tema && q.tema!=='Geral' ? `<div class="qm-linha"><span class="qm-rot">Assunto:</span> ${esc(q.tema)}</div>` : ''}
       </div>
       <div class="qm-tags">
@@ -364,8 +364,8 @@ function renderResolucao(q, resposta, quiz){
     </span>
   </div>
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
-  ${armPainelHtml(q)}
-  <div class="resolucao-box ${tintClass}">
+  <div class="resolucao-box ${tintClass} resolucao-unica">
+    ${armPainelHtml(q)}
     ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(limparResolucao(q.r), palavrasChave))}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
