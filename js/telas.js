@@ -777,8 +777,9 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
   return cabecalhoTabela;
 }
 
+const MOSTRAR_FREQUENCIA_ASSUNTO = false; // painel "Frequência por assunto" oculto (mude para true para exibir)
 function renderDashboardAnalitico(){
-  if(!STATE.materia) return '';
+  if(!STATE.materia || !MOSTRAR_FREQUENCIA_ASSUNTO) return '';
   const analise = analisarTemasDaMateriaCached(STATE.materia);
   if(analise.length===0) return '';
   // desempenho (resultado atual de cada questão) por assunto
@@ -1039,6 +1040,77 @@ function renderMainPanel(tabAtual){
 }
 
 /* ================= LANDING (simulado sem sessão ativa) ================= */
+// ---- alterar a quantidade de questões de um simulado EM ANDAMENTO ----
+// As já respondidas ficam (na mesma posição); o resto é cortado ou completado
+// com questões novas do filtro atual, na ordem do simulado.
+function quizAndamentoAtual(){
+  const q = STATE.materia ? STATE.quizzesEmAndamento[STATE.materia] : null;
+  return (q && !q.finished) ? q : null;
+}
+function ajustarQuantidadeSimulado(n){
+  const quiz = quizAndamentoAtual();
+  if(!quiz) return 'Não há simulado em andamento.';
+  n = parseInt(n,10);
+  if(!isFinite(n) || n<1) return 'Informe uma quantidade válida.';
+  const respondida = u => !!(quiz.respostas && quiz.respostas[u]);
+  const feitas = quiz.queue.filter(respondida);
+  const pendentes = quiz.queue.filter(u=>!respondida(u));
+  const uidAtual = quiz.queue[quiz.idx];
+  let fila;
+  let aviso = '';
+  if(n < feitas.length){
+    fila = feitas.slice();
+    aviso = `Você já respondeu ${feitas.length} — o simulado ficou com ${feitas.length} (as respondidas são mantidas).`;
+  } else if(n <= quiz.queue.length){
+    // mantém a ordem original: tira só as pendentes do final
+    let cortar = quiz.queue.length - n;
+    const fora = new Set();
+    for(let i=quiz.queue.length-1; i>=0 && cortar>0; i--){ if(!respondida(quiz.queue[i])){ fora.add(quiz.queue[i]); cortar--; } }
+    fila = quiz.queue.filter(u=>!fora.has(u));
+  } else {
+    const faltam = n - quiz.queue.length;
+    const jaTem = new Set(quiz.queue);
+    const bucket = getBucket(quiz.materia);
+    let cand = pool().filter(q=>!jaTem.has(q.uid));
+    const novas = cand.filter(q=>!(bucket.perguntas[q.uid] && bucket.perguntas[q.uid].tentativas>0));
+    if(novas.length) cand = novas;
+    const ord = ordenarFilaSimulado(cand, quiz.materia, quiz.ordem || STATE.ordemSimulado).map(q=>q.uid).slice(0, faltam);
+    fila = quiz.queue.concat(ord);
+    if(ord.length < faltam) aviso = `Só havia ${ord.length} questão(ões) a mais no filtro atual — o simulado ficou com ${fila.length}.`;
+  }
+  quiz.queue = fila;
+  const i = fila.indexOf(uidAtual);
+  quiz.idx = i>=0 ? i : Math.max(0, fila.findIndex(u=>!respondida(u)));
+  if(quiz.idx<0) quiz.idx = 0;
+  quiz.limitado = fila.length < pool().length;
+  getSetup(STATE.materia).qtd = quiz.limitado ? fila.length : 0;
+  salvarQuizEmAndamento();
+  if(typeof marcarProgressoSujo==='function'){ try{ marcarProgressoSujo(quiz.materia); pushToCloud(); }catch(_){} }
+  STATE.avisoQtdAndamento = { ts: Date.now(), msg: aviso || `Simulado ajustado para ${fila.length} questões — as respondidas foram mantidas.` };
+  return aviso;
+}
+function renderAjusteSimuladoAndamento(){
+  const quiz = quizAndamentoAtual();
+  if(!quiz) return '';
+  const feitas = quiz.queue.filter(u=>quiz.respostas && quiz.respostas[u]).length;
+  const total = quiz.queue.length;
+  const pct = total ? Math.round(feitas*100/total) : 0;
+  const max = pool().length;
+  const presets = [10,20,30,50,100].filter(n=>n>feitas);
+  return `<div class="ajuste-andamento">
+    <div class="ajuste-cab"><b>Simulado em andamento:</b> ${feitas} de ${total} respondidas
+      <div class="bar-track" style="margin-top:6px;"><div class="bar-fill" style="width:${pct}%;background:#4c7a5c;"></div></div>
+    </div>
+    <label for="input-qtd-and">Alterar o total de questões (as ${feitas} respondidas são mantidas)</label>
+    <div class="chip-row">${presets.map(n=>`<span class="chip ${n===total?'selected':''}" data-qtd-and="${n}">${n}</span>`).join('')}</div>
+    <div class="qtd-custom">
+      <label for="input-qtd-and" class="qtd-custom-rot">Total</label>
+      <input type="number" id="input-qtd-and" min="${Math.max(1,feitas)}" max="${Math.max(total,max)}" step="1" inputmode="numeric" placeholder="${total}">
+      <button type="button" class="btn-ui" id="btn-aplicar-qtd-and">Aplicar</button>
+    </div>
+    ${STATE.avisoQtdAndamento && Date.now()-STATE.avisoQtdAndamento.ts<10000 ? `<div class="setup-dica ajuste-ok">✓ ${esc(STATE.avisoQtdAndamento.msg)}</div>` : ''}
+  </div>`;
+}
 // página principal: gráfico de barras com a composição do próximo simulado
 // (acompanha a quantidade e os filtros definidos em "Configurar simulado")
 function renderBlocoProximoSimulado(){
@@ -1095,6 +1167,7 @@ function renderLanding(){
     ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin-bottom:8px;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
     ${botoesAcao}
   </div>
+  ${quizSalvo ? `<div class="card-block bloco-prox-sim">${renderAjusteSimuladoAndamento()}</div>` : ''}
   ${renderBlocoProximoSimulado()}
   ${renderEstatisticasPorMateria()}
   ${renderDashboardAnalitico()}
@@ -1315,6 +1388,7 @@ function renderSetupInline(){
       <aside class="setup-col-resumo">
         <div class="setup-resumo-card">
           <h3>Resumo do simulado</h3>
+          ${quizAndamentoAtual() ? renderAjusteSimuladoAndamento() : ''}
           ${renderBotoesAcaoSetup()}
           ${renderComposicaoSimulado(fila, 'Composição:')}
         </div>

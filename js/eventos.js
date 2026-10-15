@@ -498,6 +498,12 @@ function attachHandlers(){
   if(btnAplicarQtd) btnAplicarQtd.addEventListener('click', aplicarQtd);
   const inputQtd = document.getElementById('input-qtd');
   if(inputQtd) inputQtd.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); aplicarQtd(); } });
+  const aplicarQtdAnd = (n)=>{ const msg = ajustarQuantidadeSimulado(n); if(msg && /válida|Não há/.test(msg)) alert(msg); render(); };
+  root.querySelectorAll('[data-qtd-and]').forEach(el=> el.addEventListener('click', ()=> aplicarQtdAnd(el.dataset.qtdAnd)));
+  const btnAplicarQtdAnd = document.getElementById('btn-aplicar-qtd-and');
+  if(btnAplicarQtdAnd) btnAplicarQtdAnd.addEventListener('click', ()=>{ const i = document.getElementById('input-qtd-and'); aplicarQtdAnd(i && i.value); });
+  const inputQtdAnd = document.getElementById('input-qtd-and');
+  if(inputQtdAnd) inputQtdAnd.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); aplicarQtdAnd(inputQtdAnd.value); } });
   const btnVoltarLanding = document.getElementById('btn-voltar-landing');
   if(btnVoltarLanding) btnVoltarLanding.addEventListener('click', ()=>{ STATE.mostrarConfigSimulado = false; render(); });
 
