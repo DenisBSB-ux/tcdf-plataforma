@@ -190,6 +190,7 @@ function attachHandlers(){
     setup.cargosExcluidos = new Set();
     setup.tendenciasExcluidas = new Set();
     setup.incluirIneditas = true;
+    if(setup.armSel) setup.armSel.clear();
     setup.qtd = 20;
     render();
   });

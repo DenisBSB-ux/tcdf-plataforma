@@ -183,6 +183,10 @@ function parseMarkdownQuestoes(content){
     const cobMatch = bloco.match(/\*\*Cobran[çc]a:\*\*\s*([A-Z](?::\w+)?\??)/i);
     const cob = cobMatch ? cobMatch[1].toUpperCase() : null;
 
+    // classificação de armadilha (opcional): "**Armadilha:** SUF + INV", "**Sinal:** LIT",
+    // "**Trecho:** palavras | outras", "**Explicação:** frase", "**Origem da classificação:** ia"
+    const armCampos = armadilhaDoTexto(bloco);
+
     const enunciado = blockFieldMd('Enunciado', bloco);
     const resolucao = blockFieldMd('Resolu[çc][ãa]o', bloco);
     const resumo = blockFieldMd('Resumo Flash', bloco);
@@ -219,10 +223,34 @@ function parseMarkdownQuestoes(content){
     results.push({
       n, bc: bancaCargoTxt || '—', es: 'literal', ft: '', nv: nivel, td: tendencia, fr: '',
       q: enunciado, t: tipo, alt: alternativas, g: gabarito, r: resolucao || '', rf: resumo || '',
-      ar: ano, tema: assunto, ...(cob ? { cob } : {}),
+      ar: ano, tema: assunto, ...(cob ? { cob } : {}), ...armCampos,
     });
   });
   return { results, ignoradas, semGabarito };
+}
+
+// lê os campos de armadilha de um bloco de questão, nos dois formatos de colagem:
+// Markdown (**Armadilha:** X) e linhas simples (ARMADILHA: X, TRECHO: ..., EXPLICACAO: ...)
+function armadilhaDoTexto(bloco, origemPadrao){
+  const campo = (nomes)=>{
+    const m = bloco.match(new RegExp('(?:^|\\n)\\s*(?:\\*\\*)?(?:'+nomes+')(?:\\*\\*)?\\s*:(?:\\*\\*)?[ \\t]*([^\\n]+)','i'));
+    return m ? m[1].trim() : '';
+  };
+  const arm = campo('Armadilha');
+  const sinal = campo('Sinal|Sinal certo|sinal_certo').toUpperCase();
+  const trecho = campo('Trecho|trecho_chave');
+  const expl = campo('Explica[çc][ãa]o|Explicacao|explicacao_armadilha');
+  const origem = campo('Origem da classifica[çc][ãa]o|classificacao_origem').toLowerCase();
+  const cods = (arm.toUpperCase().match(/\b(GEN|SUF|DIS|JUS|INV|TRO|RES|EXT)\b/g) || []).filter((c,i,a)=>a.indexOf(c)===i);
+  const out = {};
+  if(cods[0]) out.ap = cods[0];
+  if(cods[1]) out.as = cods[1];
+  const sc = (sinal.match(/\b(ABS-L|REL|LIT|COE)\b/) || [])[1];
+  if(sc) out.sc = sc;
+  if(trecho) out.tr = trecho;
+  if(expl) out.ex = expl;
+  if(Object.keys(out).length) out.ao = /manual/.test(origem) ? 'manual' : (/gemini/.test(origem) ? 'gemini' : (/\bia\b/.test(origem) ? 'ia' : (origemPadrao || 'ia')));
+  return out;
 }
 
 function extractGabarito(blockText, resolucaoText){
@@ -384,6 +412,7 @@ function parseTxtQuestoesFormatoGemini(content){
       an:anosNum, ar: ar || (anosNum.length?Math.max(...anosNum):null),
       q:enunciado, r:resolucao, rf:resumo||'', g:gabarito, t:tipo,
       alt: alternativas, pp: probPreditiva||null, tema: temaDaQuestao||null,
+      ...armadilhaDoTexto(bloco, 'gemini'),
     });
   });
 

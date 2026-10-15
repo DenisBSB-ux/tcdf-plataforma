@@ -74,6 +74,7 @@ function materiaRemovidaNaNuvem(materiaNome){
 let MATERIAS_OCULTAS = new Set(); // matérias NATIVAS (embutidas no código) que o usuário removeu — como elas
   // não vivem no Firestore nem no localStorage de questões, o único jeito de "remover de vez" uma matéria
   // embutida é guardar o nome dela aqui e filtrar toda vez que a base nativa for recriada no carregamento
+let TEMPO_QUESTAO = { uid:null, ts:0 }; // início da questão exibida (para o tempo por armadilha)
 let edicaoAtual = null; // uid da questão em modo de edição agora (todos os campos — enunciado, resolução, resumo flash — ficam editáveis juntos)
 let chuteArmado = null; // uid da questão com o botão "Chute" armado, aguardando o clique na resposta de verdade
 let dicaChuteAberta = null; // uid da questão com o painel "Dica de chute" (js/heuristica.js) aberto agora

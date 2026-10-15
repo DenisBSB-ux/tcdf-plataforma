@@ -72,6 +72,7 @@ function renderQuiz(){
   const q = BY_UID[uid];
   const resposta = quiz.respostas[uid];
   const revelado = !!resposta;
+  if(!revelado && TEMPO_QUESTAO.uid !== uid){ TEMPO_QUESTAO.uid = uid; TEMPO_QUESTAO.ts = Date.now(); }
 
   const escLabel = ESCOPO_LABEL[q.es] || q.es;
   const escClass = ESCOPO_CLASS[q.es] || '';
@@ -174,7 +175,6 @@ function renderQuiz(){
         ${q.tema && q.tema!=='Geral' ? `<div class="qm-linha"><span class="qm-rot">Assunto:</span> ${esc(q.tema)}</div>` : ''}
       </div>
       <div class="qm-tags">
-        ${freqBadge(q.fr)}
         ${ineditaBadge(q)}
         <div class="q-estatistica-line">${narrativaBancaBanner(q)}</div>
       </div>
@@ -307,7 +307,12 @@ function blocoEnunciadoEditavel(q){
   const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
   const emEdicao = edicaoAtual === uid;
   const htmlAuto = destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)));
-  const conteudo = custom || htmlAuto;
+  let conteudo = custom || htmlAuto;
+  // depois de responder, o trecho-chave da armadilha aparece destacado em vermelho
+  if(!emEdicao && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uid]){
+    const a = armEfetiva(q);
+    if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho);
+  }
   return `
     <div class="campo-editavel-header" style="justify-content:flex-end;">
       <span class="campo-editavel-acoes">
@@ -349,6 +354,7 @@ function renderResolucao(q, resposta, quiz){
     <button class="btn-corrigir-gabarito" data-alterar-gabarito="${esc(q.uid)}" title="Corrigir o gabarito desta questão (com justificativa) — não muda tentativas já registradas" style="margin-left:8px;">✏️ Corrigir gabarito</button>
   </div>
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
+  ${armPainelHtml(q)}
   <div class="resolucao-box ${tintClass}">
     ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(q.r, palavrasChave))}
   </div>
@@ -368,7 +374,9 @@ function pickAnswer(opt){
   const q = BY_UID[uid];
   const correct = opt === gabaritoEfetivo(q);
   quiz.respostas[uid] = { picked: opt, correct };
-  registrarResposta(quiz.materia, uid, correct);
+  // tempo gasto na questão (s), sem contar pausas longas: máx. 10 min
+  const seg = (TEMPO_QUESTAO.uid===uid && TEMPO_QUESTAO.ts) ? Math.min(600, Math.round((Date.now()-TEMPO_QUESTAO.ts)/1000)) : null;
+  registrarResposta(quiz.materia, uid, correct, seg);
   registrarResultadoHeuristica(q); // js/heuristica.js — autoavaliação da "dica de chute" com o uso real
   if(dicaChuteAberta === uid) dicaChuteAberta = null;
   // se o "Chute" estava armado pra esta questão, a resposta que acabou de ser
@@ -798,6 +806,12 @@ function gerarMarkdownDaMateria(materiaKey){
     md += `**Ano:** ${anoRealDaQuestao(q)||'—'} | **Nível:** ${NIVEL_LABEL[q.nv]||'Média'} | **Tendência:** ${tendenciaCurta(q.td)}\n`;
     md += `**Assunto:** ${q.tema||'Geral'}\n`;
     { const cobv = (typeof COBRANCA!=='undefined' && COBRANCA[q.uid]) || q.cob; if(cobv) md += `**Cobrança:** ${cobv}\n`; }
+    { const a = (typeof armEfetiva==='function') ? armEfetiva(q) : null;
+      if(a && a.classificada){
+        if(a.errado){ md += `**Armadilha:** ${[a.p,a.s].filter(Boolean).join(' + ')}\n`; if(a.trecho) md += `**Trecho:** ${a.trecho}\n`; if(a.expl) md += `**Explicação:** ${a.expl}\n`; }
+        else if(a.sinal) md += `**Sinal:** ${a.sinal}\n`;
+        md += `**Origem da classificação:** ${a.origem}\n`;
+      } }
     md += `\n`;
     md += `### Enunciado\n${textoEfetivoDoCampo(q,'q')}\n\n`;
     if(q.t==='MC' && q.alt){
@@ -939,7 +953,7 @@ function renderFlashcards(){
           <span class="lbl">Resumo flash</span>
           ${emEdicao
             ? `<div class="campo-editavel-conteudo" contenteditable="true" id="conteudo-rf-${esc(uid)}" style="flex:1;">${rfHtml}</div>`
-            : `<div class="rf-text" style="zoom:${STATE.zoomLevel};">${rfHtml}</div>`}
+            : `<div class="rf-text" style="zoom:${STATE.zoomLevel};">${rfHtml}</div>${armFlashHtml(q)}`}
           <div class="gab-line">Gabarito: ${gabaritoDestacado(gabaritoEfetivo(q))} · ${esc(q.td||'')} ${tendenciaQuente(q)?'⚠ alta recente':''}</div>
         </div>
       </div>

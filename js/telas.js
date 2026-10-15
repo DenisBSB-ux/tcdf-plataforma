@@ -75,6 +75,7 @@ function getSetup(materiaKey){
       cargoMenuAberto: false,
       incluirIneditas: true, // questões sintéticas (geradas por IA) entram por padrão
       cobrancaExcluida: new Set(), // grupos de "Tipo de cobrança" desmarcados ('lei','I',…,'sem')
+      armSel: new Set(), // filtro por armadilha da banca (seleção múltipla; vazio = todas)
     };
   }
   return STATE.setupByMateria[materiaKey];
@@ -183,7 +184,7 @@ function tendenciasDisponiveis(){
 function getLocalTab(materiaKey){
   const tab = STATE.tabByMateria[materiaKey];
   // abas que ainda existem ("Resumo p/ revisão" foi removida)
-  return ['simulado','erros','flashcards'].includes(tab) ? tab : 'simulado';
+  return ['simulado','erros','flashcards','armadilhas','guia-arm'].includes(tab) ? tab : 'simulado';
 }
 function setLocalTab(materiaKey, tab){
   STATE.tabByMateria[materiaKey] = tab;
@@ -353,6 +354,7 @@ function nivelBadge(nv){
   return `<span class="nivel-badge ${nv}" title="Nível de incidência: ${esc(NIVEL_LABEL[nv]||'')}">${seta} ${esc(NIVEL_LABEL[nv]||'')}</span>`;
 }
 function freqBadge(fr){
+  return ''; // removido a pedido: selo "N concursos distintos (M nos últimos 5 anos)" não é mais exibido
   if(!fr) return '';
   return `<span class="freq-badge" title="Frequência histórica por banca e ano">📊 ${esc(fr)}</span>`;
 }
@@ -362,6 +364,7 @@ function probabilidadeBadge(pp){
 }
 
 function freqHistLine(fr){
+  return ''; // removido (ver freqBadge)
   if(!fr) return '';
   return `<div class="freq-hist"><span class="lbl-inline">Frequência por ano:</span> ${esc(fr)}</div>`;
 }
@@ -402,6 +405,7 @@ function bancaCargoAnoLine(q){
 // compacta de símbolo (📊 total ×, 🕐 recentes nos últimos 5 anos), em vez do
 // texto completo — que continua disponível por extenso no badge/tooltip
 function incidenciaSimbolo(q){
+  return ''; // removido (ver freqBadge)
   if(!q.fr || isInedita(q)) return '';
   const mTotal = q.fr.match(/(\d+)\s*concursos?\s*distint/i);
   if(!mTotal) return '';
@@ -992,6 +996,8 @@ function renderLocalTabs(){
     {id:'simulado', n:'01', label:'Simulado'},
     {id:'erros', n:'02', label:'Caderno de erros'},
     {id:'flashcards', n:'03', label:'Flashcards'},
+    {id:'armadilhas', n:'04', label:'Armadilhas'},
+    {id:'guia-arm', n:'05', label:'Guia de armadilhas'},
   ];
   const atual = getLocalTab(STATE.materia);
   return `<div class="tabs">${tabs.map(t=>`
@@ -1027,6 +1033,8 @@ function renderMainPanel(tabAtual){
   }
   if(tabAtual==='erros') return renderErros();
   if(tabAtual==='flashcards') return renderFlashcards();
+  if(tabAtual==='armadilhas') return renderArmadilhas();
+  if(tabAtual==='guia-arm') return renderGuiaArmadilhas();
   return '';
 }
 
@@ -1150,6 +1158,7 @@ function renderCamposFiltro(idPrefix){
         ${chips.map(([k,rot,n])=>`<span class="chip ${!exc.has(k)?'selected':''}" data-cobranca="${k}">${rot} (${n})</span>`).join('')}
       </div>
     </div>`; })() : ''}
+    ${armChipsFiltroHtml(scoreableFiltradas(), setup)}
     ${qtdIneditas>0 ? `<div class="setup-mini-field">
       <label>Origem</label>
       <div class="chip-row" id="chip-ineditas">
@@ -1206,7 +1215,8 @@ function pool(){
     !setup.cargosExcluidos.has(cargoCurto(q.bc)) &&
     !setup.tendenciasExcluidas.has(tendenciaCurta(q.td)) &&
     (setup.incluirIneditas || !isInedita(q)) &&
-    (!setup.cobrancaExcluida || !setup.cobrancaExcluida.size || !setup.cobrancaExcluida.has(grupoCobranca(q) || 'sem'))
+    (!setup.cobrancaExcluida || !setup.cobrancaExcluida.size || !setup.cobrancaExcluida.has(grupoCobranca(q) || 'sem')) &&
+    armPassaFiltro(q, setup)
   );
 }
 
@@ -1384,7 +1394,7 @@ function mudarOrdemSimulado(modo){
   STATE.avisoOrdem = aplicou ? { ts: Date.now(), modo } : null;
   render();
 }
-function startQuiz(nums){
+function startQuiz(nums, opcoes){
   const candidatosTotais = nums ? nums.map(u=>BY_UID[u]).filter(Boolean) : pool();
   if(candidatosTotais.length===0){
     const w = document.getElementById('setup-warn');
@@ -1412,7 +1422,7 @@ function startQuiz(nums){
   // ordem dada; o resto segue a ordem escolhida em "Ordem das questões".
   const ordenados = nums ? candidatos : ordenarFilaSimulado(candidatos, STATE.materia, STATE.ordemSimulado);
   const queue = ordenados.map(q=>q.uid);
-  STATE.quiz = { queue, idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, ordem: nums ? null : STATE.ordemSimulado };
+  STATE.quiz = { queue, idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, ordem: nums ? null : STATE.ordemSimulado, ...(opcoes && opcoes.subconjunto ? { origemErros:true, treinoArmadilha: opcoes.rotulo||true } : {}) };
   STATE.setupDrawerOpen = false;
   STATE.mostrarConfigSimulado = false;
   STATE.simuladoSalvoMsg = false;

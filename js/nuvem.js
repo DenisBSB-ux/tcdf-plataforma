@@ -1123,13 +1123,13 @@ async function importarProgresso(file){
   reader.readAsText(file, 'utf-8');
 }
 
-function registrarResposta(materiaKey, uid, acertou){
+function registrarResposta(materiaKey, uid, acertou, segundos){
   const bucket = getBucket(materiaKey);
   const p = bucket.perguntas[uid] || { tentativas:0, acertos:0, ultimoResultado:null, historico:[] };
   p.tentativas += 1;
   if(acertou) p.acertos += 1;
   p.ultimoResultado = acertou;
-  p.historico.push({ ts: Date.now(), c: acertou });
+  p.historico.push(typeof segundos==='number' ? { ts: Date.now(), c: acertou, t: segundos } : { ts: Date.now(), c: acertou });
   if(p.historico.length > 20) p.historico = p.historico.slice(-20);
   bucket.perguntas[uid] = p;
   marcarProgressoSujo(materiaKey);
