@@ -266,6 +266,7 @@ const TERMOS_CHAVE = [
   'sempre','nunca','jamais','todo','toda','todos','todas','qualquer','nenhum','nenhuma','nem','não','sem','tampouco','tal como','assim como','bem como',
   'deve','devem','deverá','deverão','dever','tem de','precisa','precisam','vinculado','vinculada','vinculação','vincula','discricionário','discricionária','discricionariedade',
   'competência','atribuição','prazo','mínimo','máxima','mínima','absoluto','absoluta','relativo','relativa','limite','limites','limitado','limitada','ilimitado','ilimitada',
+  'prevê','estabelece','determina','exige','admite','permite','autoriza','impede','veda','proíbe','garante','assegura','limita','submete','depende','dependem','constitui','constituem','configura','caracteriza','define','responde','respondem','responsabiliza','obriga','possui','possuem','cabe','caberá','abrange','alcança','pressupõe','condiciona','dispõe','impõe','faculta','reconhece','admitida','admitido','vinculante','aplicável','cabível','legítimo','legítima','legal','ilegal','nulo','nula','válido','válida','inválido','inválida','público','pública','privado','privada','geral','específico','específica','especial','principal','secundário','secundária','único','única','mesmo','mesma','próprio','própria','distintos',
   'caracteriza-se','consiste','define-se','denomina-se','corresponde','equivale','equivalem','difere','diferente','distinto','distinta','ao passo que','enquanto',
 ];
 let _reChave = null;
@@ -274,7 +275,8 @@ function destacarPalavrasChaveQuestao(htmlEscapado){
   if(!html) return '';
   if(!_reChave){
     const alt = [...TERMOS_CHAVE].sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+')).join('|');
-    _reChave = new RegExp('(?<![\\p{L}\\p{N}])(?:' + alt + ')(?![\\p{L}\\p{N}])', 'giu');
+    // + advérbios em -mente e adjetivos em -ável/-ível
+    _reChave = new RegExp('(?<![\\p{L}\\p{N}])(?:' + alt + '|\\p{L}{4,}mente|\\p{L}{3,}[áí]vel|\\p{L}{3,}[áí]veis)(?![\\p{L}\\p{N}])', 'giu');
   }
   // só mexe no texto entre tags (nunca dentro de <u ...> etc.)
   return html.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(_reChave, x => `<b class="kw-chave">${x}</b>`));
@@ -326,11 +328,36 @@ function quebrarItensAlfabeticos(texto){
 
 // combina a quebra em frases (item 5) com o destaque de palavras-chave (item 6):
 // cada frase vira um parágrafo próprio, já com os termos relevantes marcados
+// Limpa a justificativa para exibição: tira a frase que só repete o veredito
+// ("O item está **Errado**.", "Gabarito: Errado.", "Portanto, o item está errado.")
+// — o veredito já aparece acima — e frases repetidas. **negrito** vira marcação.
+function limparResolucao(r){
+  if(!r) return r;
+  const VER = '(?:certo|errado|correto|incorreto|certa|errada|correta|incorreta|falso|falsa|verdadeiro|verdadeira)';
+  const soVeredito = new RegExp('^(?:portanto|assim|logo|dessa forma|desse modo|em suma|conclus[ãa]o)?[,:;\\s-]*(?:o\\s+|a\\s+)?(?:item|assertiva|afirmativa|afirma[çc][ãa]o|proposi[çc][ãa]o|quest[ãa]o|gabarito)\\b[^.\\n]{0,50}?\\b'+VER+'\\s*[.!]*$','i');
+  const iniVeredito = new RegExp('^\\s*(?:(?:o|a)\\s+(?:item|assertiva|afirmativa|afirma[çc][ãa]o)\\s+(?:est[áa]|[ée]|fica)\\s+'+VER+'|gabarito\\s*:\\s*'+VER+')\\s*[.:!;]\\s*','i');
+  const vistos = new Set();
+  const out = [];
+  String(r).split(/\n+/).forEach(linha=>{
+    let l = linha.replace(/\*\*([^*\n]+)\*\*/g,'\u0001$1\u0002').replace(/(^|\s)\*(?=\S)([^*\n]+)\*/g,'$1$2');
+    const plano = l.replace(/[\u0001\u0002]/g,'').trim();
+    if(!plano) return;
+    if(plano.length <= 110 && soVeredito.test(plano)) return;
+    let p = plano, prev;
+    do { prev = p; p = p.replace(iniVeredito,''); } while(p !== prev);
+    if(p !== plano){ l = l.replace(/[\u0001\u0002]/g,''); do { prev = l; l = l.replace(iniVeredito,''); } while(l !== prev); }
+    const chave = l.replace(/[\u0001\u0002]/g,'').toLowerCase().replace(/[^a-z0-9à-ÿ]+/g,' ').trim();
+    if(!chave || vistos.has(chave)) return;
+    vistos.add(chave);
+    out.push(l.trim());
+  });
+  return out.join('\n');
+}
 function formatarTextoComDestaque(texto, palavrasExtras){
   if(!texto) return '';
   const comQuebras = quebrarItensAlfabeticos(texto);
   const frases = dividirEmFrases(comQuebras);
-  return frases.map(f => `<p>${destacarPalavrasChave(f, palavrasExtras)}</p>`).join('');
+  return frases.map(f => `<p>${destacarPalavrasChave(f, palavrasExtras).replace(/\u0001([^\u0002]*)\u0002/g,'<b>$1</b>').replace(/[\u0001\u0002]/g,'')}</p>`).join('');
 }
 
 

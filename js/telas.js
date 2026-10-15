@@ -1150,7 +1150,7 @@ function renderCamposFiltro(idPrefix){
       const base = scoreableFiltradas();
       const cont = {}; base.forEach(q => { const g = grupoCobranca(q) || 'sem'; cont[g] = (cont[g]||0)+1; });
       const exc = setup.cobrancaExcluida || new Set();
-      const chips = COBRANCA_GRUPOS.filter(([k]) => cont[k] && k!=='R').map(([k,rot]) => [k, rot, cont[k]]);
+      const chips = COBRANCA_GRUPOS.filter(([k]) => cont[k] ).map(([k,rot]) => [k, rot, cont[k]]);
       if(cont.sem) chips.push(['sem', 'Sem classificação', cont.sem]);
       return `<div class="setup-mini-field">
       <label title="Como a questão foi redigida. Literal e literal com troca ficam juntas em 'Lei seca' para não denunciar o gabarito">Tipo de cobrança</label>

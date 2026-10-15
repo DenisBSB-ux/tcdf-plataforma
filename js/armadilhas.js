@@ -70,14 +70,17 @@ function armEfetiva(q){
   armHidratar(q);
   const ed = EDICOES_USUARIO[q.uid] && EDICOES_USUARIO[q.uid].arm;
   const man = ed ? armDecodificar(ed) : null;
+  const edq = EDICOES_USUARIO[q.uid] || {};
+  const exEd = typeof edq.arm_ex === 'string' ? edq.arm_ex : undefined;
+  const trEd = typeof edq.arm_tr === 'string' ? edq.arm_tr : undefined;
   const errado = gabaritoEfetivo(q)==='Errado';
   if(man){
     return { p: errado ? man.p : '', s: errado ? man.s : '', sinal: errado ? '' : man.sinal,
-             trecho: q.tr||'', expl: q.ex||'', origem:'manual', errado, classificada: !!(errado ? man.p : true) };
+             trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), origem:'manual', errado, classificada: !!(errado ? man.p : true) };
   }
   const p = (q.ap||'').toUpperCase(), s = (q.as||'').toUpperCase(), sinal = (q.sc||'').toUpperCase();
   const classificada = errado ? !!p : !!(p||sinal||q.ao);
-  return { p, s, sinal, trecho: q.tr||'', expl: q.ex||'', origem: q.ao||'ia', errado, classificada };
+  return { p, s, sinal, trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), origem: (exEd!==undefined||trEd!==undefined) ? 'manual' : (q.ao||'ia'), errado, classificada };
 }
 function armCodigos(a){ return a ? [a.p, a.s].filter(c=>c && ARM_TIPOS[c]) : []; }
 function armTemClassificacao(q){ const a = armEfetiva(q); return !!(a && a.classificada); }
@@ -143,7 +146,7 @@ function armPainelHtml(q){
   if(!a) return '';
   const uid = q.uid;
   const editando = STATE.armEditUid === uid;
-  const lapis = `<button class="arm-btn-edit" data-arm-edit="${esc(uid)}" title="Corrigir a classificação desta questão">✏️</button>`;
+  const lapis = `<button class="arm-btn-edit" data-arm-edit="${esc(uid)}" title="Editar a classificação, o trecho e a explicação desta armadilha">✏️ Editar</button>`;
   if(editando) return armEditorHtml(q, a);
   const origemTxt = a.origem==='manual' ? 'manual' : (a.origem==='gemini' ? 'Gemini' : 'IA');
   if(!a.classificada){
@@ -175,6 +178,8 @@ function armEditorHtml(q, a){
         <label>Principal <select id="arm-sel-p">${opts(a.p,'— escolha —')}</select></label>
         <label>Secundária <select id="arm-sel-s">${opts(a.s,'— nenhuma —')}</select></label>
       </div>` : `<div class="arm-edit-grid"><label>Sinal de item certo <select id="arm-sel-sinal">${sinais}</select></label></div>`}
+    ${a.errado ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão)<textarea id="arm-txt-tr" rows="2">${esc(a.trecho||'')}</textarea></label>
+    <label class="arm-edit-txt">Explicação da armadilha<textarea id="arm-txt-ex" rows="3">${esc(a.expl||'')}</textarea></label>` : ''}
     <div class="arm-edit-acoes">
       <button class="btn btn-gold btn-sm" data-arm-save="${esc(uid)}">💾 Salvar (origem: manual)</button>
       <button class="btn btn-ghost btn-sm" data-arm-cancel="1">Cancelar</button>
@@ -190,7 +195,7 @@ document.addEventListener('click', (ev)=>{
   const uid = t.dataset.armSave || t.dataset.armReset;
   const q = BY_UID[uid]; if(!q) return;
   if(t.dataset.armReset){
-    if(EDICOES_USUARIO[uid]){ delete EDICOES_USUARIO[uid].arm; if(!Object.keys(EDICOES_USUARIO[uid]).length) delete EDICOES_USUARIO[uid]; }
+    if(EDICOES_USUARIO[uid]){ delete EDICOES_USUARIO[uid].arm; delete EDICOES_USUARIO[uid].arm_ex; delete EDICOES_USUARIO[uid].arm_tr; if(!Object.keys(EDICOES_USUARIO[uid]).length) delete EDICOES_USUARIO[uid]; }
   } else {
     const g = id => { const el = document.getElementById(id); return el ? el.value : ''; };
     const errado = gabaritoEfetivo(q)==='Errado';
@@ -199,6 +204,12 @@ document.addEventListener('click', (ev)=>{
     if(s===p) s = '';
     if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
     EDICOES_USUARIO[uid].arm = armCodificar(errado?p:'', errado?s:'', errado?'':sinal);
+    if(errado){
+      const orig = { tr: q.tr||'', ex: q.ex||'' };
+      const tr = g('arm-txt-tr').trim(), ex = g('arm-txt-ex').trim();
+      if(tr !== orig.tr) EDICOES_USUARIO[uid].arm_tr = tr; else delete EDICOES_USUARIO[uid].arm_tr;
+      if(ex !== orig.ex) EDICOES_USUARIO[uid].arm_ex = ex; else delete EDICOES_USUARIO[uid].arm_ex;
+    }
   }
   salvarEdicoesUsuario();
   marcarProgressoSujo(q.materia); pushToCloud();

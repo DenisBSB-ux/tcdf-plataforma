@@ -317,7 +317,6 @@ function blocoEnunciadoEditavel(q){
     <div class="campo-editavel-header" style="justify-content:flex-end;">
       <span class="campo-editavel-acoes">
         ${emEdicao ? '' : `<button class="btn-editar-campo" data-uid="${esc(uid)}" title="Editar enunciado, resolução e resumo flash desta questão">✏️ Editar questão</button>`}
-        ${(!emEdicao && custom) ? `<button class="btn-restaurar-campo" data-uid="${esc(uid)}" data-campo="q" title="Descartar edição do enunciado e voltar ao texto automático">↺ Restaurar enunciado</button>` : ''}
       </span>
     </div>
     ${emEdicao ? editorToolbarHtml(uid) : ''}
@@ -331,8 +330,10 @@ function campoEditavelSimples(q, campo, htmlAuto){
   const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid][campo]));
   const emEdicao = edicaoAtual === uid;
   const conteudo = custom || htmlAuto;
+  const btnEditar = (!emEdicao && campo==='r') ? `<button class="btn-editar-campo btn-editar-grande" data-uid="${esc(uid)}" title="Editar a justificativa (e o enunciado) desta questão">✏️ Editar justificativa</button>` : '';
+  const btnRest = (!emEdicao && custom) ? `<button class="btn-restaurar-campo" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button>` : '';
   return `
-    ${(!emEdicao && custom) ? `<div class="campo-editavel-header" style="justify-content:flex-end;"><button class="btn-restaurar-campo" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button></div>` : ''}
+    ${(btnEditar||btnRest) ? `<div class="campo-editavel-header" style="justify-content:flex-end;"><span class="campo-editavel-acoes">${btnEditar}${btnRest}</span></div>` : ''}
     <div class="campo-editavel-conteudo" ${emEdicao ? 'contenteditable="true"' : ''} id="conteudo-${campo}-${esc(uid)}">${conteudo}</div>
   `;
 }
@@ -356,7 +357,7 @@ function renderResolucao(q, resposta, quiz){
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   ${armPainelHtml(q)}
   <div class="resolucao-box ${tintClass}">
-    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(q.r, palavrasChave))}
+    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(limparResolucao(q.r), palavrasChave))}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
     : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}
