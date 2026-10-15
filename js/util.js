@@ -118,6 +118,52 @@ function separarContextoDoItem(texto){
   return texto.slice(0, fim).trimEnd() + '\n\n' + texto.slice(fim);
 }
 
+// tira da tela a frase-comando de abertura ("Com base em X, julgue o item a
+// seguir em certo (C) ou errado (E).") e deixa só o texto da questão. Frases
+// completas ANTES do comando (cenário/caso) são mantidas — sai só a frase que
+// contém o "julgue ...". Nada é apagado dos dados: é só exibição.
+const _ABREV_FRASE = new Set(['n','nº','no','art','arts','inc','incs','gov','fed','dr','dra','sr','sra','cf','cap','ex','par','ss','nr','av','obs','ref','pág','pp','vol','min','sec','dep','sen','prof','dist','al','alin','parág','párag','p','v','resp','cons']);
+function _fimDeFrase(t, i){
+  const c = t[i];
+  if(c!=='.' && c!=='!' && c!=='?' && c!==':') return false;
+  const nx = t[i+1];
+  if(nx!==undefined && !/\s/.test(nx)) return false;
+  if(c==='.'){
+    const resto = t.slice(i+1).replace(/^\s+/, '');
+    if(/^[a-zà-ÿ]/.test(resto)) return false;                                  // frase não recomeça com minúscula
+    const fechando = /[)"”»\]]$/.test(t.slice(0, i));                          // ... (LRF). / ... "x".
+    if(fechando) return true;
+    const prev = (t.slice(Math.max(0, i-10), i).match(/([A-Za-zÀ-ÿ0-9]+)$/) || [])[1] || '';
+    if(/^\d+$/.test(prev)) return true;
+    if(_ABREV_FRASE.has(prev.toLowerCase()) && !/^[A-ZÀ-Ý]{2,}$/.test(prev)) return false;   // n., art., Gov., Fed. ...
+  }
+  return true;
+}
+function removerComandoJulgue(texto){
+  if(!texto) return texto;
+  const m = /\bjulgues?\s+(?:\([^)]{0,25}\)\s*)?(?:o|os|a|as|esse|este|cada|item|itens|assertiva|afirmativa|proposição)\b|\bjulgue\s*[;:]|\bjulgue-[oa]s?\b/i.exec(texto);
+  if(!m || m.index > 3000) return texto;
+  // começo da frase que contém o "julgue"
+  let ini = 0;
+  for(let i = m.index-1; i >= 0; i--){ if(_fimDeFrase(texto, i)){ ini = i+1; break; } }
+  // fim dessa frase ("julgue;" / "julgue:" já fecha o comando)
+  let fim = texto.length;
+  const pt = /^julgue\s*[;:]/i.exec(texto.slice(m.index));
+  if(pt){ fim = m.index + pt[0].length; }
+  else { for(let i = m.index; i < texto.length; i++){ if(_fimDeFrase(texto, i)){ fim = i+1; break; } } }
+  if(!pt && fim === texto.length){ // "…de acordo com a CF.A condenação…" (ponto colado na próxima frase)
+    const g = /[A-Za-zà-ÿ)]\.(?=[A-ZÀ-Ý](?:[a-zà-ÿ]|\s))/.exec(texto.slice(m.index));
+    if(g) fim = m.index + g.index + 2;
+  }
+  const frase = texto.slice(ini, fim);
+  // só é comando se a frase for de fato uma instrução (e não o verbo "julgar" dentro do item)
+  if(frase.length > 420 || !/\b(item|itens|assertiva|afirmativa|seguinte|seguintes|subsequente|subsecutivo|a seguir|certo|errado)\b|\(C\)|C ou E|\bjulgue\s*[;:]|\bjulgue-[oa]s?\b/i.test(frase)) return texto;
+  const antes = texto.slice(0, ini).trim();
+  const depois = texto.slice(fim).trim();
+  if(depois.length < 15) return texto; // não deixa a questão vazia
+  return (antes ? antes + '\n\n' : '') + depois;
+}
+
 function limparEnunciado(texto, tipo){
   if(!texto) return '';
   let out = texto
@@ -129,6 +175,7 @@ function limparEnunciado(texto, tipo){
   // rodasse antes, a quebra dupla de parágrafo que ele insere seria engolida
   // pelo \s* da regex de itens romanos (que colapsa qualquer espaço/quebra
   // anterior a "I"/"II"/etc. em uma quebra simples só)
+  if(tipo!=='MC') out = removerComandoJulgue(out);
   out = quebrarItensRomanos(out);
   out = separarContextoDoItem(out);
   if(tipo==='MC'){
@@ -199,6 +246,38 @@ function destacarTermosDecisivos(htmlEscapado){
     html = html.replace(re, (m, offset) => /<[^>]*$/.test(html.slice(0, offset)) ? m : `<u class="kw-decisivo">${m}</u>`);
   });
   return html;
+}
+// palavras-chave do texto da questão (antes e depois de responder): além dos
+// termos absolutos/restritivos (sublinhado vermelho), marca causa/consequência,
+// suficiência/dispensa, relativização e direção/quantidade — as palavras onde a
+// banca costuma esconder a armadilha. Recebe HTML já escapado.
+const TERMOS_CHAVE = [
+  'por si só','suficiente','suficientes','basta','bastando','independentemente','independe','independem',
+  'dispensa','dispensada','dispensado','dispensável','afasta','afastada','afastado','afastam','afastamento',
+  'exceto','salvo','ressalvado','ressalvada','não se aplica','não se aplicam',
+  'visto que','uma vez que','já que','porque','pois','por força de','de tal modo que','de modo que','em razão de','por causa de',
+  'ocasionando','ocasionado','ocasiona','causa','causando','decorre','decorrente','resulta','resultando','implica','acarreta','provoca','consequência','consequentemente',
+  'sobretudo','principalmente','inclusive','mesmo que','ainda que','embora','contudo','porém','entretanto','todavia','desde que','apesar de',
+  'pode','podem','poderá','poderão','em regra','geralmente','via de regra','normalmente','tende','tendem','costuma','frequentemente','eventualmente','em geral',
+  'aumento','redução','diminuição','queda','elevação','ampliação','restrição','majoração','maior','menor','máximo','mínimo',
+  'integral','integralmente','parcial','parcialmente','imediato','imediatamente','automático','automaticamente','prévio','prévia','posterior','anterior','antes','depois','após',
+  'vedado','vedada','proibido','proibida','permitido','permitida','obrigatório','obrigatória','facultativo','facultativa','privativa','privativo','compete',
+  'necessário','necessária','necessariamente','necessários','necessárias','exclusivo','exclusiva','exclusivamente','somente','apenas','unicamente','só',
+  'sempre','nunca','jamais','todo','toda','todos','todas','qualquer','nenhum','nenhuma','nem','não','sem','tampouco','tal como','assim como','bem como',
+  'deve','devem','deverá','deverão','dever','tem de','precisa','precisam','vinculado','vinculada','vinculação','vincula','discricionário','discricionária','discricionariedade',
+  'competência','atribuição','prazo','mínimo','máxima','mínima','absoluto','absoluta','relativo','relativa','limite','limites','limitado','limitada','ilimitado','ilimitada',
+  'caracteriza-se','consiste','define-se','denomina-se','corresponde','equivale','equivalem','difere','diferente','distinto','distinta','ao passo que','enquanto',
+];
+let _reChave = null;
+function destacarPalavrasChaveQuestao(htmlEscapado){
+  let html = destacarTermosDecisivos(htmlEscapado);
+  if(!html) return '';
+  if(!_reChave){
+    const alt = [...TERMOS_CHAVE].sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+')).join('|');
+    _reChave = new RegExp('(?<![\\p{L}\\p{N}])(?:' + alt + ')(?![\\p{L}\\p{N}])', 'giu');
+  }
+  // só mexe no texto entre tags (nunca dentro de <u ...> etc.)
+  return html.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(_reChave, x => `<b class="kw-chave">${x}</b>`));
 }
 function destacarPalavrasChave(texto, palavrasExtras){
   if(!texto) return '';

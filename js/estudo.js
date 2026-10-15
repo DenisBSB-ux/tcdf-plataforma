@@ -306,12 +306,12 @@ function blocoEnunciadoEditavel(q){
   const uid = q.uid;
   const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
   const emEdicao = edicaoAtual === uid;
-  const htmlAuto = destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)));
+  const htmlAuto = destacarPalavrasChaveQuestao(esc(limparEnunciado(q.q, q.t)));
   let conteudo = custom || htmlAuto;
   // depois de responder, o trecho-chave da armadilha aparece destacado em vermelho
   if(!emEdicao && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uid]){
     const a = armEfetiva(q);
-    if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho);
+    if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid);
   }
   return `
     <div class="campo-editavel-header" style="justify-content:flex-end;">
@@ -357,9 +357,6 @@ function renderResolucao(q, resposta, quiz){
   ${armPainelHtml(q)}
   <div class="resolucao-box ${tintClass}">
     ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(q.r, palavrasChave))}
-  </div>
-  <div class="resumo-flash-box">
-    ${campoEditavelSimples(q, 'rf', formatarTextoComDestaque(q.rf, palavrasChave))}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
     : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}
@@ -927,7 +924,7 @@ function renderFlashcards(){
   const emEdicao = edicaoAtual === uid;
   const customQ = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
   const customRf = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['rf']));
-  const qHtml = customQ || destacarTermosDecisivos(esc(limparEnunciado(q.q, q.t)));
+  const qHtml = customQ || destacarPalavrasChaveQuestao(esc(limparEnunciado(q.q, q.t)));
   const rfHtml = customRf || formatarTextoComDestaque(q.rf, palavrasChaveDaRespostaCorreta(q));
 
   return `

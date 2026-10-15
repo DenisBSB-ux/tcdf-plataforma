@@ -96,7 +96,9 @@ function armChipSinal(cod){
 }
 
 /* ---------- destaque do trecho-chave dentro do HTML do enunciado ---------- */
-function armDestacarTrecho(html, trecho){
+const ARM_DESTACADOS = new Set(); // uids cujo trecho foi marcado direto no texto da questão
+function armDestacarTrecho(html, trecho, uid){
+  if(uid) ARM_DESTACADOS.delete(uid);
   if(!html || !trecho) return html;
   const partes = String(trecho).split(' | ').map(s=>s.trim()).filter(Boolean);
   if(!partes.length) return html;
@@ -127,7 +129,7 @@ function armDestacarTrecho(html, trecho){
         r.setStart(no, a-pos); r.setEnd(no, b-pos);
         const mk = document.createElement('mark');
         mk.className = 'arm-trecho';
-        try{ r.surroundContents(mk); }catch(e){ /* trecho cruza elementos: ignora */ }
+        try{ r.surroundContents(mk); if(uid) ARM_DESTACADOS.add(uid); }catch(e){ /* trecho cruza elementos: ignora */ }
       }
       pos += len;
     });
@@ -152,7 +154,7 @@ function armPainelHtml(q){
     const p = ARM_TIPOS[a.p];
     return `<div class="arm-box">
       <div class="arm-linha"><span class="arm-rot">Armadilha da banca</span> ${cods.map(c=>armChip(c,true)).join('<span class="arm-mais">+</span>')} ${lapis}<span class="arm-origem">classificação: ${origemTxt}</span></div>
-      ${a.trecho ? `<div class="arm-expl"><b>Trecho:</b> <mark class="arm-trecho">${esc(a.trecho.replace(/ \| /g,' … '))}</mark></div>` : ''}
+      ${(a.trecho && !ARM_DESTACADOS.has(uid)) ? `<div class="arm-expl"><b>Trecho:</b> <mark class="arm-trecho">${esc(a.trecho.replace(/ \| /g,' … '))}</mark></div>` : ''}
       ${a.expl ? `<div class="arm-expl">${esc(a.expl)}</div>` : ''}
       ${p ? `<div class="arm-macete">💡 ${esc(p.nome)}: ${esc(p.macete)}</div>` : ''}
     </div>`;

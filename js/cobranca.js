@@ -567,7 +567,7 @@ function materiaTemCobranca(materia){
 // etiqueta mostrada depois de responder
 function cobrancaTag(q){
   const c = cobrancaDaQuestao(q);
-  if(!c) return '';
+  if(!c || c.tipo==='R') return ''; // "Resposta lógica" não é mais exibida
   const [ic, nome, desc] = COBRANCA_TIPOS[c.tipo] || ['', c.tipo, ''];
   const arm = c.armadilha && COBRANCA_ARMADILHAS[c.armadilha];
   const dica = desc + (arm ? '. Armadilha: ' + arm : '') + (c.duvida ? '. (classificação duvidosa)' : '');
