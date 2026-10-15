@@ -1070,10 +1070,7 @@ function ajustarQuantidadeSimulado(n){
   } else {
     const faltam = n - quiz.queue.length;
     const jaTem = new Set(quiz.queue);
-    const bucket = getBucket(quiz.materia);
-    let cand = pool().filter(q=>!jaTem.has(q.uid));
-    const novas = cand.filter(q=>!(bucket.perguntas[q.uid] && bucket.perguntas[q.uid].tentativas>0));
-    if(novas.length) cand = novas;
+    const cand = pool().filter(q=>!jaTem.has(q.uid)); // ordem do simulado, resolvidas ou não
     const ord = ordenarFilaSimulado(cand, quiz.materia, quiz.ordem || STATE.ordemSimulado).map(q=>q.uid).slice(0, faltam);
     fila = quiz.queue.concat(ord);
     if(ord.length < faltam) aviso = `Só havia ${ord.length} questão(ões) a mais no filtro atual — o simulado ficou com ${fila.length}.`;
@@ -1212,7 +1209,7 @@ function camposFiltroPartes(){
       <div class="chip-row" id="chip-ordem">
         ${ORDENS_SIMULADO.map(([k,rot,dica])=>`<span class="chip ${STATE.ordemSimulado===k?'selected':''}" data-ordem-simulado="${k}" title="${esc(dica)}">${rot}</span>`).join('')}
       </div>
-      <div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">${esc(ordemAtual[2])}.${(()=>{ const qa = STATE.quizzesEmAndamento[STATE.materia]; return qa && !qa.finished ? ' Vale também para o simulado em andamento (as já respondidas ficam onde estão).' : ''; })()}</div>
+      <div style="font-size:11px;color:var(--ink-soft);margin-top:4px;">${esc(ordemAtual[2])}.${(()=>{ const qa = STATE.quizzesEmAndamento[STATE.materia]; return qa && !qa.finished ? ' Vale também para o simulado em andamento: a nova ordem é aplicada a todas as questões, respondidas ou não.' : ''; })()}</div>
       ${STATE.avisoOrdem && Date.now()-STATE.avisoOrdem.ts < 8000 ? `<div style="font-size:11px;color:var(--stamp-green, #3a9d5c);margin-top:4px;">✓ Simulado em andamento reordenado.</div>` : ''}
     </div>
 `;
@@ -1322,10 +1319,7 @@ function filaSimuladoPrevia(){
   const setup = getSetup(STATE.materia);
   const base = pool();
   if(!base.length) return [];
-  const bucket = STATE.materia ? getBucket(STATE.materia) : null;
-  const espacada = STATE.ordemSimulado==='espacada';
-  const nao = (bucket && !espacada) ? base.filter(q => !(bucket.perguntas[q.uid] && bucket.perguntas[q.uid].tentativas>0)) : base;
-  const cand = nao.length>0 ? nao : base;
+  const cand = base; // ordem aplicada a todas, respondidas ou não
   const chave = [STATE.materia, STATE.ordemSimulado, setup.qtd|0, cand.map(q=>q.uid).join(',')].join('|');
   if(setup._sel && setup._sel.chave===chave) return setup._sel.queue;
   let ord = ordenarFilaSimulado(cand, STATE.materia, STATE.ordemSimulado).map(q=>q.uid);
@@ -1547,10 +1541,7 @@ function ordenarFilaSimulado(candidatos, materia, modo){
     return _intercalar([...grupos.values()].map(g => g.sort(porNumero)));
   });
 }
-// reordena o simulado em andamento: as questões já respondidas NESTE simulado
-// ficam onde estão (no começo, na ordem em que foram feitas); o resto segue a
-// nova ordem — as nunca respondidas antes primeiro, como num simulado novo
-// (na revisão espaçada, todas juntas). Continua da 1ª ainda não respondida.
+// reordena o simulado em andamento aplicando a ordem a todas as questões
 function reordenarQuizEmAndamento(quiz, modo){
   if(!quiz || quiz.finished || quiz.origemErros || quiz.reaberto) return false;
   const bucket = getBucket(quiz.materia);
@@ -1559,18 +1550,13 @@ function reordenarQuizEmAndamento(quiz, modo){
   // seria tratada como "ainda não feita" e embaralhada junto com as novas,
   // perdendo a marcação visual ao reordenar
   curarRespostasDoHistorico(quiz);
-  const feitas = quiz.queue.filter(u => quiz.respostas[u]);
-  const resto = quiz.queue.filter(u => !quiz.respostas[u]).map(u => BY_UID[u]).filter(Boolean);
-  let restoOrdenado;
-  if(modo==='espacada'){
-    restoOrdenado = ordenarFilaSimulado(resto, quiz.materia, modo);
-  } else {
-    const jaFeita = q => bucket.perguntas[q.uid] && bucket.perguntas[q.uid].tentativas>0;
-    restoOrdenado = ordenarFilaSimulado(resto.filter(q=>!jaFeita(q)), quiz.materia, modo)
-      .concat(ordenarFilaSimulado(resto.filter(jaFeita), quiz.materia, modo));
-  }
-  quiz.queue = feitas.concat(restoOrdenado.map(q => q.uid));
-  quiz.idx = Math.min(feitas.length, Math.max(0, quiz.queue.length-1));
+  // a nova ordem vale para TODAS as questões do simulado (respondidas ou não);
+  // as respostas continuam presas ao uid, então nada se perde. O simulado
+  // continua da primeira questão ainda não respondida na nova ordem.
+  const todas = quiz.queue.map(u => BY_UID[u]).filter(Boolean);
+  quiz.queue = ordenarFilaSimulado(todas, quiz.materia, modo).map(q => q.uid);
+  const prox = quiz.queue.findIndex(u => !quiz.respostas[u]);
+  quiz.idx = prox>=0 ? prox : 0;
   quiz.ordem = modo;
   // salvarQuizEmAndamento grava o STATE.quiz; o simulado pode não estar aberto
   const aberto = STATE.quiz; STATE.quiz = quiz; salvarQuizEmAndamento(); STATE.quiz = aberto;
@@ -1600,15 +1586,9 @@ function startQuiz(nums, opcoes){
     const ok = window.confirm('Você tem um simulado em andamento nesta matéria. Iniciar um novo vai descartar a fila dele (as respostas já dadas continuam valendo pro seu progresso geral). Deseja continuar?');
     if(!ok) return;
   }
-  // Simulado novo prioriza questões AINDA NÃO respondidas dentro do filtro; só
-  // volta a incluir as já respondidas quando não sobra nenhuma nova. Na revisão
-  // espaçada é o contrário: entram todas, com as respondidas (erros) na frente.
-  const bucketAtual = (!nums && STATE.materia) ? getBucket(STATE.materia) : null;
-  const espacada = STATE.ordemSimulado==='espacada';
-  const naoRespondidas = (bucketAtual && !espacada)
-    ? candidatosTotais.filter(q => !(bucketAtual.perguntas[q.uid] && bucketAtual.perguntas[q.uid].tentativas>0))
-    : candidatosTotais;
-  const candidatos = naoRespondidas.length>0 ? naoRespondidas : candidatosTotais;
+  // A ordem escolhida vale para TODAS as questões do filtro, estejam elas já
+  // resolvidas ou não (respondidas não são mais jogadas para o fim nem excluídas).
+  const candidatos = candidatosTotais;
   // Usa todos os candidatos do filtro (nunca um lote limitado): o simulado fica
   // aberto até responder tudo. Conjunto específico (refazer erros) mantém a
   // ordem dada; o resto segue a ordem escolhida em "Ordem das questões".
