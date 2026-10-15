@@ -331,7 +331,7 @@ function campoEditavelSimples(q, campo, htmlAuto){
   const emEdicao = edicaoAtual === uid;
   const conteudo = custom || htmlAuto;
   const btnEditar = (!emEdicao && campo==='r') ? `<button class="btn-editar-campo btn-ui" data-uid="${esc(uid)}" title="Editar a justificativa (e o enunciado) desta questão">✏️ Editar</button>` : '';
-  const btnRest = (!emEdicao && custom) ? `<button class="btn-restaurar-campo btn-ui" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button>` : '';
+  const btnRest = (!emEdicao && custom && campo!=='r') ? `<button class="btn-restaurar-campo btn-ui" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button>` : '';
   const barraSalvar = (emEdicao && campo==='r') ? `<div class="campo-editavel-acoes campo-salvar-barra"><button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar</button><button class="btn-ui btn-cancelar-edicao" data-editar-acao="cancelar">✕ Cancelar</button></div>` : '';
   return `
     ${(btnEditar||btnRest) ? `<div class="campo-editavel-header" style="justify-content:flex-end;"><span class="campo-editavel-acoes">${btnEditar}${btnRest}</span></div>` : ''}
