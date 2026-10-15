@@ -672,17 +672,10 @@ function renderStats(){
     }).join('')}
   </div>` : ''}
 
-  ${renderDangerZone()}
   `;
 }
 
-function renderDangerZone(){
-  return `<div class="card-block" style="border-color:#eabdb6;">
-    <h3 style="color:var(--stamp-red);">Zona de risco — ${esc(STATE.materia||'')}</h3>
-    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">Apaga o histórico de tentativas, o caderno de erros e as marcações de flashcards apenas desta matéria. As demais matérias não são afetadas.</p>
-    <button class="btn-danger" id="btn-reset-materia">Resetar progresso desta matéria</button>
-  </div>`;
-}
+function renderDangerZone(){ return ''; } // zona de risco removida da interface
 
 function barRow(name, a, t){
   const p = pct(a,t);

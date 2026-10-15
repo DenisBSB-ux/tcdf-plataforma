@@ -174,7 +174,7 @@ function armEditorHtml(q, a){
   const opts = (sel, vazio) => `<option value="">${vazio}</option>` + ARM_ORDEM.map(c=>`<option value="${c}" ${sel===c?'selected':''}>${c} — ${esc(ARM_TIPOS[c].nome)}</option>`).join('');
   const sinais = `<option value="">— nenhum —</option>` + ARM_SINAIS_ORDEM.map(c=>`<option value="${c}" ${a.sinal===c?'selected':''}>${c} — ${esc(ARM_SINAIS[c].nome)}</option>`).join('');
   return `<div class="arm-box arm-box-edit">
-    <div class="arm-linha"><span class="arm-rot">Corrigir classificação</span></div>
+    <div class="arm-linha"><span class="arm-rot">Corrigir classificação</span> <button type="button" class="btn-ui" data-arm-criterios="1" title="Alterar, remover ou adicionar critérios de classificação">⚙ Gerenciar critérios</button></div>
     ${a.errado ? `<div class="arm-edit-grid">
         <label>Principal <select id="arm-sel-p">${opts(a.p,'— escolha —')}</select></label>
         <label>Secundária <select id="arm-sel-s">${opts(a.s,'— nenhuma —')}</select></label>
@@ -447,9 +447,9 @@ function renderGuiaArmadilhas(){
   }).join('');
   const sinais = ARM_SINAIS_ORDEM.map(c=>`<div class="guia-sinal"><span class="arm-chip arm-chip-sinal">${c}</span> <b>${esc(ARM_SINAIS[c].nome)}</b> — ${esc(ARM_SINAIS[c].por)}</div>`).join('');
   const passos = ['Divida o item em <b>premissa</b>, <b>conectivo</b> e <b>conclusão</b>.','Marque as palavras <b>absolutas</b>, <b>restritivas</b> e os <b>conectivos causais</b>.','Teste a <b>premissa</b>: ela é verdadeira?','Teste o <b>conectivo</b>: a premissa realmente leva à conclusão?','<b>Classifique</b> pelo tipo de armadilha. Nenhuma encontrada → o item tende a estar <b>certo</b>.'];
-  const m = (i)=>`<b style="color:${ARM_TIPOS[ARM_ORDEM[i]].cor};">${ARM_ORDEM[i]}</b>`;
+  const m = (i)=>{ const t = ARM_TIPOS[ARM_ORDEM[i]]; return t ? `<b style="color:${t.cor};">${ARM_ORDEM[i]}</b>` : ''; };
   return `<div class="guia-tela">
-    <h3>📘 Guia de armadilhas da banca</h3>
+    <h3>📘 Guia de armadilhas da banca <button type="button" class="btn-ui" data-arm-criterios="1">⚙ Gerenciar critérios</button></h3>
     <div class="guia-grid">${cartoes}</div>
     <div class="guia-faixa"><b>Combinações:</b> a banca empilha armadilhas — cada questão aceita um tipo principal e, opcionalmente, um secundário (ex.: DIS + JUS, SUF + INV).</div>
     <h4>Sinais de item certo</h4>
@@ -457,8 +457,100 @@ function renderGuiaArmadilhas(){
     <div class="guia-alerta">⚠ Pegadinha: <b>ABS-L</b> existe para você não marcar ERRADO só por ver uma palavra absoluta. Sinal é alerta para ler com atenção, nunca resposta automática. Palavra-sinal sozinha não classifica: o tipo só vale se o trecho realmente falseia o item.</div>
     <h4>Método de 5 passos</h4>
     <ol class="guia-passos">${passos.map(p=>`<li>${p}</li>`).join('')}</ol>
-    <div class="guia-macete"><b>Macete:</b> ${m(0)}te ${m(1)}oca, ${m(2)}cute ${m(3)}tiça: ${m(4)}erte, ${m(5)}ca, ${m(6)}tringe, ${m(7)}trapola.
-      <div class="guia-macete-sub">GEN-SUF-DIS-JUS · INV-TRO-RES-EXT</div></div>
+    ${ARM_ORDEM.length===8 && ARM_ORDEM.every(c=>ARM_TIPOS[c]) ? `<div class="guia-macete"><b>Macete:</b> ${m(0)}te ${m(1)}oca, ${m(2)}cute ${m(3)}tiça: ${m(4)}erte, ${m(5)}ca, ${m(6)}tringe, ${m(7)}trapola.
+      <div class="guia-macete-sub">GEN-SUF-DIS-JUS · INV-TRO-RES-EXT</div></div>` : ''}
     <div class="guia-conclusao">🟣 <b>Conclusão:</b> saber por que errou vale mais que saber em qual assunto errou. Na Análise de Armadilhas veja qual tipo mais derruba você e treine só ele.</div>
   </div>`;
 }
+
+
+/* ================= CRITÉRIOS DE CLASSIFICAÇÃO EDITÁVEIS =================
+   O usuário pode alterar, remover ou adicionar tipos de armadilha. As mudanças
+   ficam neste navegador (localStorage 'tcdf_arm_criterios'); sem elas valem os
+   critérios padrão do código. Código do critério: 2 a 4 letras maiúsculas. */
+const ARM_CRIT_KEY = 'tcdf_arm_criterios';
+const ARM_TIPOS_PADRAO = JSON.parse(JSON.stringify(ARM_TIPOS));
+const ARM_ORDEM_PADRAO = ARM_ORDEM.slice();
+function armCritAplicar(cfg){
+  Object.keys(ARM_TIPOS).forEach(k=>delete ARM_TIPOS[k]);
+  ARM_ORDEM.length = 0;
+  if(!cfg){
+    Object.keys(ARM_TIPOS_PADRAO).forEach(k=>ARM_TIPOS[k]=JSON.parse(JSON.stringify(ARM_TIPOS_PADRAO[k])));
+    ARM_ORDEM_PADRAO.forEach(c=>ARM_ORDEM.push(c));
+  } else {
+    cfg.ordem.forEach(c=>{ if(cfg.tipos[c]){ ARM_TIPOS[c] = cfg.tipos[c]; ARM_ORDEM.push(c); } });
+  }
+  if(typeof ARM_IDX!=='undefined') ARM_IDX = null;
+}
+function armCritCarregar(){
+  try{ const raw = localStorage.getItem(ARM_CRIT_KEY); if(raw){ const cfg = JSON.parse(raw); if(cfg && Array.isArray(cfg.ordem) && cfg.tipos) armCritAplicar(cfg); } }catch(e){}
+}
+function armCritSalvar(cfg){
+  try{ if(cfg) localStorage.setItem(ARM_CRIT_KEY, JSON.stringify(cfg)); else localStorage.removeItem(ARM_CRIT_KEY); }catch(e){}
+  armCritAplicar(cfg);
+}
+armCritCarregar();
+
+function armCritLinhaHtml(cod, t, novo){
+  const f = (campo, rot, val, tipo) => `<label class="crit-f"><span>${rot}</span>${tipo==='area'?`<textarea data-f="${campo}" rows="2">${esc(val||'')}</textarea>`:`<input data-f="${campo}" value="${esc(val||'')}">`}</label>`;
+  return `<div class="crit-linha" data-cod="${esc(cod)}" ${novo?'data-novo="1"':''}>
+    <div class="crit-topo">
+      <label class="crit-f crit-cod"><span>Código</span><input data-f="cod" maxlength="4" value="${esc(cod)}" ${novo?'':'readonly'} placeholder="ABC"></label>
+      <label class="crit-f crit-cor"><span>Cor</span><input type="color" data-f="cor" value="${esc(t.cor||'#475569')}"></label>
+      ${f('nome','Nome',t.nome)}
+      <button type="button" class="btn-ui btn-cancelar-edicao crit-rem" title="Remover este critério">🗑 Remover</button>
+    </div>
+    ${f('def','O que faz',t.def)}
+    ${f('sinais','Palavras-sinal',t.sinais)}
+    ${f('ex','Exemplo',t.ex)}
+    ${f('macete','Macete',t.macete)}
+  </div>`;
+}
+function armCritAbrir(){
+  if(document.getElementById('crit-modal')) return;
+  const ov = document.createElement('div'); ov.id='crit-modal'; ov.className='crit-overlay';
+  ov.innerHTML = `<div class="crit-box" role="dialog" aria-label="Critérios de classificação">
+    <div class="crit-cab"><b>Critérios de classificação</b><button type="button" class="btn-ui" id="crit-fechar">✕ Fechar</button></div>
+    <div class="crit-dica">Altere os campos, remova ou adicione critérios. Questões já classificadas com um critério removido deixam de exibi-lo. As mudanças ficam neste navegador.</div>
+    <div id="crit-lista">${ARM_ORDEM.map(c=>armCritLinhaHtml(c, ARM_TIPOS[c], false)).join('')}</div>
+    <div class="crit-acoes">
+      <button type="button" class="btn-ui" id="crit-add">＋ Adicionar critério</button>
+      <button type="button" class="btn-ui" id="crit-padrao">↺ Restaurar padrão</button>
+      <span style="flex:1"></span>
+      <button type="button" class="btn-ui btn-ui-salvar" id="crit-salvar">💾 Salvar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+  const lista = ov.querySelector('#crit-lista');
+  const fechar = ()=>ov.remove();
+  ov.addEventListener('click', e=>{
+    if(e.target===ov || e.target.id==='crit-fechar') return fechar();
+    if(e.target.classList.contains('crit-rem')){
+      const l = e.target.closest('.crit-linha'); const cod = l.dataset.cod;
+      if(!l.dataset.novo && !confirm(`Remover o critério ${cod}? Questões classificadas com ele deixam de exibi-lo.`)) return;
+      l.remove(); return;
+    }
+    if(e.target.id==='crit-add'){ lista.insertAdjacentHTML('beforeend', armCritLinhaHtml('', {cor:'#475569'}, true)); lista.lastElementChild.scrollIntoView({block:'nearest'}); return; }
+    if(e.target.id==='crit-padrao'){
+      if(!confirm('Voltar aos critérios padrão? Suas alterações serão descartadas.')) return;
+      armCritSalvar(null); fechar(); render(); return;
+    }
+    if(e.target.id==='crit-salvar'){
+      const tipos = {}, ordem = []; let erro = '';
+      lista.querySelectorAll('.crit-linha').forEach(l=>{
+        const g = k=>{ const el=l.querySelector(`[data-f="${k}"]`); return el?el.value.trim():''; };
+        const cod = g('cod').toUpperCase();
+        if(!/^[A-Z]{2,4}$/.test(cod)) { erro = 'O código deve ter de 2 a 4 letras (A–Z).'; return; }
+        if(tipos[cod]) { erro = `Código repetido: ${cod}.`; return; }
+        if(!g('nome')) { erro = `Informe o nome do critério ${cod}.`; return; }
+        const cor = g('cor') || '#475569';
+        tipos[cod] = { nome:g('nome'), def:g('def'), sinais:g('sinais'), ex:g('ex'), cor, bg:cor+'1f', macete:g('macete') };
+        ordem.push(cod);
+      });
+      if(!erro && !ordem.length) erro = 'Mantenha pelo menos um critério.';
+      if(erro){ alert(erro); return; }
+      armCritSalvar({tipos, ordem}); fechar(); render();
+    }
+  });
+}
+document.addEventListener('click', e=>{ if(e.target.closest && e.target.closest('[data-arm-criterios]')){ e.preventDefault(); armCritAbrir(); } });

@@ -850,7 +850,7 @@ function renderLetterhead(){
       <div>
         <div class="eyebrow">${esc(CONFIG.eyebrow)}</div>
         <h1 class="title">${esc(tituloExibido)} <span class="version-tag" title="Versão do código carregada agora — se tiver dúvida se está atualizado, confira aqui">${esc(window.__TCDF_BUILD__.versao)}</span> ${countBadge}</h1>
-        <div class="subtitle">${totalVisivel ? `${ALL_QUESTIONS.filter(q=>!q.duplicataOculta && (q.t==='CE'||q.t==='MC')).length} pontuáveis em ${materiasDisponiveis().length} matéria(s).` : 'Nenhuma questão carregada ainda. Importe um arquivo .txt para começar.'}</div>
+        ${totalVisivel ? '' : '<div class="subtitle">Nenhuma questão carregada ainda. Importe um arquivo .txt para começar.</div>'}
       </div>
     </div>
     <div class="snapshot">
@@ -994,7 +994,7 @@ function renderMateriaPage(){
 
 function renderLocalTabs(){
   const tabs = [
-    {id:'simulado', n:'01', label:'Simulado'},
+    {id:'simulado', n:'01', label:'Questões'},
     {id:'erros', n:'02', label:'Caderno de erros'},
     {id:'flashcards', n:'03', label:'Flashcards'},
     {id:'armadilhas', n:'04', label:'Armadilhas'},
@@ -1119,10 +1119,9 @@ function renderBlocoProximoSimulado(){
   const ef = qtdEfetiva(setup, disp);
   return `<div class="card-block bloco-prox-sim">
     <div class="bloco-prox-cab">
-      <h3 style="margin:0;color:inherit;">📊 Próximo simulado</h3>
       <button class="btn-ui" id="btn-abrir-config-2" title="Alterar quantidade, ordem e filtros">⚙ Quantidade: ${ef}${ef<disp?` de ${disp}`:' (todas)'}</button>
     </div>
-    ${renderComposicaoSimulado(fila, 'Distribuição por assunto:')}
+    ${renderComposicaoSimulado(fila, 'Distribuição por assunto', true)}
   </div>`;
 }
 function renderLanding(){
@@ -1153,7 +1152,7 @@ function renderLanding(){
   // ainda não respondidas. "Reiniciar" só aparece com simulado salvo.
   const botoesAcao = `<div style="display:flex; gap:8px; flex-wrap:wrap;">
     <button class="btn btn-gold btn-sm" id="btn-continuar-simulado" style="flex:1;justify-content:center;min-width:140px;">▶ Continuar simulado</button>
-    <button class="btn btn-primary btn-sm" id="btn-abrir-config" style="flex:1;justify-content:center;min-width:140px;">⚙ Configurar novo simulado</button>
+    <button class="btn btn-primary btn-sm" id="btn-abrir-config" style="flex:1;justify-content:center;min-width:140px;">⚙ Configurar</button>
     ${quizSalvo ? `<button class="btn-outline btn-sm" id="btn-reiniciar-simulado" style="justify-content:center;min-width:140px;">🔄 Reiniciar simulado</button>` : ''}
   </div>`;
 
@@ -1164,7 +1163,6 @@ function renderLanding(){
     ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin-bottom:8px;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
     ${botoesAcao}
   </div>
-  ${quizSalvo ? `<div class="card-block bloco-prox-sim">${renderAjusteSimuladoAndamento()}</div>` : ''}
   ${renderBlocoProximoSimulado()}
   ${renderEstatisticasPorMateria()}
   ${renderDashboardAnalitico()}
@@ -1329,7 +1327,7 @@ function filaSimuladoPrevia(){
   return ord;
 }
 // gráfico de barras: composição do simulado por assunto (edital)
-function renderComposicaoSimulado(queue, titulo){
+function renderComposicaoSimulado(queue, titulo, destaque){
   if(!queue || !queue.length) return '';
   const cont = {};
   queue.forEach(u=>{ const q = BY_UID[u]; if(q){ const t = q.tema || 'Geral'; cont[t] = (cont[t]||0)+1; } });
@@ -1337,7 +1335,7 @@ function renderComposicaoSimulado(queue, titulo){
   const ordem = Object.keys(cont).sort((a,b)=>{ const ia=temas.indexOf(a), ib=temas.indexOf(b); return (ia===-1?1e6:ia)-(ib===-1?1e6:ib) || a.localeCompare(b,'pt-BR'); });
   const max = Math.max(...Object.values(cont));
   return `<div class="composicao">
-    <div class="composicao-titulo">${esc(titulo||'Composição do simulado')} <b>${queue.length}</b> ${queue.length===1?'questão':'questões'}</div>
+    <div class="composicao-titulo${destaque?' composicao-titulo-destaque':''}">${esc(titulo||'Composição do simulado')}${destaque ? '' : ` <b>${queue.length}</b> ${queue.length===1?'questão':'questões'}`}</div>
     ${ordem.map(t=>`<div class="bar-row composicao-linha" title="${esc(t)}">
       <div class="name">${esc(t)}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4, Math.round(cont[t]*100/max))}%;"></div></div>
@@ -1382,7 +1380,6 @@ function renderSetupInline(){
       <aside class="setup-col-resumo">
         <div class="setup-resumo-card">
           <h3>Resumo do simulado</h3>
-          ${quizAndamentoAtual() ? renderAjusteSimuladoAndamento() : ''}
           ${renderBotoesAcaoSetup()}
           ${renderComposicaoSimulado(fila, 'Composição:')}
         </div>
