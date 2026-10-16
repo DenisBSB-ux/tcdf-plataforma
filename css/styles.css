@@ -2073,3 +2073,13 @@ body:not(.theme-light) .btn-mat.perigo{ color:#b91c1c; }
 body:not(.theme-light) .sidebar-label{ color:#f2a4a4; }
 body:not(.theme-light) .import-field label{ color:#cbd5e1; }
 body:not(.theme-light) .arm-sub, body:not(.theme-light) .mat-meta{ color:#cbd5e1; opacity:1; }
+
+/* v219 — ordenação por cabeçalho; botões Continuar/⚙ nas estatísticas; sincronização legível no tema claro */
+.th-ord{ background:none; border:0; padding:0; font:inherit; color:inherit; cursor:pointer; display:inline-flex; align-items:center; gap:3px; }
+.th-ord:hover{ text-decoration:underline; }
+.th-ord.ativa{ font-weight:700; color:var(--ink,inherit); }
+.th-seta{ font-size:9px; min-width:9px; }
+.botoes-sim{ display:flex; gap:6px; align-items:center; }
+.botoes-sim .btn-engrenagem{ width:32px; min-width:32px; height:30px; }
+body.theme-light .sync-usuario, body.theme-light .sync-linha, body.theme-light .sync-quem b, body.theme-light .sync-quem small, body.theme-light .sync-linha b{ color:#1d1f22; opacity:1; }
+body.theme-light .sync-quem small{ color:#4b5563; }

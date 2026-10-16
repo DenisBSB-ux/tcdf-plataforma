@@ -57,8 +57,8 @@ function renderImportarConteudo(){
                 </div>
               </div>
               <div class="mat-acoes">
-                ${ativa ? `<button class="btn btn-gold btn-sm btn-mat-cont" id="btn-continuar-simulado" title="Continuar o simulado salvo ou começar pelas questões ainda não respondidas">▶ Continuar</button>
-                <button class="btn btn-primary btn-sm btn-engrenagem" id="btn-abrir-config" title="Configurar simulado: quantidade, ordem e filtros" aria-label="Configurar simulado">⚙</button>` : ''}
+                ${ativa ? `<button class="btn btn-gold btn-sm btn-mat-cont js-continuar" title="Continuar o simulado salvo ou começar pelas questões ainda não respondidas">▶ Continuar</button>
+                <button class="btn btn-primary btn-sm btn-engrenagem js-config" title="Configurar simulado: quantidade, ordem e filtros" aria-label="Configurar simulado">⚙</button>` : ''}
                 <button class="btn-outline btn-mat" data-inserir-materia="${esc(m)}" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">Inserir</button>
                 <button class="btn-outline btn-mat" data-substituir-materia="${esc(m)}" title="Troca todas as questões dessa matéria pelas de um arquivo novo. O progresso, as edições e os gabaritos corrigidos acompanham as questões que continuam no arquivo (reconhecidas pelo enunciado)">Substituir</button>
                 <button class="btn-outline btn-mat" data-download-materia="${esc(m)}" title="Baixa todas as questões dessa matéria em Markdown">Baixar</button>
