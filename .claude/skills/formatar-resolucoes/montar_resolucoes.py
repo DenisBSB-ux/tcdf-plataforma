@@ -49,6 +49,8 @@ def artigo_do_base(base):
     b = re.sub(r'\*\*|\*', '', base or '')
     if not re.search(r'\bArt', b): return ''
     arts = sorted({int(n) for n in re.findall(r'\bArts?\.?\s*(\d+)', b)} | {int(n) for n in re.findall(r'\be\s+Art\.?\s*(\d+)', b)})
+    sigla = re.search(r'\b(LODF|CF)\b', b)   # normas sem número: "LODF: 2", "CF: 37"
+    if arts and sigla: return f"{sigla.group(1)}: " + ', '.join(str(n) for n in arts)
     m = re.search(r'(Lei(?:\s+Complementar)?|Decreto(?:-Lei)?|IN|LC)\s*(?:n[ºo°.]*\s*)?([\d.]+)(?:/\d{2,4})?', b)
     if not arts or not m: return ''
     nome = {'IN': 'IN', 'LC': 'Lei Complementar'}.get(m.group(1), m.group(1))
