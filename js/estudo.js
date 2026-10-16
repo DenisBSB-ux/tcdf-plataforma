@@ -327,7 +327,7 @@ function blocoEnunciadoEditavel(q){
   // depois de responder, o trecho-chave da armadilha aparece destacado em vermelho
   if(!emEdicao && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uid]){
     const a = armEfetiva(q);
-    if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid);
+    if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid, String(q.r||'').split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'').split(' · '));
   }
   return `
     <div class="campo-editavel-header" style="justify-content:flex-end;">
