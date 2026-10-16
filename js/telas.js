@@ -991,8 +991,6 @@ function renderMateriaPage(){
   return `
   <div class="app-shell">
     <aside class="sidebar compact-side">
-      ${renderMateriaTopStrip()}
-      ${mostrarTabsSecundarias ? renderTemaTabs() : ''}
       <div class="sidebar-block"><div class="sb-pad">
         <div class="sidebar-label">Navegação</div>
         ${renderLocalTabs()}
@@ -1173,9 +1171,7 @@ function renderLanding(){
   return `
   <div class="landing-hero">
     <h2 class="section-title">${esc(STATE.materia || 'Painel do candidato')}${STATE.tema!=='todos' ? ` <span class="materia-assunto-label" style="font-size:14px;">· ${esc(STATE.tema)}</span>` : ''} ${qtdSimuladosGerados>0 ? `<span class="sim-count-badge">${qtdSimuladosGerados}</span>` : ''}</h2>
-    ${infoSalvo}
     ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin-bottom:8px;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
-    ${botoesAcao}
   </div>
   ${renderEstatisticasPorMateria()}
   ${renderDashboardAnalitico()}

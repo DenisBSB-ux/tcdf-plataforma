@@ -12,17 +12,18 @@ function renderImportarPage(){
 function renderImportarConteudo(){
   const materiasImportadas = materiasGerenciaveis();
   const vazio = ALL_QUESTIONS.length===0;
-  return `
-        <div class="imp-wrap">
-        <h2 class="section-title">Importar questões</h2>
-        <div class="imp-novo">
+  const form_ = `        <div class="imp-novo">
           <div class="import-field">
             <label for="input-assunto-nome">Nome da matéria (vira o nome da aba)</label>
             <input type="text" id="input-assunto-nome" placeholder="Ex.: Regimento Interno do TCDF" value="${esc(STATE.importDeckName)}">
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btn-buscar-computador">📂 Escolher arquivo</button>
           <input type="file" id="file-input" accept=".txt,text/plain,.pdf,application/pdf,.md,text/markdown" style="display:none;">
-        </div>
+        </div>`;
+  return `
+        <div class="imp-wrap">
+        <h2 class="section-title">Importar questões</h2>
+        ${(vazio || STATE.importFormAberto || STATE.importPendente || STATE.importSemelhante || STATE.importLog) ? form_ : `<button type="button" class="btn btn-primary btn-sm" id="btn-nova-materia">+ Nova matéria</button>`}
 
         ${STATE.importPendente ? renderImportPendente() : ''}
         ${STATE.importSemelhante ? renderImportSemelhante() : ''}
@@ -42,25 +43,27 @@ function renderImportarConteudo(){
             const numDuplicatas = detectarDuplicatasDaMateria(m).reduce((soma,g)=>soma + (g.length-1), 0);
             const dedupInfo = STATE.dedupInfo && STATE.dedupInfo.materia===m ? STATE.dedupInfo : null;
             const ativa = m===STATE.materia;
+            const qs = ativa ? quizGeralDe(m) : null;
+            const bk = ativa ? getBucket(m) : null;
+            const feitas = qs ? qs.queue.filter(uid=>bk.perguntas[uid] && bk.perguntas[uid].tentativas>0).length : 0;
             return `<div class="mat-linha${ativa?' ativa':''}">
-              <div class="mat-info">
+              <div class="mat-info" data-macro-materia="${esc(m)}" role="button" tabindex="0" title="Abrir esta matéria">
                 <div class="mat-nome">${esc(m)}</div>
                 <div class="mat-meta">
                   <span>${n} questões</span>
-                  ${ultimaAtualizacao ? `<span title="Última vez que o conteúdo (questões) desta matéria foi alterado e publicado na nuvem — responder questões não muda este horário">atualizada em ${formatarDataHoraSalvamento(ultimaAtualizacao)}</span>` : ''}
+                  ${qs ? `<span>simulado salvo ${feitas}/${qs.queue.length}</span>` : ''}
+                  ${ultimaAtualizacao ? `<span title="Última vez que o conteúdo (questões) desta matéria foi alterado e publicado na nuvem">atualizada em ${formatarDataHoraSalvamento(ultimaAtualizacao)}</span>` : ''}
                   <span title="Última vez que você respondeu uma questão desta matéria">última resposta ${ultimaRespostaTs ? formatarDataHoraSalvamento(ultimaRespostaTs) : '—'}</span>
                 </div>
               </div>
               <div class="mat-acoes">
+                ${ativa ? `<button class="btn btn-gold btn-sm btn-mat-cont" id="btn-continuar-simulado" title="Continuar o simulado salvo ou começar pelas questões ainda não respondidas">▶ Continuar</button>
+                <button class="btn btn-primary btn-sm btn-engrenagem" id="btn-abrir-config" title="Configurar simulado: quantidade, ordem e filtros" aria-label="Configurar simulado">⚙</button>` : ''}
                 <button class="btn-outline btn-mat" data-inserir-materia="${esc(m)}" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">Inserir</button>
                 <button class="btn-outline btn-mat" data-substituir-materia="${esc(m)}" title="Troca todas as questões dessa matéria pelas de um arquivo novo. O progresso, as edições e os gabaritos corrigidos acompanham as questões que continuam no arquivo (reconhecidas pelo enunciado)">Substituir</button>
-                <details class="mat-mais"><summary title="Mais ações" aria-label="Mais ações">⋯</summary>
-                  <div class="mat-menu">
-                    <button class="btn-menu" data-download-materia="${esc(m)}" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
-                    ${numDuplicatas>0 ? `<button class="btn-menu" data-remover-duplicatas="${esc(m)}" title="Remove as cópias extras de questões repetidas, mantendo o histórico de progresso">🧹 Remover ${numDuplicatas} duplicata(s)</button>` : ''}
-                    <button class="btn-menu perigo" data-remover-materia="${esc(m)}">🗑 Remover matéria</button>
-                  </div>
-                </details>
+                <button class="btn-outline btn-mat" data-download-materia="${esc(m)}" title="Baixa todas as questões dessa matéria em Markdown">Baixar</button>
+                ${numDuplicatas>0 ? `<button class="btn-outline btn-mat perigo" data-remover-duplicatas="${esc(m)}" title="Remove as cópias extras de questões repetidas, mantendo o histórico de progresso">${numDuplicatas} duplicata(s)</button>` : ''}
+                <button class="btn-outline btn-mat perigo" data-remover-materia="${esc(m)}">Remover</button>
               </div>
               ${dedupInfo ? `<div class="mat-aviso">✅ ${dedupInfo.removidas} questão(ões) duplicada(s) removida(s)${dedupInfo.publicadoOk===false?' (falha ao publicar na nuvem: '+esc(dedupInfo.motivoPublicacao||'')+' — já está salvo neste dispositivo)':''}.</div>` : ''}
             </div>`;
