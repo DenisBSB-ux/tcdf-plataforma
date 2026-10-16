@@ -2155,3 +2155,6 @@ body:not(.theme-light) .arm-edit-txt textarea{ color:#1d1f22; }
 /* v231: explicação da armadilha editável com formatação */
 .arm-rich{ display:block; min-height:4.5em; margin-top:4px; padding:8px; border-radius:8px; border:1px solid #d6a73a; background:#fff; color:#1d1f22; font-family:var(--font-body); font-size:1.05rem; line-height:1.5; font-weight:400; }
 body:not(.theme-light) .arm-rich, body:not(.theme-light) .arm-rich *{ color:#1d1f22; }
+
+/* v232: seleção de trecho no enunciado */
+.arm-dica-sel{ display:block; margin:4px 0 0 0; font-weight:400; opacity:.8; }

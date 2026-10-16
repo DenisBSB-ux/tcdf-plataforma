@@ -210,7 +210,10 @@ function armEditorHtml(q, a){
         <label>Principal <select id="arm-sel-p">${opts(a.p,'— escolha —')}</select></label>
         <label>Secundária <select id="arm-sel-s">${opts(a.s,'— nenhuma —')}</select></label>
       </div>` : `<div class="arm-edit-grid"><label>Sinal de item certo <select id="arm-sel-sinal">${sinais}</select></label></div>`}
-    ${a.errado ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão) <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Preenche o campo com o texto completo do item">↧ Usar texto completo do item</button><textarea id="arm-txt-tr" class="arm-autosize" rows="2">${esc(a.trecho||'')}</textarea></label>
+    ${a.errado ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão) <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Preenche o campo com o texto completo do item">↧ Usar texto completo do item</button>
+      <button type="button" class="btn-ui" data-arm-selecao="troca" title="Selecione palavras no enunciado (acima) e clique para usá-las como trecho">🎯 Marcar seleção como trecho</button>
+      <button type="button" class="btn-ui" data-arm-selecao="soma" title="Selecione outras palavras no enunciado e adicione como mais um trecho">＋ Adicionar seleção</button>
+      <small class="arm-dica-sel">Selecione as palavras no enunciado acima e clique em um dos botões.</small><textarea id="arm-txt-tr" class="arm-autosize" rows="2">${esc(a.trecho||'')}</textarea></label>
     <label class="arm-edit-txt">Explicação da armadilha (use a barra de formatação acima: negrito, alinhamento etc.)<div id="arm-txt-ex" class="arm-rich campo-editavel-conteudo" contenteditable="true">${armExplHtml(a.expl)}</div></label>` : ''}
     <div class="arm-edit-acoes">
       ${(typeof edicaoAtual!=='undefined' && edicaoAtual===uid) ? `<button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar edição</button>
@@ -245,6 +248,19 @@ function armAplicarEdicao(q){
 function armAutosize(){ document.querySelectorAll('textarea.arm-autosize').forEach(t=>{ t.style.height='auto'; t.style.height=(t.scrollHeight+4)+'px'; }); }
 document.addEventListener('input', e=>{ if(e.target.classList && e.target.classList.contains('arm-autosize')) armAutosize(); });
 new MutationObserver(()=>{ if(document.querySelector('textarea.arm-autosize')) armAutosize(); }).observe(document.documentElement,{childList:true,subtree:true});
+// o clique no botão não pode tirar a seleção feita no enunciado
+document.addEventListener('mousedown', (ev)=>{ if(ev.target.closest && ev.target.closest('[data-arm-selecao]')) ev.preventDefault(); });
+document.addEventListener('click', (ev)=>{
+  const b = ev.target.closest && ev.target.closest('[data-arm-selecao]');
+  if(!b) return;
+  const ta = document.getElementById('arm-txt-tr'); if(!ta) return;
+  const sel = window.getSelection();
+  const txt = sel ? sel.toString().replace(/\s+/g,' ').trim() : '';
+  const dentroEditor = sel && sel.anchorNode && (sel.anchorNode.nodeType===1?sel.anchorNode:sel.anchorNode.parentElement).closest('.arm-box-edit');
+  if(!txt || dentroEditor){ alert('Selecione, no enunciado acima, as palavras que formam o trecho.'); return; }
+  ta.value = (b.dataset.armSelecao==='soma' && ta.value.trim()) ? ta.value.trim().replace(/\s*\|\s*$/,'') + ' | ' + txt : txt;
+  armAutosize();
+});
 document.addEventListener('click', (ev)=>{
   const f = ev.target.closest && ev.target.closest('[data-arm-fulltxt]');
   if(f){ const q = BY_UID[f.dataset.armFulltxt]; const ta = document.getElementById('arm-txt-tr');
