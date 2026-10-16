@@ -378,7 +378,6 @@ function renderResolucao(q, resposta, quiz){
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   <div class="resolucao-box ${tintClass} resolucao-unica">
     ${armPainelHtml(q)}
-    ${legendaSimbolosHtml(q.r)}
     ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(limparResolucao(q.r), palavrasChave))}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`

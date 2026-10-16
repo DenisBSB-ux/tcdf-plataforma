@@ -386,12 +386,6 @@ const SIMBOLOS_RESOLUCAO = {
   '💡': 'Macete: frase curta para memorizar.'
 };
 // legenda recolhível dos símbolos (funciona no celular, onde não existe "passar o mouse"); só aparece quando a resolução usa os símbolos
-function legendaSimbolosHtml(textoResolucao){
-  if(!/^\s*(?:⚖|📌|🔑|⚠|🪤|💡)/mu.test(String(textoResolucao||''))) return '';
-  const itens = ['⚖','📌','🔑','⚠','🪤','💡'].map(k=>`<li><span class="sim-leg-ico">${k}</span> ${esc(SIMBOLOS_RESOLUCAO[k])}</li>`).join('');
-  return `<details class="sim-legenda"><summary>ⓘ Legenda dos símbolos</summary><ul>${itens}</ul></details>`;
-}
-// sem Resumo Flash no arquivo, o verso do flashcard usa as linhas 📌 (essência), 🔑 (palavras-chave) e 💡 (macete) da resolução
 function resumoFlashDaResolucao(q){
   return String((q && q.r) || '').split(/\n+/).filter(l=>/^\s*(?:📌|🔑|💡)/u.test(l)).join('\n');
 }
