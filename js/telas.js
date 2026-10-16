@@ -1130,7 +1130,6 @@ function renderBlocoProximoSimulado(){
 function renderLanding(){
   const s = computeSnapshot();
   const bucket = STATE.materia ? getBucket(STATE.materia) : { sessoes:[], perguntas:{} };
-  const ultimaSessoes = bucket.sessoes.slice(-5).reverse();
   const qtdSimuladosGerados = bucket.sessoes.length;
 
 
@@ -1170,25 +1169,6 @@ function renderLanding(){
   ${renderEstatisticasPorMateria()}
   ${renderDashboardAnalitico()}
   ${renderSimuladosSalvosBlock()}
-  ${ultimaSessoes.length ? `<div class="card-block" style="margin-top:22px;">
-    <h3>Últimos simulados nesta matéria</h3>
-    ${ultimaSessoes.map(se=>{
-      const d = new Date(se.ts);
-      const dt = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      const nome = dt + (se.tema && se.tema!=='todos' ? ` · ${se.tema}` : '');
-      const podeAbrir = !!(se.queue && se.queue.length && se.respostas);
-      const p = pct(se.acertos, se.total);
-      const cor = p>=70 ? 'var(--stamp-green)' : p>=40 ? 'var(--gold)' : 'var(--stamp-red)';
-      return `<div class="bar-row" style="flex-wrap:wrap;">
-        <div class="name">${esc(nome)}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${se.total? p:0}%;background:${cor};"></div></div>
-        <div class="pct">${se.total? `${p}% (${se.acertos}/${se.total})` : '—'}</div>
-        ${podeAbrir ? `<button class="btn-outline" data-abrir-sessao="${se.ts}" style="padding:4px 10px;font-size:11px;">Abrir</button>` : `<span class="side-status detail" style="font-size:11px;">sem detalhes salvos</span>`}
-        ${podeAbrir ? `<button class="btn-outline" data-salvar-sessao="${se.ts}" style="padding:4px 10px;font-size:11px;" title="Salvar em Simulados salvos para comparação">💾 Salvar</button>` : ''}
-        <button class="btn-outline" data-excluir-sessao="${se.ts}" style="padding:4px 10px;font-size:11px;">Excluir</button>
-      </div>`;
-    }).join('')}
-  </div>` : ''}
   ${STATE.materia ? renderDangerZone() : ''}
   `;
 }
