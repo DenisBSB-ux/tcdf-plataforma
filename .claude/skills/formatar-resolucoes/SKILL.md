@@ -11,7 +11,7 @@ description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF
 - Resolução **sem** linha de perfil (🏷️): a plataforma já mostra o sinal/a armadilha no painel "Armadilha da banca".
 - **Sem** `### Resumo Flash`: o script remove (padrão da Lei 14.133). Só mantenha com `--manter-resumo-flash` se o usuário pedir.
 - "🔁 Substituir por matéria" usa sempre resolução, resumo flash e gabarito do arquivo, sem perguntas extras.
-- Gabarito: só corrigir quando o usuário autorizar (na Lei 14.133 ele autorizou os casos em que o arquivo divergia da lei); nos demais, **sinalizar** com "Conferir o gabarito".
+- **Gabarito: avisar ANTES de alterar, sempre.** Nunca mude um gabarito sem antes listar ao usuário cada questão (número, gabarito atual, gabarito proposto, motivo e dispositivo) e esperar a confirmação, mesmo que ele já tenha autorizado correções em outra matéria. Enquanto não houver confirmação, mantenha o gabarito do arquivo e **sinalize** na resolução com "Conferir o gabarito".
 - Matéria **sem base legal** (estatística, gráficos, Excel, IA etc.): **omita a linha ⚖️**; cite norma só onde ela existir (ex.: LGPD; projeto de lei, com aviso de tramitação).
 
 ## Entrada
@@ -51,7 +51,7 @@ O perfil (sinal do item certo ou armadilha do item errado) **não entra** na res
 A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`SIMBOLOS_RESOLUCAO` em `js/util.js`); ele só atua no símbolo que **abre o parágrafo**, então mantenha cada bloco em uma linha própria começando pelo símbolo.
 
 ## Gabarito do arquivo × texto da lei
-- **Nunca mude o gabarito.** Se a resolução que você escreveria contradiz o gabarito do arquivo, escreva a resolução **neutra** (a regra, sem afirmar o que contradiz a lei) e acrescente no ⚠️: "**Conferir o gabarito.** ..." com o motivo e o dispositivo. Foram marcadas assim, na Lei 14.133, as questões sobre **adesão à ata (carona)** (limite global: o arquivo marca o quíntuplo do Decreto 7.892/2013; a Lei 14.133 fixa o dobro) e **audiência pública** (a lei diz "poderá convocar"), entre outras.
+- **Nunca mude o gabarito sem avisar antes e receber confirmação.** Se a resolução que você escreveria contradiz o gabarito do arquivo, escreva a resolução **neutra** (a regra, sem afirmar o que contradiz a lei) e acrescente no ⚠️: "**Conferir o gabarito.** ..." com o motivo e o dispositivo. Foram marcadas assim, na Lei 14.133, as questões sobre **adesão à ata (carona)** (limite global: o arquivo marca o quíntuplo do Decreto 7.892/2013; a Lei 14.133 fixa o dobro) e **audiência pública** (a lei diz "poderá convocar"), entre outras.
 - **Dispositivo incerto:** se não tiver certeza do parágrafo ou inciso, cite só o artigo; se não tiver certeza nem do artigo, omita a linha ⚖️.
 - Critérios de armadilha criados pelo usuário (ex.: **PRAZ**) podem não constar do Guia: use o nome mais fiel ao uso e avise o usuário.
 - Se a resolução antiga já trouxer o aviso "gabarito resolvido por IA, sem gabarito oficial", mantenha-o no ⚠️ (o script faz isso sozinho).
