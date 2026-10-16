@@ -701,8 +701,7 @@ function renderEstatisticasPorMateria(){
   return `
   <div class="card-block" style="margin-top:22px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
-      <h3 style="margin:0;color:inherit;">📈 Estatísticas por matéria</h3>
-      ${botoesSimuladoMateriaHtml()}
+      <h3 style="margin:0;color:inherit;font-size:22px;">📈 Estatísticas por matéria</h3>
     </div>
     <div class="resumo-dia">
       <span class="resumo-item" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)"><small>Hoje</small><b>${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</b></span>
@@ -777,7 +776,7 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
         <div style="width:26px;${estiloCelula}color:${cor.fg};">${l.ativa?'▸':i+1}</div>
         <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:${cor.fgForte};font-weight:${l.ativa?800:600};display:flex;align-items:center;gap:6px;" data-macro-materia="${esc(l.nome)}">
           <span>${esc(l.nome)}${l.ativa?' <span style="font-size:10px;font-weight:600;opacity:.75;">(selecionada)</span>':''}</span>
-          ${l.temSimuladoEmAndamento ? `<button data-continuar-materia="${esc(l.nome)}" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid ${cor.fgForte};background:transparent;color:${cor.fgForte};cursor:pointer;white-space:nowrap;">▶ Continuar</button>` : ''}
+          ${l.ativa ? `<button data-continuar-materia="${esc(l.nome)}" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid ${cor.fgForte};background:transparent;color:${cor.fgForte};cursor:pointer;white-space:nowrap;">▶ Continuar</button>` : ''}
           ${l.ativa ? `<button class="js-config" title="Configurar simulado: quantidade, ordem e filtros" aria-label="Configurar simulado" style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid ${cor.fgForte};background:transparent;color:${cor.fgForte};cursor:pointer;line-height:1.3;">⚙</button>` : ''}
         </div>
         <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fg};">${l.total}</div>
@@ -957,13 +956,11 @@ function renderContaBlock(){
 function renderSyncSidebarBlock(){
   if(!FIREBASE_OK){
     return `<div class="sidebar-block"><div class="sb-pad">
-      <div class="sidebar-label">Sincronização</div>
       <div class="side-status err">indisponível nesta sessão</div>
     </div></div>`;
   }
   if(!USUARIO_ATUAL){
     return `<div class="sidebar-block"><div class="sb-pad sync-block compact">
-      <div class="sidebar-label">Sincronização</div>
       ${renderContaBlock()}
     </div></div>`;
   }
@@ -972,7 +969,6 @@ function renderSyncSidebarBlock(){
   const statusHorario = (statusClass==='ok' && STATE.syncStatus) ? STATE.syncStatus.msg.replace('nuvem ✓ ', '') : '';
   const statusDetalhe = STATE.syncStatus ? STATE.syncStatus.detalhe : '';
   return `<div class="sidebar-block"><div class="sb-pad sync-block compact">
-    <div class="sidebar-label">Sincronização</div>
     ${syncUsuarioHtml()}
     <div class="sync-linha ${statusClass}" id="sync-status-el"><span class="sync-dot"></span>${statusClass==='ok' ? `Atualizado${statusHorario ? ` em <b>${esc(statusHorario)}</b>` : ' na nuvem'}` : esc(STATE.syncStatus ? STATE.syncStatus.msg : 'sincronizando…')}</div>
     ${statusDetalhe ? `<div class="side-status detail">${esc(statusDetalhe)}</div>` : ''}
