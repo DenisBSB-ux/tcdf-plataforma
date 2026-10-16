@@ -2059,3 +2059,17 @@ body:not(.theme-light) .btn-menu.perigo{ color:#fca5a5; }
 .guia-sec[open] > summary::before{ transform:rotate(90deg); }
 .guia-sec-corpo{ padding:0 4px 14px 18px; }
 body:not(.theme-light) .guia-tela, body:not(.theme-light) .guia-tela h3, body:not(.theme-light) .guia-sec > summary{ color:#eef1f8; }
+
+/* v218 — lista de matérias como seletor; contraste das letras pequenas */
+.mat-info{ cursor:pointer; }
+.mat-info:hover .mat-nome{ text-decoration:underline; }
+.mat-acoes{ flex-wrap:wrap; justify-content:flex-end; }
+.btn-mat-cont{ padding:5px 14px; font-size:12px; }
+.mat-acoes .btn-engrenagem{ width:32px; min-width:32px; height:30px; }
+.btn-mat.perigo{ color:var(--stamp-red,#b91c1c); border-color:currentColor; }
+body:not(.theme-light) .btn-mat.perigo{ color:#b91c1c; }
+.mat-meta{ opacity:.85; }
+.sidebar-label, .section-eyebrow, .import-field label{ opacity:1; }
+body:not(.theme-light) .sidebar-label{ color:#f2a4a4; }
+body:not(.theme-light) .import-field label{ color:#cbd5e1; }
+body:not(.theme-light) .arm-sub, body:not(.theme-light) .mat-meta{ color:#cbd5e1; opacity:1; }
