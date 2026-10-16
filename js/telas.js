@@ -241,7 +241,7 @@ function render(){
     ${STATE.focusMode ? '' : renderAvisoSyncAusente()}
     ${STATE.avisoStorage ? renderAvisoStorage() : ''}
     ${STATE.avisoCorrecaoAno ? renderAvisoCorrecaoAno() : ''}
-    ${STATE.viewAuditoria ? renderAuditoriaPage() : (STATE.viewImportar || ALL_QUESTIONS.length===0 ? renderImportarPage() : renderMateriaPage())}
+    ${ALL_QUESTIONS.length===0 ? renderImportarPage() : renderMateriaPage()}
     ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)} · Versão ${esc(window.__TCDF_BUILD__.versao)} (${esc(window.__TCDF_BUILD__.build)}) · armazenamento: ${esc(STORAGE_MODE==='local' ? 'IndexedDB' : STORAGE_MODE)}</div>`}
   `;
   attachHandlers();
@@ -847,7 +847,7 @@ function orgaoCargoDaMateria(){
 function renderLetterhead(){
   const s = computeSnapshot();
   const totalVisivel = ALL_QUESTIONS.filter(q=>!q.duplicataOculta).length;
-  const countBadge = totalVisivel ? `<span class="title-count-badge">${totalVisivel} questões</span>` : '';
+  const countBadge = '';
   const tituloExibido = 'TCDF Plataforma';
   const escopoTema = (STATE.materia && STATE.tema!=='todos') ? `<div class="escopo-aviso">📍 estatísticas filtradas por assunto: <b>${esc(STATE.tema)}</b> — <a href="#" id="link-limpar-assunto-header">ver a matéria inteira</a></div>` : '';
   return `
@@ -885,9 +885,9 @@ function renderLetterhead(){
             <div class="num"><span class="n-errada">${totalErros}</span></div><div class="lbl">Erradas</div>
           </div>`;
       })()}
-      <button class="theme-toggle-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro">${STATE.theme==='light'?'🌙':'☀️'}</button>
+      <button class="tema-switch ${STATE.theme==='light'?'claro':''}" id="btn-theme-toggle" role="switch" aria-checked="${STATE.theme==='light'?'true':'false'}" title="Alternar modo claro/escuro"><span class="tema-knob">${STATE.theme==='light'?'☀️':'🌙'}</span></button>
       <div class="color-picker-wrap">
-        <button class="theme-toggle-btn" id="btn-color-picker" title="Mudar a cor do layout">🎨</button>
+        <button class="cor-dot" id="btn-color-picker" title="Mudar a cor do layout" style="--c:${(PALETAS_CORES[STATE.corTema]||PALETAS_CORES['Dourado (padrão)']).gold};"></button>
         ${STATE.corPickerAberto ? `<div class="color-picker-pop">
           ${Object.entries(PALETAS_CORES).map(([nome,cor])=>`<button class="color-swatch ${STATE.corTema===nome?'selected':''}" data-cor-tema="${nome}" style="background:${cor.gold};" title="${nome}"></button>`).join('')}
         </div>` : ''}
@@ -901,7 +901,7 @@ function renderLetterhead(){
 function renderMateriaTopStrip(){
   const materias = materiasDisponiveis();
   const aberto = STATE.materiaMenuAberto;
-  const labelAtual = STATE.viewAuditoria ? '🔍 Auditoria de dados' : (STATE.viewImportar ? '+ Importar questões' : (STATE.materia || 'Selecione uma matéria'));
+  const labelAtual = STATE.materia || 'Selecione uma matéria';
   return `<div class="sidebar-block"><div class="sb-pad">
     <button type="button" class="assunto-toggle" id="btn-toggle-materia-menu">
       <span class="sidebar-label" style="margin-bottom:0;">Matéria</span>
@@ -909,11 +909,9 @@ function renderMateriaTopStrip(){
     </button>
     <div class="assunto-atual-label">${esc(labelAtual)}</div>
     ${aberto ? `<div class="subject-tabs" style="margin-top:10px;">
-      <button class="subject-tab ${STATE.viewImportar?'active':''}" data-macro-importar="1">+ Importar questões</button>
-      <button class="subject-tab ${STATE.viewAuditoria?'active':''}" data-macro-auditoria="1" title="Verifica banca/cargo/ano inconsistentes em TODAS as matérias importadas">🔍 Auditoria de dados</button>
       ${materias.map(m=>{
         const n = ALL_QUESTIONS.filter(q=>q.materia===m && !q.duplicataOculta).length;
-        const ativo = !STATE.viewImportar && !STATE.viewAuditoria && STATE.materia===m;
+        const ativo = STATE.materia===m;
         const s = computeSnapshotMateria(m);
         const concluidaM = s.totalPontuavel>0 && (s.ac+s.erradas)>=s.totalPontuavel;
         const statsTxt = (s.ac+s.erradas)>0 ? `${s.taxa}% · ${s.ac} certas · ${s.erradas} erradas · ${s.totalPontuavel} total` : `${s.totalPontuavel} pontuáveis · ainda sem tentativas`;
@@ -970,7 +968,7 @@ function renderSyncSidebarBlock(){
 
 /* ================= PÁGINA DE UMA MATÉRIA (independente) ================= */
 function renderMateriaPage(){
-  const tabAtual = getLocalTab(STATE.materia);
+  const tabAtual = STATE.viewImportar ? 'importar' : getLocalTab(STATE.materia);
   // esconde o Assunto só durante um simulado de verdade em andamento (evita trocar
   // o filtro no meio de uma tentativa contabilizada)
   const emSimuladoEmAndamento = tabAtual==='simulado' && !!STATE.quiz;
@@ -1005,8 +1003,9 @@ function renderLocalTabs(){
     {id:'erros', n:'02', label:'Caderno de erros'},
     {id:'flashcards', n:'03', label:'Flashcards'},
     {id:'guia-arm', n:'04', label:'Guia de armadilhas'},
+    {id:'importar', n:'05', label:'Importar questões'},
   ];
-  const atual = getLocalTab(STATE.materia);
+  const atual = STATE.viewImportar ? 'importar' : getLocalTab(STATE.materia);
   return `<div class="tabs">${tabs.map(t=>`
     <button class="tab-btn ${atual===t.id?'active':''}" data-local-tab="${t.id}">
       <span class="n">${t.n}</span>${t.label}
@@ -1041,6 +1040,7 @@ function renderMainPanel(tabAtual){
   if(tabAtual==='erros') return renderErros();
   if(tabAtual==='flashcards') return renderFlashcards();
   if(tabAtual==='guia-arm') return renderGuiaArmadilhas();
+  if(tabAtual==='importar') return renderImportarConteudo();
   return '';
 }
 
