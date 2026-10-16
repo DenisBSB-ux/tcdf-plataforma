@@ -156,15 +156,14 @@ function renderQuiz(){
   // assim "Questão 12 de 233" e "N resolvidas" falam do mesmo conjunto
   const bucketQ = getBucket(quiz.materia);
   // Mesma regra da tabela de estatísticas: vale o resultado ATUAL gravado no progresso
-  // (ultimoResultado) de cada questão que existe hoje na base. A resposta da sessão
-  // só entra se o progresso ainda não tiver o resultado (nunca conta questão órfã).
+  // (ultimoResultado) de cada questão que existe hoje na base. Resposta que existe só na
+  // sessão (sem progresso gravado) NÃO entra, senão o cabeçalho diverge da tabela.
   const snapM = { ac:0, erradas:0 };
   const vistosM = new Set();
   quiz.queue.forEach(u=>{
     if(vistosM.has(u) || !BY_UID[u]) return; vistosM.add(u);
     const h = bucketQ.perguntas[u];
-    const res = (h && (h.ultimoResultado===true || h.ultimoResultado===false)) ? h.ultimoResultado
-      : (quiz.respostas[u] ? !!quiz.respostas[u].correct : null);
+    const res = h ? h.ultimoResultado : null; // só o progresso gravado: idêntico à tabela de estatísticas
     if(res===true) snapM.ac++; else if(res===false) snapM.erradas++;
   });
   const resolvidasM = snapM.ac + snapM.erradas;
