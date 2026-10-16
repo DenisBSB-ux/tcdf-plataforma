@@ -710,9 +710,6 @@ function renderEstatisticasPorMateria(){
     </div>
     <div style="height:10px;"></div>
     <div class="tabela-scroll">${renderTabelaEstatisticas(linhas, estiloCelula)}</div>
-    <div class="stats-artigos">
-      ${(()=>{ const rn = resumoNormas(); return rn.length ? `<div class="composicao-titulo" style="margin-top:16px;">Artigos por norma (grupos)</div>`+rn.map(r=>`<details class="composicao-det" data-comp-tema="norma:${esc(r.norma)}" ${COMPOSICAO_ABERTOS.has('norma:'+r.norma)?'open':''}><summary class="bar-row composicao-linha"><div class="name">${esc(r.norma)}</div><div class="bar-track"></div><div class="pct">${r.questoes} q · ${r.materias} ${r.materias===1?'matéria':'matérias'}</div></summary><div class="composicao-arts">${COMPOSICAO_ABERTOS.has('norma:'+r.norma)?detalharNorma(r.norma):''}</div></details>`).join('') : ''; })()}
-    </div>
   </div>
   `;
 }
@@ -775,7 +772,11 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
         <div style="width:52px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas ? l.erros : '—'}</div>
         <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fgForte};font-weight:700;">${l.respondidas ? l.pct+'%' : '—'}</div>
         <div style="width:90px;text-align:right;${estiloCelula}color:${cor.fg};font-size:11px;" title="${l.ultimaRespostaTs ? new Date(l.ultimaRespostaTs).toLocaleString('pt-BR') : ''}">${l.ultimaRespostaTs ? formatarDataHoraSalvamento(l.ultimaRespostaTs) : '—'}</div>
-      </div>`;
+      </div>
+      <details class="composicao-det composicao-det-mat" data-comp-tema="mat:${esc(l.nome)}" ${COMPOSICAO_ABERTOS.has('mat:'+l.nome)?'open':''}>
+        <summary class="composicao-mat-sum">Distribuição por assunto</summary>
+        <div class="composicao-arts">${COMPOSICAO_ABERTOS.has('mat:'+l.nome)?distribuicaoAssuntosMateriaHtml(l.nome):''}</div>
+      </details>`;
     }).join('')}`;
   return cabecalhoTabela;
 }
@@ -1124,7 +1125,6 @@ function renderBlocoProximoSimulado(){
     <div class="bloco-prox-cab">
       <button class="btn-ui" id="btn-abrir-config-2" title="Alterar quantidade, ordem e filtros">⚙ Quantidade: ${ef}${ef<disp?` de ${disp}`:' (todas)'}</button>
     </div>
-    ${renderComposicaoSimulado(fila, 'Distribuição por assunto', true)}
   </div>`;
 }
 function renderLanding(){
@@ -1357,9 +1357,9 @@ const COMPOSICAO_ABERTOS = new Set();
 document.addEventListener('toggle', e=>{
   const d = e.target; if(!d || !d.classList || !d.classList.contains('composicao-det')) return;
   if(d.open) COMPOSICAO_ABERTOS.add(d.dataset.compTema); else COMPOSICAO_ABERTOS.delete(d.dataset.compTema);
-  if(d.open && /^(stat|norma):/.test(d.dataset.compTema||'')){ // estatísticas: monta o detalhe só ao abrir
-    const box = d.querySelector('.composicao-arts'), k = d.dataset.compTema;
-    if(box && !box.innerHTML.trim()) box.innerHTML = k.startsWith('stat:') ? detalharArtigosDaMateria(k.slice(5)) : detalharNorma(k.slice(6));
+  if(d.open && /^(mat|ass):/.test(d.dataset.compTema||'')){ // estatísticas: monta o detalhe só ao abrir
+    const box = d.querySelector(':scope > .composicao-arts'), k = d.dataset.compTema;
+    if(box && !box.innerHTML.trim()) box.innerHTML = k.startsWith('mat:') ? distribuicaoAssuntosMateriaHtml(k.slice(4)) : detalharArtigosDoAssunto(...k.slice(4).split('||'));
   }
 }, true);
 // faixa de artigos do rótulo do tema: "(arts. 11 a 27)", "(arts. 76 e 77)", "(art. 89 em diante)"
@@ -1456,6 +1456,42 @@ function linhasArtigosHtml(ag, comResultado){
 function notaArtigosHtml(ag){
   return (ag.sem && Object.keys(ag.grupos).length ? `<div class="composicao-art-sem">${ag.sem} de ${ag.total} ${ag.total===1?'questão':'questões'} sem artigo citado</div>` : '')
     + `<div class="composicao-art-nota">${ag.comCampo===ag.total && ag.total ? 'Contagem exata, pelo campo Artigo de cada questão.' : (ag.comCampo ? `${ag.comCampo} de ${ag.total} questões com o campo Artigo; as demais foram lidas do enunciado/resolução.` : 'Estimativa: conta as questões que citam o artigo no enunciado ou na resolução (uma questão pode citar mais de um).')} Artigos em vermelho têm questões erradas.</div>`;
+}
+// Estatísticas por matéria: distribuição das questões por assunto, cada um com o menu de artigos
+function distribuicaoAssuntosMateriaHtml(m){
+  const qs = questoesDaMateria(m), cont = {};
+  qs.forEach(q=>{ const t = q.tema||'Geral'; cont[t] = (cont[t]||0)+1; });
+  const temas = temasDisponiveis(m).filter(t=>cont[t]);
+  Object.keys(cont).forEach(t=>{ if(!temas.includes(t)) temas.push(t); });
+  if(!temas.length) return '<div class="composicao-art-vazio">Nenhuma questão nesta matéria.</div>';
+  const max = Math.max(...Object.values(cont));
+  return temas.map(t=>{
+    const k = 'ass:'+m+'||'+t;
+    return `<details class="composicao-det" data-comp-tema="${esc(k)}" ${COMPOSICAO_ABERTOS.has(k)?'open':''}>
+      <summary class="bar-row composicao-linha" title="${esc(t)}"><div class="name">${esc(t)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(4, Math.round(cont[t]*100/max))}%;"></div></div><div class="pct">${cont[t]}</div></summary>
+      <div class="composicao-arts">${COMPOSICAO_ABERTOS.has(k)?detalharArtigosDoAssunto(m,t):''}</div>
+    </details>`;
+  }).join('');
+}
+// artigos de um assunto; matérias que citam a mesma norma (ex.: Lei 14.133 em Licitações, Contratos, IN 5, Decreto 44.330)
+// têm os artigos somados em conjunto (questões, acertos e erros)
+function detalharArtigosDoAssunto(m, t){
+  const todas = questoesDaMateria(m);
+  const ag = agruparArtigos(todas.filter(q=>(q.tema||'Geral')===t), t, m, todas);
+  const gn = agruparPorNorma(), juntas = [];
+  Object.keys(ag.grupos).forEach(nm=>{
+    const mats = gn[nm] ? Object.keys(gn[nm].materias) : [];
+    if(mats.length<2) return;
+    mats.forEach(x=>{ if(x!==m && !juntas.includes(x)) juntas.push(x); });
+    Object.keys(ag.grupos[nm]).forEach(n=>{
+      const a = ag.grupos[nm][n], tot = {n:0, ac:0, er:0};
+      mats.forEach(x=>{ const b = gn[nm].materias[x].arts[n]; if(b){ tot.n+=b.n; tot.ac+=b.ac; tot.er+=b.er; } });
+      if(tot.n){ a.n = tot.n; a.ac = tot.ac; a.er = tot.er; }
+    });
+  });
+  const linhas = linhasArtigosHtml(ag, true);
+  const nota = juntas.length ? `<div class="composicao-art-nota">Artigos da mesma norma somados com: ${juntas.map(esc).join(', ')}.</div>` : '';
+  return (linhas || '<div class="composicao-art-vazio">Nenhum artigo identificado nas questões deste assunto.</div>') + notaArtigosHtml(ag) + nota;
 }
 function questoesDaMateria(m){ return ALL_QUESTIONS.filter(q=>q.materia===m && !q.duplicataOculta && (q.t==='CE'||q.t==='MC')); }
 function detalharArtigosDoTema(queue, tema){
