@@ -960,7 +960,7 @@ const PROVA_TCDF = { data:new Date(2026,10,22), rotulo:'22/11/2026 (manhã)', li
 const MOTIVACAO_PROVA = [
   "R$ 14.990,41 de remuneração inicial: cada questão de hoje te aproxima disso.",
   "São 10 vagas imediatas mais cadastro de reserva. Alguém vai ocupar cada uma, e pode ser você.",
-  "Cargo efetivo no Tribunal de Contas do DF: vale o esforço de hoje.",
+  "Além do salário, auxílio-alimentação de R$ 2.577,56 por mês: a rotina de hoje paga bem.",
   "Concurso para Analista de Controle Externo: o estudo de hoje já é parte do seu trabalho de amanhã.",
   "Uma vaga em Brasília, com remuneração inicial de R$ 14.990,41. Foco na rotina.",
   "Cada acerto vale +1 ponto e cada erro tira 1: leia o item inteiro antes de marcar.",
@@ -976,24 +976,24 @@ const MOTIVACAO_PROVA = [
   "O TCDF oferece assistência à saúde aos servidores pelo Programa SAÚDE TCDF: pense no que o seu esforço pode conquistar.",
   "Remuneração inicial de R$ 14.990,41 e uma carreira de controle externo: vale a constância.",
   "O erro de hoje no simulado é o acerto de 22 de novembro.",
-  "Diferente de ontem: uma questão a mais, uma revisão a mais.",
+  "Adicional de qualificação de até 15%: estudar compensa na prova e na carreira.",
   "Em branco vale zero, errado vale menos um: aprenda a reconhecer o que você já domina.",
   "Desconfie dos absolutos: sempre, nunca, somente, exclusivamente.",
   "A banca cobra a letra da lei. Volte ao texto antes de decidir.",
-  "Mais um dia, mais uma rodada de questões. A aprovação é feita de dias assim.",
+  "Anuênio de 1% por ano de serviço: o tempo na carreira também valoriza.",
   "Revisar vale mais do que ver matéria nova perto da prova.",
   "Caderno de erros: seus pontos mais fáceis de ganhar estão ali.",
-  "Quem passa não é o que estuda mais horas num dia, e sim o que estuda todos os dias.",
+  "Com filho pequeno, há auxílio pré-escolar de R$ 1.357,49: estude pensando na família.",
   "Cuide do corpo: água, sono e uma caminhada ajudam a memória.",
   "As nomeações são previstas para 2027. Até lá, cada semana de estudo conta.",
-  "Mais de um mês de preparo ainda vale muito: use bem cada dia.",
+  "Mais de um mês de preparo ainda vale muito: R$ 14.990,41 mais auxílios esperam por quem persiste.",
   "Respire. Uma questão de cada vez, até o fim da lista.",
   "Você está mais perto da vaga do que ontem.",
   "Falta pouco: revisão leve, foco no que mais cai e confiança no que você já sabe.",
   "Prova em Brasília, vaga em Brasília: seu futuro está aqui perto.",
   "Mantenha a calma: você estuda há tempo e já domina muito do conteúdo.",
   "O resultado final da objetiva sai em janeiro de 2027. Trabalhe para ver o seu nome na lista.",
-  "Escreva uma meta pequena para hoje e cumpra.",
+  "Saúde cuidada pelo Programa SAÚDE TCDF: construa hoje a vaga que dá essa tranquilidade.",
   "Mais uma semana de consistência e você nota a diferença.",
   "Último fôlego: revisão leve, mente tranquila."
 ];
@@ -1030,6 +1030,23 @@ function provaContagemHtml(){
         <li><b>Classificados na objetiva:</b> 120 ampla, 48 deficiência, 48 negros e 24 hipossuficientes</li>
         <li><b>Marcos:</b> gabaritos preliminares 24/11/2026; resultado provisório da objetiva 23/12/2026; resultado final da objetiva 13/1/2027; nomeações estimadas em 2027</li>
         <li><b>Regime:</b> servidor estatutário do DF (LC 840/2011); saúde pelo Programa SAÚDE TCDF</li>
+      </ul>
+      <div class="prova-sub">Benefícios (conferidos em reportagens e no Diário Oficial; confirme na lei)</div>
+      <ul>
+        <li><b>Auxílio-alimentação:</b> R$ 2.577,56 por mês</li>
+        <li><b>Auxílio pré-escolar:</b> R$ 1.357,49 (filhos pequenos)</li>
+        <li><b>Adicional de qualificação:</b> até 15% do vencimento básico</li>
+        <li><b>Anuênio:</b> 1% por ano de serviço</li>
+        <li><b>Adicional de férias:</b> 1/3</li>
+        <li><b>Saúde:</b> Programa SAÚDE TCDF (reembolso do plano de saúde)</li>
+      </ul>
+      <div class="prova-sub">Informados por você, ainda sem confirmação</div>
+      <ul>
+        <li>Indenização de transporte de R$ 2.600,00 (as fontes não trazem valor)</li>
+        <li>Adicional por título: 7,5% especialização, 10% mestrado, 15% doutorado</li>
+        <li>Treinamento: adicional de até 3%</li>
+        <li>Progressão de padrão a cada 12 meses</li>
+        <li>Recesso de fim de ano e teletrabalho conforme o setor</li>
       </ul>
       <small>Datas e prazos podem mudar por edital: confira no link acima.</small>
     </details>
