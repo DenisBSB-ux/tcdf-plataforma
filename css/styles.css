@@ -2114,3 +2114,10 @@ body:not(.theme-light) .icon-btn.btn-em-uso{
   box-shadow:0 0 0 3px rgba(201,162,75,.35);
 }
 .icon-btn.btn-em-uso:hover:not(:disabled){ background:var(--gold-bright); }
+
+/* v225: marcações (amarelo/vermelho) com fonte escura legível no modo escuro */
+mark.res-marca{ color:#2a1f08 !important; }
+body:not(.theme-light) mark.res-marca{ background:#f5d76e; color:#2a1f08 !important; }
+mark.arm-trecho, .arm-trecho{ color:#7f1d1d !important; }
+body:not(.theme-light) mark.arm-trecho, body:not(.theme-light) .arm-trecho{ background:#fecaca; color:#7f1d1d !important; }
+body:not(.theme-light) mark.res-marca *, body:not(.theme-light) mark.arm-trecho *{ color:inherit !important; }
