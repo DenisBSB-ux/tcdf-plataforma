@@ -496,7 +496,7 @@ function attachHandlers(){
   const btnNovaMateria = document.getElementById('btn-nova-materia');
   if(btnNovaMateria) btnNovaMateria.addEventListener('click', ()=>{ STATE.importFormAberto = true; render(); });
   const btnAbrirConfig = { addEventListener:(ev,fn)=> root.querySelectorAll('#btn-abrir-config, .js-config').forEach(el=>el.addEventListener(ev,fn)) };
-  if(true) btnAbrirConfig.addEventListener('click', ()=>{ STATE.viewImportar = false; if(STATE.materia) setLocalTab(STATE.materia,'simulado'); STATE.mostrarConfigSimulado = true; render(); });
+  if(true) btnAbrirConfig.addEventListener('click', (ev)=>{ ev.stopPropagation(); STATE.viewImportar = false; if(STATE.materia) setLocalTab(STATE.materia,'simulado'); STATE.mostrarConfigSimulado = true; render(); });
   const btnAbrirConfig2 = document.getElementById('btn-abrir-config-2');
   if(btnAbrirConfig2) btnAbrirConfig2.addEventListener('click', ()=>{ STATE.mostrarConfigSimulado = true; render(); });
   // quantidade de questões do simulado: atalhos, campo livre e botão Aplicar
