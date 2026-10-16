@@ -2083,3 +2083,10 @@ body:not(.theme-light) .arm-sub, body:not(.theme-light) .mat-meta{ color:#cbd5e1
 .botoes-sim .btn-engrenagem{ width:32px; min-width:32px; height:30px; }
 body.theme-light .sync-usuario, body.theme-light .sync-linha, body.theme-light .sync-quem b, body.theme-light .sync-quem small, body.theme-light .sync-linha b{ color:#1d1f22; opacity:1; }
 body.theme-light .sync-quem small{ color:#4b5563; }
+
+/* v220 — resumo diário harmonizado com o cabeçalho de Estatísticas por matéria */
+.resumo-dia{ display:flex; flex-wrap:wrap; gap:6px 22px; margin:8px 0 12px; padding:8px 0; border-top:1px solid rgba(128,128,128,.2); border-bottom:1px solid rgba(128,128,128,.2); }
+.resumo-item{ display:inline-flex; align-items:baseline; gap:8px; font-size:13px; }
+.resumo-item small{ font-size:12px; opacity:.7; }
+.resumo-item b{ font-size:14.5px; }
+.resumo-item em{ font-style:normal; font-size:11.5px; opacity:.6; }
