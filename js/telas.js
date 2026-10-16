@@ -1382,14 +1382,16 @@ function normaPadrao(qsMateria, materia, tema){
   const porRotulo = normaNoTexto(tema) || normaNoTexto(materia);
   if(porRotulo) return porRotulo;
   // norma dominante (mais de 50% das citações nomeadas) entre as questões da lista
-  const dominante = lista => { const c = {}; let tot = 0; lista.forEach(q=>{ if(Array.isArray(q.artn)) q.artn.forEach(([nm])=>{ if(nm){ const k = normalizarNorma(nm); c[k]=(c[k]||0)+1; tot++; } }); });
+  const dominante = lista => { const c = {}; let tot = 0; lista.forEach(q=>{ if(Array.isArray(q.artn)) q.artn.map(parArtn).forEach(([nm])=>{ if(nm){ const k = normalizarNorma(nm); c[k]=(c[k]||0)+1; tot++; } }); });
     const top = Object.entries(c).sort((x,y)=>y[1]-x[1])[0]; return top && top[1]*2>tot ? top[0] : ''; };
   return dominante(qsMateria.filter(q=>(q.tema||'Geral')===tema)) || dominante(qsMateria);
 }
+// artn guardado como 'norma|número' (formato antigo: [norma, número])
+function parArtn(x){ if(Array.isArray(x)) return x; const t=String(x), i=t.lastIndexOf('|'); return i<0 ? ['',t] : [t.slice(0,i), t.slice(i+1)]; }
 // referências a artigos de uma questão: [{norma, n, exato}]
 // exato = campo "Artigo" (com ou sem norma); senão estima pelo texto ("Art. 37 da CF", "art. 117 da Lei 8.112")
 function refsArtigosDaQuestao(q){
-  if(Array.isArray(q.artn) && q.artn.length) return q.artn.map(([norma,n])=>({norma:normalizarNorma(norma),n:+n,exato:true}));
+  if(Array.isArray(q.artn) && q.artn.length) return q.artn.map(parArtn).map(([norma,n])=>({norma:normalizarNorma(norma),n:+n,exato:true}));
   if(Array.isArray(q.art) && q.art.length) return q.art.map(n=>({norma:'',n:+n,exato:true}));
   const txt = (q.q||'')+' \n '+(q.r||''), out = [], vistos = new Set();
   const re = /\bart(?:igos?|s?)\.?\s*(\d+)\s*[ºo°]?(?:[^.;\n]{0,40}?\b(CF(?:\/88)?|Constitui[çc][ãa]o Federal|Lei\s*(?:Complementar\s*)?(?:n[ºo°.]*\s*)?\d[\d.\/]*|Decreto\s*(?:n[ºo°.]*\s*)?\d[\d.\/]*))?/gi;
