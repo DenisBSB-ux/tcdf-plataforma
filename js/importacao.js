@@ -1,11 +1,18 @@
 /* ================= PÁGINA DE IMPORTAÇÃO (global, cria novas abas macro) ================= */
+// sem nenhuma questão: página inteira; com questões: é a aba 05 da matéria
 function renderImportarPage(){
-  const materiasImportadas = materiasGerenciaveis();
-  const vazio = ALL_QUESTIONS.length===0;
   return `
   <div class="app-shell">
     <div class="main-content" style="grid-column:1 / -1;">
-      <div class="panel"><div class="pad">
+      <div class="panel"><div class="pad">${renderImportarConteudo()}</div></div>
+    </div>
+  </div>
+  `;
+}
+function renderImportarConteudo(){
+  const materiasImportadas = materiasGerenciaveis();
+  const vazio = ALL_QUESTIONS.length===0;
+  return `
         <div class="section-eyebrow">Anexação de novo processo</div>
         <h2 class="section-title">Importar questões (.txt)</h2>
         <div class="import-field">
@@ -66,10 +73,6 @@ function renderImportarPage(){
             : `<div class="side-status err">${esc(STATE.importProgressoLog.error||'')}</div>`) : ''}
         </div>` : ''}
 
-        ${!vazio ? `<button class="btn btn-ghost" id="btn-voltar-materia" style="margin-top:20px;">← Voltar para "${esc(STATE.materia||'')}"</button>` : ''}
-      </div></div>
-    </div>
-  </div>
   `;
 }
 

@@ -1980,3 +1980,12 @@ body:not(.theme-light) .prov-badge .prov-badge-rot, body:not(.theme-light) .prov
 
 /* v212 — palavra mais importante da resolução: fundo amarelo claro */
 mark.res-marca{ background:#fff3b0; color:inherit; padding:0 3px; border-radius:4px; }
+
+/* v214 — seletor de tema moderno: chave deslizante claro/escuro + bolinha de cor */
+.tema-switch{ position:relative; width:58px; height:30px; border-radius:999px; border:1px solid rgba(209,171,84,.45); background:#1f2937; cursor:pointer; padding:0; transition:background .2s, border-color .2s; flex:none; }
+.tema-switch.claro{ background:#fde9a6; border-color:rgba(176,141,62,.6); }
+.tema-knob{ position:absolute; top:2px; left:2px; width:24px; height:24px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; font-size:13px; line-height:1; box-shadow:0 1px 4px rgba(0,0,0,.35); transition:transform .22s cubic-bezier(.4,.1,.2,1); }
+.tema-switch.claro .tema-knob{ transform:translateX(28px); }
+.tema-switch:focus-visible, .cor-dot:focus-visible{ outline:2px solid var(--gold-bright); outline-offset:2px; }
+.cor-dot{ width:26px; height:26px; border-radius:50%; border:2px solid #fff; background:var(--c,#b08d3e); box-shadow:0 0 0 1px rgba(0,0,0,.25), 0 1px 4px rgba(0,0,0,.25); cursor:pointer; padding:0; transition:transform .12s; flex:none; }
+.cor-dot:hover{ transform:scale(1.1); }

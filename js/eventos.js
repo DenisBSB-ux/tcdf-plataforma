@@ -99,6 +99,8 @@ function attachHandlers(){
   root.querySelectorAll('[data-local-tab]').forEach(el=>{
     el.addEventListener('click', ()=>{
       const tab = el.dataset.localTab;
+      if(tab==='importar'){ STATE.viewImportar = true; STATE.importLog = null; render(); return; }
+      STATE.viewImportar = false;
       setLocalTab(STATE.materia, tab);
       render();
     });
