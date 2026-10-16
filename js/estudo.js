@@ -826,7 +826,7 @@ function gerarMarkdownDaMateria(materiaKey){
     { const cobv = (typeof COBRANCA!=='undefined' && COBRANCA[q.uid]) || q.cob; if(cobv) md += `**Cobrança:** ${cobv}\n`; }
     { const a = (typeof armEfetiva==='function') ? armEfetiva(q) : null;
       if(a && a.classificada){
-        if(a.errado){ md += `**Armadilha:** ${[a.p,a.s].filter(Boolean).join(' + ')}\n`; if(a.trecho) md += `**Trecho:** ${a.trecho}\n`; if(a.expl) md += `**Explicação:** ${a.expl}\n`; }
+        if(a.errado){ md += `**Armadilha:** ${[a.p,a.s].filter(Boolean).join(' + ')}\n`; if(a.trecho) md += `**Trecho:** ${a.trecho}\n`; if(a.expl) md += `**Explicação:** ${armExplTexto(a.expl)}\n`; }
         else if(a.sinal) md += `**Sinal:** ${a.sinal}\n`;
         md += `**Origem da classificação:** ${a.origem}\n`;
       } }

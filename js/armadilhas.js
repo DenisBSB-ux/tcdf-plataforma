@@ -160,6 +160,12 @@ function armDestacarTrecho(html, trecho, uid, kws){
   return box.innerHTML;
 }
 
+/* explicação da armadilha: aceita texto simples (importado) ou HTML formatado (editado); sempre sanitizado */
+function armExplHtml(s){
+  s = String(s||'');
+  return /<\/?(b|strong|i|em|u|s|strike|mark|span|div|p|br|ul|ol|li|blockquote|sub|sup|font)\b/i.test(s) ? limparHtmlEditado(s) : esc(s);
+}
+function armExplTexto(s){ const d=document.createElement('div'); d.innerHTML=armExplHtml(s); return (d.textContent||'').replace(/\s+/g,' ').trim(); }
 /* ---------- bloco mostrado depois de responder ---------- */
 function armPainelHtml(q){
   const a = armEfetiva(q);
@@ -177,11 +183,11 @@ function armPainelHtml(q){
     const p = ARM_TIPOS[a.p];
     // não repete a explicação se ela já consta na justificativa
     const rTxt = armNorm(typeof limparResolucao==='function' ? limparResolucao(q.r||'') : (q.r||''));
-    const exN = armNorm(a.expl||'');
+    const exN = armNorm(armExplTexto(a.expl));
     const explRepetida = exN && rTxt.includes(exN);
     // nome (fundo claro) + definição + explicação, tudo na mesma linha
     const nomes = cods.map(c=>ARM_TIPOS[c]?`<span class="arm-nome" style="background:${ARM_TIPOS[c].bg};">${esc(ARM_TIPOS[c].nome)}</span> <span class="arm-def-txt">— ${esc(ARM_TIPOS[c].def)}</span>`:'').filter(Boolean).join(' · ');
-    const corpo = [nomes, (a.expl && !explRepetida) ? esc(a.expl) : ''].filter(Boolean).join(' ');
+    const corpo = [nomes, (a.expl && !explRepetida) ? armExplHtml(a.expl) : ''].filter(Boolean).join(' ');
     return `<div class="arm-box">
       <div class="arm-linha"><span class="arm-rot">Armadilha da banca</span> ${lapis}<span class="arm-origem">classificação: ${origemTxt}</span></div>
       ${(a.trecho && !ARM_DESTACADOS.has(uid)) ? `<div class="arm-expl"><b>Trecho:</b> <mark class="arm-trecho">${esc(a.trecho.replace(/ \| /g,' … '))}</mark></div>` : ''}
@@ -205,7 +211,7 @@ function armEditorHtml(q, a){
         <label>Secundária <select id="arm-sel-s">${opts(a.s,'— nenhuma —')}</select></label>
       </div>` : `<div class="arm-edit-grid"><label>Sinal de item certo <select id="arm-sel-sinal">${sinais}</select></label></div>`}
     ${a.errado ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão) <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Preenche o campo com o texto completo do item">↧ Usar texto completo do item</button><textarea id="arm-txt-tr" class="arm-autosize" rows="2">${esc(a.trecho||'')}</textarea></label>
-    <label class="arm-edit-txt">Explicação da armadilha<textarea id="arm-txt-ex" class="arm-autosize" rows="3">${esc(a.expl||'')}</textarea></label>` : ''}
+    <label class="arm-edit-txt">Explicação da armadilha (use a barra de formatação acima: negrito, alinhamento etc.)<div id="arm-txt-ex" class="arm-rich campo-editavel-conteudo" contenteditable="true">${armExplHtml(a.expl)}</div></label>` : ''}
     <div class="arm-edit-acoes">
       ${(typeof edicaoAtual!=='undefined' && edicaoAtual===uid) ? `<button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar edição</button>
       <button class="btn-ui btn-cancelar-edicao" data-editar-acao="cancelar">✕ Cancelar</button>` : `<button class="btn-ui btn-ui-salvar" data-arm-save="${esc(uid)}">💾 Salvar (origem: manual)</button>
@@ -227,7 +233,10 @@ function armAplicarEdicao(q){
   EDICOES_USUARIO[uid].arm = armCodificar(errado?p:'', errado?s:'', errado?'':sinal);
   if(errado){
     const orig = { tr: q.tr||'', ex: q.ex||'' };
-    const tr = g('arm-txt-tr').trim(), ex = g('arm-txt-ex').trim();
+    const tr = g('arm-txt-tr').trim();
+    const exDiv = document.getElementById('arm-txt-ex');
+    let ex = '';
+    if(exDiv){ prepararEditorParaSalvar(exDiv); ex = limparHtmlEditado(exDiv.innerHTML).trim(); if(ex === esc(orig.ex)) ex = orig.ex; }
     if(tr !== orig.tr) EDICOES_USUARIO[uid].arm_tr = tr; else delete EDICOES_USUARIO[uid].arm_tr;
     if(ex !== orig.ex) EDICOES_USUARIO[uid].arm_ex = ex; else delete EDICOES_USUARIO[uid].arm_ex;
   }
@@ -594,7 +603,7 @@ function armBlocoAutoteste(escopo){
     const certo = Q.resp===a.p || Q.resp===a.s;
     fb = `<div class="guia-quiz-fb ${certo?'ok':'erro'}">${certo?'✔ Acertou':'✖ Não foi essa'} — é ${armCodigos(a).map(c=>armChip(c,true)).join(' + ')}
       ${a.trecho ? `<div><b>Trecho:</b> <mark class="arm-trecho">${esc(a.trecho.replace(/ \| /g,' … '))}</mark></div>`:''}
-      ${a.expl ? `<div>${esc(a.expl)}</div>`:''}
+      ${a.expl ? `<div>${armExplHtml(a.expl)}</div>`:''}
       <button class="btn-outline" data-armq-prox="1">${Q.i+1<Q.uids.length?'Próximo ▸':'Ver resultado'}</button></div>`;
   }
   return `<div class="guia-quiz"><div class="arm-sub">Item ${Q.i+1} de ${Q.uids.length} · este item está ERRADO: qual armadilha a banca usou?</div>
