@@ -1901,18 +1901,18 @@ body:not(.theme-light) .ajuste-andamento > label, body:not(.theme-light) .ajuste
 .composicao-tema{margin-top:12px;border-bottom:1px solid var(--line-soft,#e4dfd2)}
 .composicao-art-res{font-size:11px;opacity:.8;margin-left:6px;white-space:nowrap}
 
-/* v196 — artigo com questão errada: fundo vermelho claro */
+/* v197 — artigo com questão errada: fundo vermelho claro */
 .composicao-art-erro{background:#fbe4e1;border-radius:4px;padding:3px 8px;margin:2px 0;box-shadow:inset 3px 0 0 #c0392b}
 .composicao-art-erro .name,.composicao-art-erro .pct{color:#8f2a22;font-weight:700}
 
 
-/* v196 — menu "Distribuição por assunto" dentro de cada matéria (Estatísticas por matéria) */
+/* v197 — menu "Distribuição por assunto" dentro de cada matéria (Estatísticas por matéria) */
 .composicao-det-mat{margin:-2px 0 8px 12px}
 .composicao-mat-sum{display:block;height:0;overflow:hidden;padding:0;margin:0;list-style:none}
 .composicao-mat-sum::-webkit-details-marker{display:none}
 .mat-seta{background:none;border:0;padding:0;cursor:pointer;font-size:16px;line-height:1;text-align:center}
 
-/* v196 — análises no Guia de armadilhas */
+/* v197 — análises no Guia de armadilhas */
 .guia-desemp{margin-top:6px;font-size:12px;line-height:1.5}
 .guia-desemp-fraca{opacity:.7}
 .guia-desemp-pct{display:inline-block;padding:1px 8px;border-radius:6px;font-weight:700;margin-right:4px}
@@ -1932,7 +1932,7 @@ body:not(.theme-light) .ajuste-andamento > label, body:not(.theme-light) .ajuste
 .guia-quiz-fb.erro{background:#fee2e2;color:#8f2a22}
 .guia-quiz-fim{font-size:1.1rem;margin:6px 0}
 
-/* v196 — barra do artigo proporcional por cor: verde = acertos, vermelho = erros, cinza = sem resposta */
+/* v197 — barra do artigo proporcional por cor: verde = acertos, vermelho = erros, cinza = sem resposta */
 .bar-fill-prop{display:flex;overflow:hidden;background:#cbd5e1 !important;opacity:1 !important}
 .bar-fill-prop i{display:block;height:100%}
 .bar-fill-prop .seg-ac{background:#16a34a}

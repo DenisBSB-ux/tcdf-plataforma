@@ -637,7 +637,8 @@ function analisarTemasDaMateriaCached(materiaKey){
 // faixa de cor (clara) pelo % de acerto: 95-100 azul, 90-94 verde, 80-89
 // amarelo, 1-79 vermelho; 0% (ou nada respondido) preto
 function faixaCorPct(pct, respondidas){
-  if(!respondidas || pct<=0) return { bg:'#1f1f1f', fg:'#d4d4d4', fgForte:'#f5f5f5' }; // preto: 0
+  if(!respondidas) return { bg:'#f1f5f9', fg:'#64748b', fgForte:'#475569' }; // cinza claro: ainda não respondida
+  if(pct<=0) return { bg:'#1f1f1f', fg:'#d4d4d4', fgForte:'#f5f5f5' }; // preto: respondeu e errou tudo
   if(pct>=100) return { bg:'#dbeafe', fg:'#1e4f8f', fgForte:'#173e72' }; // azul: 100%
   if(pct>=90) return { bg:'#dcfce7', fg:'#1e7d43', fgForte:'#166534' }; // verde: 90-99
   if(pct>=80) return { bg:'#fef3c7', fg:'#855b0e', fgForte:'#6f4b0a' }; // amarelo: 80-89
