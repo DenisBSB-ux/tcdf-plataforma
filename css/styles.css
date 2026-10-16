@@ -1900,3 +1900,8 @@ body:not(.theme-light) .ajuste-andamento > label, body:not(.theme-light) .ajuste
 .composicao-norma{font-size:12px;font-weight:700;margin:8px 0 2px;opacity:.85}
 .composicao-tema{margin-top:12px;border-bottom:1px solid var(--line-soft,#e4dfd2)}
 .composicao-art-res{font-size:11px;opacity:.8;margin-left:6px;white-space:nowrap}
+
+/* v190 — artigo com questão errada: fundo vermelho claro */
+.composicao-art-erro{background:#fbe4e1;border-radius:4px;padding:3px 8px;margin:2px 0;box-shadow:inset 3px 0 0 #c0392b}
+.composicao-art-erro .name,.composicao-art-erro .pct{color:#8f2a22;font-weight:700}
+.composicao-art-erro .bar-fill{background:#c0392b}
