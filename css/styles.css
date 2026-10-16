@@ -1901,13 +1901,33 @@ body:not(.theme-light) .ajuste-andamento > label, body:not(.theme-light) .ajuste
 .composicao-tema{margin-top:12px;border-bottom:1px solid var(--line-soft,#e4dfd2)}
 .composicao-art-res{font-size:11px;opacity:.8;margin-left:6px;white-space:nowrap}
 
-/* v194 — artigo com questão errada: fundo vermelho claro */
+/* v195 — artigo com questão errada: fundo vermelho claro */
 .composicao-art-erro{background:#fbe4e1;border-radius:4px;padding:3px 8px;margin:2px 0;box-shadow:inset 3px 0 0 #c0392b}
 .composicao-art-erro .name,.composicao-art-erro .pct{color:#8f2a22;font-weight:700}
 .composicao-art-erro .bar-fill{background:#c0392b}
 
-/* v194 — menu "Distribuição por assunto" dentro de cada matéria (Estatísticas por matéria) */
+/* v195 — menu "Distribuição por assunto" dentro de cada matéria (Estatísticas por matéria) */
 .composicao-det-mat{margin:-2px 0 8px 12px}
 .composicao-mat-sum{display:block;height:0;overflow:hidden;padding:0;margin:0;list-style:none}
 .composicao-mat-sum::-webkit-details-marker{display:none}
 .mat-seta{background:none;border:0;padding:0;cursor:pointer;font-size:16px;line-height:1;text-align:center}
+
+/* v195 — análises no Guia de armadilhas */
+.guia-desemp{margin-top:6px;font-size:12px;line-height:1.5}
+.guia-desemp-fraca{opacity:.7}
+.guia-desemp-pct{display:inline-block;padding:1px 8px;border-radius:6px;font-weight:700;margin-right:4px}
+.guia-treino{margin-top:8px;padding:4px 10px;font-size:11.5px}
+.guia-evo-lin{margin-top:8px;font-size:12.5px;line-height:2}
+.guia-evo{display:inline-block;margin:0 10px 0 0;white-space:nowrap}
+.guia-art-lin{padding:5px 0;border-top:1px solid #f1f5f9;font-size:13px}
+.guia-art-dica{font-size:11px;font-weight:700;color:#8f2a22;background:#fee2e2;border-radius:6px;padding:1px 6px}
+.guia-rev-lin{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:5px 0;border-top:1px solid #f1f5f9;font-size:13px}
+.guia-rev-n{font-size:12px;opacity:.85}
+.guia-quiz{border:1px solid #e2e8f0;border-radius:12px;padding:12px}
+.guia-quiz-q{margin:8px 0;padding:10px;background:#f8fafc;border-radius:8px;font-size:14px;line-height:1.5;color:#1f2937}
+.guia-quiz-ops{display:flex;flex-wrap:wrap;gap:6px}
+.guia-quiz-op{padding:4px 10px;font-size:12px}
+.guia-quiz-fb{margin-top:10px;padding:10px;border-radius:8px;font-size:13px;line-height:1.6}
+.guia-quiz-fb.ok{background:#dcfce7;color:#166534}
+.guia-quiz-fb.erro{background:#fee2e2;color:#8f2a22}
+.guia-quiz-fim{font-size:1.1rem;margin:6px 0}

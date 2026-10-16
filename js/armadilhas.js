@@ -409,8 +409,11 @@ document.addEventListener('click', (ev)=>{
 function armIniciarTreino(cod){
   const uids = ALL_QUESTIONS.filter(q => q.materia===STATE.materia && !q.duplicataOculta && q.t==='CE' && gabaritoEfetivo(q)==='Errado' && armCodigos(armEfetiva(q)).includes(cod)).map(q=>q.uid);
   if(!uids.length){ alert('Esta matéria não tem itens classificados com '+cod+'. Troque de matéria para treinar essa armadilha.'); return; }
+  // prioriza o que você errou ou ainda não fez; se já acertou tudo, treina todos
+  const bk = getBucket(STATE.materia);
+  const pend = uids.filter(u=>{ const p = bk.perguntas[u]; return !p || p.ultimoResultado!==true; });
   setLocalTab(STATE.materia, 'simulado');
-  startQuiz(uids, { subconjunto:true, rotulo:cod }); // subconjunto: a fila não é completada com o resto da matéria
+  startQuiz(pend.length ? pend : uids, { subconjunto:true, rotulo:cod }); // subconjunto: a fila não é completada com o resto da matéria
 }
 
 /* ---------- filtro por armadilha (seleção múltipla) ---------- */
@@ -438,8 +441,163 @@ document.addEventListener('click', (ev)=>{
   render();
 });
 
+
+/* ================= ANÁLISES DO GUIA =================
+   Tudo calculado sobre os itens ERRADOS classificados (ap/as) e o seu histórico. */
+function armUltimoTs(p){ const h = p && p.historico; return h && h.length ? (h[h.length-1].ts||0) : 0; }
+function armGuiaDados(escopo){
+  const hoje = Date.now(), DIA = 864e5, anoCorte = new Date().getFullYear()-4;
+  const D = { tipos:{}, bancas:{}, rec:{}, ant:{}, nRec:0, nAnt:0, mat:{}, art:{}, rev:{}, total:0 };
+  ARM_ORDEM.forEach(c=>{ D.tipos[c]={itens:0,resp:0,quedas:0,seguros:0,chutes:0}; D.rec[c]=0; D.ant[c]=0; D.rev[c]={d1:[],d7:[],d30:[]}; });
+  const padroes = {};
+  ALL_QUESTIONS.forEach(q=>{
+    if(q.duplicataOculta || q.t!=='CE') return;
+    const a = armEfetiva(q); if(!a || !a.classificada || !a.errado) return;
+    const cods = armCodigos(a); if(!cods.length) return;
+    const bk = PROGRESS[q.materia], p = bk && bk.perguntas && bk.perguntas[q.uid];
+    const resp = !!(p && p.tentativas>0), caiu = resp && p.ultimoResultado===false, acertou = resp && p.ultimoResultado===true;
+    // matéria × armadilha: sempre todas as matérias
+    cods.forEach(c=>{ if(!resp) return; const m = D.mat[q.materia] = D.mat[q.materia]||{}; const cel = m[c] = m[c]||{n:0,q:0}; cel.n++; if(caiu) cel.q++; });
+    // revisão por idade do último erro: só a matéria atual (o treino abre nela)
+    if(caiu && q.materia===STATE.materia){
+      const idade = (hoje-armUltimoTs(p))/DIA;
+      cods.forEach(c=>{ const r = D.rev[c]; (idade>=30 ? r.d30 : idade>=7 ? r.d7 : idade>=1 ? r.d1 : []).push(q.uid); if(!armUltimoTs(p)) r.d30.push(q.uid); });
+    }
+    if(escopo && q.materia!==escopo) return;
+    D.total++;
+    const chute = acertou && typeof chuteMarcado==='function' && chuteMarcado(q.materia, q.uid);
+    cods.forEach(c=>{
+      const T = D.tipos[c]; T.itens++;
+      if(resp){ T.resp++; if(caiu) T.quedas++; if(acertou){ if(chute) T.chutes++; else T.seguros++; } }
+    });
+    // banca e ano
+    const ba = (typeof bancaCurta==='function' && bancaCurta(q.bc)) || '';
+    const ano = typeof anoRealDaQuestao==='function' ? anoRealDaQuestao(q) : 0;
+    if(ba){ const B = D.bancas[ba] = D.bancas[ba] || { n:0, c:{} }; B.n++; cods.forEach(c=>B.c[c]=(B.c[c]||0)+1); }
+    if(ano){ if(ano>=anoCorte){ D.nRec++; cods.forEach(c=>D.rec[c]++); } else { D.nAnt++; cods.forEach(c=>D.ant[c]++); } }
+    // artigo × armadilha (só campo Artigo exato)
+    if(typeof refsArtigosDaQuestao==='function'){
+      refsArtigosDaQuestao(q).filter(r=>r.exato).forEach(r=>{
+        const t = q.tema||'Geral', k = q.materia+'|'+t;
+        if(!(k in padroes)) padroes[k] = (typeof normaPadrao==='function') ? normaPadrao(questoesDaMateria(q.materia), q.materia, t) : '';
+        const nm = r.norma || padroes[k] || '';
+        const chave = (nm ? nm+' · ' : '')+'Art. '+r.n;
+        const A = D.art[chave] = D.art[chave] || { n:0, c:{} };
+        A.n++; cods.forEach(c=>A.c[c]=(A.c[c]||0)+1);
+      });
+    }
+  });
+  return D;
+}
+function armGuiaDesempenho(c, D){
+  const T = D.tipos[c];
+  if(T.resp<5) return `<div class="guia-desemp guia-desemp-fraca">Seu desempenho: amostra pequena (${T.resp} de 5 itens respondidos)</div>`;
+  const taxa = T.quedas*100/T.resp, cor = armCorTaxa(taxa);
+  const ac = T.seguros+T.chutes;
+  return `<div class="guia-desemp"><span style="background:${cor.bg};color:${cor.fg};" class="guia-desemp-pct">${Math.round(taxa)}% de queda</span> caiu em ${T.quedas} de ${T.resp}${ac ? ` · acertos: ${T.seguros} seguros, ${T.chutes} por chute 🎲` : ''}</div>`;
+}
+function armBlocoBanca(D){
+  const bancas = Object.keys(D.bancas).filter(b=>D.bancas[b].n>=3).sort((a,b)=>D.bancas[b].n-D.bancas[a].n).slice(0,8);
+  const cods = ARM_ORDEM.filter(c=>D.tipos[c].itens);
+  if(!bancas.length || !cods.length) return '<div class="arm-vazio">Sem itens classificados suficientes por banca.</div>';
+  const tab = `<div class="arm-mapa-wrap"><table class="arm-mapa"><thead><tr><th>Banca</th><th>Itens</th>${cods.map(c=>`<th>${armChip(c)}</th>`).join('')}</tr></thead><tbody>
+    ${bancas.map(b=>{ const B = D.bancas[b]; return `<tr><th>${esc(b)}</th><td>${B.n}</td>${cods.map(c=>{ const v = B.c[c]||0; const pc = Math.round(v*100/B.n); return v ? `<td style="background:rgba(99,102,241,${Math.min(.5, pc/100+.08)});" title="${v} de ${B.n} itens">${pc}%</td>` : '<td class="arm-cel-vazia">·</td>'; }).join('')}</tr>`; }).join('')}
+  </tbody></table></div>`;
+  let evo = '';
+  if(D.nRec>=5 && D.nAnt>=5){
+    const lin = cods.map(c=>{ const a = D.ant[c]*100/D.nAnt, r = D.rec[c]*100/D.nRec, d = r-a; const seta = Math.abs(d)<3 ? '→' : d>0 ? '↑' : '↓';
+      return `<span class="guia-evo" title="Antes: ${Math.round(a)}% · Últimos 5 anos: ${Math.round(r)}%">${armChip(c)} ${Math.round(a)}% ${seta} ${Math.round(r)}%</span>`; }).join('');
+    evo = `<div class="guia-evo-lin"><b>Últimos 5 anos × antes</b> (parte dos itens com cada tipo): ${lin}</div>`;
+  } else evo = `<div class="arm-sub">A comparação dos últimos 5 anos aparece com pelo menos 5 itens classificados em cada período (hoje: ${D.nRec} recentes, ${D.nAnt} antigos).</div>`;
+  return tab + evo;
+}
+function armBlocoMateria(D){
+  const mats = Object.keys(D.mat).sort((a,b)=>a.localeCompare(b,'pt-BR'));
+  const cods = ARM_ORDEM.filter(c=>mats.some(m=>D.mat[m][c]));
+  if(!mats.length || !cods.length) return '<div class="arm-vazio">O mapa aparece depois que você responder itens classificados.</div>';
+  return `<div class="arm-mapa-wrap"><table class="arm-mapa"><thead><tr><th>Matéria</th>${cods.map(c=>`<th>${armChip(c)}</th>`).join('')}</tr></thead><tbody>
+    ${mats.map(m=>`<tr><th title="${esc(m)}">${esc(m.length>26?m.slice(0,25)+'…':m)}</th>${cods.map(c=>{
+      const cel = D.mat[m][c]; if(!cel) return '<td class="arm-cel-vazia">·</td>';
+      const pc = Math.round(cel.q*100/cel.n), cor = armCorTaxa(pc);
+      return `<td style="background:${cor.bg};color:${cor.fg};" title="${cel.q} erros em ${cel.n} respondidos">${pc}%<small>${cel.n}</small></td>`;
+    }).join('')}</tr>`).join('')}
+  </tbody></table></div>`;
+}
+function armBlocoArtigo(D){
+  const lista = Object.keys(D.art).filter(k=>D.art[k].n>=2).sort((a,b)=>D.art[b].n-D.art[a].n).slice(0,12);
+  if(!lista.length) return '<div class="arm-vazio">Aparece quando um mesmo artigo (campo Artigo preenchido) tiver 2 ou mais itens classificados.</div>';
+  return lista.map(k=>{
+    const A = D.art[k], cs = Object.keys(A.c).sort((a,b)=>A.c[b]-A.c[a]), top = cs[0], quase = A.c[top]*100/A.n>=60 && A.n>=3;
+    return `<div class="guia-art-lin"><b>${esc(k)}</b> <small>${A.n} itens</small> ${cs.map(c=>`${armChip(c)}<small>×${A.c[c]}</small>`).join(' ')}${quase ? ` <span class="guia-art-dica">quase sempre ${top}</span>` : ''}</div>`;
+  }).join('');
+}
+function armBlocoRevisao(D){
+  const nome = STATE.materia||'';
+  const linhas = ARM_ORDEM.filter(c=>{ const r=D.rev[c]; return r.d1.length+r.d7.length+r.d30.length; }).map(c=>{
+    const r = D.rev[c], tot = r.d1.length+r.d7.length+r.d30.length;
+    return `<div class="guia-rev-lin">${armChip(c,true)} <span>${esc(ARM_TIPOS[c].nome)}</span>
+      <span class="guia-rev-n" title="Último erro há 1 a 6 dias">1 dia: <b>${r.d1.length}</b></span>
+      <span class="guia-rev-n" title="Último erro há 7 a 29 dias">7 dias: <b>${r.d7.length}</b></span>
+      <span class="guia-rev-n" title="Último erro há 30 dias ou mais">30 dias: <b>${r.d30.length}</b></span>
+      <button class="btn-outline" style="padding:3px 10px;font-size:11px;" data-arm-revisar="${c}">🔁 Revisar ${tot}</button></div>`;
+  }).join('');
+  return linhas || `<div class="arm-vazio">Nenhum item errado pendente em ${esc(nome)}: nada para revisar agora.</div>`;
+}
+function armIniciarRevisao(cod){
+  const r = armGuiaDados(null).rev[cod]; if(!r) return;
+  const uids = [...r.d30, ...r.d7, ...r.d1]; // mais antigos primeiro
+  if(!uids.length){ alert('Nada pendente deste tipo nesta matéria.'); return; }
+  setLocalTab(STATE.materia, 'simulado');
+  startQuiz(uids, { subconjunto:true, rotulo:'Revisão '+cod });
+}
+
+/* ---------- autoteste: qual armadilha é esta? ---------- */
+function armQuizNovo(escopo){
+  const pool = ALL_QUESTIONS.filter(q=>{
+    if(q.duplicataOculta || q.t!=='CE' || (escopo && q.materia!==escopo)) return false;
+    const a = armEfetiva(q); return a && a.classificada && a.errado && ARM_TIPOS[a.p] && q.q;
+  });
+  for(let i=pool.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [pool[i],pool[j]] = [pool[j],pool[i]]; }
+  return { uids: pool.slice(0,5).map(q=>q.uid), i:0, ok:0, resp:null, fim:false };
+}
+function armBlocoAutoteste(escopo){
+  let Q = STATE.armQuiz;
+  if(!Q) return `<button class="btn-outline" data-armq-novo="1">▶ Começar autoteste (5 itens)</button>`;
+  if(!Q.uids.length) return '<div class="arm-vazio">Não há itens errados classificados neste escopo.</div>';
+  if(Q.fim) return `<div class="guia-quiz-fim"><b>Resultado: ${Q.ok} de ${Q.uids.length}</b> ${Q.ok===Q.uids.length?'🎯':''}</div><button class="btn-outline" data-armq-novo="1">↻ Novo autoteste</button>`;
+  const q = BY_UID[Q.uids[Q.i]]; if(!q){ STATE.armQuiz = null; return ''; }
+  const a = armEfetiva(q);
+  const texto = String(typeof limparEnunciado==='function' ? limparEnunciado(q.q, q.t) : q.q).slice(0,700);
+  const botoes = ARM_ORDEM.map(c=>`<button class="btn-outline guia-quiz-op" data-armq-resp="${c}" ${Q.resp?'disabled':''} style="border-color:${ARM_TIPOS[c].cor};">${armChip(c)} ${esc(ARM_TIPOS[c].nome)}</button>`).join('');
+  let fb = '';
+  if(Q.resp){
+    const certo = Q.resp===a.p || Q.resp===a.s;
+    fb = `<div class="guia-quiz-fb ${certo?'ok':'erro'}">${certo?'✔ Acertou':'✖ Não foi essa'} — é ${armCodigos(a).map(c=>armChip(c,true)).join(' + ')}
+      ${a.trecho ? `<div><b>Trecho:</b> <mark class="arm-trecho">${esc(a.trecho.replace(/ \| /g,' … '))}</mark></div>`:''}
+      ${a.expl ? `<div>${esc(a.expl)}</div>`:''}
+      <button class="btn-outline" data-armq-prox="1">${Q.i+1<Q.uids.length?'Próximo ▸':'Ver resultado'}</button></div>`;
+  }
+  return `<div class="guia-quiz"><div class="arm-sub">Item ${Q.i+1} de ${Q.uids.length} · este item está ERRADO: qual armadilha a banca usou?</div>
+    <div class="guia-quiz-q">${esc(texto)}</div><div class="guia-quiz-ops">${botoes}</div>${fb}</div>`;
+}
+document.addEventListener('click', ev=>{
+  const t = ev.target.closest && ev.target.closest('[data-armq-novo],[data-armq-resp],[data-armq-prox],[data-arm-revisar]'); if(!t) return;
+  const esc_ = STATE.armEscopoTodas ? null : STATE.materia;
+  if(t.hasAttribute('data-armq-novo')){ STATE.armQuiz = armQuizNovo(esc_); render(); return; }
+  if(t.hasAttribute('data-arm-revisar')){ armIniciarRevisao(t.dataset.armRevisar); return; }
+  const Q = STATE.armQuiz; if(!Q) return;
+  if(t.hasAttribute('data-armq-resp') && !Q.resp){
+    const q = BY_UID[Q.uids[Q.i]], a = q && armEfetiva(q); Q.resp = t.dataset.armqResp;
+    if(a && (Q.resp===a.p || Q.resp===a.s)) Q.ok++;
+    render(); return;
+  }
+  if(t.hasAttribute('data-armq-prox')){ if(Q.i+1<Q.uids.length){ Q.i++; Q.resp = null; } else Q.fim = true; render(); }
+});
+
 /* ================= GUIA (resumo a cores) ================= */
 function renderGuiaArmadilhas(){
+  const escopoTodas = !!STATE.armEscopoTodas, escopo = escopoTodas ? null : STATE.materia;
+  const D = armGuiaDados(escopo);
   const cartoes = ARM_ORDEM.map(c=>{
     const t = ARM_TIPOS[c];
     return `<div class="guia-card" style="border-color:${t.cor};background:${t.bg};color:#1f2937;">
@@ -449,6 +607,8 @@ function renderGuiaArmadilhas(){
         <div><b style="color:${t.cor};">Palavras-sinal:</b> ${esc(t.sinais)}</div>
         <div class="guia-ex">${esc(t.ex)}</div>
         <div class="guia-mac">💡 ${esc(t.macete)}</div>
+        ${armGuiaDesempenho(c, D)}
+        <button class="btn-outline guia-treino" data-arm-treino="${c}" title="Simulado só com itens deste tipo na matéria atual (prioriza os que você errou ou ainda não fez)">🏋 Treinar ${c}</button>
       </div></div>`;
   }).join('');
   const sinais = ARM_SINAIS_ORDEM.map(c=>`<div class="guia-sinal"><span class="arm-chip arm-chip-sinal">${c}</span> <b>${esc(ARM_SINAIS[c].nome)}</b> — ${esc(ARM_SINAIS[c].por)}</div>`).join('');
@@ -456,6 +616,8 @@ function renderGuiaArmadilhas(){
   const m = (i)=>{ const t = ARM_TIPOS[ARM_ORDEM[i]]; return t ? `<b style="color:${t.cor};">${ARM_ORDEM[i]}</b>` : ''; };
   return `<div class="guia-tela">
     <h3>📘 Guia de armadilhas da banca <button type="button" class="btn-ui" data-arm-criterios="1">⚙ Gerenciar critérios</button></h3>
+    <div class="arm-cab"><div class="arm-sub">${D.total} itens errados classificados · ${escopoTodas ? 'todas as matérias' : esc(STATE.materia||'')}</div>
+      <div class="arm-escopo"><button class="tab-btn ${!escopoTodas?'active':''}" data-arm-escopo="mat">Esta matéria</button><button class="tab-btn ${escopoTodas?'active':''}" data-arm-escopo="todas">Todas</button></div></div>
     <div class="guia-grid">${cartoes}</div>
     <div class="guia-faixa"><b>Combinações:</b> a banca empilha armadilhas — cada questão aceita um tipo principal e, opcionalmente, um secundário (ex.: DIS + JUS, SUF + INV).</div>
     <h4>Sinais de item certo</h4>
@@ -465,7 +627,12 @@ function renderGuiaArmadilhas(){
     <ol class="guia-passos">${passos.map(p=>`<li>${p}</li>`).join('')}</ol>
     ${ARM_ORDEM.length===8 && ARM_ORDEM.every(c=>ARM_TIPOS[c]) ? `<div class="guia-macete"><b>Macete:</b> ${m(0)}te ${m(1)}oca, ${m(2)}cute ${m(3)}tiça: ${m(4)}erte, ${m(5)}ca, ${m(6)}tringe, ${m(7)}trapola.
       <div class="guia-macete-sub">GEN-SUF-DIS-JUS · INV-TRO-RES-EXT</div></div>` : ''}
-    <div class="guia-conclusao">🟣 <b>Conclusão:</b> saber por que errou vale mais que saber em qual assunto errou. Na Análise de Armadilhas veja qual tipo mais derruba você e treine só ele.</div>
+    <div class="guia-conclusao">🟣 <b>Conclusão:</b> saber por que errou vale mais que saber em qual assunto errou. Veja acima qual tipo mais derruba você e use "Treinar" só nele.</div>
+    <h4>🧪 Autoteste: qual armadilha é esta?</h4>${armBlocoAutoteste(escopo)}
+    <h4>🏛 Armadilha × banca <small>· parte dos itens de cada banca com cada tipo</small></h4>${armBlocoBanca(D)}
+    <h4>📚 Armadilha × matéria <small>· taxa de queda (número pequeno = itens respondidos; todas as matérias)</small></h4>${armBlocoMateria(D)}
+    <h4>⚖ Armadilha × artigo <small>· artigos que a banca cobra sempre do mesmo jeito</small></h4>${armBlocoArtigo(D)}
+    <h4>🔁 Revisão pelas armadilhas <small>· itens que você errou, por tempo desde o último erro (${esc(STATE.materia||'')})</small></h4>${armBlocoRevisao(D)}
   </div>`;
 }
 
