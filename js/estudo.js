@@ -224,11 +224,11 @@ function renderQuiz(){
     <div class="quiz-toolbar">
       <div class="toolbar-btn-row" role="toolbar" aria-label="Navegação e ferramentas da questão">
         <div class="toolbar-grupo" role="group" aria-label="Navegar entre questões">
-          ${btnBarra('btn-prev','esq','Questão anterior',{atalho:'←',off:quiz.idx===0})}
+          ${btnBarra('btn-prev','esq','Questão anterior',{atalho:'← ou Shift',off:quiz.idx===0})}
           <span class="q-jump-label" aria-live="polite">${quiz.idx+1} / ${quiz.queue.length}</span>
           ${btnBarra('btn-next-arrow','dir','Próxima questão',{atalho:'→',off:quiz.idx===quiz.queue.length-1})}
-          ${btnBarra('btn-jump-ultima-respondida','dupla','Próxima não respondida',{off:!quiz.queue.some((u,i)=>i!==quiz.idx && !quiz.respostas[u])})}
-          ${btnBarra('btn-jump-proximo-assunto','assunto','Próximo assunto',{off:idxProximoAssunto<0})}
+          ${btnBarra('btn-jump-ultima-respondida','dupla','Próxima não respondida',{atalho:'N',off:!quiz.queue.some((u,i)=>i!==quiz.idx && !quiz.respostas[u])})}
+          ${btnBarra('btn-jump-proximo-assunto','assunto','Próximo assunto',{atalho:'S',off:idxProximoAssunto<0})}
         </div>
         <span class="toolbar-divider" role="separator"></span>
         <div class="toolbar-grupo" role="group" aria-label="Ferramentas">
