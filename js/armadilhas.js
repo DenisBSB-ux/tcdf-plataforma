@@ -613,45 +613,66 @@ document.addEventListener('click', ev=>{
   if(t.hasAttribute('data-armq-prox')){ if(Q.i+1<Q.uids.length){ Q.i++; Q.resp = null; } else Q.fim = true; render(); }
 });
 
-/* ================= GUIA (resumo a cores) ================= */
+/* ================= GUIA (enxuto) ================= */
+// desempenho do usuário num tipo, em uma linha curta
+function armGuiaTaxaCompacta(c, D){
+  const T = D.tipos[c];
+  if(T.resp<5) return `<span class="guia-taxa guia-taxa-vazia" title="Amostra pequena: ${T.resp} de 5 itens respondidos">poucos dados</span>`;
+  const taxa = T.quedas*100/T.resp, cor = armCorTaxa(taxa);
+  return `<span class="guia-taxa" style="background:${cor.bg};color:${cor.fg};" title="Caiu em ${T.quedas} de ${T.resp} itens respondidos">${Math.round(taxa)}% de queda</span>`;
+}
+// seção recolhível; lembra se estava aberta entre as renderizações
+function armSecao(id, titulo, corpo, abertaPadrao){
+  const ab = STATE.armAbertos || (STATE.armAbertos = {});
+  const aberta = id in ab ? ab[id] : !!abertaPadrao;
+  return `<details class="guia-sec" data-arm-sec="${id}" ${aberta?'open':''}><summary>${titulo}</summary><div class="guia-sec-corpo">${corpo}</div></details>`;
+}
+document.addEventListener('toggle', ev=>{
+  const d = ev.target; if(!d || !d.matches || !d.matches('details[data-arm-sec]')) return;
+  (STATE.armAbertos || (STATE.armAbertos = {}))[d.dataset.armSec] = d.open;
+}, true);
+
 function renderGuiaArmadilhas(){
   const escopoTodas = !!STATE.armEscopoTodas, escopo = escopoTodas ? null : STATE.materia;
   const D = armGuiaDados(escopo);
-  const cartoes = ARM_ORDEM.map(c=>{
+  const linhas = ARM_ORDEM.map(c=>{
     const t = ARM_TIPOS[c];
-    return `<div class="guia-card" style="border-color:${t.cor};background:${t.bg};color:#1f2937;">
-      <div class="guia-card-topo" style="background:${t.cor};"><b>${c}</b> ${esc(t.nome)}</div>
-      <div class="guia-card-corpo">
-        <div><b style="color:${t.cor};">O que faz:</b> ${esc(t.def)}</div>
-        <div><b style="color:${t.cor};">Palavras-sinal:</b> ${esc(t.sinais)}</div>
+    return `<div class="guia-lin">
+      <div class="guia-lin-topo">
+        <span class="guia-cod" style="background:${t.cor};">${c}</span>
+        <div class="guia-lin-txt"><b>${esc(t.nome)}</b><span>${esc(t.def)}</span></div>
+        ${armGuiaTaxaCompacta(c, D)}
+        <button class="btn-outline guia-treino" data-arm-treino="${c}" title="Simulado só com itens deste tipo na matéria atual (prioriza os que você errou ou ainda não fez)">Treinar</button>
+      </div>
+      <details class="guia-lin-mais"><summary>como reconhecer</summary>
+        <div><b>Palavras-sinal:</b> ${esc(t.sinais)}</div>
         <div class="guia-ex">${esc(t.ex)}</div>
-        <div class="guia-mac">💡 ${esc(t.macete)}</div>
-        ${armGuiaDesempenho(c, D)}
-        <button class="btn-outline guia-treino" data-arm-treino="${c}" title="Simulado só com itens deste tipo na matéria atual (prioriza os que você errou ou ainda não fez)">🏋 Treinar ${c}</button>
-      </div></div>`;
+        <div>💡 ${esc(t.macete)}</div>
+      </details>
+    </div>`;
   }).join('');
-  const sinais = ARM_SINAIS_ORDEM.map(c=>`<div class="guia-sinal"><span class="arm-chip arm-chip-sinal">${c}</span> <b>${esc(ARM_SINAIS[c].nome)}</b> — ${esc(ARM_SINAIS[c].por)}</div>`).join('');
+  const sinais = ARM_SINAIS_ORDEM.map(c=>`<div class="guia-sinal"><span class="arm-chip arm-chip-sinal">${c}</span> <b>${esc(ARM_SINAIS[c].nome)}</b> — ${esc(ARM_SINAIS[c].por)}</div>`).join('')
+    + `<div class="arm-sub" style="margin-top:8px;">Sinal é alerta para ler com atenção, nunca resposta automática. O <b>ABS-L</b> existe para você não marcar ERRADO só por ver uma palavra absoluta.</div>`;
   const passos = ['Divida o item em <b>premissa</b>, <b>conectivo</b> e <b>conclusão</b>.','Marque as palavras <b>absolutas</b>, <b>restritivas</b> e os <b>conectivos causais</b>.','Teste a <b>premissa</b>: ela é verdadeira?','Teste o <b>conectivo</b>: a premissa realmente leva à conclusão?','<b>Classifique</b> pelo tipo de armadilha. Nenhuma encontrada → o item tende a estar <b>certo</b>.'];
-  const m = (i)=>{ const t = ARM_TIPOS[ARM_ORDEM[i]]; return t ? `<b style="color:${t.cor};">${ARM_ORDEM[i]}</b>` : ''; };
+  const metodo = `<ol class="guia-passos">${passos.map(x=>`<li>${x}</li>`).join('')}</ol>
+    <div class="arm-sub">A banca empilha armadilhas: cada questão aceita um tipo principal e, opcionalmente, um secundário (ex.: DIS + JUS).</div>`;
   return `<div class="guia-tela">
-    <h3>📘 Guia de armadilhas da banca <button type="button" class="btn-ui" data-arm-criterios="1">⚙ Gerenciar critérios</button></h3>
-    <div class="arm-cab"><div class="arm-sub">${D.total} itens errados classificados · ${escopoTodas ? 'todas as matérias' : esc(STATE.materia||'')}</div>
-      <div class="arm-escopo"><button class="tab-btn ${!escopoTodas?'active':''}" data-arm-escopo="mat">Esta matéria</button><button class="tab-btn ${escopoTodas?'active':''}" data-arm-escopo="todas">Todas</button></div></div>
-    <div class="guia-grid">${cartoes}</div>
-    <div class="guia-faixa"><b>Combinações:</b> a banca empilha armadilhas — cada questão aceita um tipo principal e, opcionalmente, um secundário (ex.: DIS + JUS, SUF + INV).</div>
-    <h4>Sinais de item certo</h4>
-    <div class="guia-sinais">${sinais}</div>
-    <div class="guia-alerta">⚠ Pegadinha: <b>ABS-L</b> existe para você não marcar ERRADO só por ver uma palavra absoluta. Sinal é alerta para ler com atenção, nunca resposta automática. Palavra-sinal sozinha não classifica: o tipo só vale se o trecho realmente falseia o item.</div>
-    <h4>Método de 5 passos</h4>
-    <ol class="guia-passos">${passos.map(p=>`<li>${p}</li>`).join('')}</ol>
-    ${ARM_ORDEM.length===8 && ARM_ORDEM.every(c=>ARM_TIPOS[c]) ? `<div class="guia-macete"><b>Macete:</b> ${m(0)}te ${m(1)}oca, ${m(2)}cute ${m(3)}tiça: ${m(4)}erte, ${m(5)}ca, ${m(6)}tringe, ${m(7)}trapola.
-      <div class="guia-macete-sub">GEN-SUF-DIS-JUS · INV-TRO-RES-EXT</div></div>` : ''}
-    <div class="guia-conclusao">🟣 <b>Conclusão:</b> saber por que errou vale mais que saber em qual assunto errou. Veja acima qual tipo mais derruba você e use "Treinar" só nele.</div>
-    <h4>🧪 Autoteste: qual armadilha é esta?</h4>${armBlocoAutoteste(escopo)}
-    <h4>🏛 Armadilha × banca <small>· parte dos itens de cada banca com cada tipo</small></h4>${armBlocoBanca(D)}
-    <h4>📚 Armadilha × matéria <small>· taxa de queda (número pequeno = itens respondidos; todas as matérias)</small></h4>${armBlocoMateria(D)}
-    <h4>⚖ Armadilha × artigo <small>· artigos que a banca cobra sempre do mesmo jeito</small></h4>${armBlocoArtigo(D)}
-    <h4>🔁 Revisão pelas armadilhas <small>· itens que você errou, por tempo desde o último erro (${esc(STATE.materia||'')})</small></h4>${armBlocoRevisao(D)}
+    <div class="guia-cab">
+      <div><h3>Guia de armadilhas</h3>
+        <div class="arm-sub">${D.total} itens errados classificados · ${escopoTodas ? 'todas as matérias' : esc(STATE.materia||'')}</div></div>
+      <div class="guia-cab-dir">
+        <div class="arm-escopo"><button class="tab-btn ${!escopoTodas?'active':''}" data-arm-escopo="mat">Esta matéria</button><button class="tab-btn ${escopoTodas?'active':''}" data-arm-escopo="todas">Todas</button></div>
+        <button type="button" class="btn-ui guia-engr" data-arm-criterios="1" title="Gerenciar critérios" aria-label="Gerenciar critérios">⚙</button>
+      </div>
+    </div>
+    <div class="guia-lista">${linhas}</div>
+    ${armSecao('revisao','🔁 Revisão pelas armadilhas', armBlocoRevisao(D), true)}
+    ${armSecao('auto','🧪 Autoteste: qual armadilha é esta?', armBlocoAutoteste(escopo), !!STATE.armQuiz)}
+    ${armSecao('banca','🏛 Armadilha × banca', armBlocoBanca(D))}
+    ${armSecao('materia','📚 Armadilha × matéria', armBlocoMateria(D))}
+    ${armSecao('artigo','⚖ Armadilha × artigo', armBlocoArtigo(D))}
+    ${armSecao('sinais','Sinais de item certo', sinais)}
+    ${armSecao('metodo','Método de 5 passos', metodo)}
   </div>`;
 }
 
