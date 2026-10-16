@@ -1424,6 +1424,12 @@ function agruparArtigos(questoes, tema, materia, qsMateria){
   });
   return { grupos, sem, total, comCampo };
 }
+// barra do artigo: comprimento = nº de questões; dentro, verde = acertos, vermelho = erros, cinza = ainda sem resposta
+function barraArtigoHtml(a, max){
+  const n = Math.max(1, a.n), w = Math.max(6, Math.round(a.n*100/max));
+  const pa = a.ac*100/n, pe = a.er*100/n;
+  return `<div class="bar-track"><div class="bar-fill bar-fill-prop" style="width:${w}%;"><i class="seg-ac" style="width:${pa}%"></i><i class="seg-er" style="width:${pe}%"></i></div></div>`;
+}
 // linhas por norma/artigo; artigo com erro fica destacado
 function linhasArtigosHtml(ag, comResultado){
   const normas = Object.keys(ag.grupos).sort((a,b)=> (a===''?1:0)-(b===''?1:0) || a.localeCompare(b,'pt-BR'));
@@ -1435,7 +1441,7 @@ function linhasArtigosHtml(ag, comResultado){
     return cab + arts.map(n=>{
       const a = ag.grupos[nm][n];
       const res = comResultado && (a.ac+a.er) ? ` <span class="composicao-art-res" title="Última resposta de cada questão">✔${a.ac} ✖${a.er}</span>` : '';
-      return `<div class="bar-row composicao-art${a.er?' composicao-art-erro':''}"${a.er?` title="${a.er} ${a.er===1?'questão errada':'questões erradas'} neste artigo"`:''}><div class="name">Art. ${n}${a.fora?' <span class="composicao-art-fora" title="Artigo fora da faixa deste assunto: a questão pode estar em outro assunto">⚠</span>':''}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, Math.round(a.n*100/max))}%;"></div></div><div class="pct">${a.n}${res}</div></div>`;
+      return `<div class="bar-row composicao-art${a.er?' composicao-art-erro':''}"${a.er?` title="${a.er} ${a.er===1?'questão errada':'questões erradas'} neste artigo"`:''}><div class="name">Art. ${n}${a.fora?' <span class="composicao-art-fora" title="Artigo fora da faixa deste assunto: a questão pode estar em outro assunto">⚠</span>':''}</div>${barraArtigoHtml(a, max)}<div class="pct">${a.n}${res}</div></div>`;
     }).join('');
   }).join('');
 }
