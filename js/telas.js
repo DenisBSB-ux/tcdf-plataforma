@@ -226,7 +226,7 @@ function renderTelaLogin(){
       <button class="btn btn-primary" id="btn-login-google" style="font-size:15px;padding:10px 22px;">🔐 Entrar com Google</button>`;
   }
   return `<div class="tela-login"><div class="tela-login-caixa">
-    <div class="seal-mark" style="margin:0 auto 10px;">${esc(CONFIG.sealText||'')}</div>
+    <img class="seal-logo" src="img/logo-tcdf.png" alt="TCDF" style="margin:0 auto 10px;display:block;">
     <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;margin-bottom:14px;">${esc(CONFIG.title||'')}</div>
     ${conteudo}
   </div></div>`;
@@ -863,7 +863,7 @@ function renderLetterhead(){
   return `
   <div class="letterhead">
     <div class="seal">
-      <div class="seal-mark">${esc(CONFIG.sealText)}</div>
+      <img class="seal-logo" src="img/logo-tcdf.png" alt="TCDF">
       <div>
         <div class="eyebrow">${esc(CONFIG.eyebrow)}</div>
         <h1 class="title">${esc(tituloExibido)} <span class="version-tag" title="Versão do código carregada agora — se tiver dúvida se está atualizado, confira aqui">${esc(window.__TCDF_BUILD__.versao)}</span> ${countBadge}</h1>
