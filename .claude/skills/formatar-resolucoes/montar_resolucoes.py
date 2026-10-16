@@ -3,7 +3,7 @@
 
 Uso:
   python3 montar_resolucoes.py dump  <arquivo.md> <ini> <fim>          # lê as questões ini..fim (índices) para você escrever
-  python3 montar_resolucoes.py build <arquivo.md> <pasta_lotes> <saida.md>
+  python3 montar_resolucoes.py build <arquivo.md> <pasta_lotes> <saida.md> [--sem-resumo-flash]
 
 Cada lote em <pasta_lotes>/bNN.py define  R = { indice: (ess, [palavras-chave], base, atencao, armadilha, macete) }
   ess        📌 essência em uma linha (palavras-chave em **negrito**)
@@ -11,7 +11,7 @@ Cada lote em <pasta_lotes>/bNN.py define  R = { indice: (ess, [palavras-chave], 
   atencao    ⚠️ exceção/atualização, ou "Conferir o gabarito..." quando o gabarito do arquivo diverge da lei ('' omite)
   armadilha  🪤 como a banca poderia alterar o item ('' omite; use só em item certo e múltipla escolha)
   macete     💡 frase curta em itálico
-A linha 🏷️ sai sozinha: item errado = armadilha por extenso + sigla + explicação do arquivo; item certo = sinal por extenso + sigla.
+O perfil (sinal/armadilha) NÃO entra na resolução: a plataforma já o mostra no painel "Armadilha da banca".
 Só a seção ### Resolução é trocada; o resto do arquivo é preservado byte a byte.
 """
 import re, sys, glob
@@ -38,14 +38,10 @@ def ler(path):
                       enun=secao(b,'Enunciado','Resolução').split('**Gabarito:**')[0].strip(), res=secao(b,'Resolução','Resumo Flash')))
     return txt, partes, Q
 
-def monta(q, d):
+def monta(q, d, i=0, sinal_extra=None):
+    """Sem linha 🏷️: o perfil (sinal ou armadilha) já aparece no painel "Armadilha da banca" da plataforma."""
     ess, kw, base, ate, arm, mac = d
     L = []
-    if q['gab'] in ('Certo', 'Errado'):
-        if q['arm']:
-            cods = [c.strip() for c in q['arm'].split('+')]
-            L.append('🏷️ ' + ' + '.join(f"**{NOMES.get(c, c)} ({c})**" for c in cods) + (' — ' + q['expl'] if q['expl'] else ''))
-        elif q['sinal'] in SIN: L.append('🏷️ ' + SIN[q['sinal']])
     if base: L.append('⚖️ ' + base)
     L.append('📌 ' + ess)
     L.append('🔑 ' + ' · '.join(f'**{k}**' for k in kw))
@@ -66,14 +62,17 @@ if __name__ == '__main__':
             if q['expl']: print('EXPL:', q['expl'])
             print('ENUN:', q['enun'][:650]); print('RES_ANTIGA:', q['res'][:420])
     elif cmd == 'build':
-        txt, partes, Q = ler(sys.argv[2]); R = {}
+        txt, partes, Q = ler(sys.argv[2]); R = {}; SINAL = {}
         for f in sorted(glob.glob(sys.argv[3] + '/b*.py')):
-            ns = {}; exec(open(f, encoding='utf-8').read(), ns); R.update(ns['R'])
+            ns = {}; exec(open(f, encoding='utf-8').read(), ns); R.update(ns.get('R', {})); SINAL.update(ns.get('SINAL', {}))
         out = [partes[0]]; n = 0
         for i, k in enumerate(range(1, len(partes), 2)):
             cab, b = partes[k], partes[k + 1]
             if i in R:
-                novo = monta(Q[i], R[i])
+                novo = monta(Q[i], R[i], i, SINAL)
                 b, c = re.subn(r'(### Resolução\n).*?(?=\n\n### Resumo Flash|\n\n---|\Z)', lambda m: m.group(1) + novo, b, count=1, flags=re.S); assert c == 1; n += 1
             out += [cab, b]
-        open(sys.argv[4], 'w', encoding='utf-8').write(''.join(out)); print('reescritas:', n, 'de', len(Q))
+        res = ''.join(out)
+        if '--sem-resumo-flash' in sys.argv:
+            res, c = re.subn(r'\n\n### Resumo Flash\n.*?(?=\n---\n|\Z)', '\n', res, flags=re.S); print('Resumo Flash removidos:', c)
+        open(sys.argv[4], 'w', encoding='utf-8').write(res); print('reescritas:', n, 'de', len(Q))

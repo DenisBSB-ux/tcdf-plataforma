@@ -1,6 +1,6 @@
 ---
 name: formatar-resolucoes
-description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF Plataforma no formato padrão com símbolos (🏷️ ⚖️ 📌 🔑 ⚠️ 🪤 💡), para reimportar com o botão "🔁 Substituir por matéria". Use quando o usuário pedir para atualizar/padronizar as resoluções de uma matéria (ex.: Lei 14.133, Contratos, IN 5, Decreto 44.330).
+description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF Plataforma no formato padrão com símbolos (⚖️ 📌 🔑 ⚠️ 🪤 💡), para reimportar com o botão "🔁 Substituir por matéria". Use quando o usuário pedir para atualizar/padronizar as resoluções de uma matéria (ex.: Lei 14.133, Contratos, IN 5, Decreto 44.330).
 ---
 
 # Formatar resoluções de uma matéria
@@ -19,10 +19,9 @@ description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF
 7. Aplicar a todas as matérias do mesmo jeito (a lógica é geral). Matéria específica: perguntar antes (ex.: o usuário já pediu para remover `### Resumo Flash` dos arquivos da Lei 14.133; para outras matérias, confirmar).
 
 ## Formato da resolução
-Cada bloco é uma linha que **começa pelo símbolo**, sem escrever o nome do rótulo, com **palavras-chave em negrito**. Ordem fixa; omita o bloco que não se aplica.
+O perfil (sinal do item certo ou armadilha do item errado) **não entra** na resolução: a plataforma já o exibe no painel "Armadilha da banca", e repeti-lo duplica a informação. Cada bloco é uma linha que **começa pelo símbolo**, sem escrever o nome do rótulo, com **palavras-chave em negrito**. Ordem fixa; omita o bloco que não se aplica.
 
 ```
-🏷️ **Literalidade (LIT)** — texto copiado da lei
 ⚖️ **Art. 75** ▸ **IV** ▸ **"c"** · Lei 14.133/2021
 📌 A lei **dispensa a licitação** para **produtos de pesquisa e desenvolvimento**, e, se forem **obras e serviços de engenharia**, o **teto é R$ 300.000,00**.
 🔑 **dispensa** · **pesquisa e desenvolvimento** · **engenharia** · **R$ 300 mil**
@@ -33,7 +32,6 @@ Cada bloco é uma linha que **começa pelo símbolo**, sem escrever o nome do r�
 
 | Símbolo | Conteúdo |
 |---|---|
-| 🏷️ | Perfil. **Item certo**: sinal por extenso com a sigla no final — Relativização (REL), Literalidade (LIT), Coerência interna (COE), Absoluto legal (ABS-L). **Item errado**: armadilha por extenso com a sigla — Generalização (GEN), Suficiência falsa (SUF), Dispensa/exceção inventada (DIS), Justificativa falsa (JUS), Inversão (INV), Troca de conceitos (TRO), Restrição indevida (RES), Extrapolação (EXT). Use os critérios do Guia de armadilhas (`ARM_TIPOS` em `js/armadilhas.js`; o usuário pode ter editado). |
 | ⚖️ | Base legal: **Art. N** ▸ **inciso** ▸ **alínea** · Norma/ano. Parágrafo: `§ 6º`. |
 | 📌 | Essência da regra em uma linha. |
 | 🔑 | Palavras-chave separadas por ` · `. |

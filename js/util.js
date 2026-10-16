@@ -396,7 +396,8 @@ function marcadoresParaHtml(h){
 function formatarTextoComDestaque(texto, palavrasExtras){
   if(!texto) return '';
   const comQuebras = quebrarItensAlfabeticos(texto);
-  const frases = dividirEmFrases(comQuebras);
+  // cada linha que abre com um símbolo da legenda (🏷️ ⚖️ 📌 🔑 ⚠️ 🪤 💡) é UM parágrafo, mesmo com mais de uma frase
+  const frases = comQuebras.split(/\n+/).flatMap(l => /^\s*(?:🏷|⚖|📌|🔑|⚠|🪤|💡)/u.test(l) ? [l.trim()] : dividirEmFrases(l)).filter(Boolean);
   return simbolosComDica(frases.map(f => `<p>${marcadoresParaHtml(destacarPalavrasChave(f, palavrasExtras))}</p>`).join(''));
 }
 // edição salva sem os pop-ups dos símbolos (o atributo data-dica não passa pelo sanitizador): desfaz o invólucro
