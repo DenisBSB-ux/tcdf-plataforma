@@ -375,11 +375,25 @@ function limparResolucao(r){
   });
   return out.join('\n');
 }
+// símbolos que abrem cada bloco da resolução; ao passar o mouse (ou focar) aparece um pop-up explicativo
+const SIMBOLOS_RESOLUCAO = {
+  '🏷': 'Perfil: no item certo, o sinal de veracidade (Literalidade, Relativização, Coerência interna, Absoluto legal); no item errado, a armadilha usada pela banca.',
+  '⚖': 'Base legal: artigo ▸ inciso ▸ alínea e a norma em que a regra está.',
+  '📌': 'Essência: a regra em uma linha, para revisar rápido.',
+  '🔑': 'Palavras-chave: os termos que você precisa reconhecer na prova.',
+  '⚠': 'Atenção: exceção, atualização ou detalhe que costuma mudar a resposta.',
+  '🪤': 'Armadilha possível: como a banca pode alterar o item para torná-lo errado.',
+  '💡': 'Macete: frase curta para memorizar.'
+};
+function simbolosComDica(html){
+  return String(html).replace(/<p>(\s*)(🏷|⚖|📌|🔑|⚠|🪤|💡)(\uFE0F?)/g, (m, sp, sim, vs)=>
+    `<p>${sp}<span class="sim-dica" tabindex="0" role="note" data-dica="${SIMBOLOS_RESOLUCAO[sim].replace(/"/g,'&quot;')}">${sim}${vs}</span>`);
+}
 function formatarTextoComDestaque(texto, palavrasExtras){
   if(!texto) return '';
   const comQuebras = quebrarItensAlfabeticos(texto);
   const frases = dividirEmFrases(comQuebras);
-  return frases.map(f => `<p>${destacarPalavrasChave(f, palavrasExtras).replace(/[\u0001\u0002]/g,'')}</p>`).join('');
+  return simbolosComDica(frases.map(f => `<p>${destacarPalavrasChave(f, palavrasExtras).replace(/[\u0001\u0002]/g,'')}</p>`).join(''));
 }
 
 
