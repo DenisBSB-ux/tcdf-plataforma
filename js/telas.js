@@ -752,7 +752,7 @@ function botoesSimuladoMateriaHtml(){
 }
 function renderTabelaEstatisticas(linhas, estiloCelula){
   const cabecalhoTabela = `
-    <div style="display:flex;gap:10px;${estiloCelula}color:var(--ink-soft);padding:0 8px 6px;border-bottom:1px solid var(--line-soft, #e4dfd2);margin-bottom:2px;">
+    <div class="est-cab" style="display:flex;gap:10px;${estiloCelula}color:var(--ink-soft);padding:0 8px 6px;border-bottom:1px solid var(--line-soft, #e4dfd2);margin-bottom:2px;">
       <div style="width:18px;"></div>
       <div style="width:26px;">#</div>
       <div style="flex:1;text-align:left;">${thOrd('nome','Matéria')}</div>
@@ -761,7 +761,7 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
       <div style="width:60px;text-align:right;">${thOrd('acertos','Acerto')}</div>
       <div style="width:52px;text-align:right;">${thOrd('erros','Erro')}</div>
       <div style="width:56px;text-align:right;">${thOrd('pct','%')}</div>
-      <div style="width:90px;text-align:right;">${thOrd('ultima','Última resposta')}</div>
+      <div style="width:90px;text-align:right;">${thOrd('ultima','Atualização')}</div>
     </div>
     ${linhas.map((l,i)=>{
       // matéria concluída (100% respondida) = azul, independentemente do % de acerto
@@ -953,6 +953,20 @@ function renderContaBlock(){
   return `${syncUsuarioHtml()}
     <button class="side-action-btn compact" id="btn-sair-google">Encerrar sessão</button>`;
 }
+// data da prova e contagem regressiva (concurso TCDF 2026, Analista — Cebraspe)
+const PROVA_TCDF = { data:new Date(2026,10,22), rotulo:'22/11/2026 (manhã)', link:'https://www.cebraspe.org.br/concursos/TC_DF_26_ANALISTA' };
+function provaContagemHtml(){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const dias = Math.round((PROVA_TCDF.data - hoje)/86400000);
+  const txt = dias>1 ? `Faltam <b>${dias} dias</b>` : (dias===1 ? 'Falta <b>1 dia</b>' : (dias===0 ? '<b>A prova é hoje!</b>' : 'Prova realizada'));
+  return `<div class="prova-info">
+    <div class="prova-rot">Prova objetiva e discursiva</div>
+    <div class="prova-data">${PROVA_TCDF.rotulo}</div>
+    <div class="prova-conta">${txt}</div>
+    <a class="prova-link" href="${PROVA_TCDF.link}" target="_blank" rel="noopener noreferrer">Edital e avisos no site do Cebraspe ↗</a>
+    <div class="prova-aviso">O cronograma pode mudar: acompanhe as atualizações pelo link.</div>
+  </div>`;
+}
 function renderSyncSidebarBlock(){
   if(!FIREBASE_OK){
     return `<div class="sidebar-block"><div class="sb-pad">
@@ -978,6 +992,7 @@ function renderSyncSidebarBlock(){
       <button class="side-action-btn compact" id="btn-dispensar-alertas-sobrescrita" style="margin-top:4px;">Dispensar</button>
     </div>` : ''}
     <button class="side-action-btn compact" id="btn-sair-google">Encerrar sessão</button>
+    ${provaContagemHtml()}
   </div></div>`;
 }
 
