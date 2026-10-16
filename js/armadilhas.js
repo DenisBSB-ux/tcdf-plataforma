@@ -159,13 +159,13 @@ function armPainelHtml(q){
     const rTxt = armNorm(typeof limparResolucao==='function' ? limparResolucao(q.r||'') : (q.r||''));
     const exN = armNorm(a.expl||'');
     const explRepetida = exN && rTxt.includes(exN);
-    // a definição só aparece quando a explicação não a substitui
-    const defs = cods.map(c=>ARM_TIPOS[c]?`<div class="arm-expl arm-def"><b>${esc(ARM_TIPOS[c].nome)}</b> — ${esc(ARM_TIPOS[c].def)}</div>`:'').join('');
+    // nome (fundo claro) + definição + explicação, tudo na mesma linha
+    const nomes = cods.map(c=>ARM_TIPOS[c]?`<span class="arm-nome" style="background:${ARM_TIPOS[c].bg};">${esc(ARM_TIPOS[c].nome)}</span> <span class="arm-def-txt">— ${esc(ARM_TIPOS[c].def)}</span>`:'').filter(Boolean).join(' · ');
+    const corpo = [nomes, (a.expl && !explRepetida) ? esc(a.expl) : ''].filter(Boolean).join(' ');
     return `<div class="arm-box">
-      <div class="arm-linha"><span class="arm-rot">Armadilha da banca</span> ${cods.map(c=>armChip(c,true)).join('<span class="arm-mais">+</span>')} ${lapis}<span class="arm-origem">classificação: ${origemTxt}</span></div>
+      <div class="arm-linha"><span class="arm-rot">Armadilha da banca</span> ${lapis}<span class="arm-origem">classificação: ${origemTxt}</span></div>
       ${(a.trecho && !ARM_DESTACADOS.has(uid)) ? `<div class="arm-expl"><b>Trecho:</b> <mark class="arm-trecho">${esc(a.trecho.replace(/ \| /g,' … '))}</mark></div>` : ''}
-      ${defs}
-      ${(a.expl && !explRepetida) ? `<div class="arm-expl">${esc(a.expl)}</div>` : ''}
+      ${corpo ? `<div class="arm-expl arm-corpo">${corpo}</div>` : ''}
     </div>`;
   }
   const s = ARM_SINAIS[a.sinal];
