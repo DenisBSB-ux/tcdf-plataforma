@@ -2216,3 +2216,11 @@ body:not(.theme-light) .prova-motiva{ background:rgba(255,255,255,.06); }
   .resumo-motiva{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); margin:0; flex-basis:auto; font-size:16px; padding:6px 16px; width:max-content; max-width:min(520px, 42%); }
 }
 @media (max-width:1299px){ .resumo-motiva{ flex-basis:100%; margin:6px 0 2px; max-width:none; } }
+
+/* v243: mensagem do dia sempre numa linha só (a fonte diminui conforme o espaço) */
+.resumo-motiva{ white-space:nowrap !important; width:max-content; }
+@media (min-width:1300px){ .resumo-motiva{ max-width:none !important; } }
+@media (max-width:1299px){ .resumo-motiva{ width:auto; flex-basis:100%; } }
+
+.resumo-dia.msg-linha .resumo-esq{ flex-direction:row; }
+.resumo-dia.msg-linha .resumo-motiva{ position:static !important; transform:none !important; flex-basis:100%; margin:6px 0 2px; text-align:center; }
