@@ -3,10 +3,31 @@
 // lado do horário de salvamento: Total / Certas / Erradas / %
 // botão "Chute!": só aparece depois de responder, marca/desmarca a questão
 // atual no histórico independente de chutes (não mexe em tentativas/acertos)
+// ícones da barra de estudo: SVG de traço (herdam a cor do botão), 18px, decorativos (o rótulo fica no aria-label)
+const ICO_TRACOS = {
+  esq:'<path d="M15 18l-6-6 6-6"/>', dir:'<path d="M9 18l6-6-6-6"/>',
+  dupla:'<path d="M6 17l5-5-5-5"/><path d="M13 17l5-5-5-5"/>',
+  assunto:'<path d="M5 5l9 7-9 7V5z"/><path d="M19 5v14"/>',
+  desfazer:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/>',
+  dado:'<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1" fill="currentColor"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
+  foco:'<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/>',
+  sairFoco:'<path d="M18 6L6 18"/><path d="M6 6l12 12"/>',
+  maximizar:'<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>',
+  minimizar:'<path d="M8 3v3a2 2 0 0 1-2 2H3"/><path d="M21 8h-3a2 2 0 0 1-2-2V3"/><path d="M3 16h3a2 2 0 0 1 2 2v3"/><path d="M16 21v-3a2 2 0 0 1 2-2h3"/>',
+  sol:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  lua:'<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  voltar:'<path d="M9 14L4 9l5-5"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/>'
+};
+function icoSvg(nome){ return `<svg class="ico" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${ICO_TRACOS[nome]||''}</svg>`; }
+// botão da barra de estudo: rótulo acessível + dica com atalho; toggles usam aria-pressed
+function btnBarra(id, ico, rotulo, o={}){
+  const dica = o.atalho ? `${rotulo} (${o.atalho})` : rotulo;
+  return `<button type="button" class="icon-btn${o.ligado?' btn-em-uso':''}" id="${id}" aria-label="${esc(rotulo)}" title="${esc(dica)}"${o.ligado!==undefined?` aria-pressed="${o.ligado?'true':'false'}"`:''}${o.off?' disabled':''}>${icoSvg(ico)}</button>`;
+}
 function btnChuteHtml(materiaKey, uid, revelado){
   if(!revelado) return '';
   const marcado = chuteMarcado(materiaKey, uid);
-  return `<button class="icon-btn ${marcado?'btn-chute-ativo btn-em-uso':''}" id="btn-chute" data-uid="${esc(uid)}" title="${marcado?'Desmarcar &quot;chutei essa&quot;':'Marcar que você chutou esta resposta (não afeta estatísticas de acerto)'}">🎲${marcado?' ✓':''}</button>`;
+  return `<button type="button" class="icon-btn ${marcado?'btn-chute-ativo btn-em-uso':''}" id="btn-chute" data-uid="${esc(uid)}" aria-pressed="${marcado?'true':'false'}" aria-label="${marcado?'Desmarcar chute':'Marcar como chute'}" title="${marcado?'Desmarcar &quot;chutei essa&quot;':'Marcar que você chutou esta resposta (não afeta estatísticas de acerto)'}">${icoSvg('dado')}<span class="btn-txt">Chute${marcado?' ✓':''}</span></button>`;
 }
 function renderProgressoMateriaToolbar(materiaKey){
   if(!materiaKey) return '';
@@ -201,20 +222,24 @@ function renderQuiz(){
     </div>
 
     <div class="quiz-toolbar">
-      <div class="toolbar-btn-row">
-        <button class="icon-btn" id="btn-prev" title="Questão anterior (seta ← ou Shift)" ${quiz.idx===0?'disabled':''}>←</button>
-        <span class="q-jump-label">${quiz.idx+1} / ${quiz.queue.length}</span>
-        <button class="icon-btn" id="btn-next-arrow" title="Próxima questão (seta →)" ${quiz.idx===quiz.queue.length-1?'disabled':''}>→</button>
-        <button class="icon-btn" id="btn-jump-ultima-respondida" title="Próxima questão não respondida" ${quiz.queue.some((u,i)=>i!==quiz.idx && !quiz.respostas[u])?'':'disabled'}>⏩</button>
-        <button class="icon-btn" id="btn-jump-proximo-assunto" title="Ir para o próximo assunto" ${idxProximoAssunto<0?'disabled':''}>⏭</button>
-        <span class="toolbar-divider"></span>
-        <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
-        ${btnChuteHtml(quiz.materia, uidAtual, revelado)}
-        <button class="icon-btn ${STATE.focusMode?'btn-em-uso':''}" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
-        <button class="icon-btn ${document.fullscreenElement?'btn-em-uso':''}" id="btn-fullscreen" title="${document.fullscreenElement?'Sair da tela cheia':'Tela cheia'}">${document.fullscreenElement?'🗗':'⛶'}</button>
-        ${STATE.focusMode ? `<button class="icon-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro">${STATE.theme==='light'?'🌙':'☀️'}</button>` : ''}
-        <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
-        <span class="toolbar-divider"></span>
+      <div class="toolbar-btn-row" role="toolbar" aria-label="Navegação e ferramentas da questão">
+        <div class="toolbar-grupo" role="group" aria-label="Navegar entre questões">
+          ${btnBarra('btn-prev','esq','Questão anterior',{atalho:'←',off:quiz.idx===0})}
+          <span class="q-jump-label" aria-live="polite">${quiz.idx+1} / ${quiz.queue.length}</span>
+          ${btnBarra('btn-next-arrow','dir','Próxima questão',{atalho:'→',off:quiz.idx===quiz.queue.length-1})}
+          ${btnBarra('btn-jump-ultima-respondida','dupla','Próxima não respondida',{off:!quiz.queue.some((u,i)=>i!==quiz.idx && !quiz.respostas[u])})}
+          ${btnBarra('btn-jump-proximo-assunto','assunto','Próximo assunto',{off:idxProximoAssunto<0})}
+        </div>
+        <span class="toolbar-divider" role="separator"></span>
+        <div class="toolbar-grupo" role="group" aria-label="Ferramentas">
+          ${btnBarra('btn-reset-questao','desfazer','Limpar a resposta desta questão',{off:!revelado})}
+          ${btnChuteHtml(quiz.materia, uidAtual, revelado)}
+          ${btnBarra('btn-focus-toggle', STATE.focusMode?'sairFoco':'foco', STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)',{ligado:!!STATE.focusMode})}
+          ${btnBarra('btn-fullscreen', document.fullscreenElement?'minimizar':'maximizar', document.fullscreenElement?'Sair da tela cheia':'Tela cheia',{ligado:!!document.fullscreenElement})}
+          ${STATE.focusMode ? btnBarra('btn-theme-toggle', STATE.theme==='light'?'lua':'sol','Alternar modo claro/escuro') : ''}
+          ${btnBarra('btn-abandonar','voltar','Voltar ao painel (o progresso já foi salvo automaticamente)')}
+        </div>
+        <span class="toolbar-divider" role="separator"></span>
         ${renderZoomControl()}
       </div>
       <div class="toolbar-meta-row">
