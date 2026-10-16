@@ -1485,15 +1485,10 @@ async function removerMateria(materiaNome){
 // marcarDuplicatas) cuida de esconder qualquer questão idêntica que já exista,
 // sem duplicar visualmente o conteúdo pro usuário nem contar duas vezes.
 async function substituirMateria(materiaNome, file){
-  if(!window.confirm(`Substituir TODAS as questões de "${materiaNome}" pelas do arquivo "${file.name}"?\n\nO progresso, as edições e os gabaritos corrigidos acompanham as questões que continuam no arquivo (reconhecidas pelo enunciado). O que não estiver no arquivo novo é descartado.`)) return;
-  // edições feitas à mão acompanham a questão e prevalecem sobre o arquivo: pergunta o que fazer com elas
-  const doMat = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido');
-  const nRes = doMat.filter(q => EDICOES_USUARIO[q.uid] && (EDICOES_USUARIO[q.uid].r || EDICOES_USUARIO[q.uid].rf)).length;
-  const nGab = doMat.filter(q => GABARITOS_ALTERADOS[q.uid]).length;
-  const op = { descartarRes:false, descartarGab:false };
-  if(nRes) op.descartarRes = window.confirm(`${nRes} questão(ões) de "${materiaNome}" têm a resolução (ou o resumo flash) editada por você.\n\nOK = usar as resoluções do ARQUIVO no lugar (as suas edições de resolução são descartadas)\nCancelar = manter as suas edições`);
-  if(nGab) op.descartarGab = window.confirm(`${nGab} questão(ões) de "${materiaNome}" têm o gabarito alterado por você.\n\nOK = usar os gabaritos do ARQUIVO no lugar (as suas alterações de gabarito são descartadas)\nCancelar = manter as suas alterações`);
-  STATE.substituirOpcoes = op;
+  if(!window.confirm(`Substituir TODAS as questões de "${materiaNome}" pelas do arquivo "${file.name}"?\n\nO progresso e as edições de enunciado e alternativas acompanham as questões que continuam no arquivo (reconhecidas pelo enunciado). A resolução, o resumo flash e o gabarito passam a ser os do arquivo. O que não estiver no arquivo novo é descartado.`)) return;
+  // resolução, resumo flash e gabarito vêm sempre do arquivo novo (edições antigas desses campos são descartadas);
+  // o progresso e as demais edições (enunciado, alternativas) acompanham a questão
+  STATE.substituirOpcoes = { descartarRes:true, descartarGab:true };
   STATE.importDeckName = materiaNome;
   handleImportFile(file, 'substituir');
 }
