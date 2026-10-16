@@ -2126,3 +2126,18 @@ body:not(.theme-light) mark.res-marca *, body:not(.theme-light) mark.arm-trecho 
 body:not(.theme-light) .page-num.page-correct{ background:var(--stamp-green); border-color:var(--stamp-green); color:#fff; }
 body:not(.theme-light) .page-num.page-incorrect{ background:var(--stamp-red); border-color:var(--stamp-red); color:#fff; }
 body:not(.theme-light) .page-num.page-current{ outline:2px solid var(--gold); outline-offset:1px; }
+
+/* v227: modo escuro — textos que usavam --ink/--ink-soft (escuros) e caixas de fundo claro sem cor própria */
+body:not(.theme-light){ --ink:#e8ecf5; --ink-soft:#a3adc2; --stamp-red:#ef6b60; }
+body:not(.theme-light) .tab-btn.active .n{ color:#1a1200; }
+body:not(.theme-light) .guia-sinal, body:not(.theme-light) .guia-sinal *{ color:#0c2a43; }
+body:not(.theme-light) .arm-nome{ color:#0c2a43; }
+body:not(.theme-light) .tag-cobranca-corner .tag-cobranca-H, body:not(.theme-light) .tag-cobranca-corner .tag-cobranca-I{ color:#fff; }
+body:not(.theme-light) .arm-vazio{ color:#a3adc2; }
+body:not(.theme-light) .guia-passos, body:not(.theme-light) .guia-passos *{ color:#3f3000; }
+body:not(.theme-light) .btn-outline{ background:rgba(255,255,255,.07); border-color:rgba(255,255,255,.22); color:#dfe5f2; }
+body:not(.theme-light) .btn-outline:hover{ background:rgba(255,255,255,.12); color:#fff; }
+body:not(.theme-light) .version-tag{ background:rgba(255,255,255,.08); border-color:rgba(255,255,255,.18); color:#a3adc2; }
+body:not(.theme-light) .flip-badge{ color:#585c63; }
+body:not(.theme-light) .arm-box, body:not(.theme-light) .arm-box *, body:not(.theme-light) .arm-flash, body:not(.theme-light) .arm-flash *{ color:#3a1212; }
+body:not(.theme-light) .btn-outline.perigo{ color:#ef6b60; }
