@@ -3,7 +3,7 @@
 
 Uso:
   python3 montar_resolucoes.py dump  <arquivo.md> <ini> <fim>          # lê as questões ini..fim (índices) para você escrever
-  python3 montar_resolucoes.py build <arquivo.md> <pasta_lotes> <saida.md> [--sem-resumo-flash]
+  python3 montar_resolucoes.py build <arquivo.md> <pasta_lotes> <saida.md> [--manter-resumo-flash]
 
 Cada lote em <pasta_lotes>/bNN.py define  R = { indice: (ess, [palavras-chave], base, atencao, armadilha, macete) }
   ess        📌 essência em uma linha (palavras-chave em **negrito**)
@@ -12,7 +12,7 @@ Cada lote em <pasta_lotes>/bNN.py define  R = { indice: (ess, [palavras-chave], 
   armadilha  🪤 como a banca poderia alterar o item ('' omite; use só em item certo e múltipla escolha)
   macete     💡 frase curta em itálico
 O perfil (sinal/armadilha) NÃO entra na resolução: a plataforma já o mostra no painel "Armadilha da banca".
-Só a seção ### Resolução é trocada; o resto do arquivo é preservado byte a byte.
+Só a seção ### Resolução é trocada e o ### Resumo Flash é removido (padrão da Lei 14.133; use --manter-resumo-flash para preservá-lo); o resto do arquivo é preservado byte a byte.
 """
 import re, sys, glob
 
@@ -73,6 +73,6 @@ if __name__ == '__main__':
                 b, c = re.subn(r'(### Resolução\n).*?(?=\n\n### Resumo Flash|\n\n---|\Z)', lambda m: m.group(1) + novo, b, count=1, flags=re.S); assert c == 1; n += 1
             out += [cab, b]
         res = ''.join(out)
-        if '--sem-resumo-flash' in sys.argv:
+        if '--manter-resumo-flash' not in sys.argv:  # padrão: sem Resumo Flash (como na Lei 14.133)
             res, c = re.subn(r'\n\n### Resumo Flash\n.*?(?=\n---\n|\Z)', '\n', res, flags=re.S); print('Resumo Flash removidos:', c)
         open(sys.argv[4], 'w', encoding='utf-8').write(res); print('reescritas:', n, 'de', len(Q))
