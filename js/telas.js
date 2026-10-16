@@ -674,8 +674,8 @@ function renderEstatisticasPorMateria(){
   const linhas = materias.map(m=>{
     const s = computeSnapshotMateria(m);
     const respondidas = s.ac + s.erradas;
-    const q = STATE.quizzesEmAndamento[m];
-    const temSimuladoEmAndamento = q && !q.finished;
+    const q = quizGeralDe(m);
+    const temSimuladoEmAndamento = !!q;
     return { nome: m, acertos: s.ac, erros: s.erradas, pct: s.taxa, respondidas, total: s.totalPontuavel, ativa: m===STATE.materia, temSimuladoEmAndamento, ultimaRespostaTs: s.ultimaRespostaTs };
   }).sort((a,b)=>{
     // matéria 100% respondida (Respondidas === Total) fica sempre no topo,
@@ -1049,8 +1049,12 @@ function renderMainPanel(tabAtual){
 // As já respondidas ficam (na mesma posição); o resto é cortado ou completado
 // com questões novas do filtro atual, na ordem do simulado.
 function quizAndamentoAtual(){
-  const q = STATE.materia ? STATE.quizzesEmAndamento[STATE.materia] : null;
-  return (q && !q.finished) ? q : null;
+  return STATE.materia ? quizGeralDe(STATE.materia) : null;
+}
+// simulado geral em andamento da matéria (treinos e revisões, com origemErros, não contam)
+function quizGeralDe(materia){
+  const q = STATE.quizzesEmAndamento[materia];
+  return (q && !q.finished && !q.origemErros) ? q : null;
 }
 function ajustarQuantidadeSimulado(n){
   const quiz = quizAndamentoAtual();
@@ -1138,8 +1142,7 @@ function renderLanding(){
     STATE.quizzesVerificados.add(STATE.materia);
     verificarQuizSalvo(STATE.materia);
   }
-  const quizSalvo = STATE.quizzesEmAndamento[STATE.materia] && !STATE.quizzesEmAndamento[STATE.materia].finished
-    ? STATE.quizzesEmAndamento[STATE.materia] : null;
+  const quizSalvo = quizGeralDe(STATE.materia);
   // Progresso do simulado salvo = questões da fila que JÁ têm tentativa no
   // histórico da matéria (bucket), não só as respondidas nesta sessão — assim
   // bate com o total histórico da matéria.
@@ -1785,8 +1788,8 @@ function startQuiz(nums, opcoes){
   }
   // Iniciar um simulado novo por qualquer caminho pede confirmação se já há um
   // em andamento nesta matéria (senão a fila dele seria descartada sem aviso).
-  const emAndamento = STATE.quizzesEmAndamento[STATE.materia];
-  if(emAndamento && !emAndamento.finished && !nums){
+  const emAndamento = quizGeralDe(STATE.materia);
+  if(emAndamento && !nums){
     const ok = window.confirm('Você tem um simulado em andamento nesta matéria. Iniciar um novo vai descartar a fila dele (as respostas já dadas continuam valendo pro seu progresso geral). Deseja continuar?');
     if(!ok) return;
   }
@@ -1801,7 +1804,9 @@ function startQuiz(nums, opcoes){
   STATE.setupDrawerOpen = false;
   STATE.mostrarConfigSimulado = false;
   STATE.simuladoSalvoMsg = false;
-  STATE.quizzesEmAndamento[STATE.materia] = STATE.quiz;
+  // treino/revisão (subconjunto) não pode tomar o lugar do simulado geral da matéria:
+  // ele é gravado à parte (chave '::erros') por salvarQuizEmAndamento
+  if(!(opcoes && opcoes.subconjunto)) STATE.quizzesEmAndamento[STATE.materia] = STATE.quiz;
   salvarQuizEmAndamento();
   render();
 }
