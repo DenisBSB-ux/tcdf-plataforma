@@ -100,10 +100,30 @@ function armChipSinal(cod){
 
 /* ---------- destaque do trecho-chave dentro do HTML do enunciado ---------- */
 const ARM_DESTACADOS = new Set(); // uids cujo trecho foi marcado direto no texto da questão
-function armDestacarTrecho(html, trecho, uid){
+// Só o essencial do trecho: as palavras-chave da resolução (linha 🔑) que aparecem nele; sem elas, as últimas palavras
+// do trecho sem artigos/preposições nas pontas.
+const ARM_STOP = new Set('o a os as um uma de do da dos das em no na nos nas ao aos à às por para com que e ou se não sua seu suas seus como mais pelo pela pelos pelas sobre entre ser são é foi'.split(' '));
+function armNucleoDoTrecho(parte, kws){
+  const orig = String(parte), mapa = []; let norm = '';
+  for(let i=0;i<orig.length;i++){ const c = orig[i].normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); for(const ch of c){ norm += ch; mapa.push(i); } }
+  const achados = [];
+  (kws||[]).forEach(k=>{
+    const kn = String(k).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    if(kn.length < 4) return;
+    const j = norm.indexOf(kn);
+    if(j >= 0) achados.push(orig.slice(mapa[j], mapa[j+kn.length-1]+1));
+  });
+  if(achados.length) return [...new Set(achados)].slice(0,2);
+  let w = orig.split(/\s+/);
+  if(w.length > 5) w = w.slice(-4);
+  while(w.length > 1 && ARM_STOP.has(w[0].toLowerCase())) w.shift();
+  while(w.length > 1 && ARM_STOP.has(w[w.length-1].toLowerCase().replace(/[.,;:]$/,''))) w.pop();
+  return [w.join(' ')];
+}
+function armDestacarTrecho(html, trecho, uid, kws){
   if(uid) ARM_DESTACADOS.delete(uid);
   if(!html || !trecho) return html;
-  const partes = String(trecho).split(' | ').map(s=>s.trim()).filter(Boolean);
+  const partes = String(trecho).split(' | ').map(s=>s.trim()).filter(Boolean).flatMap(p=>armNucleoDoTrecho(p, kws));
   if(!partes.length) return html;
   const box = document.createElement('div');
   box.innerHTML = html;
