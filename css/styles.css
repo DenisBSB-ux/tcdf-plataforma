@@ -2146,3 +2146,8 @@ body:not(.theme-light) .btn-outline.perigo{ color:#ef6b60; }
 body:not(.theme-light) .resolucao-unica .arm-box:not(.arm-box-edit), body:not(.theme-light) .resolucao-unica .arm-box:not(.arm-box-edit) *:not(.arm-nome):not(.arm-trecho){ color:inherit; }
 body:not(.theme-light) .resolucao-unica .arm-box .arm-rot, body:not(.theme-light) .resolucao-unica .arm-box .arm-origem, body:not(.theme-light) .resolucao-unica .arm-box .arm-nc{ color:#a3adc2; }
 body:not(.theme-light) .resolucao-unica .arm-box .arm-trecho{ color:#7f1d1d !important; }
+
+/* v230: editor da armadilha com a mesma fonte do resto da página (sem monoespaçada) */
+.arm-edit-txt textarea, .arm-edit-grid select, .arm-edit-grid label, .arm-box-edit select, .arm-box-edit textarea{ font-family:var(--font-body); }
+.arm-edit-txt textarea{ font-size:1.05rem; color:var(--ink); }
+body:not(.theme-light) .arm-edit-txt textarea{ color:#1d1f22; }
