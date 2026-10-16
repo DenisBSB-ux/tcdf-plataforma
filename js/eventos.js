@@ -424,15 +424,16 @@ function attachHandlers(){
   const btnFocusToggle = document.getElementById('btn-focus-toggle');
   if(btnFocusToggle) btnFocusToggle.addEventListener('click', ()=>{ STATE.focusMode = !STATE.focusMode; render(); });
 
-  root.querySelectorAll('[data-ordem-materias]').forEach(el=>{
+  root.querySelectorAll('[data-ordem-col]').forEach(el=>{
     el.addEventListener('click', ()=>{
-      STATE.ordemMaterias = el.dataset.ordemMaterias;
-      try{ window.localStorage.setItem(ORDEM_MATERIAS_KEY, STATE.ordemMaterias); }catch(e){ /* só preferência */ }
+      const col = el.dataset.ordemCol, o = STATE.ordemMaterias;
+      const padraoDesc = col!=='nome';   // números e datas: maior primeiro; nome: A–Z
+      STATE.ordemMaterias = o.col===col ? { col, dir:o.dir==='asc'?'desc':'asc' } : { col, dir: padraoDesc?'desc':'asc' };
+      try{ window.localStorage.setItem(ORDEM_MATERIAS_KEY, JSON.stringify(STATE.ordemMaterias)); }catch(e){ /* só preferência */ }
       render();
     });
   });
-  const btnContinuarSimulado = document.getElementById('btn-continuar-simulado');
-  if(btnContinuarSimulado) btnContinuarSimulado.addEventListener('click', ()=> continuarSimuladoDaMateria(STATE.materia));
+  root.querySelectorAll('.js-continuar').forEach(el=> el.addEventListener('click', ()=> continuarSimuladoDaMateria(STATE.materia)));
   const btnReiniciarSimulado = document.getElementById('btn-reiniciar-simulado');
   if(btnReiniciarSimulado) btnReiniciarSimulado.addEventListener('click', ()=> reiniciarSimuladoDaMateria(STATE.materia));
   root.querySelectorAll('[data-continuar-materia]').forEach(el=>{
@@ -494,8 +495,8 @@ function attachHandlers(){
 
   const btnNovaMateria = document.getElementById('btn-nova-materia');
   if(btnNovaMateria) btnNovaMateria.addEventListener('click', ()=>{ STATE.importFormAberto = true; render(); });
-  const btnAbrirConfig = document.getElementById('btn-abrir-config');
-  if(btnAbrirConfig) btnAbrirConfig.addEventListener('click', ()=>{ STATE.viewImportar = false; if(STATE.materia) setLocalTab(STATE.materia,'simulado'); STATE.mostrarConfigSimulado = true; render(); });
+  const btnAbrirConfig = { addEventListener:(ev,fn)=> root.querySelectorAll('#btn-abrir-config, .js-config').forEach(el=>el.addEventListener(ev,fn)) };
+  if(true) btnAbrirConfig.addEventListener('click', ()=>{ STATE.viewImportar = false; if(STATE.materia) setLocalTab(STATE.materia,'simulado'); STATE.mostrarConfigSimulado = true; render(); });
   const btnAbrirConfig2 = document.getElementById('btn-abrir-config-2');
   if(btnAbrirConfig2) btnAbrirConfig2.addEventListener('click', ()=>{ STATE.mostrarConfigSimulado = true; render(); });
   // quantidade de questões do simulado: atalhos, campo livre e botão Aplicar

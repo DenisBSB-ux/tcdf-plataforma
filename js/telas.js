@@ -1,8 +1,15 @@
 /* ---------------- app state ---------------- */
 // ordem da tabela de matérias ('nome' | 'ultima'), lembrada neste aparelho
 const ORDEM_MATERIAS_KEY = 'tcdf-ordem-materias';
+// ordem = { col: nome|total|respondidas|acertos|erros|pct|ultima, dir: asc|desc }
 function ordemMateriasSalva(){
-  try{ return window.localStorage.getItem(ORDEM_MATERIAS_KEY)==='ultima' ? 'ultima' : 'nome'; }catch(e){ return 'nome'; }
+  try{
+    const v = window.localStorage.getItem(ORDEM_MATERIAS_KEY);
+    if(v==='ultima') return { col:'ultima', dir:'desc' };
+    const o = v && v[0]==='{' ? JSON.parse(v) : null;
+    if(o && ['nome','total','respondidas','acertos','erros','pct','ultima'].includes(o.col)) return { col:o.col, dir:o.dir==='desc'?'desc':'asc' };
+  }catch(e){ /* usa o padrão */ }
+  return { col:'nome', dir:'asc' };
 }
 // ordem das questões no simulado novo, lembrada neste aparelho
 const ORDEM_SIMULADO_KEY = 'tcdf-ordem-simulado';
@@ -683,9 +690,11 @@ function renderEstatisticasPorMateria(){
     const aCompleta = a.total>0 && a.respondidas>=a.total;
     const bCompleta = b.total>0 && b.respondidas>=b.total;
     if(aCompleta !== bCompleta) return aCompleta ? -1 : 1;
-    // "ultima": última resposta mais recente primeiro; nunca respondidas no fim
-    if(STATE.ordemMaterias==='ultima' && (a.ultimaRespostaTs||0)!==(b.ultimaRespostaTs||0)) return (b.ultimaRespostaTs||0) - (a.ultimaRespostaTs||0);
-    return a.nome.localeCompare(b.nome,'pt-BR') || b.respondidas - a.respondidas || b.pct - a.pct;
+    const o = STATE.ordemMaterias, f = o.dir==='desc' ? -1 : 1;
+    const campo = { total:'total', respondidas:'respondidas', acertos:'acertos', erros:'erros', pct:'pct', ultima:'ultimaRespostaTs' }[o.col];
+    if(campo){ const d = ((a[campo]||0) - (b[campo]||0)) * f; if(d) return d; }
+    else { const d = a.nome.localeCompare(b.nome,'pt-BR') * f; if(d) return d; }
+    return a.nome.localeCompare(b.nome,'pt-BR');
   });
   const estiloCelula = 'font-size:13px;font-weight:400;font-family:inherit;line-height:1.4;';
   const atividade = computeAtividadeDiariaGeral();
@@ -693,11 +702,7 @@ function renderEstatisticasPorMateria(){
   <div class="card-block" style="margin-top:22px;">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <h3 style="margin:0;color:inherit;">📈 Estatísticas por matéria</h3>
-      <div class="tabs" style="margin:0;align-items:center;gap:6px;">
-        <span style="font-size:12px;opacity:.75;">Ordenar:</span>
-        <button class="tab-btn ${STATE.ordemMaterias!=='ultima'?'active':''}" data-ordem-materias="nome" style="padding:4px 10px;font-size:12px;">A–Z</button>
-        <button class="tab-btn ${STATE.ordemMaterias==='ultima'?'active':''}" data-ordem-materias="ultima" style="padding:4px 10px;font-size:12px;">🕒 Última resposta</button>
-      </div>
+      ${botoesSimuladoMateriaHtml()}
     </div>
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
       <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);color:var(--ink);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
@@ -741,18 +746,28 @@ function computeAtividadeDiariaGeral(){
   };
 }
 
+// cabeçalho de coluna clicável: seta ▲/▼ na coluna ativa
+function thOrd(col, rotulo){
+  const o = STATE.ordemMaterias, ativa = o.col===col;
+  return `<button type="button" class="th-ord${ativa?' ativa':''}" data-ordem-col="${col}" title="Ordenar por ${esc(rotulo)}">${esc(rotulo)}<span class="th-seta">${ativa ? (o.dir==='asc'?'▲':'▼') : ''}</span></button>`;
+}
+// Continuar + engrenagem da matéria selecionada (só aparecem com matéria selecionada)
+function botoesSimuladoMateriaHtml(){
+  if(!STATE.materia) return '';
+  return `<div class="botoes-sim"><button class="btn btn-gold btn-sm js-continuar" title="Continuar o simulado salvo ou começar pelas questões ainda não respondidas">▶ Continuar</button><button class="btn btn-primary btn-sm btn-engrenagem js-config" title="Configurar simulado: quantidade, ordem e filtros" aria-label="Configurar simulado">⚙</button></div>`;
+}
 function renderTabelaEstatisticas(linhas, estiloCelula){
   const cabecalhoTabela = `
     <div style="display:flex;gap:10px;${estiloCelula}color:var(--ink-soft);padding:0 8px 6px;border-bottom:1px solid var(--line-soft, #e4dfd2);margin-bottom:2px;">
       <div style="width:18px;"></div>
       <div style="width:26px;">#</div>
-      <div style="flex:1;">Matéria</div>
-      <div style="width:56px;text-align:right;">Total</div>
-      <div style="width:76px;text-align:right;">Respondidas</div>
-      <div style="width:60px;text-align:right;">Acerto</div>
-      <div style="width:52px;text-align:right;">Erro</div>
-      <div style="width:56px;text-align:right;">%</div>
-      <div style="width:90px;text-align:right;">Última resposta</div>
+      <div style="flex:1;text-align:left;">${thOrd('nome','Matéria')}</div>
+      <div style="width:56px;text-align:right;">${thOrd('total','Total')}</div>
+      <div style="width:76px;text-align:right;">${thOrd('respondidas','Respondidas')}</div>
+      <div style="width:60px;text-align:right;">${thOrd('acertos','Acerto')}</div>
+      <div style="width:52px;text-align:right;">${thOrd('erros','Erro')}</div>
+      <div style="width:56px;text-align:right;">${thOrd('pct','%')}</div>
+      <div style="width:90px;text-align:right;">${thOrd('ultima','Última resposta')}</div>
     </div>
     ${linhas.map((l,i)=>{
       // matéria concluída (100% respondida) = azul, independentemente do % de acerto
