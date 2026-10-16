@@ -204,8 +204,8 @@ function renderQuiz(){
       <div class="toolbar-btn-row">
         <button class="icon-btn" id="btn-prev" title="Questão anterior (seta ← ou Shift)" ${quiz.idx===0?'disabled':''}>←</button>
         <span class="q-jump-label">${quiz.idx+1} / ${quiz.queue.length}</span>
-        <button class="icon-btn" id="btn-next-arrow" title="Próxima questão não respondida (seta →)" ${(quiz.idx===quiz.queue.length-1 && !quiz.queue.some((u,i)=>i!==quiz.idx && !quiz.respostas[u]))?'disabled':''}>→</button>
-        <button class="icon-btn" id="btn-jump-ultima-respondida" title="Avançar para a última questão respondida" ${idxUltimaRespondida<0 || idxUltimaRespondida===quiz.idx?'disabled':''}>⏩</button>
+        <button class="icon-btn" id="btn-next-arrow" title="Próxima questão (seta →)" ${quiz.idx===quiz.queue.length-1?'disabled':''}>→</button>
+        <button class="icon-btn" id="btn-jump-ultima-respondida" title="Próxima questão não respondida" ${quiz.queue.some((u,i)=>i!==quiz.idx && !quiz.respostas[u])?'':'disabled'}>⏩</button>
         <button class="icon-btn" id="btn-jump-proximo-assunto" title="Ir para o próximo assunto" ${idxProximoAssunto<0?'disabled':''}>⏭</button>
         <span class="toolbar-divider"></span>
         <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
@@ -426,9 +426,14 @@ function goPrev(){
   const quiz = STATE.quiz;
   if(quiz.idx>0){ chuteArmado=null; dicaChuteAberta=null; quiz.idx -= 1; salvarQuizEmAndamento(); render(); }
 }
-// avança para a próxima questão NÃO respondida (depois da atual; se não houver, a primeira não respondida;
-// com tudo respondido, segue em ordem)
+// seta simples →: próxima questão da fila (respondida ou não)
 function goNext(){
+  const quiz = STATE.quiz;
+  if(quiz.idx < quiz.queue.length-1){ chuteArmado=null; dicaChuteAberta=null; quiz.idx += 1; salvarQuizEmAndamento(); render(); }
+}
+// seta dupla ⏩: próxima questão NÃO respondida (depois da atual; se não houver, a primeira não respondida;
+// com tudo respondido, segue em ordem)
+function goNextNaoRespondida(){
   const quiz = STATE.quiz;
   const livre = i => !quiz.respostas[quiz.queue[i]];
   let alvo = -1;

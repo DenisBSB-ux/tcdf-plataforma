@@ -225,7 +225,7 @@ function attachHandlers(){
   const btnNextArrow = document.getElementById('btn-next-arrow');
   if(btnNextArrow) btnNextArrow.addEventListener('click', goNext);
   const btnProximaRapida = document.getElementById('btn-proxima-rapida');
-  if(btnProximaRapida) btnProximaRapida.addEventListener('click', goNext);
+  if(btnProximaRapida) btnProximaRapida.addEventListener('click', goNextNaoRespondida);
   root.querySelectorAll('.btn-editar-campo').forEach(el=>{
     el.addEventListener('click', ()=>{
       edicaoAtual = el.dataset.uid;
@@ -331,7 +331,7 @@ function attachHandlers(){
     });
   });
   const btnJumpUltimaRespondida = document.getElementById('btn-jump-ultima-respondida');
-  if(btnJumpUltimaRespondida) btnJumpUltimaRespondida.addEventListener('click', irParaUltimaRespondida);
+  if(btnJumpUltimaRespondida) btnJumpUltimaRespondida.addEventListener('click', goNextNaoRespondida);
   const btnJumpProximoAssunto = document.getElementById('btn-jump-proximo-assunto');
   if(btnJumpProximoAssunto) btnJumpProximoAssunto.addEventListener('click', irParaProximoAssunto);
   root.querySelectorAll('[data-jump]').forEach(el=>{
