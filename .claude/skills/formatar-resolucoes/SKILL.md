@@ -1,9 +1,18 @@
 ---
 name: formatar-resolucoes
-description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF Plataforma no formato padrão com símbolos (⚖️ 📌 🔑 ⚠️ 🪤 💡), para reimportar com o botão "🔁 Substituir por matéria". Use quando o usuário pedir para atualizar/padronizar as resoluções de uma matéria (ex.: Lei 14.133, Contratos, IN 5, Decreto 44.330).
+description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF Plataforma no formato padrão com símbolos (⚖️ 📌 🔑 ⚠️ 🪤 💡), para reimportar com o botão "🔁 Substituir por matéria". Use quando o usuário pedir para atualizar/padronizar as resoluções de uma matéria (ex.: Lei 14.133, Contratos, IN 5, Decreto 44.330, Análise de Dados e IA). O modelo é o da Lei 14.133, já aplicado também em Análise de Dados e IA.
 ---
 
 # Formatar resoluções de uma matéria
+
+**Este é o modelo fechado** (Lei 14.133 e Análise de Dados e IA já seguem). Aplique-o igual a toda matéria nova, sem perguntar de novo o que já está decidido aqui. Exemplos reais aprovados: `exemplos.md` (nesta pasta).
+
+## Decisões já tomadas pelo usuário (não perguntar de novo)
+- Resolução **sem** linha de perfil (🏷️): a plataforma já mostra o sinal/a armadilha no painel "Armadilha da banca".
+- **Sem** `### Resumo Flash`: o script remove (padrão da Lei 14.133). Só mantenha com `--manter-resumo-flash` se o usuário pedir.
+- "🔁 Substituir por matéria" usa sempre resolução, resumo flash e gabarito do arquivo, sem perguntas extras.
+- **Gabarito: avisar ANTES de alterar, sempre.** Nunca mude um gabarito sem antes listar ao usuário cada questão (número, gabarito atual, gabarito proposto, motivo e dispositivo) e esperar a confirmação, mesmo que ele já tenha autorizado correções em outra matéria. Enquanto não houver confirmação, mantenha o gabarito do arquivo e **sinalize** na resolução com "Conferir o gabarito".
+- Matéria **sem base legal** (estatística, gráficos, Excel, IA etc.): **omita a linha ⚖️**; cite norma só onde ela existir (ex.: LGPD; projeto de lei, com aviso de tramitação).
 
 ## Entrada
 - O arquivo `.md` da matéria enviado pelo usuário (as questões não ficam no repositório).
@@ -16,7 +25,7 @@ description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF
 4. **Não invente** valores, números de artigo, decretos ou jurisprudência. Se não souber o valor atualizado (ex.: limites da Lei 14.133 atualizados por decreto), cite só o que a lei diz e avise que o valor vigente deve ser conferido no decreto do ano.
 5. **Não afirme** o que a banca "já considerou" em provas sem fonte confirmada.
 6. Entrega **completa**: devolva o arquivo inteiro da matéria, não só trechos.
-7. Aplicar a todas as matérias do mesmo jeito (a lógica é geral). Matéria específica: perguntar antes (ex.: o usuário já pediu para remover `### Resumo Flash` dos arquivos da Lei 14.133; para outras matérias, confirmar).
+7. Aplicar a todas as matérias do mesmo jeito (a lógica é geral); o `### Resumo Flash` é removido em todas (ver decisões acima).
 
 ## Formato da resolução
 O perfil (sinal do item certo ou armadilha do item errado) **não entra** na resolução: a plataforma já o exibe no painel "Armadilha da banca", e repeti-lo duplica a informação. Cada bloco é uma linha que **começa pelo símbolo**, sem escrever o nome do rótulo, com **palavras-chave em negrito**. Ordem fixa; omita o bloco que não se aplica.
@@ -42,7 +51,7 @@ O perfil (sinal do item certo ou armadilha do item errado) **não entra** na res
 A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`SIMBOLOS_RESOLUCAO` em `js/util.js`); ele só atua no símbolo que **abre o parágrafo**, então mantenha cada bloco em uma linha própria começando pelo símbolo.
 
 ## Gabarito do arquivo × texto da lei
-- **Nunca mude o gabarito.** Se a resolução que você escreveria contradiz o gabarito do arquivo, escreva a resolução **neutra** (a regra, sem afirmar o que contradiz a lei) e acrescente no ⚠️: "**Conferir o gabarito.** ..." com o motivo e o dispositivo. Foram marcadas assim, na Lei 14.133, as questões sobre **adesão à ata (carona)** (limite global: o arquivo marca o quíntuplo do Decreto 7.892/2013; a Lei 14.133 fixa o dobro) e **audiência pública** (a lei diz "poderá convocar"), entre outras.
+- **Nunca mude o gabarito sem avisar antes e receber confirmação.** Se a resolução que você escreveria contradiz o gabarito do arquivo, escreva a resolução **neutra** (a regra, sem afirmar o que contradiz a lei) e acrescente no ⚠️: "**Conferir o gabarito.** ..." com o motivo e o dispositivo. Foram marcadas assim, na Lei 14.133, as questões sobre **adesão à ata (carona)** (limite global: o arquivo marca o quíntuplo do Decreto 7.892/2013; a Lei 14.133 fixa o dobro) e **audiência pública** (a lei diz "poderá convocar"), entre outras.
 - **Dispositivo incerto:** se não tiver certeza do parágrafo ou inciso, cite só o artigo; se não tiver certeza nem do artigo, omita a linha ⚖️.
 - Critérios de armadilha criados pelo usuário (ex.: **PRAZ**) podem não constar do Guia: use o nome mais fiel ao uso e avise o usuário.
 - Se a resolução antiga já trouxer o aviso "gabarito resolvido por IA, sem gabarito oficial", mantenha-o no ⚠️ (o script faz isso sozinho).
@@ -52,12 +61,14 @@ A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`S
 
 ## Passo a passo
 1. Ler o arquivo e contar as questões (`## QUESTÃO n`).
-2. Para cada questão, reescrever só `### Resolução` no formato acima, a partir do enunciado, do gabarito e da resolução antiga (use `montar_resolucoes.py dump` e `build`).
+2. Para cada questão, reescrever só `### Resolução` no formato acima, a partir do enunciado, do gabarito e da resolução antiga (use `montar_resolucoes.py dump` e `build`; o `build` já remove o Resumo Flash).
 3. **Conferir** antes de entregar:
    - mesmo número de questões e mesmos IDs;
    - enunciados e gabaritos idênticos ao original (comparar texto);
    - nenhuma resolução repete o gabarito;
    - nenhum valor/artigo novo que não estava no material original ou na lei;
+   - nenhum `### Resumo Flash` no arquivo final;
+   - em itens numéricos, **refazer a conta** e confirmar que bate com o gabarito (se não bater, sinalizar);
    - o arquivo, sem a seção Resolução, é idêntico ao original (comparar com a seção mascarada);
    - o importador da plataforma (`parseMarkdownQuestoes`) lê todas as questões e mantém enunciados e gabaritos.
 4. Entregar o arquivo completo da matéria.
