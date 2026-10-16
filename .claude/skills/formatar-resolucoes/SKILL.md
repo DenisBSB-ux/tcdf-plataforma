@@ -57,23 +57,28 @@ A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`S
 - Se a resolução antiga já trouxer o aviso "gabarito resolvido por IA, sem gabarito oficial", mantenha-o no ⚠️ (o script faz isso sozinho).
 
 ## Script
-`montar_resolucoes.py` (nesta pasta) lê as questões em lotes (`dump`), recebe as resoluções que você escreve em `bNN.py` e monta o arquivo final (`build`), preservando tudo fora da seção Resolução. Trabalhe em lotes de ~18 questões.
+`montar_resolucoes.py` (nesta pasta) lê as questões em lotes (`dump`), recebe as resoluções que você escreve em `bNN.py` e monta o arquivo final (`build`), preservando tudo fora da seção Resolução. Trabalhe em lotes de ~18 questões. Comandos:
+- `build`: reescreve as resoluções, remove o Resumo Flash, **preenche `**Artigo:**`** a partir da linha ⚖️ (ex.: `Lei 14.133: 75`; `--sem-artigo` desliga) e gera `<saida>.relatorio.md` (gabaritos a conferir, gabaritos resolvidos por IA, valores atualizáveis pelo art. 182, questões sem ⚖️).
+- `faltantes`: itens certo/errado sem Sinal/Armadilha. **Proponha** a classificação ao usuário (tabela: número, enunciado, sinal/armadilha, trecho) e só aplique com `classificar <arquivo> <proposta.py> <saida>` **depois da aprovação**; o campo `Origem da classificação` fica `ia`.
+- `repetidas <arquivo> [limiar]`: pares de questões quase iguais (enunciado). Só relate; não apague nada.
+- `verificar_resolucoes.py <original> <final> [--gabaritos-alterados i,j]`: confere contagem, IDs, enunciados, gabaritos, máscara do arquivo, formato das linhas, negrito e ausência de Resumo Flash.
+- `verificar_importador.js <original> <final>`: confere no navegador que `parseMarkdownQuestoes` lê tudo, sem mudar enunciado/gabarito, e que cada linha vira um parágrafo com pop-up.
+- `valores-atualizaveis.md`: tabela dos valores do art. 182 (o usuário preenche o vigente).
+
+## Na plataforma (v204)
+- A resolução mostra uma **legenda recolhível** dos símbolos ("ⓘ Legenda dos símbolos") quando começa por símbolo.
+- Sem `### Resumo Flash`, o verso do flashcard é montado com as linhas 📌, 🔑 e 💡 da resolução.
 
 ## Passo a passo
 1. Ler o arquivo e contar as questões (`## QUESTÃO n`).
-2. Para cada questão, reescrever só `### Resolução` no formato acima, a partir do enunciado, do gabarito e da resolução antiga (use `montar_resolucoes.py dump` e `build`; o `build` já remove o Resumo Flash).
-3. **Conferir** antes de entregar:
-   - mesmo número de questões e mesmos IDs;
-   - enunciados e gabaritos idênticos ao original (comparar texto);
-   - nenhuma resolução repete o gabarito;
+2. Para cada questão, reescrever só `### Resolução` no formato acima, a partir do enunciado, do gabarito e da resolução antiga (`dump` + `build`).
+3. Rodar `faltantes` e `repetidas`; preparar a proposta de classificação.
+4. **Conferir** com `verificar_resolucoes.py` e `verificar_importador.js`; além disso:
    - nenhum valor/artigo novo que não estava no material original ou na lei;
-   - nenhum `### Resumo Flash` no arquivo final;
-   - em itens numéricos, **refazer a conta** e confirmar que bate com o gabarito (se não bater, sinalizar);
-   - o arquivo, sem a seção Resolução, é idêntico ao original (comparar com a seção mascarada);
-   - o importador da plataforma (`parseMarkdownQuestoes`) lê todas as questões e mantém enunciados e gabaritos.
-4. Entregar o arquivo completo da matéria.
-5. Orientar o usuário a reimportar com **🔁 Substituir por matéria** (progresso, edições e flashcards acompanham as questões que continuam).
-6. Se a mudança envolver código da plataforma: subir a versão (`vNNN`) em todas as ocorrências do `index.html`, commit com os trailers pedidos e merge do PR na `main`.
+   - em itens numéricos, **refazer a conta** e confirmar que bate com o gabarito (se não bater, sinalizar).
+5. Entregar o arquivo completo da matéria **junto com** o relatório (gabaritos a conferir primeiro), a proposta de classificação e as questões repetidas. Gabarito e classificação só mudam com a confirmação do usuário.
+6. Orientar o usuário a reimportar com **🔁 Substituir por matéria** (progresso, edições e flashcards acompanham as questões que continuam).
+7. Se a mudança envolver código da plataforma: subir a versão (`vNNN`) em todas as ocorrências do `index.html`, commit com os trailers pedidos e merge do PR na `main`.
 
 ## Histórico
 - Modelo definido em conversa de 16/10/2026, com a questão da dispensa para pesquisa e desenvolvimento (art. 75, IV, "c", Lei 14.133/2021) como exemplo.
