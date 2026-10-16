@@ -156,7 +156,7 @@ function blockFieldMd(name, text){
 //   "11, 12 e 15-17"                       -> artigos sem norma indicada
 //   "CF: 5, 37; Lei 8.112: 117, 121-125"   -> artigos por norma ("Norma: artigos")
 //   "CF 5, 37"                             -> também vale (sigla + artigos)
-// Retorna { art:[números, sem repetir], artn:[[norma, número], ...] | null }
+// Retorna { art:[números, sem repetir], artn:['norma|número', ...] | null }  (texto, pois o Firestore não aceita array dentro de array)
 function numerosDeArtigos(txt){
   const out = [];
   String(txt||'').replace(/(\d+)\s*[ºo°]?\s*(?:[-–a]|até)\s*(\d+)|(\d+)/gi, (m,a,b,c)=>{
@@ -174,7 +174,7 @@ function artigosDoCampo(txt){
     else if((m = seg.match(/^((?:Lei(?:\s+Complementar)?|LC|Decreto(?:-Lei)?|MP|EC)\s*(?:n[ºo°.]*\s*)?[\d.\/]+)\s+(.*)$/i))){ norma = m[1].trim(); resto = m[2]; }
     else if((m = seg.match(/^([A-Za-zÀ-ú][A-Za-zÀ-ú.\/\- ]*?)\s+(?:arts?\.?\s*)?(\d.*)$/)) && !/^arts?\.?$/i.test(m[1].trim())){ norma = m[1].trim(); resto = m[2]; }
     norma = norma.replace(/^arts?\.?\s*/i,'');
-    numerosDeArtigos(resto).forEach(n=>{ art.add(n); artn.push([norma, n]); });
+    numerosDeArtigos(resto).forEach(n=>{ art.add(n); artn.push(norma+'|'+n); });
     if(norma) nomeada = true;
   });
   return { art: [...art].sort((a,b)=>a-b), artn: nomeada ? artn : null };
