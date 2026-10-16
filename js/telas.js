@@ -710,6 +710,10 @@ function renderEstatisticasPorMateria(){
     </div>
     <div style="height:10px;"></div>
     <div class="tabela-scroll">${renderTabelaEstatisticas(linhas, estiloCelula)}</div>
+    <div class="stats-artigos">
+      <div class="composicao-titulo" style="margin-top:16px;">Artigos por matéria</div>
+      ${materias.map(m=>`<details class="composicao-det" data-comp-tema="stat:${esc(m)}" ${COMPOSICAO_ABERTOS.has('stat:'+m)?'open':''}><summary class="bar-row composicao-linha"><div class="name">${esc(m)}</div></summary><div class="composicao-arts">${COMPOSICAO_ABERTOS.has('stat:'+m)?detalharArtigosDaMateria(m):''}</div></details>`).join('')}
+    </div>
   </div>
   `;
 }
@@ -1354,6 +1358,10 @@ const COMPOSICAO_ABERTOS = new Set();
 document.addEventListener('toggle', e=>{
   const d = e.target; if(!d || !d.classList || !d.classList.contains('composicao-det')) return;
   if(d.open) COMPOSICAO_ABERTOS.add(d.dataset.compTema); else COMPOSICAO_ABERTOS.delete(d.dataset.compTema);
+  if(d.open && /^stat:/.test(d.dataset.compTema||'')){ // estatísticas: monta o detalhe só ao abrir
+    const box = d.querySelector('.composicao-arts');
+    if(box && !box.innerHTML.trim()) box.innerHTML = detalharArtigosDaMateria(d.dataset.compTema.slice(5));
+  }
 }, true);
 // faixa de artigos do rótulo do tema: "(arts. 11 a 27)", "(arts. 76 e 77)", "(art. 89 em diante)"
 function faixaArtigosDoTema(tema){
@@ -1363,30 +1371,80 @@ function faixaArtigosDoTema(tema){
   if(/em diante/i.test(m[2]||'')) return { ini, fim: Infinity };
   return { ini, fim: m[3] ? +m[3] : ini, so2: /^e$/i.test(m[2]||'') };
 }
-// por artigo: quantas questões do tema (na fila) citam o artigo no enunciado ou na resolução
-function detalharArtigosDoTema(queue, tema){
+// referências a artigos de uma questão: [{norma, n, exato}]
+// exato = campo "Artigo" (com ou sem norma); senão estima pelo texto ("Art. 37 da CF", "art. 117 da Lei 8.112")
+function refsArtigosDaQuestao(q){
+  if(Array.isArray(q.artn) && q.artn.length) return q.artn.map(([norma,n])=>({norma:norma||'',n:+n,exato:true}));
+  if(Array.isArray(q.art) && q.art.length) return q.art.map(n=>({norma:'',n:+n,exato:true}));
+  const txt = (q.q||'')+' \n '+(q.r||''), out = [], vistos = new Set();
+  const re = /\bart(?:igos?|s?)\.?\s*(\d+)\s*[ºo°]?(?:[^.;\n]{0,40}?\b(CF(?:\/88)?|Constitui[çc][ãa]o Federal|Lei\s*(?:Complementar\s*)?(?:n[ºo°.]*\s*)?\d[\d.\/]*))?/gi;
+  let m;
+  while((m = re.exec(txt))){
+    let norma = (m[2]||'').replace(/Constitui[çc][ãa]o Federal|CF\/88/i,'CF').replace(/\s+/g,' ').replace(/n[ºo°.]*\s*/i,'').trim();
+    const k = norma+'|'+m[1]; if(vistos.has(k)) continue; vistos.add(k);
+    out.push({norma, n:+m[1], exato:false});
+  }
+  return out;
+}
+// por norma e artigo: quantas questões citam (e, se houver progresso, acertos/erros)
+function agruparArtigos(questoes, tema, materia){
   const faixa = faixaArtigosDoTema(tema);
-  const porArt = {}, foraFaixa = new Set(); let sem = 0, total = 0, comCampo = 0;
-  queue.forEach(u=>{
-    const q = BY_UID[u]; if(!q || (q.tema||'Geral')!==tema) return;
+  const grupos = {}; let sem = 0, total = 0, comCampo = 0;
+  const bucket = materia ? getBucket(materia) : null;
+  questoes.forEach(q=>{
     total++;
-    const exato = Array.isArray(q.art) && q.art.length; // campo "Artigo" do arquivo importado
-    if(exato) comCampo++;
-    const refs = new Set(exato ? q.art : extrairReferenciasLegais((q.q||'')+' \n '+(q.r||'')).filter(r=>/^Art\./.test(r)).map(r=>+r.slice(5)));
+    const refs = refsArtigosDaQuestao(q);
+    if(refs.some(r=>r.exato)) comCampo++;
+    const p = bucket && bucket.perguntas[q.uid];
     let achou = false;
-    refs.forEach(n=>{
-      const fora = faixa && (faixa.so2 ? (n!==faixa.ini && n!==faixa.fim) : (n<faixa.ini || n>faixa.fim));
-      if(fora){ if(!exato) return; foraFaixa.add(n); } // estimado: ignora; exato: mostra e sinaliza
-      porArt[n] = (porArt[n]||0)+1; achou = true;
+    refs.forEach(r=>{
+      let fora = false;
+      if(!r.norma && faixa) fora = faixa.so2 ? (r.n!==faixa.ini && r.n!==faixa.fim) : (r.n<faixa.ini || r.n>faixa.fim);
+      if(fora && !r.exato) return;
+      const g = grupos[r.norma] = grupos[r.norma] || {};
+      const a = g[r.n] = g[r.n] || {n:0, ac:0, er:0, fora:false};
+      a.n++; if(fora) a.fora = true;
+      if(p && p.ultimoResultado===true) a.ac++; else if(p && p.ultimoResultado===false) a.er++;
+      achou = true;
     });
     if(!achou) sem++;
   });
-  const arts = Object.keys(porArt).map(Number).sort((a,b)=>a-b);
-  const max = Math.max(1, ...arts.map(n=>porArt[n]));
-  const linhas = arts.map(n=>`<div class="bar-row composicao-art"><div class="name">Art. ${n}${foraFaixa.has(n)?' <span class="composicao-art-fora" title="Artigo fora da faixa deste assunto: a questão pode estar em outro assunto">⚠</span>':''}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, Math.round(porArt[n]*100/max))}%;"></div></div><div class="pct">${porArt[n]}</div></div>`).join('');
-  return (linhas || '<div class="composicao-art-vazio">Nenhum artigo identificado no texto das questões deste assunto.</div>')
-    + (sem && arts.length ? `<div class="composicao-art-sem">${sem} de ${total} ${total===1?'questão':'questões'} sem artigo citado no texto</div>` : '')
-    + `<div class="composicao-art-nota">${comCampo===total && total ? 'Contagem exata, pelo campo Artigo de cada questão.' : (comCampo ? `${comCampo} de ${total} questões com o campo Artigo; as demais foram lidas do enunciado/resolução.` : 'Estimativa: conta as questões que citam o artigo no enunciado ou na resolução (uma questão pode citar mais de um).')}</div>`;
+  return { grupos, sem, total, comCampo };
+}
+function linhasArtigosHtml(ag, comResultado){
+  const normas = Object.keys(ag.grupos).sort((a,b)=> (a===''?1:0)-(b===''?1:0) || a.localeCompare(b,'pt-BR'));
+  const max = Math.max(1, ...normas.flatMap(nm=>Object.values(ag.grupos[nm]).map(a=>a.n)));
+  const nomeado = normas.some(nm=>nm!=='');
+  return normas.map(nm=>{
+    const arts = Object.keys(ag.grupos[nm]).map(Number).sort((a,b)=>a-b);
+    const cab = nomeado ? `<div class="composicao-norma">${esc(nm||'Norma não indicada')}</div>` : '';
+    return cab + arts.map(n=>{
+      const a = ag.grupos[nm][n];
+      const res = comResultado && (a.ac+a.er) ? ` <span class="composicao-art-res" title="Última resposta de cada questão">✔${a.ac} ✖${a.er}</span>` : '';
+      return `<div class="bar-row composicao-art"><div class="name">Art. ${n}${a.fora?' <span class="composicao-art-fora" title="Artigo fora da faixa deste assunto: a questão pode estar em outro assunto">⚠</span>':''}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, Math.round(a.n*100/max))}%;"></div></div><div class="pct">${a.n}${res}</div></div>`;
+    }).join('');
+  }).join('');
+}
+function notaArtigosHtml(ag){
+  return (ag.sem && Object.keys(ag.grupos).length ? `<div class="composicao-art-sem">${ag.sem} de ${ag.total} ${ag.total===1?'questão':'questões'} sem artigo citado</div>` : '')
+    + `<div class="composicao-art-nota">${ag.comCampo===ag.total && ag.total ? 'Contagem exata, pelo campo Artigo de cada questão.' : (ag.comCampo ? `${ag.comCampo} de ${ag.total} questões com o campo Artigo; as demais foram lidas do enunciado/resolução.` : 'Estimativa: conta as questões que citam o artigo no enunciado ou na resolução (uma questão pode citar mais de um).')}</div>`;
+}
+function detalharArtigosDoTema(queue, tema){
+  const qs = queue.map(u=>BY_UID[u]).filter(q=>q && (q.tema||'Geral')===tema);
+  const ag = agruparArtigos(qs, tema, null);
+  const linhas = linhasArtigosHtml(ag, false);
+  return (linhas || '<div class="composicao-art-vazio">Nenhum artigo identificado no texto das questões deste assunto.</div>') + notaArtigosHtml(ag);
+}
+// Estatísticas por matéria: artigos mais cobrados, com acertos/erros
+function detalharArtigosDaMateria(materia){
+  const qs = ALL_QUESTIONS.filter(q=>q.materia===materia && !q.duplicataOculta && (q.t==='CE'||q.t==='MC'));
+  const temas = [...new Set(qs.map(q=>q.tema||'Geral'))];
+  const blocos = temas.map(t=>{
+    const ag = agruparArtigos(qs.filter(q=>(q.tema||'Geral')===t), t, materia);
+    const h = linhasArtigosHtml(ag, true);
+    return h ? `<div class="composicao-norma composicao-tema">${esc(t)}</div>${h}` : '';
+  }).filter(Boolean).join('');
+  return blocos || '<div class="composicao-art-vazio">Nenhum artigo identificado nas questões desta matéria.</div>';
 }
 function renderBotoesAcaoSetup(){
   const erroCount = getCadernoErros().length;

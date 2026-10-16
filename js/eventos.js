@@ -577,6 +577,17 @@ function attachHandlers(){
   root.querySelectorAll('[data-download-materia]').forEach(el=>{
     el.addEventListener('click', ()=> downloadListaQuestoes(el.dataset.downloadMateria));
   });
+  root.querySelectorAll('[data-substituir-materia]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const nome = el.dataset.substituirMateria;
+      if(!fileInputAtualizar) return;
+      fileInputAtualizar.onchange = (e)=>{
+        if(e.target.files && e.target.files[0]) substituirMateria(nome, e.target.files[0]);
+        fileInputAtualizar.value = '';
+      };
+      fileInputAtualizar.click();
+    });
+  });
   root.querySelectorAll('[data-inserir-materia]').forEach(el=>{
     el.addEventListener('click', ()=>{
       const nome = el.dataset.inserirMateria;

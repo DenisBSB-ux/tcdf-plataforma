@@ -44,6 +44,7 @@ function renderImportarPage(){
               </div>
               <button class="btn-outline" data-download-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
               <button class="btn-outline" data-inserir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">➕ Inserir</button>
+              <button class="btn-outline" data-substituir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Troca todas as questões dessa matéria pelas de um arquivo novo. O progresso, as edições e os gabaritos corrigidos acompanham as questões que continuam no arquivo (reconhecidas pelo enunciado)">🔁 Substituir</button>
               ${numDuplicatas>0 ? `<button class="btn-outline" data-remover-duplicatas="${esc(m)}" style="padding:4px 10px;font-size:11px;border-color:var(--stamp-red);color:var(--stamp-red);" title="Detectadas questões repetidas (mesmo enunciado) dentro desta matéria — remove as cópias extras, mantendo o histórico de progresso">🧹 ${numDuplicatas} duplicata(s)</button>` : ''}
               <button class="btn-outline" data-remover-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;">Remover</button>
               ${dedupInfo ? `<div style="flex-basis:100%;font-size:11px;margin-top:4px;color:var(--stamp-green, #3a9d5c);">✅ ${dedupInfo.removidas} questão(ões) duplicada(s) removida(s)${dedupInfo.publicadoOk===false?' (falha ao publicar na nuvem: '+esc(dedupInfo.motivoPublicacao||'')+' — já está salvo neste dispositivo)':''}.</div>` : ''}
@@ -151,6 +152,33 @@ function blockFieldMd(name, text){
 // parser do formato Markdown gerado pelo botão de download da própria
 // plataforma ("⬇ Baixar lista de questões") — permite reimportar depois de
 // editar manualmente num editor de texto/Markdown qualquer
+// Campo Artigo. Formatos aceitos (separe normas com ";"):
+//   "11, 12 e 15-17"                       -> artigos sem norma indicada
+//   "CF: 5, 37; Lei 8.112: 117, 121-125"   -> artigos por norma ("Norma: artigos")
+//   "CF 5, 37"                             -> também vale (sigla + artigos)
+// Retorna { art:[números, sem repetir], artn:[[norma, número], ...] | null }
+function numerosDeArtigos(txt){
+  const out = [];
+  String(txt||'').replace(/(\d+)\s*[ºo°]?\s*(?:[-–a]|até)\s*(\d+)|(\d+)/gi, (m,a,b,c)=>{
+    if(c){ out.push(+c); return m; }
+    const i=+a, f=+b; if(f>=i && f-i<=60) for(let n=i;n<=f;n++) out.push(n); else { out.push(i); out.push(f); }
+    return m;
+  });
+  return out;
+}
+function artigosDoCampo(txt){
+  const art = new Set(), artn = []; let nomeada = false;
+  String(txt||'').split(/;|\n/).map(x=>x.trim()).filter(Boolean).forEach(seg=>{
+    let norma = '', resto = seg, m;
+    if((m = seg.match(/^([^:\d][^:]*?)\s*:\s*(.+)$/))){ norma = m[1].trim(); resto = m[2]; }
+    else if((m = seg.match(/^((?:Lei(?:\s+Complementar)?|LC|Decreto(?:-Lei)?|MP|EC)\s*(?:n[ºo°.]*\s*)?[\d.\/]+)\s+(.*)$/i))){ norma = m[1].trim(); resto = m[2]; }
+    else if((m = seg.match(/^([A-Za-zÀ-ú][A-Za-zÀ-ú.\/\- ]*?)\s+(?:arts?\.?\s*)?(\d.*)$/)) && !/^arts?\.?$/i.test(m[1].trim())){ norma = m[1].trim(); resto = m[2]; }
+    norma = norma.replace(/^arts?\.?\s*/i,'');
+    numerosDeArtigos(resto).forEach(n=>{ art.add(n); artn.push([norma, n]); });
+    if(norma) nomeada = true;
+  });
+  return { art: [...art].sort((a,b)=>a-b), artn: nomeada ? artn : null };
+}
 function parseMarkdownQuestoes(content){
   const results = [];
   let ignoradas = 0;
@@ -182,6 +210,11 @@ function parseMarkdownQuestoes(content){
     // que o uid da questão mude ao importar
     const cobMatch = bloco.match(/\*\*Cobran[çc]a:\*\*\s*([A-Z](?::\w+)?\??)/i);
     const cob = cobMatch ? cobMatch[1].toUpperCase() : null;
+
+    // artigos da questão (opcional, contagem exata por artigo): "**Artigo:** 11, 12 e 15-17"
+    const artMatch = bloco.match(/\*\*Art(?:igos?)?\.?:\*\*\s*([^\n]+)/i);
+    const artigosCampo = artMatch ? artigosDoCampo(artMatch[1]) : null;
+    const artigos = artigosCampo ? artigosCampo.art : null;
 
     // classificação de armadilha (opcional): "**Armadilha:** SUF + INV", "**Sinal:** LIT",
     // "**Trecho:** palavras | outras", "**Explicação:** frase", "**Origem da classificação:** ia"
@@ -223,7 +256,7 @@ function parseMarkdownQuestoes(content){
     results.push({
       n, bc: bancaCargoTxt || '—', es: 'literal', ft: '', nv: nivel, td: tendencia, fr: '',
       q: enunciado, t: tipo, alt: alternativas, g: gabarito, r: resolucao || '', rf: resumo || '',
-      ar: ano, tema: assunto, ...(cob ? { cob } : {}), ...armCampos,
+      ar: ano, tema: assunto, ...(cob ? { cob } : {}), ...(artigos && artigos.length ? { art: artigos } : {}), ...(artigosCampo && artigosCampo.artn ? { artn: artigosCampo.artn } : {}), ...armCampos,
     });
   });
   return { results, ignoradas, semGabarito };
@@ -617,9 +650,13 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   // junto pra questão equivalente (não pelo número, que muda entre arquivos).
   // Progresso de questão que não existe mais no arquivo é descartado.
   let progressoAnterior = null;
+  const edOld = {}, gabOld = {}, flashOld = {}; // edições/gabaritos/flashcards seguem a questão equivalente, não o uid
   if(modo === 'substituir'){
     progressoAnterior = {};
     anteriores.forEach(q=>{
+      if(EDICOES_USUARIO[q.uid]){ edOld[q.uid] = EDICOES_USUARIO[q.uid]; delete EDICOES_USUARIO[q.uid]; }
+      if(GABARITOS_ALTERADOS[q.uid]){ gabOld[q.uid] = GABARITOS_ALTERADOS[q.uid]; delete GABARITOS_ALTERADOS[q.uid]; }
+      if(bucket.flash && bucket.flash[q.uid]) flashOld[q.uid] = bucket.flash[q.uid];
       if(bucket.perguntas[q.uid]) progressoAnterior[q.uid] = bucket.perguntas[q.uid];
       delete bucket.perguntas[q.uid];
       if(bucket.flash) delete bucket.flash[q.uid];
@@ -646,6 +683,9 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
     if(progressoAnterior){
       let manteve = false;
       equivalentes.forEach(eq=>{
+        if(edOld[eq.uid] && !EDICOES_USUARIO[uid]){ EDICOES_USUARIO[uid] = edOld[eq.uid]; }
+        if(gabOld[eq.uid] && !GABARITOS_ALTERADOS[uid]){ GABARITOS_ALTERADOS[uid] = gabOld[eq.uid]; }
+        if(flashOld[eq.uid]){ bucket.flash = bucket.flash || {}; if(!bucket.flash[uid]) bucket.flash[uid] = flashOld[eq.uid]; }
         if(!progressoAnterior[eq.uid]) return;
         bucket.perguntas[uid] = somarProgressoDaQuestao(bucket.perguntas[uid], progressoAnterior[eq.uid]);
         delete progressoAnterior[eq.uid];
@@ -658,6 +698,7 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   if(progressoAnterior){
     // o arquivo novo pode ter a mesma questão repetida: não deixa cópia
     deduplicarMateriaNaMemoria(materiaNome);
+    salvarEdicoesUsuario(); salvarGabaritosAlterados();
     added = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido').length;
     marcarProgressoSujo(materiaNome);
     saveProgress();
@@ -1437,6 +1478,11 @@ async function removerMateria(materiaNome){
 // aditivo por natureza (só dá push nas questões novas). A deduplicação (ver
 // marcarDuplicatas) cuida de esconder qualquer questão idêntica que já exista,
 // sem duplicar visualmente o conteúdo pro usuário nem contar duas vezes.
+async function substituirMateria(materiaNome, file){
+  if(!window.confirm(`Substituir TODAS as questões de "${materiaNome}" pelas do arquivo "${file.name}"?\n\nO progresso, as edições e os gabaritos corrigidos acompanham as questões que continuam no arquivo (reconhecidas pelo enunciado). O que não estiver no arquivo novo é descartado.`)) return;
+  STATE.importDeckName = materiaNome;
+  handleImportFile(file, 'substituir');
+}
 async function inserirNaMateria(materiaNome, file){
   STATE.importDeckName = materiaNome;
   // "Inserir" promete ser só aditivo ("sem apagar as que já existem") — vai
