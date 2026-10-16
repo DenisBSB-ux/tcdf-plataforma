@@ -645,3 +645,30 @@ document.addEventListener('keydown', (e)=>{
   }
 });
 
+
+/* mensagem do dia: uma linha só; diminui a fonte até caber no espaço livre */
+function ajustarMotivacao(){
+  document.querySelectorAll('.resumo-motiva').forEach(el=>{
+    const cont = el.parentElement; if(!cont) return;
+    const medir = ()=>{
+      el.style.fontSize = ''; el.style.width = 'max-content'; el.style.flexBasis = 'auto';
+      const absoluto = getComputedStyle(el).position === 'absolute';
+      let livre = cont.clientWidth - 8;
+      if(absoluto){
+        const esq = cont.querySelector('.resumo-esq');
+        const fimEsq = esq ? (esq.offsetLeft + esq.offsetWidth + 18) : 0;
+        livre = 2 * (cont.clientWidth/2 - fimEsq);
+      }
+      let px = parseFloat(getComputedStyle(el).fontSize) || 16;
+      while(px > 9 && el.getBoundingClientRect().width > livre){ px -= 0.5; el.style.fontSize = px + 'px'; }
+      el.style.width = ''; el.style.flexBasis = '';
+      return { px, absoluto };
+    };
+    cont.classList.remove('msg-linha');
+    const r = medir();
+    // sem espaço no centro da linha (fonte ficaria pequena demais): vai para uma linha própria
+    if(r.absoluto && r.px < 12){ cont.classList.add('msg-linha'); medir(); }
+  });
+}
+new MutationObserver(()=>{ if(document.querySelector('.resumo-motiva')) ajustarMotivacao(); }).observe(document.documentElement,{childList:true,subtree:true});
+window.addEventListener('resize', ajustarMotivacao);
