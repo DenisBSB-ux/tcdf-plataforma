@@ -26,7 +26,7 @@ SIN = {'LIT':'**Literalidade (LIT)** — texto copiado da lei',
 def campo(b, n):
     m = re.search(r'\*\*' + n + r':\*\*\s*(.*)', b); return m.group(1).strip() if m else ''
 def secao(b, ini, fim):
-    m = re.search(r'### ' + ini + r'\n(.*?)(?=\n### ' + fim + r'|\Z)', b, re.S); return m.group(1).strip() if m else ''
+    m = re.search(r'### ' + ini + r'\n(.*?)(?=\n### ' + fim + r'|\n\n---|\Z)', b, re.S); return m.group(1).strip() if m else ''
 def ler(path):
     txt = open(path, encoding='utf-8').read()
     partes = re.split(r'(?m)^(## QUESTÃO \d+\s*$)', txt)
@@ -74,6 +74,6 @@ if __name__ == '__main__':
             cab, b = partes[k], partes[k + 1]
             if i in R:
                 novo = monta(Q[i], R[i])
-                b, c = re.subn(r'(### Resolução\n).*?(\n\n### Resumo Flash)', lambda m: m.group(1) + novo + m.group(2), b, count=1, flags=re.S); assert c == 1; n += 1
+                b, c = re.subn(r'(### Resolução\n).*?(?=\n\n### Resumo Flash|\n\n---|\Z)', lambda m: m.group(1) + novo, b, count=1, flags=re.S); assert c == 1; n += 1
             out += [cab, b]
         open(sys.argv[4], 'w', encoding='utf-8').write(''.join(out)); print('reescritas:', n, 'de', len(Q))
