@@ -48,6 +48,8 @@ O perfil (sinal do item certo ou armadilha do item errado) **não entra** na res
 | 🪤 | Armadilha possível da banca (como o item poderia ser alterado para ficar errado). Só em **item certo** e **múltipla escolha**; em item errado a linha 🏷️ já traz a armadilha, então omita. |
 | 💡 | Macete curto, em itálico. |
 
+Na tela, a linha 🪤 aparece com o símbolo ⚠️ (pedido do usuário, v210); no arquivo continue usando 🪤 para distinguir da linha de atenção.
+
 A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`SIMBOLOS_RESOLUCAO` em `js/util.js`); ele só atua no símbolo que **abre o parágrafo**, então mantenha cada bloco em uma linha própria começando pelo símbolo.
 
 ## Gabarito do arquivo × texto da lei

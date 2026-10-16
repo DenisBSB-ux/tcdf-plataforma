@@ -391,7 +391,7 @@ function resumoFlashDaResolucao(q){
 }
 function simbolosComDica(html){
   return String(html).replace(/<p>(\s*)(🏷|⚖|📌|🔑|⚠|🪤|💡)(\uFE0F?)/g, (m, sp, sim, vs)=>
-    `<p>${sp}<span class="sim-dica" tabindex="0" role="note" data-dica="${SIMBOLOS_RESOLUCAO[sim].replace(/"/g,'&quot;')}">${sim}${vs}</span>`);
+    `<p>${sp}<span class="sim-dica" tabindex="0" role="note" data-dica="${SIMBOLOS_RESOLUCAO[sim].replace(/"/g,'&quot;')}">${sim==='🪤' ? '⚠️' : sim+vs}</span>`);  // a armadilha (🪤 no arquivo) aparece com o símbolo de atenção
 }
 // marcadores de negrito (\u0001..\u0002) e itálico (\u0003..\u0004) da resolução viram <strong> e <em>
 function marcadoresParaHtml(h){
