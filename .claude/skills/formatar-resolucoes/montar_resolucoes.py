@@ -3,16 +3,15 @@
 
 Uso:
   python3 montar_resolucoes.py dump  <arquivo.md> <ini> <fim>          # lê as questões ini..fim (índices) para você escrever
-  python3 montar_resolucoes.py build <arquivo.md> <pasta_lotes> <saida.md>
+  python3 montar_resolucoes.py build <arquivo.md> <pasta_lotes> <saida.md> [--sem-resumo-flash]
 
 Cada lote em <pasta_lotes>/bNN.py define  R = { indice: (ess, [palavras-chave], base, atencao, armadilha, macete) }
-  e, se quiser, SINAL = { indice: 'COE' } para múltipla escolha / certo sem sinal (o padrão é LIT)
   ess        📌 essência em uma linha (palavras-chave em **negrito**)
   base       ⚖️ ex.: '**Art. 75** ▸ **IV** ▸ **"c"** · Lei 14.133/2021' ('' omite a linha)
   atencao    ⚠️ exceção/atualização, ou "Conferir o gabarito..." quando o gabarito do arquivo diverge da lei ('' omite)
   armadilha  🪤 como a banca poderia alterar o item ('' omite; use só em item certo e múltipla escolha)
   macete     💡 frase curta em itálico
-A linha 🏷️ sai sozinha: item errado = armadilha por extenso + sigla + explicação do arquivo; item certo = sinal por extenso + sigla.
+O perfil (sinal/armadilha) NÃO entra na resolução: a plataforma já o mostra no painel "Armadilha da banca".
 Só a seção ### Resolução é trocada; o resto do arquivo é preservado byte a byte.
 """
 import re, sys, glob
@@ -39,21 +38,10 @@ def ler(path):
                       enun=secao(b,'Enunciado','Resolução').split('**Gabarito:**')[0].strip(), res=secao(b,'Resolução','Resumo Flash')))
     return txt, partes, Q
 
-def trecho_curto(t):
-    partes = [p.strip() for p in t.split(' | ') if p.strip()]
-    cur = lambda x: x if len(x) <= 70 else x[:67].rstrip() + '…'
-    return ' … '.join('«' + cur(p) + '»' for p in partes)
-
 def monta(q, d, i=0, sinal_extra=None):
-    """🏷️: item errado = armadilha por extenso + sigla + trecho errado; item certo = sinal do arquivo;
-    sem classificação (múltipla escolha ou certo sem sinal) = LIT, ou o sinal dado em SINAL do lote."""
+    """Sem linha 🏷️: o perfil (sinal ou armadilha) já aparece no painel "Armadilha da banca" da plataforma."""
     ess, kw, base, ate, arm, mac = d
     L = []
-    if q['gab'] == 'Errado' and q['arm']:
-        cods = [c.strip() for c in q['arm'].split('+')]
-        L.append('🏷️ ' + ' + '.join(f"**{NOMES.get(c, c)} ({c})**" for c in cods) + (' — ' + trecho_curto(q['trecho']) if q['trecho'] else ''))
-    elif q['gab'] == 'Certo' and q['sinal'] in SIN: L.append('🏷️ ' + SIN[q['sinal']])
-    else: L.append('🏷️ ' + SIN[(sinal_extra or {}).get(i, 'LIT')])
     if base: L.append('⚖️ ' + base)
     L.append('📌 ' + ess)
     L.append('🔑 ' + ' · '.join(f'**{k}**' for k in kw))
@@ -84,4 +72,7 @@ if __name__ == '__main__':
                 novo = monta(Q[i], R[i], i, SINAL)
                 b, c = re.subn(r'(### Resolução\n).*?(?=\n\n### Resumo Flash|\n\n---|\Z)', lambda m: m.group(1) + novo, b, count=1, flags=re.S); assert c == 1; n += 1
             out += [cab, b]
-        open(sys.argv[4], 'w', encoding='utf-8').write(''.join(out)); print('reescritas:', n, 'de', len(Q))
+        res = ''.join(out)
+        if '--sem-resumo-flash' in sys.argv:
+            res, c = re.subn(r'\n\n### Resumo Flash\n.*?(?=\n---\n|\Z)', '\n', res, flags=re.S); print('Resumo Flash removidos:', c)
+        open(sys.argv[4], 'w', encoding='utf-8').write(res); print('reescritas:', n, 'de', len(Q))
