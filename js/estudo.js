@@ -138,7 +138,7 @@ function renderQuiz(){
       }
       if(riscadas.includes(letraUp)) cls+=' riscado';
       return `<button class="${cls}" data-opt="${letraUp}" ${revelado?'disabled':''} title="2 cliques risca esta alternativa">
-        <span class="letter">${letraUp}</span> ${textoHtml}
+        <span class="letter">${letraUp}</span> <span class="opt-text">${textoHtml}</span>
       </button>`;
     }).join('') + (emEdicaoAlt ? '' : (revelado ? `<div class="chute-chip-row">${chuteChip}</div>` : btnChutarHtml));
   } else {
@@ -176,7 +176,6 @@ function renderQuiz(){
       <div class="qm-title">
         <div class="qm-numero" title="Posição na fila: ${quiz.idx+1}">Questão ${resolvidasM} de ${vistosM.size}
           <small><b class="qm-ac">${snapM.ac}</b> Certas (${pctAcM}%) / <b class="qm-er">${snapM.erradas}</b> Erradas (${pctErM}%)</small></div>
-        ${q.tema && q.tema!=='Geral' ? `<div class="qm-linha"><span class="qm-rot">Assunto:</span> ${esc(q.tema)}</div>` : ''}
       </div>
       <div class="qm-tags">
         ${ineditaBadge(q)}
@@ -184,7 +183,7 @@ function renderQuiz(){
       </div>
     </div>
     <div class="qm-provabar">
-      <div class="qm-prova">${bancaCargoAnoLine(q)}</div>
+      <div class="qm-prova">${q.tema && q.tema!=='Geral' ? `<div class="q-meta-line"><span class="lbl-inline">Assunto:</span> ${esc(q.tema)}</div>` : ''}${bancaCargoAnoLine(q)}</div>
     </div>
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
@@ -292,6 +291,16 @@ function editorToolbarHtml(uid){
     <button data-editar-acao="highlight" data-cor="#bbdefb" class="swatch-azul" title="Grifar em azul"></button>
     <button data-editar-acao="highlight" data-cor="#f8bbd0" class="swatch-rosa" title="Grifar em rosa"></button>
     <span class="editor-toolbar-sep"></span>
+    <button data-editar-acao="alinhar-esq" title="Alinhar à esquerda" class="btn-alinha"><svg viewBox="0 0 18 14" width="18" height="14" aria-hidden="true"><rect x="0" y="1" width="18" height="2" rx="1" fill="currentColor"/><rect x="0" y="5" width="12" height="2" rx="1" fill="currentColor"/><rect x="0" y="9" width="18" height="2" rx="1" fill="currentColor"/><rect x="0" y="12" width="10" height="2" rx="1" fill="currentColor"/></svg></button>
+    <button data-editar-acao="alinhar-cen" title="Centralizar" class="btn-alinha"><svg viewBox="0 0 18 14" width="18" height="14" aria-hidden="true"><rect x="0" y="1" width="18" height="2" rx="1" fill="currentColor"/><rect x="3" y="5" width="12" height="2" rx="1" fill="currentColor"/><rect x="0" y="9" width="18" height="2" rx="1" fill="currentColor"/><rect x="4" y="12" width="10" height="2" rx="1" fill="currentColor"/></svg></button>
+    <button data-editar-acao="alinhar-dir" title="Alinhar à direita" class="btn-alinha"><svg viewBox="0 0 18 14" width="18" height="14" aria-hidden="true"><rect x="0" y="1" width="18" height="2" rx="1" fill="currentColor"/><rect x="6" y="5" width="12" height="2" rx="1" fill="currentColor"/><rect x="0" y="9" width="18" height="2" rx="1" fill="currentColor"/><rect x="8" y="12" width="10" height="2" rx="1" fill="currentColor"/></svg></button>
+    <button data-editar-acao="alinhar-jus" title="Justificar" class="btn-alinha"><svg viewBox="0 0 18 14" width="18" height="14" aria-hidden="true"><rect x="0" y="1" width="18" height="2" rx="1" fill="currentColor"/><rect x="0" y="5" width="18" height="2" rx="1" fill="currentColor"/><rect x="0" y="9" width="18" height="2" rx="1" fill="currentColor"/><rect x="0" y="12" width="18" height="2" rx="1" fill="currentColor"/></svg></button>
+    <button data-editar-acao="recuo-mais" title="Aumentar recuo">⇥</button>
+    <button data-editar-acao="recuo-menos" title="Diminuir recuo">⇤</button>
+    <span class="editor-toolbar-sep"></span>
+    <button data-editar-acao="sub" title="Subscrito">x<sub>2</sub></button>
+    <button data-editar-acao="sup" title="Sobrescrito">x<sup>2</sup></button>
+    <span class="editor-toolbar-sep"></span>
     <button data-editar-acao="ul" title="Lista com marcadores">• Lista</button>
     <button data-editar-acao="ol" title="Lista numerada">1. Lista</button>
     <button data-editar-acao="citacao" title="Citação em bloco">❝</button>
@@ -337,7 +346,7 @@ function campoEditavelSimples(q, campo, htmlAuto){
   const uid = q.uid;
   const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid][campo]));
   const emEdicao = edicaoAtual === uid;
-  const conteudo = custom || htmlAuto;
+  const conteudo = custom ? ((campo==='r' || campo==='rf') ? simbolosComDica(custom) : custom) : htmlAuto;
   const btnEditar = '';
   const btnRest = (!emEdicao && custom && campo!=='r') ? `<button class="btn-restaurar-campo btn-ui" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button>` : '';
   const barraSalvar = (emEdicao && campo==='r') ? `<div class="campo-editavel-acoes campo-salvar-barra"><button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar</button><button class="btn-ui btn-cancelar-edicao" data-editar-acao="cancelar">✕ Cancelar</button></div>` : '';

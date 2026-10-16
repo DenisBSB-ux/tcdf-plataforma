@@ -261,6 +261,14 @@ function attachHandlers(){
         catch(e){ document.execCommand('backColor', false, cor); }
         return;
       }
+      if(acao==='alinhar-esq'){ document.execCommand('justifyLeft'); return; }
+      if(acao==='alinhar-cen'){ document.execCommand('justifyCenter'); return; }
+      if(acao==='alinhar-dir'){ document.execCommand('justifyRight'); return; }
+      if(acao==='alinhar-jus'){ document.execCommand('justifyFull'); return; }
+      if(acao==='recuo-mais'){ document.execCommand('indent'); return; }
+      if(acao==='recuo-menos'){ document.execCommand('outdent'); return; }
+      if(acao==='sub'){ document.execCommand('subscript'); return; }
+      if(acao==='sup'){ document.execCommand('superscript'); return; }
       if(acao==='ul'){ document.execCommand('insertUnorderedList'); return; }
       if(acao==='ol'){ document.execCommand('insertOrderedList'); return; }
       if(acao==='citacao'){ document.execCommand('formatBlock', false, 'blockquote'); return; }
