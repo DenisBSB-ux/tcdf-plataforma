@@ -6,6 +6,7 @@ Uso:
   python3 montar_resolucoes.py build <arquivo.md> <pasta_lotes> <saida.md>
 
 Cada lote em <pasta_lotes>/bNN.py define  R = { indice: (ess, [palavras-chave], base, atencao, armadilha, macete) }
+  e, se quiser, SINAL = { indice: 'COE' } para múltipla escolha / certo sem sinal (o padrão é LIT)
   ess        📌 essência em uma linha (palavras-chave em **negrito**)
   base       ⚖️ ex.: '**Art. 75** ▸ **IV** ▸ **"c"** · Lei 14.133/2021' ('' omite a linha)
   atencao    ⚠️ exceção/atualização, ou "Conferir o gabarito..." quando o gabarito do arquivo diverge da lei ('' omite)
@@ -38,14 +39,21 @@ def ler(path):
                       enun=secao(b,'Enunciado','Resolução').split('**Gabarito:**')[0].strip(), res=secao(b,'Resolução','Resumo Flash')))
     return txt, partes, Q
 
-def monta(q, d):
+def trecho_curto(t):
+    partes = [p.strip() for p in t.split(' | ') if p.strip()]
+    cur = lambda x: x if len(x) <= 70 else x[:67].rstrip() + '…'
+    return ' … '.join('«' + cur(p) + '»' for p in partes)
+
+def monta(q, d, i=0, sinal_extra=None):
+    """🏷️: item errado = armadilha por extenso + sigla + trecho errado; item certo = sinal do arquivo;
+    sem classificação (múltipla escolha ou certo sem sinal) = LIT, ou o sinal dado em SINAL do lote."""
     ess, kw, base, ate, arm, mac = d
     L = []
-    if q['gab'] in ('Certo', 'Errado'):
-        if q['arm']:
-            cods = [c.strip() for c in q['arm'].split('+')]
-            L.append('🏷️ ' + ' + '.join(f"**{NOMES.get(c, c)} ({c})**" for c in cods) + (' — ' + q['expl'] if q['expl'] else ''))
-        elif q['sinal'] in SIN: L.append('🏷️ ' + SIN[q['sinal']])
+    if q['gab'] == 'Errado' and q['arm']:
+        cods = [c.strip() for c in q['arm'].split('+')]
+        L.append('🏷️ ' + ' + '.join(f"**{NOMES.get(c, c)} ({c})**" for c in cods) + (' — ' + trecho_curto(q['trecho']) if q['trecho'] else ''))
+    elif q['gab'] == 'Certo' and q['sinal'] in SIN: L.append('🏷️ ' + SIN[q['sinal']])
+    else: L.append('🏷️ ' + SIN[(sinal_extra or {}).get(i, 'LIT')])
     if base: L.append('⚖️ ' + base)
     L.append('📌 ' + ess)
     L.append('🔑 ' + ' · '.join(f'**{k}**' for k in kw))
@@ -66,14 +74,14 @@ if __name__ == '__main__':
             if q['expl']: print('EXPL:', q['expl'])
             print('ENUN:', q['enun'][:650]); print('RES_ANTIGA:', q['res'][:420])
     elif cmd == 'build':
-        txt, partes, Q = ler(sys.argv[2]); R = {}
+        txt, partes, Q = ler(sys.argv[2]); R = {}; SINAL = {}
         for f in sorted(glob.glob(sys.argv[3] + '/b*.py')):
-            ns = {}; exec(open(f, encoding='utf-8').read(), ns); R.update(ns['R'])
+            ns = {}; exec(open(f, encoding='utf-8').read(), ns); R.update(ns.get('R', {})); SINAL.update(ns.get('SINAL', {}))
         out = [partes[0]]; n = 0
         for i, k in enumerate(range(1, len(partes), 2)):
             cab, b = partes[k], partes[k + 1]
             if i in R:
-                novo = monta(Q[i], R[i])
+                novo = monta(Q[i], R[i], i, SINAL)
                 b, c = re.subn(r'(### Resolução\n).*?(?=\n\n### Resumo Flash|\n\n---|\Z)', lambda m: m.group(1) + novo, b, count=1, flags=re.S); assert c == 1; n += 1
             out += [cab, b]
         open(sys.argv[4], 'w', encoding='utf-8').write(''.join(out)); print('reescritas:', n, 'de', len(Q))
