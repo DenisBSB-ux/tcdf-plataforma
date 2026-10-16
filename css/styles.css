@@ -1977,3 +1977,6 @@ body:not(.theme-light) .prov-badge .prov-badge-rot, body:not(.theme-light) .prov
 /* v209 — armadilha da banca: nome (fundo claro) + definição + explicação na mesma linha, sem badge */
 .arm-nome{ font-weight:700; padding:1px 8px; border-radius:6px; opacity:.9; }
 .arm-corpo .arm-def-txt{ opacity:.9; }
+
+/* v212 — palavra mais importante da resolução: fundo amarelo claro */
+mark.res-marca{ background:#fff3b0; color:inherit; padding:0 3px; border-radius:4px; }

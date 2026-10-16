@@ -28,6 +28,8 @@ description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF
 7. Aplicar a todas as matérias do mesmo jeito (a lógica é geral); o `### Resumo Flash` é removido em todas (ver decisões acima).
 
 ## Formato da resolução
+**Destaques (v212):** pouco negrito. Só os termos mais relevantes ficam em **negrito** (📌 até 2; ⚠️/🪤 até 1; ⚖️ só o dispositivo; 🔑 sem negrito) e o termo **mais importante** do 📌 vai em `==fundo amarelo==`. O `montar_resolucoes.py` aplica isso sozinho a partir da ordem das palavras-chave: coloque a mais importante primeiro na lista 🔑. Os exemplos de `exemplos.md` são anteriores a esta regra.
+
 O perfil (sinal do item certo ou armadilha do item errado) **não entra** na resolução: a plataforma já o exibe no painel "Armadilha da banca", e repeti-lo duplica a informação. Cada bloco é uma linha que **começa pelo símbolo**, sem escrever o nome do rótulo, com **palavras-chave em negrito**. Ordem fixa; omita o bloco que não se aplica.
 
 ```
