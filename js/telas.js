@@ -1336,12 +1336,57 @@ function renderComposicaoSimulado(queue, titulo, destaque){
   const max = Math.max(...Object.values(cont));
   return `<div class="composicao">
     <div class="composicao-titulo${destaque?' composicao-titulo-destaque':''}">${esc(titulo||'Composição do simulado')}${destaque ? '' : ` <b>${queue.length}</b> ${queue.length===1?'questão':'questões'}`}</div>
-    ${ordem.map(t=>`<div class="bar-row composicao-linha" title="${esc(t)}">
-      <div class="name">${esc(t)}</div>
+    ${ordem.map(t=>{
+      const linha = `<div class="name">${esc(t)}</div>
       <div class="bar-track"><div class="bar-fill" style="width:${Math.max(4, Math.round(cont[t]*100/max))}%;"></div></div>
-      <div class="pct">${cont[t]}</div>
-    </div>`).join('')}
+      <div class="pct">${cont[t]}</div>`;
+      if(!destaque) return `<div class="bar-row composicao-linha" title="${esc(t)}">${linha}</div>`;
+      const det = detalharArtigosDoTema(queue, t);
+      return `<details class="composicao-det" data-comp-tema="${esc(t)}" ${COMPOSICAO_ABERTOS.has(t)?'open':''}>
+        <summary class="bar-row composicao-linha" title="${esc(t)}">${linha}</summary>
+        <div class="composicao-arts">${det}</div>
+      </details>`;
+    }).join('')}
   </div>`;
+}
+// temas abertos no menu suspenso (sobrevive aos re-renders)
+const COMPOSICAO_ABERTOS = new Set();
+document.addEventListener('toggle', e=>{
+  const d = e.target; if(!d || !d.classList || !d.classList.contains('composicao-det')) return;
+  if(d.open) COMPOSICAO_ABERTOS.add(d.dataset.compTema); else COMPOSICAO_ABERTOS.delete(d.dataset.compTema);
+}, true);
+// faixa de artigos do rótulo do tema: "(arts. 11 a 27)", "(arts. 76 e 77)", "(art. 89 em diante)"
+function faixaArtigosDoTema(tema){
+  const m = String(tema||'').match(/\(\s*arts?\.\s*(\d+)[ºo°]?\s*(a|e|ao|em diante)?\s*(\d+)?[ºo°]?\s*\)/i);
+  if(!m) return null;
+  const ini = +m[1];
+  if(/em diante/i.test(m[2]||'')) return { ini, fim: Infinity };
+  return { ini, fim: m[3] ? +m[3] : ini, so2: /^e$/i.test(m[2]||'') };
+}
+// por artigo: quantas questões do tema (na fila) citam o artigo no enunciado ou na resolução
+function detalharArtigosDoTema(queue, tema){
+  const faixa = faixaArtigosDoTema(tema);
+  const porArt = {}, foraFaixa = new Set(); let sem = 0, total = 0, comCampo = 0;
+  queue.forEach(u=>{
+    const q = BY_UID[u]; if(!q || (q.tema||'Geral')!==tema) return;
+    total++;
+    const exato = Array.isArray(q.art) && q.art.length; // campo "Artigo" do arquivo importado
+    if(exato) comCampo++;
+    const refs = new Set(exato ? q.art : extrairReferenciasLegais((q.q||'')+' \n '+(q.r||'')).filter(r=>/^Art\./.test(r)).map(r=>+r.slice(5)));
+    let achou = false;
+    refs.forEach(n=>{
+      const fora = faixa && (faixa.so2 ? (n!==faixa.ini && n!==faixa.fim) : (n<faixa.ini || n>faixa.fim));
+      if(fora){ if(!exato) return; foraFaixa.add(n); } // estimado: ignora; exato: mostra e sinaliza
+      porArt[n] = (porArt[n]||0)+1; achou = true;
+    });
+    if(!achou) sem++;
+  });
+  const arts = Object.keys(porArt).map(Number).sort((a,b)=>a-b);
+  const max = Math.max(1, ...arts.map(n=>porArt[n]));
+  const linhas = arts.map(n=>`<div class="bar-row composicao-art"><div class="name">Art. ${n}${foraFaixa.has(n)?' <span class="composicao-art-fora" title="Artigo fora da faixa deste assunto: a questão pode estar em outro assunto">⚠</span>':''}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, Math.round(porArt[n]*100/max))}%;"></div></div><div class="pct">${porArt[n]}</div></div>`).join('');
+  return (linhas || '<div class="composicao-art-vazio">Nenhum artigo identificado no texto das questões deste assunto.</div>')
+    + (sem && arts.length ? `<div class="composicao-art-sem">${sem} de ${total} ${total===1?'questão':'questões'} sem artigo citado no texto</div>` : '')
+    + `<div class="composicao-art-nota">${comCampo===total && total ? 'Contagem exata, pelo campo Artigo de cada questão.' : (comCampo ? `${comCampo} de ${total} questões com o campo Artigo; as demais foram lidas do enunciado/resolução.` : 'Estimativa: conta as questões que citam o artigo no enunciado ou na resolução (uma questão pode citar mais de um).')}</div>`;
 }
 function renderBotoesAcaoSetup(){
   const erroCount = getCadernoErros().length;
