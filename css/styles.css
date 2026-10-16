@@ -2169,3 +2169,19 @@ body:not(.theme-light) .arm-rich, body:not(.theme-light) .arm-rich *{ color:#1d1
 .icon-btn:active:not(:disabled){ transform:scale(.96); }
 @media (pointer:coarse){ .quiz-toolbar .icon-btn{ width:44px; height:44px; } }
 @media (prefers-reduced-motion:reduce){ .icon-btn{ transition:none; } .icon-btn:hover:not(:disabled), .icon-btn:active:not(:disabled){ transform:none; } }
+
+/* v235: área útil de 95%, cabeçalho da tabela de estatísticas harmonizado e bloco da prova */
+.app, body.focus-mode .app{ width:95%; }
+@media (max-width:1100px){ .app, body.focus-mode .app{ width:100%; } }
+.est-cab, .est-cab > div, .est-cab .th-ord{ font-size:12px !important; font-weight:600 !important; letter-spacing:.01em; white-space:nowrap; text-transform:none; line-height:1.2; }
+.est-cab .th-ord.ativa{ color:var(--ink); }
+.est-cab .th-ord{ color:var(--ink-soft); }
+.prova-info{ color:var(--ink); margin-top:10px; padding-top:10px; border-top:1px solid var(--paper-line); font-size:12px; line-height:1.4; }
+body:not(.theme-light) .prova-info{ border-top-color:rgba(255,255,255,.14); }
+.prova-rot{ font-size:11px; font-weight:600; opacity:.75; }
+.prova-data{ font-size:14px; font-weight:700; margin-top:2px; }
+.prova-conta{ margin-top:2px; color:var(--stamp-red); }
+.prova-conta b{ font-size:15px; }
+.prova-link{ display:inline-block; margin-top:6px; font-weight:600; color:var(--navy-700); text-decoration:underline; }
+body:not(.theme-light) .prova-link{ color:var(--gold-bright); }
+.prova-aviso{ margin-top:4px; font-size:11px; opacity:.75; }
