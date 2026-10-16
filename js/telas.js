@@ -955,6 +955,55 @@ function renderContaBlock(){
 }
 // data da prova e contagem regressiva (concurso TCDF 2026, Analista — Cebraspe)
 const PROVA_TCDF = { data:new Date(2026,10,22), rotulo:'22/11/2026 (manhã)', link:'https://www.cebraspe.org.br/concursos/TC_DF_26_ANALISTA' };
+// uma mensagem de motivação por dia (muda a cada dia da contagem regressiva)
+const MOTIVACAO_PROVA = [
+  "Hoje é dia de fazer mais uma questão do que ontem.",
+  "Constância vence intensidade: um pouco todos os dias.",
+  "Você já chegou até aqui. Continue.",
+  "Cada questão errada hoje é um ponto a menos de erro na prova.",
+  "Descanso também faz parte do estudo. Durma bem.",
+  "Revise o caderno de erros: ali estão seus pontos mais fáceis de ganhar.",
+  "A aprovação é construída em dias comuns como este.",
+  "Foco no próximo bloco de questões, não na prova inteira.",
+  "Quem treina como vai fazer a prova, faz a prova como treinou.",
+  "Pouco, mas todo dia, é muito no fim do mês.",
+  "Dúvida na questão? Volte à lei: a resposta costuma estar no texto.",
+  "Desconfie dos absolutos: sempre, nunca, somente, exclusivamente.",
+  "Seu esforço de hoje vai pesar na manhã da prova.",
+  "Respire. Uma questão de cada vez.",
+  "Estudar cansa, mas passa. Ser aprovado fica.",
+  "Faça um simulado hoje e corrija com calma.",
+  "Cada flashcard revisto é um detalhe a menos para esquecer.",
+  "Você não precisa de motivação, precisa de rotina. Comece.",
+  "O mais difícil é começar. Abra a primeira questão.",
+  "Evolução se mede em semanas, não em um dia ruim.",
+  "Revisar vale mais do que ver matéria nova perto da prova.",
+  "Cuide do corpo: água, sono e uma caminhada ajudam a memória.",
+  "Erre agora, aqui, e acerte na hora que vale.",
+  "O edital é seu mapa: confira o que ainda falta.",
+  "Pequenas vitórias de hoje somam o resultado final.",
+  "Treine o tempo: 150 itens pedem ritmo, não pressa.",
+  "Você está mais perto da vaga do que ontem.",
+  "Releia os artigos que mais caem; eles se repetem.",
+  "Quem persiste na reta final costuma passar na frente.",
+  "Mantenha a calma: o que você já sabe é bastante.",
+  "Hoje: revise, descanse e confie no seu preparo.",
+  "Falta pouco. Cada questão conta.",
+  "Trace uma meta pequena para hoje e cumpra.",
+  "Seja gentil consigo mesmo e firme com a rotina.",
+  "Priorize os assuntos de maior incidência.",
+  "A vaga é de quem estuda até o fim.",
+  "Último fôlego: revisão leve, mente tranquila.",
+  "Confie no processo: você tem feito o que precisava.",
+  "Mais uma semana de consistência e você nota a diferença."
+];
+function motivacaoDoDia(dias){
+  if(dias<0) return 'Prova realizada. Obrigado pelo esforço: o resultado vem do que você construiu.';
+  if(dias===0) return 'É hoje! Respire fundo, leia com calma e confie no seu preparo.';
+  if(dias===1) return 'Amanhã é o dia. Revise de leve, durma cedo e confie no que estudou.';
+  // do primeiro dia da contagem (37 dias) até a véspera, uma mensagem nova por dia
+  return MOTIVACAO_PROVA[Math.max(0, Math.min(37 - dias, MOTIVACAO_PROVA.length - 1))];
+}
 function provaContagemHtml(){
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   const dias = Math.round((PROVA_TCDF.data - hoje)/86400000);
@@ -963,6 +1012,7 @@ function provaContagemHtml(){
     <div class="prova-rot">Prova objetiva e discursiva</div>
     <div class="prova-data">${PROVA_TCDF.rotulo}</div>
     <div class="prova-conta">${txt}</div>
+    <div class="prova-motiva">“${esc(motivacaoDoDia(dias))}”</div>
     <a class="prova-link" href="${PROVA_TCDF.link}" target="_blank" rel="noopener noreferrer">Edital e avisos no site do Cebraspe ↗</a>
     <div class="prova-aviso">O cronograma pode mudar: acompanhe as atualizações pelo link.</div>
   </div>`;
