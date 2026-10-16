@@ -220,7 +220,6 @@ function renderQuiz(){
       <div class="toolbar-meta-row">
         <div class="progress-bar" style="max-width:220px;"><div class="fill" style="width:${progressPct}%"></div></div>
         <span class="toolbar-meta-info">
-          ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvo automaticamente neste aparelho a cada resposta (${formatarDataHoraSalvamento(quiz.ultimoSalvamento)})">💾 ${new Date(quiz.ultimoSalvamento).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>` : ''}
           ${(()=>{ const e = estadoSincronizacaoProgresso(); return `<span id="indicador-nuvem" class="indicador-nuvem ${e.classe}" title="${esc(e.texto)}">${e.icone}</span>`; })()}
         </span>
       </div>
