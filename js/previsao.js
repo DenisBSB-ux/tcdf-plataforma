@@ -170,14 +170,17 @@ function analisarTemasDaMateria(materiaKey){
 
 function _pct(x){ return Math.round(x*100) + '%'; }
 
-// quadro da questão: só a frequência nas provas desta base
+// quadro da questão: frequência do assunto nas provas desta base (selo com barra e faixa)
 function narrativaBancaBanner(q){
   if(isInedita(q) || !q.tema || !q.materia) return '';
   const d = analisarTemasDaMateriaCached(q.materia).find(a => a.tema===q.tema);
   if(!d) return '';
-  const dica = 'Frequência: provas desta base (amostra) em que o assunto aparece.';
-  return `<div class="narr-banner narr-estavel narr-numeros" title="${esc(dica)}">
-    <span class="narr-icone">📊</span>
-    <span class="narr-texto">${d.nProvasComTema}/${d.totalProvas} provas (${_pct(d.frequencia)})</span>
+  const p = Math.round(d.frequencia*100);
+  const faixa = p>=50 ? ['muito cobrado','alta'] : p>=25 ? ['cobrado com frequência','media'] : p>=10 ? ['cobrança ocasional','baixa'] : ['cobrança rara','rara'];
+  const dica = `Este assunto aparece em ${d.nProvasComTema} das ${d.totalProvas} provas desta base (${p}%). A base é uma amostra: um assunto ausente numa prova da base pode ter caído nela.`;
+  return `<div class="prov-badge prov-${faixa[1]}" title="${esc(dica)}">
+    <div class="prov-badge-topo"><span class="prov-badge-ico">📊</span><span class="prov-badge-pct">${p}%</span><span class="prov-badge-rot">das provas</span></div>
+    <div class="prov-badge-bar"><i style="width:${Math.max(4,p)}%"></i></div>
+    <div class="prov-badge-base"><span>${d.nProvasComTema} de ${d.totalProvas} provas</span><b>${faixa[0]}</b></div>
   </div>`;
 }

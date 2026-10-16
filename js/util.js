@@ -77,7 +77,7 @@ const TAGS_EDICAO_PERMITIDAS = ['b','strong','i','em','s','strike','u','mark','s
 function limparHtmlEditado(html){
   if(!html) return '';
   if(typeof DOMPurify !== 'undefined' && DOMPurify.sanitize){
-    return DOMPurify.sanitize(String(html), { ALLOWED_TAGS: TAGS_EDICAO_PERMITIDAS, ALLOWED_ATTR: ['style','class','color','data-img','alt'] });
+    return removerDicasDeSimbolos(DOMPurify.sanitize(String(html), { ALLOWED_TAGS: TAGS_EDICAO_PERMITIDAS, ALLOWED_ATTR: ['style','class','color','data-img','alt'] }));
   }
   return esc(htmlParaTextoPlano(html));
 }
@@ -358,17 +358,17 @@ function limparResolucao(r){
   const vistos = new Set();
   const out = [];
   String(r).split(/\n+/).forEach(linha=>{
-    let l = linha.replace(/\*\*([^*\n]+)\*\*/g,'\u0001$1\u0002').replace(/(^|\s)\*(?=\S)([^*\n]+)\*/g,'$1$2');
-    const plano = l.replace(/[\u0001\u0002]/g,'').trim();
+    let l = linha.replace(/\*\*([^*\n]+)\*\*/g,'\u0001$1\u0002').replace(/(^|\s)\*(?=\S)([^*\n]+)\*/g,'$1\u0003$2\u0004');
+    const plano = l.replace(/[\u0001-\u0004]/g,'').trim();
     if(!plano) return;
     if(plano.length <= 110 && (soVeredito.test(plano) || soAlt.test(plano) || soGab.test(plano))) return;
     let p = plano, prev;
     do { prev = p; p = p.replace(iniVeredito,'').replace(iniAlt,''); } while(p !== prev);
-    if(p !== plano){ l = l.replace(/[\u0001\u0002]/g,''); do { prev = l; l = l.replace(iniVeredito,'').replace(iniAlt,''); } while(l !== prev); }
+    if(p !== plano){ l = l.replace(/[\u0001-\u0004]/g,''); do { prev = l; l = l.replace(iniVeredito,'').replace(iniAlt,''); } while(l !== prev); }
     // também frase a frase: "...Portanto, o item está errado." no meio/fim do parágrafo
-    l = dividirEmFrases(l).filter(f=>{ const pf = f.replace(/[\u0001\u0002]/g,'').trim(); return pf && !(pf.length <= 110 && (soVeredito.test(pf) || soAlt.test(pf) || soGab.test(pf))); }).join(' ');
-    if(!l.replace(/[\u0001\u0002\s]/g,'')) return;
-    const chave = l.replace(/[\u0001\u0002]/g,'').toLowerCase().replace(/[^a-z0-9à-ÿ]+/g,' ').trim();
+    l = dividirEmFrases(l).filter(f=>{ const pf = f.replace(/[\u0001-\u0004]/g,'').trim(); return pf && !(pf.length <= 110 && (soVeredito.test(pf) || soAlt.test(pf) || soGab.test(pf))); }).join(' ');
+    if(!l.replace(/[\u0001-\u0004\s]/g,'')) return;
+    const chave = l.replace(/[\u0001-\u0004]/g,'').toLowerCase().replace(/[^a-z0-9à-ÿ]+/g,' ').trim();
     if(!chave || vistos.has(chave)) return;
     vistos.add(chave);
     out.push(l.trim());
@@ -389,11 +389,20 @@ function simbolosComDica(html){
   return String(html).replace(/<p>(\s*)(🏷|⚖|📌|🔑|⚠|🪤|💡)(\uFE0F?)/g, (m, sp, sim, vs)=>
     `<p>${sp}<span class="sim-dica" tabindex="0" role="note" data-dica="${SIMBOLOS_RESOLUCAO[sim].replace(/"/g,'&quot;')}">${sim}${vs}</span>`);
 }
+// marcadores de negrito (\u0001..\u0002) e itálico (\u0003..\u0004) da resolução viram <strong> e <em>
+function marcadoresParaHtml(h){
+  return String(h).replace(/\u0001/g,'<strong>').replace(/\u0002/g,'</strong>').replace(/\u0003/g,'<em>').replace(/\u0004/g,'</em>');
+}
 function formatarTextoComDestaque(texto, palavrasExtras){
   if(!texto) return '';
   const comQuebras = quebrarItensAlfabeticos(texto);
   const frases = dividirEmFrases(comQuebras);
-  return simbolosComDica(frases.map(f => `<p>${destacarPalavrasChave(f, palavrasExtras).replace(/[\u0001\u0002]/g,'')}</p>`).join(''));
+  return simbolosComDica(frases.map(f => `<p>${marcadoresParaHtml(destacarPalavrasChave(f, palavrasExtras))}</p>`).join(''));
+}
+// edição salva sem os pop-ups dos símbolos (o atributo data-dica não passa pelo sanitizador): desfaz o invólucro
+// e deixa simbolosComDica recolocá-lo na hora de exibir
+function removerDicasDeSimbolos(html){
+  return String(html).replace(/<span class="sim-dica"[^>]*>([^<]*)<\/span>/g,'$1');
 }
 
 
