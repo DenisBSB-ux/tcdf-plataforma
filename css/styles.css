@@ -2121,3 +2121,8 @@ body:not(.theme-light) mark.res-marca{ background:#f5d76e; color:#2a1f08 !import
 mark.arm-trecho, .arm-trecho{ color:#7f1d1d !important; }
 body:not(.theme-light) mark.arm-trecho, body:not(.theme-light) .arm-trecho{ background:#fecaca; color:#7f1d1d !important; }
 body:not(.theme-light) mark.res-marca *, body:not(.theme-light) mark.arm-trecho *{ color:inherit !important; }
+
+/* v226: grade de questões no modo escuro mantém verde/vermelho das respondidas */
+body:not(.theme-light) .page-num.page-correct{ background:var(--stamp-green); border-color:var(--stamp-green); color:#fff; }
+body:not(.theme-light) .page-num.page-incorrect{ background:var(--stamp-red); border-color:var(--stamp-red); color:#fff; }
+body:not(.theme-light) .page-num.page-current{ outline:2px solid var(--gold); outline-offset:1px; }
