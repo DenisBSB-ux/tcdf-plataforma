@@ -13,7 +13,6 @@ function renderImportarConteudo(){
   const materiasImportadas = materiasGerenciaveis();
   const vazio = ALL_QUESTIONS.length===0;
   return `
-        <div class="section-eyebrow">Anexação de novo processo</div>
         <h2 class="section-title">Importar questões (.txt)</h2>
         <div class="import-field">
           <label>Nome da matéria (vira o nome da aba)</label>
