@@ -774,7 +774,7 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
         <div style="width:90px;text-align:right;${estiloCelula}color:${cor.fg};font-size:11px;" title="${l.ultimaRespostaTs ? new Date(l.ultimaRespostaTs).toLocaleString('pt-BR') : ''}">${l.ultimaRespostaTs ? formatarDataHoraSalvamento(l.ultimaRespostaTs) : '—'}</div>
       </div>
       <details class="composicao-det composicao-det-mat" data-comp-tema="mat:${esc(l.nome)}" ${COMPOSICAO_ABERTOS.has('mat:'+l.nome)?'open':''}>
-        <summary class="composicao-mat-sum">Distribuição por assunto</summary>
+        <summary class="composicao-mat-sum" title="Distribuição por assunto" aria-label="Distribuição por assunto"></summary>
         <div class="composicao-arts">${COMPOSICAO_ABERTOS.has('mat:'+l.nome)?distribuicaoAssuntosMateriaHtml(l.nome):''}</div>
       </details>`;
     }).join('')}`;
