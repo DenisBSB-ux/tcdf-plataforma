@@ -704,10 +704,13 @@ function renderEstatisticasPorMateria(){
       <h3 style="margin:0;color:inherit;font-size:22px;">📈 Estatísticas por matéria</h3>
     </div>
     <div class="resumo-dia">
+      <div class="resumo-esq">
       <span class="resumo-item" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)"><small>Hoje</small><b>${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</b></span>
       <span class="resumo-item" title="Total de respostas dividido só pelos dias em que você resolveu questões (${atividade.diasComAtividade} dia(s)); dias sem resolução não entram na conta">
         <small>Média por dia estudado</small><b>${atividade.mediaDiaria.toFixed(1)} questões</b><em>${atividade.diasComAtividade} dia${atividade.diasComAtividade===1?'':'s'}</em></span>
+      </div>
       <span class="resumo-motiva" title="Mensagem do dia">“${esc(motivacaoDoDia(provaDias()))}”</span>
+      <span class="resumo-dir"></span>
     </div>
     <div style="height:10px;"></div>
     <div class="tabela-scroll">${renderTabelaEstatisticas(linhas, estiloCelula)}</div>
