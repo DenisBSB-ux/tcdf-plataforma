@@ -2199,3 +2199,7 @@ body:not(.theme-light) .prova-motiva{ background:rgba(255,255,255,.06); }
 .prova-det ul{ margin:6px 0 4px 16px; padding:0; }
 .prova-det li{ margin:3px 0; line-height:1.35; color:var(--ink); }
 .prova-det small{ opacity:.75; color:var(--ink); }
+
+/* v240: mensagem do dia centralizada e em destaque */
+.resumo-motiva{ flex-basis:100%; margin:8px 0 2px; text-align:center; align-self:auto; font-size:18px; font-weight:700; font-style:italic; line-height:1.35; opacity:1; color:var(--ink); padding:8px 14px; border-radius:10px; background:rgba(201,162,75,.16); border:1px solid rgba(201,162,75,.35); }
+@media (max-width:640px){ .resumo-motiva{ font-size:15px; } }
