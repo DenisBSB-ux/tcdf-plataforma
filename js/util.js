@@ -358,17 +358,17 @@ function limparResolucao(r){
   const vistos = new Set();
   const out = [];
   String(r).split(/\n+/).forEach(linha=>{
-    let l = linha.replace(/\*\*([^*\n]+)\*\*/g,'\u0001$1\u0002').replace(/(^|\s)\*(?=\S)([^*\n]+)\*/g,'$1\u0003$2\u0004');
-    const plano = l.replace(/[\u0001-\u0004]/g,'').trim();
+    let l = linha.replace(/==([^=\n]+)==/g,'\u0005$1\u0006').replace(/\*\*([^*\n]+)\*\*/g,'\u0001$1\u0002').replace(/(^|\s)\*(?=\S)([^*\n]+)\*/g,'$1\u0003$2\u0004');
+    const plano = l.replace(/[\u0001-\u0006]/g,'').trim();
     if(!plano) return;
     if(plano.length <= 110 && (soVeredito.test(plano) || soAlt.test(plano) || soGab.test(plano))) return;
     let p = plano, prev;
     do { prev = p; p = p.replace(iniVeredito,'').replace(iniAlt,''); } while(p !== prev);
-    if(p !== plano){ l = l.replace(/[\u0001-\u0004]/g,''); do { prev = l; l = l.replace(iniVeredito,'').replace(iniAlt,''); } while(l !== prev); }
+    if(p !== plano){ l = l.replace(/[\u0001-\u0006]/g,''); do { prev = l; l = l.replace(iniVeredito,'').replace(iniAlt,''); } while(l !== prev); }
     // também frase a frase: "...Portanto, o item está errado." no meio/fim do parágrafo
-    l = dividirEmFrases(l).filter(f=>{ const pf = f.replace(/[\u0001-\u0004]/g,'').trim(); return pf && !(pf.length <= 110 && (soVeredito.test(pf) || soAlt.test(pf) || soGab.test(pf))); }).join(' ');
-    if(!l.replace(/[\u0001-\u0004\s]/g,'')) return;
-    const chave = l.replace(/[\u0001-\u0004]/g,'').toLowerCase().replace(/[^a-z0-9à-ÿ]+/g,' ').trim();
+    l = dividirEmFrases(l).filter(f=>{ const pf = f.replace(/[\u0001-\u0006]/g,'').trim(); return pf && !(pf.length <= 110 && (soVeredito.test(pf) || soAlt.test(pf) || soGab.test(pf))); }).join(' ');
+    if(!l.replace(/[\u0001-\u0006\s]/g,'')) return;
+    const chave = l.replace(/[\u0001-\u0006]/g,'').toLowerCase().replace(/[^a-z0-9à-ÿ]+/g,' ').trim();
     if(!chave || vistos.has(chave)) return;
     vistos.add(chave);
     out.push(l.trim());
@@ -395,7 +395,7 @@ function simbolosComDica(html){
 }
 // marcadores de negrito (\u0001..\u0002) e itálico (\u0003..\u0004) da resolução viram <strong> e <em>
 function marcadoresParaHtml(h){
-  return String(h).replace(/\u0001/g,'<strong>').replace(/\u0002/g,'</strong>').replace(/\u0003/g,'<em>').replace(/\u0004/g,'</em>');
+  return String(h).replace(/\u0001/g,'<strong>').replace(/\u0002/g,'</strong>').replace(/\u0003/g,'<em>').replace(/\u0004/g,'</em>').replace(/\u0005/g,'<mark class="res-marca">').replace(/\u0006/g,'</mark>');
 }
 function formatarTextoComDestaque(texto, palavrasExtras){
   if(!texto) return '';

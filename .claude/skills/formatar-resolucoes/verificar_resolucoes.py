@@ -56,7 +56,9 @@ def main():
                 erros.append(f'#{i} linha sem símbolo: {s[:50]!r}'); continue
             if k <= pos: erros.append(f'#{i} ordem dos símbolos fora do padrão')
             pos = k
-        if f['res'].count('**') % 2: erros.append(f'#{i} negrito (**) desbalanceado')
+        if f['res'].count('**') % 2 or f['res'].count('==') % 2: erros.append(f'#{i} marcação (** ou ==) desbalanceada')
+        for l in linhas:
+            if l.strip().startswith('📌') and l.count('**') > 4: erros.append(f'#{i} negrito demais no 📌')
         if re.search(r'(?i)gabarito:\s*(certo|errado)|o item (est[aá]|é) (certo|errado)', f['res']):
             erros.append(f'#{i} resolução repete o gabarito')
     if re.search(r'(?m)^### Resumo Flash', tf): erros.append('arquivo final ainda contém ### Resumo Flash')

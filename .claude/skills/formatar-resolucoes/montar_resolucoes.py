@@ -9,6 +9,7 @@ Uso:
   python3 montar_resolucoes.py classificar <arquivo.md> <proposta.py> <saida.md>   # aplica a classificação APROVADA pelo usuário
   python3 montar_resolucoes.py repetidas <arquivo.md> [limiar=0.85]    # questões quase repetidas (enunciado)
 
+Negrito só nos termos mais relevantes (📌 até 2; ⚠️/🪤 até 1; 🔑 sem negrito); o termo mais importante do 📌 vira ==fundo amarelo==.
 Cada lote em <pasta_lotes>/bNN.py define  R = { indice: (ess, [palavras-chave], base, atencao, armadilha, macete) }
   ess        📌 essência em uma linha (palavras-chave em **negrito**)
   base       ⚖️ ex.: '**Art. 75** ▸ **IV** ▸ **"c"** · Lei 14.133/2021' ('' omite a linha)
@@ -69,17 +70,40 @@ def norm_txt(t):
     t = unicodedata.normalize('NFD', t.lower()); t = ''.join(c for c in t if not unicodedata.combining(c))
     return re.sub(r'[^a-z0-9]+', ' ', t).strip()
 
+def destaca(texto, kws, max_bold, marca=0):
+    """Menos negrito, mais foco: só os termos mais relevantes ficam em **negrito** e o mais importante
+    (marca=1) ganha ==fundo amarelo==. A relevância vem da ordem da lista de palavras-chave (🔑)."""
+    spans = list(re.finditer(r'\*\*([^*\n]+)\*\*', texto))
+    nk = [norm_txt(k) for k in kws]
+    def rank(m):
+        t = norm_txt(m.group(1))
+        for j, k in enumerate(nk):
+            if k and (k == t or k in t or t in k): return j
+        rad = {w[:5] for w in t.split() if len(w) >= 5}   # mesmo radical (ex.: truncar × truncamento)
+        for j, k in enumerate(nk):
+            if rad & {w[:5] for w in k.split() if len(w) >= 5}: return j + 0.5
+        return 999
+    ordem = sorted(range(len(spans)), key=lambda x: (rank(spans[x]), x))
+    marcados = set(ordem[:marca]); negritos = set(ordem[marca:marca + max_bold])
+    out, pos = [], 0
+    for n, m in enumerate(spans):
+        out.append(texto[pos:m.start()])
+        out.append(f'=={m.group(1)}==' if n in marcados else (f'**{m.group(1)}**' if n in negritos else m.group(1)))
+        pos = m.end()
+    out.append(texto[pos:]); return ''.join(out)
+
 def monta(q, d, i=0, sinal_extra=None):
     """Sem linha 🏷️: o perfil (sinal ou armadilha) já aparece no painel "Armadilha da banca" da plataforma."""
     ess, kw, base, ate, arm, mac = d
     L = []
     if base: L.append('⚖️ ' + base)
-    L.append('📌 ' + ess)
-    L.append('🔑 ' + ' · '.join(f'**{k}**' for k in kw))
+    L.append('📌 ' + destaca(ess, kw, 2, 1))
+    L.append('🔑 ' + ' · '.join(kw))  # sem negrito: a linha inteira já é de palavras-chave
+    ate = destaca(ate, kw, 1) if ate else ate
     if 'gabarito resolvido por IA' in q['res']:
         ate = (ate + ' ' if ate else '') + '**Gabarito resolvido por IA**, sem gabarito oficial (confiança média): **conferir** na norma.'
     if ate: L.append('⚠️ ' + ate)
-    if arm: L.append('🪤 ' + arm)
+    if arm: L.append('🪤 ' + destaca(arm, kw, 1))
     if mac: L.append('💡 ' + mac)
     return '\n'.join(L)
 
