@@ -704,15 +704,10 @@ function renderEstatisticasPorMateria(){
       <h3 style="margin:0;color:inherit;">📈 Estatísticas por matéria</h3>
       ${botoesSimuladoMateriaHtml()}
     </div>
-    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;">
-      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);color:var(--ink);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)">
-        <div style="font-size:11px;color:var(--ink-soft);">Total hoje</div>
-        <div style="font-size:15px;font-weight:700;">${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</div>
-      </div>
-      <div class="stat-chip" style="flex:1;max-width:220px;background:var(--paper-soft,#f7f3e8);color:var(--ink);border-radius:8px;padding:8px 12px;" title="Baseado no histórico recente de cada questão (últimas 20 tentativas) · ${atividade.diasComAtividade} dia(s) com atividade">
-        <div style="font-size:11px;color:var(--ink-soft);">Média diária</div>
-        <div style="font-size:15px;font-weight:700;">${atividade.mediaDiaria.toFixed(1)} questões/dia</div>
-      </div>
+    <div class="resumo-dia">
+      <span class="resumo-item" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)"><small>Hoje</small><b>${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</b></span>
+      <span class="resumo-item" title="Total de respostas dividido só pelos dias em que você resolveu questões (${atividade.diasComAtividade} dia(s)); dias sem resolução não entram na conta">
+        <small>Média por dia estudado</small><b>${atividade.mediaDiaria.toFixed(1)} questões</b><em>${atividade.diasComAtividade} dia${atividade.diasComAtividade===1?'':'s'}</em></span>
     </div>
     <div style="height:10px;"></div>
     <div class="tabela-scroll">${renderTabelaEstatisticas(linhas, estiloCelula)}</div>
@@ -783,6 +778,7 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
         <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:${cor.fgForte};font-weight:${l.ativa?800:600};display:flex;align-items:center;gap:6px;" data-macro-materia="${esc(l.nome)}">
           <span>${esc(l.nome)}${l.ativa?' <span style="font-size:10px;font-weight:600;opacity:.75;">(selecionada)</span>':''}</span>
           ${l.temSimuladoEmAndamento ? `<button data-continuar-materia="${esc(l.nome)}" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid ${cor.fgForte};background:transparent;color:${cor.fgForte};cursor:pointer;white-space:nowrap;">▶ Continuar</button>` : ''}
+          ${l.ativa ? `<button class="js-config" title="Configurar simulado: quantidade, ordem e filtros" aria-label="Configurar simulado" style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid ${cor.fgForte};background:transparent;color:${cor.fgForte};cursor:pointer;line-height:1.3;">⚙</button>` : ''}
         </div>
         <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fg};">${l.total}</div>
         <div style="width:76px;text-align:right;${estiloCelula}color:${cor.fg};">${l.respondidas || '—'}</div>
