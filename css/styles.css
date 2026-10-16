@@ -2141,3 +2141,8 @@ body:not(.theme-light) .version-tag{ background:rgba(255,255,255,.08); border-co
 body:not(.theme-light) .flip-badge{ color:#585c63; }
 body:not(.theme-light) .arm-box, body:not(.theme-light) .arm-box *, body:not(.theme-light) .arm-flash, body:not(.theme-light) .arm-flash *{ color:#3a1212; }
 body:not(.theme-light) .btn-outline.perigo{ color:#ef6b60; }
+
+/* v228: no painel de resolução único a caixa é transparente (card escuro): texto claro */
+body:not(.theme-light) .resolucao-unica .arm-box:not(.arm-box-edit), body:not(.theme-light) .resolucao-unica .arm-box:not(.arm-box-edit) *:not(.arm-nome):not(.arm-trecho){ color:inherit; }
+body:not(.theme-light) .resolucao-unica .arm-box .arm-rot, body:not(.theme-light) .resolucao-unica .arm-box .arm-origem, body:not(.theme-light) .resolucao-unica .arm-box .arm-nc{ color:#a3adc2; }
+body:not(.theme-light) .resolucao-unica .arm-box .arm-trecho{ color:#7f1d1d !important; }
