@@ -65,8 +65,8 @@ A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`S
 - `verificar_importador.js <original> <final>`: confere no navegador que `parseMarkdownQuestoes` lê tudo, sem mudar enunciado/gabarito, e que cada linha vira um parágrafo com pop-up.
 - `valores-atualizaveis.md`: tabela dos valores do art. 182 (o usuário preenche o vigente).
 
-## Na plataforma (v204)
-- A resolução mostra uma **legenda recolhível** dos símbolos ("ⓘ Legenda dos símbolos") quando começa por símbolo.
+## Na plataforma (v207)
+- Cada símbolo mostra um pop-up explicativo ao passar o mouse (a legenda recolhível foi removida da tela a pedido do usuário).
 - Sem `### Resumo Flash`, o verso do flashcard é montado com as linhas 📌, 🔑 e 💡 da resolução.
 
 ## Passo a passo
