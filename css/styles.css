@@ -1901,18 +1901,18 @@ body:not(.theme-light) .ajuste-andamento > label, body:not(.theme-light) .ajuste
 .composicao-tema{margin-top:12px;border-bottom:1px solid var(--line-soft,#e4dfd2)}
 .composicao-art-res{font-size:11px;opacity:.8;margin-left:6px;white-space:nowrap}
 
-/* v201 — artigo com questão errada: fundo vermelho claro */
+/* v202 — artigo com questão errada: fundo vermelho claro */
 .composicao-art-erro{background:#fbe4e1;border-radius:4px;padding:3px 8px;margin:2px 0;box-shadow:inset 3px 0 0 #c0392b}
 .composicao-art-erro .name,.composicao-art-erro .pct{color:#8f2a22;font-weight:700}
 
 
-/* v201 — menu "Distribuição por assunto" dentro de cada matéria (Estatísticas por matéria) */
+/* v202 — menu "Distribuição por assunto" dentro de cada matéria (Estatísticas por matéria) */
 .composicao-det-mat{margin:-2px 0 8px 12px}
 .composicao-mat-sum{display:block;height:0;overflow:hidden;padding:0;margin:0;list-style:none}
 .composicao-mat-sum::-webkit-details-marker{display:none}
 .mat-seta{background:none;border:0;padding:0;cursor:pointer;font-size:16px;line-height:1;text-align:center}
 
-/* v201 — análises no Guia de armadilhas */
+/* v202 — análises no Guia de armadilhas */
 .guia-desemp{margin-top:6px;font-size:12px;line-height:1.5}
 .guia-desemp-fraca{opacity:.7}
 .guia-desemp-pct{display:inline-block;padding:1px 8px;border-radius:6px;font-weight:700;margin-right:4px}
@@ -1932,18 +1932,18 @@ body:not(.theme-light) .ajuste-andamento > label, body:not(.theme-light) .ajuste
 .guia-quiz-fb.erro{background:#fee2e2;color:#8f2a22}
 .guia-quiz-fim{font-size:1.1rem;margin:6px 0}
 
-/* v201 — barra do artigo proporcional por cor: verde = acertos, vermelho = erros, cinza = sem resposta */
+/* v202 — barra do artigo proporcional por cor: verde = acertos, vermelho = erros, cinza = sem resposta */
 .bar-fill-prop{display:flex;overflow:hidden;background:#cbd5e1 !important;opacity:1 !important}
 .bar-fill-prop i{display:block;height:100%}
 .bar-fill-prop .seg-ac{background:#16a34a}
 .bar-fill-prop .seg-er{background:#c0392b}
 
-/* v201 — pop-up explicativo nos símbolos da resolução */
+/* v202 — pop-up explicativo nos símbolos da resolução */
 .sim-dica{position:relative;display:inline-block;cursor:help;outline:none;margin-right:2px}
 .sim-dica::after{content:attr(data-dica);position:absolute;left:0;top:calc(100% + 6px);z-index:50;width:max-content;max-width:min(280px,80vw);padding:7px 11px;border-radius:8px;background:#1f2937;color:#f9fafb;font-size:12px;font-weight:500;line-height:1.45;white-space:normal;text-align:left;box-shadow:0 4px 14px rgba(0,0,0,.25);opacity:0;visibility:hidden;transition:opacity .12s;pointer-events:none}
 .sim-dica:hover::after,.sim-dica:focus::after{opacity:1;visibility:visible}
 
-/* v201 — selo de frequência nas provas, barra do editor maior e com alinhamento */
+/* v202 — selo de frequência nas provas, barra do editor maior e com alinhamento */
 .prov-badge{ min-width:190px; padding:9px 13px 8px; border-radius:10px; border:1px solid var(--paper-line); background:var(--paper-dim); color:var(--ink); }
 .prov-badge-topo{ display:flex; align-items:baseline; gap:7px; }
 .prov-badge-ico{ font-size:16px; align-self:center; }

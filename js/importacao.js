@@ -651,6 +651,8 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   // Progresso de questão que não existe mais no arquivo é descartado.
   let progressoAnterior = null;
   const edOld = {}, gabOld = {}, flashOld = {}; // edições/gabaritos/flashcards seguem a questão equivalente, não o uid
+  const opSub = (modo === 'substituir' && STATE.substituirOpcoes) || {}; // escolhas do diálogo de "Substituir por matéria"
+  if(modo === 'substituir') STATE.substituirOpcoes = null;
   if(modo === 'substituir'){
     progressoAnterior = {};
     anteriores.forEach(q=>{
@@ -683,8 +685,12 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
     if(progressoAnterior){
       let manteve = false;
       equivalentes.forEach(eq=>{
-        if(edOld[eq.uid] && !EDICOES_USUARIO[uid]){ EDICOES_USUARIO[uid] = edOld[eq.uid]; }
-        if(gabOld[eq.uid] && !GABARITOS_ALTERADOS[uid]){ GABARITOS_ALTERADOS[uid] = gabOld[eq.uid]; }
+        if(edOld[eq.uid] && !EDICOES_USUARIO[uid]){
+          const ed = { ...edOld[eq.uid] };
+          if(opSub.descartarRes){ delete ed.r; delete ed.rf; } // usa a resolução (e o resumo flash) do arquivo
+          if(Object.keys(ed).length) EDICOES_USUARIO[uid] = ed;
+        }
+        if(gabOld[eq.uid] && !GABARITOS_ALTERADOS[uid] && !opSub.descartarGab){ GABARITOS_ALTERADOS[uid] = gabOld[eq.uid]; }
         if(flashOld[eq.uid]){ bucket.flash = bucket.flash || {}; if(!bucket.flash[uid]) bucket.flash[uid] = flashOld[eq.uid]; }
         if(!progressoAnterior[eq.uid]) return;
         bucket.perguntas[uid] = somarProgressoDaQuestao(bucket.perguntas[uid], progressoAnterior[eq.uid]);
@@ -1480,6 +1486,14 @@ async function removerMateria(materiaNome){
 // sem duplicar visualmente o conteúdo pro usuário nem contar duas vezes.
 async function substituirMateria(materiaNome, file){
   if(!window.confirm(`Substituir TODAS as questões de "${materiaNome}" pelas do arquivo "${file.name}"?\n\nO progresso, as edições e os gabaritos corrigidos acompanham as questões que continuam no arquivo (reconhecidas pelo enunciado). O que não estiver no arquivo novo é descartado.`)) return;
+  // edições feitas à mão acompanham a questão e prevalecem sobre o arquivo: pergunta o que fazer com elas
+  const doMat = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido');
+  const nRes = doMat.filter(q => EDICOES_USUARIO[q.uid] && (EDICOES_USUARIO[q.uid].r || EDICOES_USUARIO[q.uid].rf)).length;
+  const nGab = doMat.filter(q => GABARITOS_ALTERADOS[q.uid]).length;
+  const op = { descartarRes:false, descartarGab:false };
+  if(nRes) op.descartarRes = window.confirm(`${nRes} questão(ões) de "${materiaNome}" têm a resolução (ou o resumo flash) editada por você.\n\nOK = usar as resoluções do ARQUIVO no lugar (as suas edições de resolução são descartadas)\nCancelar = manter as suas edições`);
+  if(nGab) op.descartarGab = window.confirm(`${nGab} questão(ões) de "${materiaNome}" têm o gabarito alterado por você.\n\nOK = usar os gabaritos do ARQUIVO no lugar (as suas alterações de gabarito são descartadas)\nCancelar = manter as suas alterações`);
+  STATE.substituirOpcoes = op;
   STATE.importDeckName = materiaNome;
   handleImportFile(file, 'substituir');
 }
