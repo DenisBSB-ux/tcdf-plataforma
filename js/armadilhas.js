@@ -13,14 +13,14 @@
    prevalece sobre o arquivo e sincroniza junto com as demais edições). */
 
 const ARM_TIPOS = {
-  GEN: { nome:'Generalização', def:'Torna absoluto o que é relativo', sinais:'sempre, nunca, todo, qualquer, exclusivamente', ex:'"Todo ato administrativo é discricionário"', cor:'#c2410c', bg:'#ffedd5', macete:'Desconfie do absoluto: a regra não tem exceção mesmo?' },
-  SUF: { nome:'Suficiência falsa', def:'Promove um meio parcial a bastante', sinais:'suficiente, por si só, basta', ex:'"Denúncias informais são suficientes para a fiscalização"', cor:'#a16207', bg:'#fef9c3', macete:'"Basta" raramente basta: falta algum requisito?' },
-  DIS: { nome:'Dispensa / exceção inventada', def:'Cria uma exceção ou isenção que não existe', sinais:'afasta, dispensa, independentemente, não se aplica', ex:'"Fica afastada a exigibilidade do dever de accountability"', cor:'#15803d', bg:'#dcfce7', macete:'Quem disse que pode dispensar? Procure a exceção na lei.' },
-  JUS: { nome:'Justificativa falsa', def:'Fato verdadeiro ligado a uma conclusão falsa', sinais:'visto que, uma vez que, porque, por força de, de tal modo que', ex:'"...visto que a prestação de contas está vinculada à soberania estatal"', cor:'#0f766e', bg:'#ccfbf1', macete:'Teste o conectivo: a premissa realmente leva à conclusão?' },
-  INV: { nome:'Inversão', def:'Troca causa e efeito, ordem ou dependência', sinais:'(sem palavra fixa)', ex:'"O controle social ocorre independentemente da transparência"', cor:'#1d4ed8', bg:'#dbeafe', macete:'Quem depende de quem? Confira a ordem e a causa.' },
-  TRO: { nome:'Troca de conceitos', def:'Atribui a um conceito a característica de outro', sinais:'termos vizinhos: eficácia/eficiência, nominal/efetiva', ex:'"Eficiência mede o alcance das metas"', cor:'#6d28d9', bg:'#ede9fe', macete:'Termo vizinho? Confira o conceito, o órgão, o prazo e o número.' },
-  RES: { nome:'Restrição indevida', def:'Limita o que é amplo', sinais:'apenas, somente, restrito a, exclusivamente', ex:'"Accountability se aplica apenas ao setor público"', cor:'#be185d', bg:'#fce7f3', macete:'"Apenas/somente": a lei não alcança mais gente ou mais casos?' },
-  EXT: { nome:'Extrapolação', def:'Acrescenta algo que a lei ou a teoria não diz', sinais:'detalhe extra, geralmente no fim do item', ex:'"...sob pena de demissão imediata"', cor:'#b91c1c', bg:'#fee2e2', macete:'Olhe o final do item: o detalhe extra está na lei?' },
+  GEN: { nome:'Generalização', def:'Diz que vale sempre ou para todos, mas existe exceção', sinais:'sempre, nunca, todo, qualquer, exclusivamente', ex:'"Todo ato administrativo é discricionário"', cor:'#c2410c', bg:'#ffedd5', macete:'Desconfie do absoluto: a regra não tem exceção mesmo?' },
+  SUF: { nome:'Suficiência falsa', def:'Diz que uma coisa sozinha já basta, mas a lei exige mais', sinais:'suficiente, por si só, basta', ex:'"Denúncias informais são suficientes para a fiscalização"', cor:'#a16207', bg:'#fef9c3', macete:'"Basta" raramente basta: falta algum requisito?' },
+  DIS: { nome:'Dispensa / exceção inventada', def:'Inventa uma exceção que a lei não prevê', sinais:'afasta, dispensa, independentemente, não se aplica', ex:'"Fica afastada a exigibilidade do dever de accountability"', cor:'#15803d', bg:'#dcfce7', macete:'Quem disse que pode dispensar? Procure a exceção na lei.' },
+  JUS: { nome:'Justificativa falsa', def:'O fato é verdadeiro, mas o motivo dado não leva à conclusão', sinais:'visto que, uma vez que, porque, por força de, de tal modo que', ex:'"...visto que a prestação de contas está vinculada à soberania estatal"', cor:'#0f766e', bg:'#ccfbf1', macete:'Teste o conectivo: a premissa realmente leva à conclusão?' },
+  INV: { nome:'Inversão', def:'Troca a ordem, a causa ou quem depende de quem', sinais:'(sem palavra fixa)', ex:'"O controle social ocorre independentemente da transparência"', cor:'#1d4ed8', bg:'#dbeafe', macete:'Quem depende de quem? Confira a ordem e a causa.' },
+  TRO: { nome:'Troca de conceitos', def:'Usa o nome de um conceito para descrever outro', sinais:'termos vizinhos: eficácia/eficiência, nominal/efetiva', ex:'"Eficiência mede o alcance das metas"', cor:'#6d28d9', bg:'#ede9fe', macete:'Termo vizinho? Confira o conceito, o órgão, o prazo e o número.' },
+  RES: { nome:'Restrição indevida', def:'Diz que vale só para um caso, mas a regra é mais ampla', sinais:'apenas, somente, restrito a, exclusivamente', ex:'"Accountability se aplica apenas ao setor público"', cor:'#be185d', bg:'#fce7f3', macete:'"Apenas/somente": a lei não alcança mais gente ou mais casos?' },
+  EXT: { nome:'Extrapolação', def:'Acrescenta algo que a lei não diz', sinais:'detalhe extra, geralmente no fim do item', ex:'"...sob pena de demissão imediata"', cor:'#b91c1c', bg:'#fee2e2', macete:'Olhe o final do item: o detalhe extra está na lei?' },
 };
 const ARM_ORDEM = ['GEN','SUF','DIS','JUS','INV','TRO','RES','EXT'];
 const ARM_SINAIS = {
@@ -166,7 +166,6 @@ function armPainelHtml(q){
       ${(a.trecho && !ARM_DESTACADOS.has(uid)) ? `<div class="arm-expl"><b>Trecho:</b> <mark class="arm-trecho">${esc(a.trecho.replace(/ \| /g,' … '))}</mark></div>` : ''}
       ${defs}
       ${(a.expl && !explRepetida) ? `<div class="arm-expl">${esc(a.expl)}</div>` : ''}
-      ${p ? `<div class="arm-macete">💡 ${esc(p.macete)}</div>` : ''}
     </div>`;
   }
   const s = ARM_SINAIS[a.sinal];

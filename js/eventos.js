@@ -627,7 +627,7 @@ document.addEventListener('keydown', (e)=>{
   if(!STATE.quiz || STATE.quiz.finished) return;
   const quiz = STATE.quiz;
   if(e.key==='ArrowLeft' || e.key==='Shift'){ e.preventDefault(); goPrev(); return; }
-  if(e.key==='ArrowRight' || e.key===' '){ e.preventDefault(); goNext(); return; }
+  if(e.key==='ArrowRight'){ e.preventDefault(); goNext(); return; }
   const uid = quiz.queue[quiz.idx];
   const q = BY_UID[uid];
   if(q && q.t==='CE' && !quiz.respostas[uid]){

@@ -204,7 +204,7 @@ function renderQuiz(){
       <div class="toolbar-btn-row">
         <button class="icon-btn" id="btn-prev" title="Questão anterior (seta ← ou Shift)" ${quiz.idx===0?'disabled':''}>←</button>
         <span class="q-jump-label">${quiz.idx+1} / ${quiz.queue.length}</span>
-        <button class="icon-btn" id="btn-next-arrow" title="Próxima questão (seta → ou espaço)" ${quiz.idx===quiz.queue.length-1?'disabled':''}>→</button>
+        <button class="icon-btn" id="btn-next-arrow" title="Próxima questão não respondida (seta →)" ${(quiz.idx===quiz.queue.length-1 && !quiz.queue.some((u,i)=>i!==quiz.idx && !quiz.respostas[u]))?'disabled':''}>→</button>
         <button class="icon-btn" id="btn-jump-ultima-respondida" title="Avançar para a última questão respondida" ${idxUltimaRespondida<0 || idxUltimaRespondida===quiz.idx?'disabled':''}>⏩</button>
         <button class="icon-btn" id="btn-jump-proximo-assunto" title="Ir para o próximo assunto" ${idxProximoAssunto<0?'disabled':''}>⏭</button>
         <span class="toolbar-divider"></span>
@@ -220,7 +220,7 @@ function renderQuiz(){
       <div class="toolbar-meta-row">
         <div class="progress-bar" style="max-width:220px;"><div class="fill" style="width:${progressPct}%"></div></div>
         <span class="toolbar-meta-info">
-          ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvo automaticamente neste aparelho a cada resposta">💾 ${formatarDataHoraSalvamento(quiz.ultimoSalvamento)}</span>` : ''}
+          ${quiz.ultimoSalvamento ? `<span class="kbd-hint" title="Salvo automaticamente neste aparelho a cada resposta (${formatarDataHoraSalvamento(quiz.ultimoSalvamento)})">💾 ${new Date(quiz.ultimoSalvamento).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>` : ''}
           ${(()=>{ const e = estadoSincronizacaoProgresso(); return `<span id="indicador-nuvem" class="indicador-nuvem ${e.classe}" title="${esc(e.texto)}">${e.icone}</span>`; })()}
         </span>
       </div>
@@ -370,7 +370,6 @@ function renderResolucao(q, resposta, quiz){
   const gAlterado = GABARITOS_ALTERADOS[q.uid];
   return `
   <div class="answer-feedback ${feedbackClass}">
-    ${correto ? 'Você acertou' : 'Você errou'} — gabarito: ${esc(gabaritoEfetivo(q))}
     <span class="acoes-questao">
       ${edicaoAtual===q.uid ? '' : botaoEditarTudo(q.uid)}
       <button class="btn-corrigir-gabarito btn-ui" data-alterar-gabarito="${esc(q.uid)}" title="Corrigir o gabarito desta questão (com justificativa) — não muda tentativas já registradas" >✏️ Corrigir gabarito</button>
@@ -429,9 +428,16 @@ function goPrev(){
   const quiz = STATE.quiz;
   if(quiz.idx>0){ chuteArmado=null; dicaChuteAberta=null; quiz.idx -= 1; salvarQuizEmAndamento(); render(); }
 }
+// avança para a próxima questão NÃO respondida (depois da atual; se não houver, a primeira não respondida;
+// com tudo respondido, segue em ordem)
 function goNext(){
   const quiz = STATE.quiz;
-  if(quiz.idx < quiz.queue.length-1){ chuteArmado=null; dicaChuteAberta=null; quiz.idx += 1; salvarQuizEmAndamento(); render(); }
+  const livre = i => !quiz.respostas[quiz.queue[i]];
+  let alvo = -1;
+  for(let i=quiz.idx+1; i<quiz.queue.length; i++){ if(livre(i)){ alvo = i; break; } }
+  if(alvo<0) for(let i=0; i<quiz.idx; i++){ if(livre(i)){ alvo = i; break; } }
+  if(alvo<0 && quiz.idx < quiz.queue.length-1) alvo = quiz.idx+1;
+  if(alvo>=0){ chuteArmado=null; dicaChuteAberta=null; quiz.idx = alvo; salvarQuizEmAndamento(); render(); }
 }
 function goToQuestion(i){
   const quiz = STATE.quiz;
