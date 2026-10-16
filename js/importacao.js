@@ -13,14 +13,14 @@ function renderImportarConteudo(){
   const materiasImportadas = materiasGerenciaveis();
   const vazio = ALL_QUESTIONS.length===0;
   return `
-        <h2 class="section-title">Importar questões (.txt)</h2>
-        <div class="import-field">
-          <label>Nome da matéria (vira o nome da aba)</label>
-          <input type="text" id="input-assunto-nome" placeholder="Ex.: Regimento Interno do TCDF" value="${esc(STATE.importDeckName)}">
-        </div>
-
-        <div class="upload-source-row">
-          <button type="button" class="side-action-btn" id="btn-buscar-computador">💻 Buscar no computador</button>
+        <div class="imp-wrap">
+        <h2 class="section-title">Importar questões</h2>
+        <div class="imp-novo">
+          <div class="import-field">
+            <label for="input-assunto-nome">Nome da matéria (vira o nome da aba)</label>
+            <input type="text" id="input-assunto-nome" placeholder="Ex.: Regimento Interno do TCDF" value="${esc(STATE.importDeckName)}">
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-buscar-computador">📂 Escolher arquivo</button>
           <input type="file" id="file-input" accept=".txt,text/plain,.pdf,application/pdf,.md,text/markdown" style="display:none;">
         </div>
 
@@ -29,9 +29,10 @@ function renderImportarConteudo(){
         ${STATE.importLog ? renderImportLog() : ''}
 
         ${renderAvisoMateriasDuplicadas()}
-        ${materiasImportadas.length ? `<div class="card-block" style="margin-top:24px;">
-          <h3>Matérias</h3>
+        ${materiasImportadas.length ? `<div class="mat-gerencia">
+          <h3 class="mat-titulo">Matérias <span class="mat-total">${materiasImportadas.length}</span></h3>
           <input type="file" id="file-input-atualizar" accept=".txt,text/plain,.pdf,application/pdf,.md,text/markdown" style="display:none;">
+          <div class="mat-lista">
           ${materiasImportadas.map(m=>{
             const n = ALL_QUESTIONS.filter(q=>q.materia===m).length;
             // horário da versão publicada na nuvem (igual em todos os aparelhos);
@@ -41,27 +42,37 @@ function renderImportarConteudo(){
             const numDuplicatas = detectarDuplicatasDaMateria(m).reduce((soma,g)=>soma + (g.length-1), 0);
             const dedupInfo = STATE.dedupInfo && STATE.dedupInfo.materia===m ? STATE.dedupInfo : null;
             const ativa = m===STATE.materia;
-            return `<div class="bar-row" style="flex-wrap:wrap;${ativa?'background:var(--gold-soft, #fdf1de);border:1px solid var(--gold-bright, #c9a227);':''}">
-              <div class="name" style="${ativa?'font-weight:700;':''}">${ativa?'▸ ':''}${esc(m)}</div>
-              <div class="pct" style="margin-right:8px;">${n} questão(ões)</div>
-              <div style="font-size:11px;color:var(--ink-soft);margin-right:8px;line-height:1.4;">
-                ${ultimaAtualizacao ? `<div title="Última vez que o conteúdo (questões) desta matéria foi alterado e publicado na nuvem — responder questões não muda este horário">🔄 Questões atualizadas em ${formatarDataHoraSalvamento(ultimaAtualizacao)}</div>` : ''}
-                <div title="Última vez que você respondeu uma questão desta matéria (seu progresso é salvo automaticamente a cada resposta)">🕒 Última resposta: ${ultimaRespostaTs ? formatarDataHoraSalvamento(ultimaRespostaTs) : '—'}</div>
+            return `<div class="mat-linha${ativa?' ativa':''}">
+              <div class="mat-info">
+                <div class="mat-nome">${esc(m)}</div>
+                <div class="mat-meta">
+                  <span>${n} questões</span>
+                  ${ultimaAtualizacao ? `<span title="Última vez que o conteúdo (questões) desta matéria foi alterado e publicado na nuvem — responder questões não muda este horário">atualizada em ${formatarDataHoraSalvamento(ultimaAtualizacao)}</span>` : ''}
+                  <span title="Última vez que você respondeu uma questão desta matéria">última resposta ${ultimaRespostaTs ? formatarDataHoraSalvamento(ultimaRespostaTs) : '—'}</span>
+                </div>
               </div>
-              <button class="btn-outline" data-download-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
-              <button class="btn-outline" data-inserir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">➕ Inserir</button>
-              <button class="btn-outline" data-substituir-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;" title="Troca todas as questões dessa matéria pelas de um arquivo novo. O progresso, as edições e os gabaritos corrigidos acompanham as questões que continuam no arquivo (reconhecidas pelo enunciado)">🔁 Substituir</button>
-              ${numDuplicatas>0 ? `<button class="btn-outline" data-remover-duplicatas="${esc(m)}" style="padding:4px 10px;font-size:11px;border-color:var(--stamp-red);color:var(--stamp-red);" title="Detectadas questões repetidas (mesmo enunciado) dentro desta matéria — remove as cópias extras, mantendo o histórico de progresso">🧹 ${numDuplicatas} duplicata(s)</button>` : ''}
-              <button class="btn-outline" data-remover-materia="${esc(m)}" style="padding:4px 10px;font-size:11px;">Remover</button>
-              ${dedupInfo ? `<div style="flex-basis:100%;font-size:11px;margin-top:4px;color:var(--stamp-green, #3a9d5c);">✅ ${dedupInfo.removidas} questão(ões) duplicada(s) removida(s)${dedupInfo.publicadoOk===false?' (falha ao publicar na nuvem: '+esc(dedupInfo.motivoPublicacao||'')+' — já está salvo neste dispositivo)':''}.</div>` : ''}
+              <div class="mat-acoes">
+                <button class="btn-outline btn-mat" data-inserir-materia="${esc(m)}" title="Adiciona questões novas a essa matéria, sem apagar as que já existem nem o histórico de progresso">Inserir</button>
+                <button class="btn-outline btn-mat" data-substituir-materia="${esc(m)}" title="Troca todas as questões dessa matéria pelas de um arquivo novo. O progresso, as edições e os gabaritos corrigidos acompanham as questões que continuam no arquivo (reconhecidas pelo enunciado)">Substituir</button>
+                <details class="mat-mais"><summary title="Mais ações" aria-label="Mais ações">⋯</summary>
+                  <div class="mat-menu">
+                    <button class="btn-menu" data-download-materia="${esc(m)}" title="Baixa todas as questões dessa matéria em Markdown">⬇ Baixar</button>
+                    ${numDuplicatas>0 ? `<button class="btn-menu" data-remover-duplicatas="${esc(m)}" title="Remove as cópias extras de questões repetidas, mantendo o histórico de progresso">🧹 Remover ${numDuplicatas} duplicata(s)</button>` : ''}
+                    <button class="btn-menu perigo" data-remover-materia="${esc(m)}">🗑 Remover matéria</button>
+                  </div>
+                </details>
+              </div>
+              ${dedupInfo ? `<div class="mat-aviso">✅ ${dedupInfo.removidas} questão(ões) duplicada(s) removida(s)${dedupInfo.publicadoOk===false?' (falha ao publicar na nuvem: '+esc(dedupInfo.motivoPublicacao||'')+' — já está salvo neste dispositivo)':''}.</div>` : ''}
             </div>`;
           }).join('')}
+          </div>
           <button class="btn-outline" id="btn-salvar-tudo" style="margin-top:10px;padding:6px 14px;font-size:12px;font-weight:600;" title="Força salvar TODAS as matérias agora (local + nuvem) numa vez só — use depois de importar, antes de atualizar a página" ${STATE.salvandoTudo?'disabled':''}>${STATE.salvandoTudo?'⏳ Salvando tudo…':'💾 Salvar tudo'}</button>
           ${STATE.ultimoSalvamentoGeral ? `<div style="font-size:11px;margin-top:4px;color:${STATE.ultimoSalvamentoGeral.ok?'var(--stamp-green, #3a9d5c)':'var(--stamp-red)'};">${STATE.ultimoSalvamentoGeral.ok
             ? '💾 '+(STATE.ultimoSalvamentoGeral.automatico ? 'Salvamento automático' : 'Salvo')+' às '+new Date(STATE.ultimoSalvamentoGeral.ts).toLocaleTimeString('pt-BR')+' — tudo salvo'+(STATE.ultimoSalvamentoGeral.automatico ? '.' : (STATE.ultimoSalvamentoGeral.publicadas ? ` (${STATE.ultimoSalvamentoGeral.publicadas} matéria(s) enviada(s) à nuvem).` : '; a nuvem já estava atualizada.'))
             : '❌ Falha ao salvar: '+esc(STATE.ultimoSalvamentoGeral.motivo||'motivo desconhecido')}</div>` : ''}
         </div>` : ''}
 
+        </div>
         ${false ? `<div class="card-block" style="margin-top:10px;">
           <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">O progresso é salvo automaticamente (a cada minuto e a cada resposta). Use os botões abaixo apenas se quiser um arquivo de backup extra, ou para levar o progresso manualmente para outro computador sem usar a sincronização em nuvem.</p>
           <button class="side-action-btn" id="btn-exportar-progresso" title="Baixa um arquivo .json com todo o seu progresso">⬇ Exportar backup</button>
