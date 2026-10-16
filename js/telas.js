@@ -924,6 +924,15 @@ function renderMateriaTopStrip(){
   </div></div>`;
 }
 
+// cartão do usuário: iniciais num círculo, nome e e-mail
+function syncUsuarioHtml(){
+  const nome = String(USUARIO_ATUAL.nome||'').trim() || 'Usuário';
+  const ini = nome.split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+  return `<div class="sync-usuario" title="${esc(USUARIO_ATUAL.email)} · UID ${esc(USUARIO_ATUAL.uid)}">
+    <span class="sync-avatar">${esc(ini)}</span>
+    <span class="sync-quem"><b>${esc(nome)}</b><small>${esc(USUARIO_ATUAL.email||'')}</small></span>
+  </div>`;
+}
 function renderContaBlock(){
   if(!fbAuth) return '';
   if(!USUARIO_ATUAL){
@@ -931,8 +940,8 @@ function renderContaBlock(){
       <div class="side-status detail">para salvar o progresso na nuvem e usar em outros aparelhos</div>`;
   }
   // o UID fica só no title (passar o mouse) — é o valor usado em firestore.rules
-  return `<div class="sync-user-display" title="${esc(USUARIO_ATUAL.email)} · UID ${esc(USUARIO_ATUAL.uid)}">👤 ${esc(USUARIO_ATUAL.nome)}</div>
-    <button class="side-action-btn compact" id="btn-sair-google">Sair da conta</button>`;
+  return `${syncUsuarioHtml()}
+    <button class="side-action-btn compact" id="btn-sair-google">Encerrar sessão</button>`;
 }
 function renderSyncSidebarBlock(){
   if(!FIREBASE_OK){
@@ -953,16 +962,15 @@ function renderSyncSidebarBlock(){
   const statusDetalhe = STATE.syncStatus ? STATE.syncStatus.detalhe : '';
   return `<div class="sidebar-block"><div class="sb-pad sync-block compact">
     <div class="sidebar-label">Sincronização</div>
-    <div class="sync-user-display" title="${esc(USUARIO_ATUAL.email)} · UID ${esc(USUARIO_ATUAL.uid)}">👤 ${esc(USUARIO_ATUAL.nome)}</div>
-    <div class="side-status ${statusClass}" id="sync-status-el">${esc(statusMsg)}</div>
-    ${statusHorario ? `<div class="side-status detail">última atualização: ${esc(statusHorario)}</div>` : ''}
+    ${syncUsuarioHtml()}
+    <div class="sync-linha ${statusClass}" id="sync-status-el"><span class="sync-dot"></span>${statusClass==='ok' ? `Atualizado${statusHorario ? ` em <b>${esc(statusHorario)}</b>` : ' na nuvem'}` : esc(STATE.syncStatus ? STATE.syncStatus.msg : 'sincronizando…')}</div>
     ${statusDetalhe ? `<div class="side-status detail">${esc(statusDetalhe)}</div>` : ''}
     ${ALERTAS_SOBRESCRITA_NUVEM.length>0 ? `<div class="side-status err" style="margin-top:6px;">
       ⚠ ${ALERTAS_SOBRESCRITA_NUVEM.length} possível sobrescrita detectada — outro dispositivo publicou depois da sua última sincronização.
       <button class="side-action-btn compact" id="btn-ver-alertas-sobrescrita" style="margin-top:4px;">Ver detalhes</button>
       <button class="side-action-btn compact" id="btn-dispensar-alertas-sobrescrita" style="margin-top:4px;">Dispensar</button>
     </div>` : ''}
-    <button class="side-action-btn compact" id="btn-sair-google">Sair da conta</button>
+    <button class="side-action-btn compact" id="btn-sair-google">Encerrar sessão</button>
   </div></div>`;
 }
 
@@ -1151,14 +1159,14 @@ function renderLanding(){
     ? quizSalvo.queue.filter(uid => bucketAtual.perguntas[uid] && bucketAtual.perguntas[uid].tentativas>0).length
     : 0;
   const infoSalvo = quizSalvo ? `<div style="font-size:12px;color:var(--ink-soft);margin-bottom:8px;">
-    <b>Simulado salvo:</b> ${respondidasNaFila}/${quizSalvo.queue.length} respondidas${quizSalvo.ultimoSalvamento ? ` · 💾 ${formatarDataHoraSalvamento(quizSalvo.ultimoSalvamento)}` : ''}
+    <b>Simulado salvo:</b> ${respondidasNaFila}/${quizSalvo.queue.length} respondidas
   </div>` : '';
   // "Continuar" fica sempre ao lado de "Configurar novo simulado": com um
   // simulado salvo, volta nele; sem, abre a matéria começando pelas questões
   // ainda não respondidas. "Reiniciar" só aparece com simulado salvo.
   const botoesAcao = `<div style="display:flex; gap:8px; flex-wrap:wrap;">
     <button class="btn btn-gold btn-sm" id="btn-continuar-simulado" style="flex:1;justify-content:center;min-width:140px;">▶ Continuar simulado</button>
-    <button class="btn btn-primary btn-sm" id="btn-abrir-config" style="flex:1;justify-content:center;min-width:140px;">⚙ Configurar</button>
+    ${STATE.materia ? `<button class="btn btn-primary btn-sm btn-engrenagem" id="btn-abrir-config" title="Configurar simulado: quantidade, ordem e filtros" aria-label="Configurar simulado">⚙</button>` : ''}
     ${quizSalvo ? `<button class="btn-outline btn-sm" id="btn-reiniciar-simulado" style="justify-content:center;min-width:140px;">🔄 Reiniciar simulado</button>` : ''}
   </div>`;
 
@@ -1169,7 +1177,6 @@ function renderLanding(){
     ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin-bottom:8px;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
     ${botoesAcao}
   </div>
-  ${renderBlocoProximoSimulado()}
   ${renderEstatisticasPorMateria()}
   ${renderDashboardAnalitico()}
   ${renderSimuladosSalvosBlock()}
