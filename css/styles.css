@@ -1885,3 +1885,13 @@ body:not(.theme-light) .ajuste-andamento > label, body:not(.theme-light) .ajuste
 .resolucao-unica .arm-box:not(.arm-box-edit){ background:transparent; border:0; border-bottom:1px solid rgba(128,128,128,.35); border-radius:0; padding:0 0 12px; margin:0 0 14px; }
 .resolucao-unica .arm-box-edit{ margin:0 0 14px; }
 .arm-def{ margin-top:6px; }
+/* v182 — menu suspenso por assunto com artigos */
+.composicao-det summary{ list-style:none; cursor:pointer; }
+.composicao-det summary::-webkit-details-marker{ display:none; }
+.composicao-det summary .name::before{ content:'▸'; display:inline-block; width:1.1em; transition:transform .15s; }
+.composicao-det[open] summary .name::before{ transform:rotate(90deg); }
+.composicao-det summary:hover{ background:rgba(128,128,128,.12); }
+.composicao-arts{ margin:2px 0 10px 1.4em; padding-left:10px; border-left:2px solid rgba(128,128,128,.35); font-size:14px; }
+.composicao-art .bar-fill{ opacity:.65; }
+.composicao-art-sem,.composicao-art-nota,.composicao-art-vazio{ font-size:12.5px; opacity:.75; margin-top:6px; }
+.composicao-art-fora{color:#b45309;cursor:help;}
