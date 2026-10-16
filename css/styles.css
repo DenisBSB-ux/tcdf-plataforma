@@ -1901,14 +1901,13 @@ body:not(.theme-light) .ajuste-andamento > label, body:not(.theme-light) .ajuste
 .composicao-tema{margin-top:12px;border-bottom:1px solid var(--line-soft,#e4dfd2)}
 .composicao-art-res{font-size:11px;opacity:.8;margin-left:6px;white-space:nowrap}
 
-/* v193 — artigo com questão errada: fundo vermelho claro */
+/* v194 — artigo com questão errada: fundo vermelho claro */
 .composicao-art-erro{background:#fbe4e1;border-radius:4px;padding:3px 8px;margin:2px 0;box-shadow:inset 3px 0 0 #c0392b}
 .composicao-art-erro .name,.composicao-art-erro .pct{color:#8f2a22;font-weight:700}
 .composicao-art-erro .bar-fill{background:#c0392b}
 
-/* v193 — menu "Distribuição por assunto" dentro de cada matéria (Estatísticas por matéria) */
+/* v194 — menu "Distribuição por assunto" dentro de cada matéria (Estatísticas por matéria) */
 .composicao-det-mat{margin:-2px 0 8px 12px}
-.composicao-mat-sum{cursor:pointer;list-style:none;display:inline-block;padding:0 10px;font-size:16px;line-height:1.2;opacity:.85}
+.composicao-mat-sum{display:block;height:0;overflow:hidden;padding:0;margin:0;list-style:none}
 .composicao-mat-sum::-webkit-details-marker{display:none}
-.composicao-mat-sum::before{content:"\25BE"}
-.composicao-det-mat[open] > .composicao-mat-sum::before{content:"\25B4"}
+.mat-seta{background:none;border:0;padding:0;cursor:pointer;font-size:16px;line-height:1;text-align:center}

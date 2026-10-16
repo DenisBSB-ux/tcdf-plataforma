@@ -184,7 +184,7 @@ function tendenciasDisponiveis(){
 function getLocalTab(materiaKey){
   const tab = STATE.tabByMateria[materiaKey];
   // abas que ainda existem ("Resumo p/ revisão" foi removida)
-  return ['simulado','erros','flashcards','armadilhas','guia-arm'].includes(tab) ? tab : 'simulado';
+  return ['simulado','erros','flashcards','guia-arm'].includes(tab) ? tab : 'simulado';
 }
 function setLocalTab(materiaKey, tab){
   STATE.tabByMateria[materiaKey] = tab;
@@ -743,6 +743,7 @@ function computeAtividadeDiariaGeral(){
 function renderTabelaEstatisticas(linhas, estiloCelula){
   const cabecalhoTabela = `
     <div style="display:flex;gap:10px;${estiloCelula}color:var(--ink-soft);padding:0 8px 6px;border-bottom:1px solid var(--line-soft, #e4dfd2);margin-bottom:2px;">
+      <div style="width:18px;"></div>
       <div style="width:26px;">#</div>
       <div style="flex:1;">Matéria</div>
       <div style="width:56px;text-align:right;">Total</div>
@@ -761,6 +762,7 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
       // cima de um fundo colorido variável
       const destaque = l.ativa ? `box-shadow:inset 0 0 0 1.5px ${cor.fgForte};` : '';
       return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${cor.bg};border-left:4px solid ${cor.fgForte};border-radius:4px;padding:8px 10px 8px 12px;margin-bottom:6px;${destaque}" title="${esc(l.nome)}: ${l.respondidas ? l.pct+'% de acerto' : 'nada respondido'}">
+        <button type="button" class="mat-seta" data-toggle-mat="${esc(l.nome)}" title="Distribuição por assunto" aria-label="Distribuição por assunto de ${esc(l.nome)}" style="width:18px;color:${cor.fgForte};">${COMPOSICAO_ABERTOS.has('mat:'+l.nome)?'▴':'▾'}</button>
         <div style="width:26px;${estiloCelula}color:${cor.fg};">${l.ativa?'▸':i+1}</div>
         <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:${cor.fgForte};font-weight:${l.ativa?800:600};display:flex;align-items:center;gap:6px;" data-macro-materia="${esc(l.nome)}">
           <span>${esc(l.nome)}${l.ativa?' <span style="font-size:10px;font-weight:600;opacity:.75;">(selecionada)</span>':''}</span>
@@ -774,7 +776,7 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
         <div style="width:90px;text-align:right;${estiloCelula}color:${cor.fg};font-size:11px;" title="${l.ultimaRespostaTs ? new Date(l.ultimaRespostaTs).toLocaleString('pt-BR') : ''}">${l.ultimaRespostaTs ? formatarDataHoraSalvamento(l.ultimaRespostaTs) : '—'}</div>
       </div>
       <details class="composicao-det composicao-det-mat" data-comp-tema="mat:${esc(l.nome)}" ${COMPOSICAO_ABERTOS.has('mat:'+l.nome)?'open':''}>
-        <summary class="composicao-mat-sum" title="Distribuição por assunto" aria-label="Distribuição por assunto"></summary>
+        <summary class="composicao-mat-sum"></summary>
         <div class="composicao-arts">${COMPOSICAO_ABERTOS.has('mat:'+l.nome)?distribuicaoAssuntosMateriaHtml(l.nome):''}</div>
       </details>`;
     }).join('')}`;
@@ -1001,8 +1003,7 @@ function renderLocalTabs(){
     {id:'simulado', n:'01', label:'Questões'},
     {id:'erros', n:'02', label:'Caderno de erros'},
     {id:'flashcards', n:'03', label:'Flashcards'},
-    {id:'armadilhas', n:'04', label:'Armadilhas'},
-    {id:'guia-arm', n:'05', label:'Guia de armadilhas'},
+    {id:'guia-arm', n:'04', label:'Guia de armadilhas'},
   ];
   const atual = getLocalTab(STATE.materia);
   return `<div class="tabs">${tabs.map(t=>`
@@ -1038,7 +1039,6 @@ function renderMainPanel(tabAtual){
   }
   if(tabAtual==='erros') return renderErros();
   if(tabAtual==='flashcards') return renderFlashcards();
-  if(tabAtual==='armadilhas') return renderArmadilhas();
   if(tabAtual==='guia-arm') return renderGuiaArmadilhas();
   return '';
 }
@@ -1332,6 +1332,12 @@ function renderComposicaoSimulado(queue, titulo, destaque){
     }).join('')}
   </div>`;
 }
+// seta à esquerda da matéria: abre/fecha o menu "Distribuição por assunto" logo abaixo da linha
+document.addEventListener('click', e=>{
+  const b = e.target.closest && e.target.closest('[data-toggle-mat]'); if(!b) return;
+  const det = b.closest('.bar-row') && b.closest('.bar-row').nextElementSibling;
+  if(det && det.classList.contains('composicao-det-mat')){ det.open = !det.open; b.textContent = det.open ? '▴' : '▾'; }
+});
 // temas abertos no menu suspenso (sobrevive aos re-renders)
 const COMPOSICAO_ABERTOS = new Set();
 document.addEventListener('toggle', e=>{
