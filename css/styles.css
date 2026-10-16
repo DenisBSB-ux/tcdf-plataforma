@@ -2158,3 +2158,14 @@ body:not(.theme-light) .arm-rich, body:not(.theme-light) .arm-rich *{ color:#1d1
 
 /* v232: seleção de trecho no enunciado */
 .arm-dica-sel{ display:block; margin:4px 0 0 0; font-weight:400; opacity:.8; }
+
+/* v234: barra de estudo — ícones SVG, alvos de 40px, foco visível e grupos */
+.toolbar-grupo{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.quiz-toolbar .icon-btn{ width:40px; height:40px; border-radius:10px; }
+.quiz-toolbar .icon-btn .ico{ display:block; flex-shrink:0; }
+.quiz-toolbar #btn-chute{ width:auto; padding:0 12px; gap:6px; font-size:13px; }
+.quiz-toolbar #btn-chute .btn-txt{ font-weight:600; }
+.icon-btn:focus-visible, .zoom-control button:focus-visible{ outline:2px solid var(--gold-bright); outline-offset:2px; }
+.icon-btn:active:not(:disabled){ transform:scale(.96); }
+@media (pointer:coarse){ .quiz-toolbar .icon-btn{ width:44px; height:44px; } }
+@media (prefers-reduced-motion:reduce){ .icon-btn{ transition:none; } .icon-btn:hover:not(:disabled), .icon-btn:active:not(:disabled){ transform:none; } }
