@@ -6,7 +6,7 @@
 function btnChuteHtml(materiaKey, uid, revelado){
   if(!revelado) return '';
   const marcado = chuteMarcado(materiaKey, uid);
-  return `<button class="icon-btn ${marcado?'btn-chute-ativo':''}" id="btn-chute" data-uid="${esc(uid)}" title="${marcado?'Desmarcar &quot;chutei essa&quot;':'Marcar que você chutou esta resposta (não afeta estatísticas de acerto)'}">🎲${marcado?' ✓':''}</button>`;
+  return `<button class="icon-btn ${marcado?'btn-chute-ativo btn-em-uso':''}" id="btn-chute" data-uid="${esc(uid)}" title="${marcado?'Desmarcar &quot;chutei essa&quot;':'Marcar que você chutou esta resposta (não afeta estatísticas de acerto)'}">🎲${marcado?' ✓':''}</button>`;
 }
 function renderProgressoMateriaToolbar(materiaKey){
   if(!materiaKey) return '';
@@ -210,8 +210,8 @@ function renderQuiz(){
         <span class="toolbar-divider"></span>
         <button class="icon-btn" id="btn-reset-questao" title="Limpar a resposta desta questão" ${revelado?'':'disabled'}>↺</button>
         ${btnChuteHtml(quiz.materia, uidAtual, revelado)}
-        <button class="icon-btn" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
-        <button class="icon-btn" id="btn-fullscreen" title="${document.fullscreenElement?'Sair da tela cheia':'Tela cheia'}">${document.fullscreenElement?'🗗':'⛶'}</button>
+        <button class="icon-btn ${STATE.focusMode?'btn-em-uso':''}" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
+        <button class="icon-btn ${document.fullscreenElement?'btn-em-uso':''}" id="btn-fullscreen" title="${document.fullscreenElement?'Sair da tela cheia':'Tela cheia'}">${document.fullscreenElement?'🗗':'⛶'}</button>
         ${STATE.focusMode ? `<button class="icon-btn" id="btn-theme-toggle" title="Alternar modo claro/escuro">${STATE.theme==='light'?'🌙':'☀️'}</button>` : ''}
         <button class="icon-btn" id="btn-abandonar" title="Voltar ao painel — o progresso já foi salvo automaticamente">↩</button>
         <span class="toolbar-divider"></span>
@@ -987,7 +987,7 @@ function renderFlashcards(){
         <button class="btn btn-gold btn-sm" id="btn-flash-sei" ${emEdicao?'disabled':''}>Marcar: sei</button>
       </div>
       <div class="flash-controls-nav">
-        <button class="icon-btn" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
+        <button class="icon-btn ${STATE.focusMode?'btn-em-uso':''}" id="btn-focus-toggle" title="${STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)'}">${STATE.focusMode?'✕':'◉'}</button>
         <button class="icon-btn" id="btn-flash-next-arrow" title="Próxima carta" ${deck.idx===deck.uids.length-1 || emEdicao?'disabled':''}>→</button>
       </div>
     </div>

@@ -2106,3 +2106,11 @@ body::after{
   background:url('../img/logo-tcdf.png') center / contain no-repeat; opacity:.04; border-radius:24px;
 }
 @media (max-width:720px){ body::after{ width:120px; height:120px; right:12px; bottom:10px; } }
+
+/* v224: botões da barra de estudo que estão ligados (foco, tela cheia, chute) */
+.icon-btn.btn-em-uso,
+body:not(.theme-light) .icon-btn.btn-em-uso{
+  background:var(--gold); border-color:var(--gold-bright); color:#2a1f08;
+  box-shadow:0 0 0 3px rgba(201,162,75,.35);
+}
+.icon-btn.btn-em-uso:hover:not(:disabled){ background:var(--gold-bright); }
