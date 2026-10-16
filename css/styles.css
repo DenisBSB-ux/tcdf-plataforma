@@ -2189,3 +2189,6 @@ body:not(.theme-light) .prova-link{ color:var(--gold-bright); }
 /* v237: mensagem de motivação do dia */
 .prova-motiva{ margin-top:6px; padding:6px 8px; border-left:3px solid var(--gold); border-radius:0 6px 6px 0; background:rgba(0,0,0,.04); font-style:italic; font-size:12px; line-height:1.4; }
 body:not(.theme-light) .prova-motiva{ background:rgba(255,255,255,.06); }
+
+/* v238: mensagem do dia ao lado da média diária */
+.resumo-motiva{ margin-left:auto; align-self:center; font-style:italic; font-size:13px; opacity:.9; max-width:100%; }

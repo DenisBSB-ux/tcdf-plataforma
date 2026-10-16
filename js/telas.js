@@ -707,6 +707,7 @@ function renderEstatisticasPorMateria(){
       <span class="resumo-item" title="Baseado no histórico recente de cada questão (últimas 20 tentativas)"><small>Hoje</small><b>${atividade.totalHoje} questõe${atividade.totalHoje===1?'':'s'}</b></span>
       <span class="resumo-item" title="Total de respostas dividido só pelos dias em que você resolveu questões (${atividade.diasComAtividade} dia(s)); dias sem resolução não entram na conta">
         <small>Média por dia estudado</small><b>${atividade.mediaDiaria.toFixed(1)} questões</b><em>${atividade.diasComAtividade} dia${atividade.diasComAtividade===1?'':'s'}</em></span>
+      <span class="resumo-motiva" title="Mensagem do dia">“${esc(motivacaoDoDia(provaDias()))}”</span>
     </div>
     <div style="height:10px;"></div>
     <div class="tabela-scroll">${renderTabelaEstatisticas(linhas, estiloCelula)}</div>
@@ -1004,17 +1005,18 @@ function motivacaoDoDia(dias){
   // do primeiro dia da contagem (37 dias) até a véspera, uma mensagem nova por dia
   return MOTIVACAO_PROVA[Math.max(0, Math.min(37 - dias, MOTIVACAO_PROVA.length - 1))];
 }
-function provaContagemHtml(){
+function provaDias(){
   const hoje = new Date(); hoje.setHours(0,0,0,0);
-  const dias = Math.round((PROVA_TCDF.data - hoje)/86400000);
+  return Math.round((PROVA_TCDF.data - hoje)/86400000);
+}
+function provaContagemHtml(){
+  const dias = provaDias();
   const txt = dias>1 ? `Faltam <b>${dias} dias</b>` : (dias===1 ? 'Falta <b>1 dia</b>' : (dias===0 ? '<b>A prova é hoje!</b>' : 'Prova realizada'));
   return `<div class="prova-info">
     <div class="prova-rot">Prova objetiva e discursiva</div>
     <div class="prova-data">${PROVA_TCDF.rotulo}</div>
     <div class="prova-conta">${txt}</div>
-    <div class="prova-motiva">“${esc(motivacaoDoDia(dias))}”</div>
-    <a class="prova-link" href="${PROVA_TCDF.link}" target="_blank" rel="noopener noreferrer">Edital e avisos no site do Cebraspe ↗</a>
-    <div class="prova-aviso">O cronograma pode mudar: acompanhe as atualizações pelo link.</div>
+    <a class="prova-link" href="${PROVA_TCDF.link}" target="_blank" rel="noopener noreferrer">Cespe: edital e avisos ↗</a>
   </div>`;
 }
 function renderSyncSidebarBlock(){
