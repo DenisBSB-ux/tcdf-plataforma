@@ -155,12 +155,17 @@ function renderQuiz(){
   // contagem restrita às questões DESTA fila (mesma regra do grid de paginação):
   // assim "Questão 12 de 233" e "N resolvidas" falam do mesmo conjunto
   const bucketQ = getBucket(quiz.materia);
+  // Mesma regra da tabela de estatísticas: vale o resultado ATUAL gravado no progresso
+  // (ultimoResultado) de cada questão que existe hoje na base. A resposta da sessão
+  // só entra se o progresso ainda não tiver o resultado (nunca conta questão órfã).
   const snapM = { ac:0, erradas:0 };
+  const vistosM = new Set();
   quiz.queue.forEach(u=>{
-    const r = quiz.respostas[u];
-    if(r){ r.correct ? snapM.ac++ : snapM.erradas++; return; }
-    const h = BY_UID[u] ? bucketQ.perguntas[u] : null;
-    if(h && h.tentativas>0){ h.ultimoResultado ? snapM.ac++ : snapM.erradas++; }
+    if(vistosM.has(u) || !BY_UID[u]) return; vistosM.add(u);
+    const h = bucketQ.perguntas[u];
+    const res = (h && (h.ultimoResultado===true || h.ultimoResultado===false)) ? h.ultimoResultado
+      : (quiz.respostas[u] ? !!quiz.respostas[u].correct : null);
+    if(res===true) snapM.ac++; else if(res===false) snapM.erradas++;
   });
   const resolvidasM = snapM.ac + snapM.erradas;
   const pctAcM = resolvidasM ? Math.round(snapM.ac*100/resolvidasM) : 0;
@@ -170,7 +175,7 @@ function renderQuiz(){
   <div class="case-file">
     <div class="case-header qm-header">
       <div class="qm-title">
-        <div class="qm-numero" title="Posição na fila: ${quiz.idx+1}">Questão ${resolvidasM} de ${quiz.queue.length}
+        <div class="qm-numero" title="Posição na fila: ${quiz.idx+1}">Questão ${resolvidasM} de ${vistosM.size}
           <small><b class="qm-ac">${snapM.ac}</b> Certas (${pctAcM}%) / <b class="qm-er">${snapM.erradas}</b> Erradas (${pctErM}%)</small></div>
         ${q.tema && q.tema!=='Geral' ? `<div class="qm-linha"><span class="qm-rot">Assunto:</span> ${esc(q.tema)}</div>` : ''}
       </div>
