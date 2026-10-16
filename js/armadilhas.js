@@ -207,7 +207,8 @@ function armEditorHtml(q, a){
     ${a.errado ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão) <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Preenche o campo com o texto completo do item">↧ Usar texto completo do item</button><textarea id="arm-txt-tr" class="arm-autosize" rows="2">${esc(a.trecho||'')}</textarea></label>
     <label class="arm-edit-txt">Explicação da armadilha<textarea id="arm-txt-ex" class="arm-autosize" rows="3">${esc(a.expl||'')}</textarea></label>` : ''}
     <div class="arm-edit-acoes">
-      ${(typeof edicaoAtual!=='undefined' && edicaoAtual===uid) ? '' : `<button class="btn-ui btn-ui-salvar" data-arm-save="${esc(uid)}">💾 Salvar (origem: manual)</button>
+      ${(typeof edicaoAtual!=='undefined' && edicaoAtual===uid) ? `<button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar edição</button>
+      <button class="btn-ui btn-cancelar-edicao" data-editar-acao="cancelar">✕ Cancelar</button>` : `<button class="btn-ui btn-ui-salvar" data-arm-save="${esc(uid)}">💾 Salvar (origem: manual)</button>
       <button class="btn-ui" data-arm-cancel="1">Cancelar</button>`}
       ${a.origem==='manual' ? `<button class="btn-ui" data-arm-reset="${esc(uid)}">↺ Voltar à original</button>` : ''}
     </div>
