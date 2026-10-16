@@ -958,45 +958,44 @@ function renderContaBlock(){
 const PROVA_TCDF = { data:new Date(2026,10,22), rotulo:'22/11/2026 (manhã)', link:'https://www.cebraspe.org.br/concursos/TC_DF_26_ANALISTA' };
 // uma mensagem de motivação por dia (muda a cada dia da contagem regressiva)
 const MOTIVACAO_PROVA = [
-  "Hoje é dia de fazer mais uma questão do que ontem.",
-  "Constância vence intensidade: um pouco todos os dias.",
-  "Você já chegou até aqui. Continue.",
-  "Cada questão errada hoje é um ponto a menos de erro na prova.",
-  "Descanso também faz parte do estudo. Durma bem.",
-  "Revise o caderno de erros: ali estão seus pontos mais fáceis de ganhar.",
-  "A aprovação é construída em dias comuns como este.",
-  "Foco no próximo bloco de questões, não na prova inteira.",
-  "Quem treina como vai fazer a prova, faz a prova como treinou.",
-  "Pouco, mas todo dia, é muito no fim do mês.",
-  "Dúvida na questão? Volte à lei: a resposta costuma estar no texto.",
+  "R$ 14.990,41 de remuneração inicial: cada questão de hoje te aproxima disso.",
+  "São 10 vagas imediatas mais cadastro de reserva. Alguém vai ocupar cada uma, e pode ser você.",
+  "Cargo efetivo no Tribunal de Contas do DF: vale o esforço de hoje.",
+  "Concurso para Analista de Controle Externo: o estudo de hoje já é parte do seu trabalho de amanhã.",
+  "Uma vaga em Brasília, com remuneração inicial de R$ 14.990,41. Foco na rotina.",
+  "Cada acerto vale +1 ponto e cada erro tira 1: leia o item inteiro antes de marcar.",
+  "São 150 itens de Certo ou Errado: treinar o ritmo agora é ganhar tempo na prova.",
+  "Na prova de conhecimentos básicos você precisa de 7 pontos. Garanta o mínimo e avance.",
+  "Nos conhecimentos específicos o mínimo é 13 pontos. Revise os seus erros de hoje.",
+  "Nos conhecimentos especializados são 21 pontos de corte e 70 itens: aqui está o peso da prova.",
+  "A nota final mínima nas objetivas é 45 pontos. Cada ponto que você firma hoje conta.",
+  "Só os 120 mais bem classificados da ampla concorrência avançam. Estude para estar entre eles.",
+  "A prova objetiva dura 4 horas, pela manhã. Treine resolver com calma e com tempo.",
+  "À tarde ainda vem a discursiva, também com 4 horas. Treine a escrita, não só os itens.",
+  "Cargo estatutário, com regime jurídico próprio dos servidores do DF: estabilidade vem de estudo constante.",
+  "O TCDF oferece assistência à saúde aos servidores pelo Programa SAÚDE TCDF: pense no que o seu esforço pode conquistar.",
+  "Remuneração inicial de R$ 14.990,41 e uma carreira de controle externo: vale a constância.",
+  "O erro de hoje no simulado é o acerto de 22 de novembro.",
+  "Diferente de ontem: uma questão a mais, uma revisão a mais.",
+  "Em branco vale zero, errado vale menos um: aprenda a reconhecer o que você já domina.",
   "Desconfie dos absolutos: sempre, nunca, somente, exclusivamente.",
-  "Seu esforço de hoje vai pesar na manhã da prova.",
-  "Respire. Uma questão de cada vez.",
-  "Estudar cansa, mas passa. Ser aprovado fica.",
-  "Faça um simulado hoje e corrija com calma.",
-  "Cada flashcard revisto é um detalhe a menos para esquecer.",
-  "Você não precisa de motivação, precisa de rotina. Comece.",
-  "O mais difícil é começar. Abra a primeira questão.",
-  "Evolução se mede em semanas, não em um dia ruim.",
+  "A banca cobra a letra da lei. Volte ao texto antes de decidir.",
+  "Mais um dia, mais uma rodada de questões. A aprovação é feita de dias assim.",
   "Revisar vale mais do que ver matéria nova perto da prova.",
+  "Caderno de erros: seus pontos mais fáceis de ganhar estão ali.",
+  "Quem passa não é o que estuda mais horas num dia, e sim o que estuda todos os dias.",
   "Cuide do corpo: água, sono e uma caminhada ajudam a memória.",
-  "Erre agora, aqui, e acerte na hora que vale.",
-  "O edital é seu mapa: confira o que ainda falta.",
-  "Pequenas vitórias de hoje somam o resultado final.",
-  "Treine o tempo: 150 itens pedem ritmo, não pressa.",
+  "As nomeações são previstas para 2027. Até lá, cada semana de estudo conta.",
+  "Mais de um mês de preparo ainda vale muito: use bem cada dia.",
+  "Respire. Uma questão de cada vez, até o fim da lista.",
   "Você está mais perto da vaga do que ontem.",
-  "Releia os artigos que mais caem; eles se repetem.",
-  "Quem persiste na reta final costuma passar na frente.",
-  "Mantenha a calma: o que você já sabe é bastante.",
-  "Hoje: revise, descanse e confie no seu preparo.",
-  "Falta pouco. Cada questão conta.",
-  "Trace uma meta pequena para hoje e cumpra.",
-  "Seja gentil consigo mesmo e firme com a rotina.",
-  "Priorize os assuntos de maior incidência.",
-  "A vaga é de quem estuda até o fim.",
-  "Último fôlego: revisão leve, mente tranquila.",
-  "Confie no processo: você tem feito o que precisava.",
-  "Mais uma semana de consistência e você nota a diferença."
+  "Falta pouco: revisão leve, foco no que mais cai e confiança no que você já sabe.",
+  "Prova em Brasília, vaga em Brasília: seu futuro está aqui perto.",
+  "Mantenha a calma: você estuda há tempo e já domina muito do conteúdo.",
+  "O resultado final da objetiva sai em janeiro de 2027. Trabalhe para ver o seu nome na lista.",
+  "Escreva uma meta pequena para hoje e cumpra.",
+  "Mais uma semana de consistência e você nota a diferença.",
+  "Último fôlego: revisão leve, mente tranquila."
 ];
 function motivacaoDoDia(dias){
   if(dias<0) return 'Prova realizada. Obrigado pelo esforço: o resultado vem do que você construiu.';
@@ -1017,6 +1016,23 @@ function provaContagemHtml(){
     <div class="prova-data">${PROVA_TCDF.rotulo}</div>
     <div class="prova-conta">${txt}</div>
     <a class="prova-link" href="${PROVA_TCDF.link}" target="_blank" rel="noopener noreferrer">Cespe: edital e avisos ↗</a>
+    <details class="prova-det">
+      <summary>Detalhes do edital</summary>
+      <ul>
+        <li><b>Cargo:</b> Analista Administrativo de Controle Externo, Área de Gestão (Serviços Técnico-Administrativos)</li>
+        <li><b>Remuneração inicial:</b> R$ 14.990,41 (Lei 7.860/2026)</li>
+        <li><b>Vagas:</b> 10 imediatas (5 ampla, 2 pessoas com deficiência, 2 negros, 1 hipossuficiente) e cadastro de reserva</li>
+        <li><b>Requisito:</b> curso superior em qualquer área</li>
+        <li><b>Objetiva:</b> 150 itens Certo/Errado (35 básicos, 45 específicos, 70 especializados), 4 h, pela manhã</li>
+        <li><b>Discursiva:</b> 4 h, à tarde, no mesmo dia</li>
+        <li><b>Pontuação:</b> +1 certo, −1 errado, 0 em branco: o erro anula um acerto</li>
+        <li><b>Mínimos:</b> básicos 7, específicos 13, especializados 21 e total 45 pontos</li>
+        <li><b>Classificados na objetiva:</b> 120 ampla, 48 deficiência, 48 negros e 24 hipossuficientes</li>
+        <li><b>Marcos:</b> gabaritos preliminares 24/11/2026; resultado provisório da objetiva 23/12/2026; resultado final da objetiva 13/1/2027; nomeações estimadas em 2027</li>
+        <li><b>Regime:</b> servidor estatutário do DF (LC 840/2011); saúde pelo Programa SAÚDE TCDF</li>
+      </ul>
+      <small>Datas e prazos podem mudar por edital: confira no link acima.</small>
+    </details>
   </div>`;
 }
 function renderSyncSidebarBlock(){

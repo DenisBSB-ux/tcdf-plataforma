@@ -2192,3 +2192,10 @@ body:not(.theme-light) .prova-motiva{ background:rgba(255,255,255,.06); }
 
 /* v238: mensagem do dia ao lado da média diária */
 .resumo-motiva{ margin-left:auto; align-self:center; font-style:italic; font-size:13px; opacity:.9; max-width:100%; }
+
+/* v239: detalhes do edital na lateral */
+.prova-det{ margin-top:8px; font-size:12px; }
+.prova-det summary{ cursor:pointer; font-weight:600; color:var(--ink); }
+.prova-det ul{ margin:6px 0 4px 16px; padding:0; }
+.prova-det li{ margin:3px 0; line-height:1.35; color:var(--ink); }
+.prova-det small{ opacity:.75; color:var(--ink); }
