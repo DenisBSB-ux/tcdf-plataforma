@@ -12,7 +12,7 @@ description: Aplica a uma matéria do TCDF Plataforma o "modelo de teoria": bot�
 - O botão abre o **pop-up de lei**: texto oficial do artigo, com o **§ / inciso / alínea citado na linha ⚖️ da questão em destaque amarelo** (o resto esmaecido, rola até o trecho); ‹ › e campo para navegar entre artigos; teclas ← → Esc; botão "Planalto ↗" quando há URL.
 - Se a matéria tem apostila indexada, o **mesmo pop-up** traz no fim a seção **"📖 Na apostila"**: só o trecho que a questão cita (título, página, pegadinha) e o botão "Abrir o PDF nesta página". **Não existe mais** o selo "📖 Teoria · pág. N".
 - Artigo sem texto na plataforma → link "⚖️ Lei · … ↗" para o Planalto (só matérias de Tributário, ver `teoriaLeiDaQuestao`). Artigo revogado/ausente do PDF → o pop-up avisa.
-- Aba **06 Teoria (PDF)**: link do Drive e/ou PDF no aparelho + leitor (PDF.js) — sem Firebase Storage (plano pago, descartado).
+- A aba **Teoria (PDF)** foi removida (v262); o leitor PDF.js continua nos pop-ups. Sem Firebase Storage (plano pago, descartado).
 
 ## Arquitetura (onde mexer)
 | Peça | Arquivo |
@@ -40,6 +40,17 @@ Formato da linha ⚖️ que o destaque entende: `**Art. 150** ▸ **VI** ▸ **"
 7. **Registrar** em `LEI_FONTES` (e `TEORIA_LEI_URL` se houver URL oficial); se a matéria for nova no índice, apelide a chave (ex.: `D.Tributário` → `d-tributario`).
 8. **Testar com Playwright** (servidor `python3 -m http.server`, abortar requisições externas): botões gerados para cada formato de linha ⚖️, pop-up abre, destaque correto (`.lei-alvo`), ‹ › Esc, console sem erro; rode `cobertura_teoria.js` de novo e informe o que ainda falta.
 9. **Publicar**: subir a versão (`vNNN` e data em `index.html`, via `sed`), commit com os trailers, `git push -u origin HEAD:claude/epic-fermi-09davj --force-with-lease`, PR e squash-merge para `main`; se o PR acusar conflito após squash anterior, `git checkout -B claude/epic-fermi-09davj origin/main` e reaplique o commit. Reporte em português: quantas questões têm pop-up, quais faltam e **o que o usuário precisa enviar**.
+
+## Padrão para toda lista nova (decidido pelo usuário em 19/10/2026)
+**Toda questão deve ter teoria em pop-up.** Ordem de prioridade da fonte:
+1. **Lei, decreto, resolução, súmula** (texto oficial): botão **⚖️** com o dispositivo destacado. Se o texto oficial ainda não está no app, peça o arquivo ao usuário (Drive/anexo) ou registre a norma em `LEI_FONTES`.
+2. **Apostila do usuário** (se existir): trecho no mesmo pop-up ⚖️ ("📖 Na apostila").
+3. **Sem norma aplicável (doutrina, conceito, teoria da administração etc.)**: **buscar em fontes externas** (`WebSearch`; artigos, revistas, órgãos públicos, obras de referência) e criar uma **ficha de doutrina** com **síntese própria** (nunca copiar o texto de terceiros), seções curtas, "Pegadinha provável" e **fontes citadas** no rodapé. Botão **📖 Doutrina** no mesmo pop-up.
+   - Constitucional: fichas inline em `DOUTRINA` (`js/teoria.js`), ligadas pelo texto da questão (`doutrinaDaQuestao`).
+   - Administração: `js/doutrina-adm.js` (`DOUTRINA_ADM`, carregado ao abrir), ligadas pelo assunto via `DOUTRINA_TEMAS`, **restritas à matéria** (`q.materia` começa com "Adm"), porque os códigos de assunto se repetem entre matérias.
+   - Matéria nova: criar o arquivo `js/doutrina-<matéria>.js` no mesmo molde e uma entrada de `DOUTRINA_TEMAS` com o filtro da matéria. Conferir que **todos** os assuntos da lista abrem uma ficha (teste com Playwright) e informar o resultado.
+4. Se nem norma nem fonte externa confiável existirem, **liste a questão como faltante** e diga o que o usuário precisa enviar. Nunca invente artigo, valor ou jurisprudência.
+Ao entregar uma lista: arquivo `.md` + **lista das questões sem teoria** (sem relatório, a pedido do usuário). Texto de lei continua só de fonte oficial; `WebSearch` serve para doutrina, não para texto de lei.
 
 ## Decisões já tomadas (não perguntar de novo)
 - Sem custo: **nada de Firebase Storage/Blaze**. PDFs: link do Drive (público) e/ou arquivo no aparelho; leitor PDF.js; link padrão da apostila vive em `TEORIA_INDICE[...].drive`.
