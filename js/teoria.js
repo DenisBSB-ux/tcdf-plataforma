@@ -265,7 +265,10 @@ function teoriaLeisDaQuestao(q){
   if((mm = linha.match(/S[úu]mula Vinculante\s*(\d+)/i))) refs = refs.concat([{ norma:'SUM', n:'SV '+mm[1], txt:true }]);
   else if((mm = linha.match(/S[úu]mula\s*(\d+)\s*·\s*STF/i))) refs = refs.concat([{ norma:'SUM', n:'S '+mm[1], txt:true }]);
   refs.forEach(r=>{ const f = LEI_FONTES[r.norma]; const k = r.norma+':'+r.n; if(f && (r.txt || (r.n>=1 && r.n<=f.max)) && !vistos.has(k)){ vistos.add(k); out.push({ norma:r.norma, n:r.n }); } });
-  return out.slice(0,3);
+  // um botão só: o artigo citado primeiro na linha ⚖️ (os demais ficam a um ‹ › de distância no pop-up)
+  const p1 = linha.match(/Art\.?\s*(\d+(?:-[A-Z])?)/);
+  if(p1){ const i = out.findIndex(l=> String(l.n)===p1[1]); if(i>0) out.unshift(out.splice(i,1)[0]); }
+  return out.slice(0,1);
 }
 
 /* ---- fichas de doutrina (sem artigo de lei): síntese própria a partir de fontes públicas ---- */
@@ -350,7 +353,7 @@ function teoriaBotaoHtml(q){
   let leis = teoriaLeisDaQuestao(q);
   if(t){   // a teoria da apostila aparece dentro do pop-up da lei do mesmo artigo
     const [nm, n] = t.rotulo.replace(' art. ',':').split(':');
-    if(!leis.some(l=> l.norma===nm && String(l.n)===String(n))) leis = [{ norma:nm, n:+n }].concat(leis).slice(0,3);
+    if(!leis.some(l=> l.norma===nm && String(l.n)===String(n))) leis = [{ norma:nm, n:+n }].concat(leis).slice(0,1);
   }
   leis.forEach(l=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${l.norma}:${l.n}" data-lei-q="${esc(q.uid)}" title="Ler o texto oficial: ${l.norma==='SUM' ? l.n : l.norma+' art. '+l.n}">⚖️ ${l.norma==='SUM' ? l.n.replace(/^S /,'Súmula ') : l.norma+' art. '+l.n}</button>`; });
   const dk = (!t && !leis.length) ? doutrinaDaQuestao(q) : null;
