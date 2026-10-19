@@ -48,7 +48,7 @@ Para **cada questão sem teoria**, siga sempre esta ordem e diga ao usuário de 
    - Arquivo de 0 KB = upload incompleto: peça reenvio. PDF só imagem: ver passo 3 abaixo. Docs com anotações do usuário não são texto oficial.
 2. **Se o Drive não tiver**: fontes externas. Texto de **lei, decreto, súmula**: só de fonte oficial (peça o arquivo/link se o proxy bloquear o site). **Doutrina e conceitos**: `WebSearch` (revistas, órgãos públicos, obras de referência), síntese própria e fontes citadas.
 3. Se nada confiável: liste a questão como faltante e peça o arquivo ao usuário (ele sobe na pasta do Drive e eu busco de novo).
-Ao entregar, informe por matéria: o que veio do **Drive**, o que veio de **fonte externa** e o que **faltou**.
+Ao entregar, **informe apenas as fontes usadas**, em lista curta (ex.: Lei 9.430/1996, Decreto 9.203/2017, site X). Não separar por origem (Drive × externa) nem explicar o caminho percorrido; só acrescente o que faltou, se algo faltou.
 
 ## Padrão para toda lista nova (decidido pelo usuário em 19/10/2026)
 **Toda questão deve ter teoria em pop-up.** Ordem de prioridade da fonte:
