@@ -87,3 +87,6 @@ A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`S
 ## Histórico
 - Modelo definido em conversa de 16/10/2026, com a questão da dispensa para pesquisa e desenvolvimento (art. 75, IV, "c", Lei 14.133/2021) como exemplo.
 - A Lei 14.133 (232 questões do arquivo `questoes-lei-14-133-220-2026-10-16.md`) foi a primeira matéria a receber o formato (16/10/2026); as demais seguem o mesmo padrão.
+
+## Depois da formatação
+Para ligar cada questão ao texto oficial da lei (pop-up ⚖️ com o dispositivo destacado e a teoria da apostila), use a skill **`aplicar-teoria-materia`**, só quando o usuário pedir. Para isso a linha ⚖️ da resolução deve seguir o formato `**Art. N** ▸ **inciso** ▸ **"alínea"** e **§ N** · NORMA` (ADCT, EC 132 e súmulas: `**Art. 125** · ADCT`, `**Súmula Vinculante 19** · STF`) e o campo **Artigo** deve ficar preenchido.
