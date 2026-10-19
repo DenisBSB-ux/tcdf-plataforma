@@ -217,13 +217,29 @@ function teoriaPaginaDaQuestao(q){
   }
   return null;
 }
-function teoriaBotaoHtml(q){
-  const t = teoriaPaginaDaQuestao(q); if(!t) return '';
-  return `<button class="btn-corrigir-gabarito btn-ui" data-teoria-ver="${esc(q.uid)}" title="Abrir a apostila em ${esc(t.rotulo)} (página ${t.pagina})">📖 Teoria · pág. ${t.pagina}</button>`;
+/* artigos fora da apostila: leva ao texto oficial (Planalto), ancorado no artigo */
+const TEORIA_LEI_URL = {
+  'CTN':'https://www.planalto.gov.br/ccivil_03/leis/l5172compilado.htm',
+  'CF':'https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm',
+  'LC 116':'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp116.htm',
+  'LC 87':'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp87.htm',
+  'Lei 9.430':'https://www.planalto.gov.br/ccivil_03/leis/l9430.htm',
+  'Decreto-Lei 1.598':'https://www.planalto.gov.br/ccivil_03/decreto-lei/del1598.htm'
+};
+function teoriaLeiDaQuestao(q){
+  if(!q || !q.materia || typeof TEORIA_INDICE==='undefined') return null;
+  if(!Object.keys(TEORIA_INDICE).some(k=> slugify(q.materia).startsWith(k))) return null;
+  let refs = []; try{ refs = refsArtigosDaQuestao(q); }catch(_){}
+  for(const r of refs){
+    const base = TEORIA_LEI_URL[r.norma]; if(base && r.n) return { url: `${base}#art${r.n}`, rotulo: `${r.norma} art. ${r.n}` };
+  }
+  return null;
 }
 function teoriaBotaoHtml(q){
-  const t = teoriaPaginaDaQuestao(q); if(!t) return '';
-  return `<button class="btn-corrigir-gabarito btn-ui" data-teoria-ver="${esc(q.uid)}" title="Abrir a apostila em ${esc(t.rotulo)} (página ${t.pagina})">📖 Teoria · pág. ${t.pagina}</button>`;
+  const t = teoriaPaginaDaQuestao(q);
+  if(t) return `<button class="btn-corrigir-gabarito btn-ui" data-teoria-ver="${esc(q.uid)}" title="Abrir a apostila em ${esc(t.rotulo)} (página ${t.pagina})">📖 Teoria · pág. ${t.pagina}</button>`;
+  const l = teoriaLeiDaQuestao(q); if(!l) return '';
+  return `<a class="btn-corrigir-gabarito btn-ui" href="${esc(l.url)}" target="_blank" rel="noopener" title="A apostila não cobre este artigo: abrir o texto oficial (Planalto)">⚖️ Lei · ${esc(l.rotulo)} ↗</a>`;
 }
 function teoriaVerDaQuestao(uid){
   const q = BY_UID[uid]; const t = teoriaPaginaDaQuestao(q); if(!t) return;
