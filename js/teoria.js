@@ -293,13 +293,23 @@ const DOUTRINA_TEMAS = [
   [/^7/,'processos','Gestão de processos'],[/^8\.4/,'lideranca','Liderança e poder'],[/^8\.5/,'motivacao','Motivação'],
   [/^9 |Fora do edital/,'ferramentas','PDCA, 5W2H, competências e projetos']
 ];
+const DOUTRINA_TEXTO = [
+  [/accountability|transpar[êe]ncia|controle social/i,'accountability'],[/governan[çc]a|governabilidade|decreto.{0,6}9\.203/i,'governanca'],
+  [/SWOT|FOFA|matriz GUT/i,'swot'],[/balanced scorecard|BSC|mapa estrat[ée]gico/i,'bsc'],[/BPMN|processo|cadeia de valor|POP\b/i,'processos'],
+  [/lideran|poder (legítimo|coercitivo)/i,'lideranca'],[/motiva|Herzberg|Maslow/i,'motivacao'],[/patrimonialis|burocr[áa]tic|gerencial|nova gest[ãa]o p[úu]blica|racional-legal|reforma/i,'evolucao'],
+  [/Taylor|Fayol|contingenc|sist[êe]mic|relações humanas|comportamental/i,'abordagens'],[/PDCA|5W2H|compet[êe]ncia|benchmarking|projeto/i,'ferramentas'],
+  [/planejamento|organiza[çc][ãa]o|dire[çc][ãa]o|controle|departamentaliza|amplitude|estrutura|fun[çc][õo]es/i,'funcoes'],
+  [/pol[íi]ticas p[úu]blicas/i,'governanca']
+];
 function doutrinaDaQuestao(q){
   if(!q) return null; const t = String(q.q||'') + ' ' + String(q.tema||'');
   if(/Bonavides|gera[çc][õo]es|dimens[õo]es.{0,30}direitos fundamentais/i.test(t)) return 'geracoes';
   if(/efic[áa]cia (plena|contida|limitada)|normas (constitucionais )?program[áa]ticas|classifica[çc][ãa]o tripartite|aplicabilidade das normas|restringida pelo legislador infraconstitucional/i.test(t)) return 'eficacia';
   const tema = String(q.tema||'').trim();
-  if(!/^adm/i.test(String(q.materia||''))) return null;   // os códigos de assunto repetem entre matérias
-  for(const [re,k] of DOUTRINA_TEMAS) if(re.test(tema)) return 'adm:'+k;
+  if(!/^adm(inistra[çc][ãa]o)? geral/i.test(String(q.materia||''))) return null;   // os códigos de assunto repetem entre matérias
+  for(const tm of [tema, String(q.temaOriginal||'').trim()]) for(const [re,k] of DOUTRINA_TEMAS) if(re.test(tm)) return 'adm:'+k;
+  // assunto ausente ou fora do padrão: procura o tema no texto da questão
+  for(const [re,k] of DOUTRINA_TEXTO) if(re.test(t)) return 'adm:'+k;
   return null;
 }
 function doutrinaTitulo(chave){
