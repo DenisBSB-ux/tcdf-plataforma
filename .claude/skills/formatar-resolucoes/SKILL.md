@@ -88,5 +88,11 @@ A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`S
 - Modelo definido em conversa de 16/10/2026, com a questão da dispensa para pesquisa e desenvolvimento (art. 75, IV, "c", Lei 14.133/2021) como exemplo.
 - A Lei 14.133 (232 questões do arquivo `questoes-lei-14-133-220-2026-10-16.md`) foi a primeira matéria a receber o formato (16/10/2026); as demais seguem o mesmo padrão.
 
+## Padrão fixo das próximas listas (19/10/2026)
+- **Entrega sem relatório**: só o arquivo `.md` completo + a **lista das questões que ficaram sem teoria (pop-up)**, mais os gabaritos duvidosos em poucas linhas.
+- **Toda questão com teoria em pop-up**: lei/decreto/súmula primeiro (⚖️); sem norma, ficha de **doutrina** (📖) feita com busca em fontes externas. Ver a skill `aplicar-teoria-materia`, seção "Padrão para toda lista nova".
+- Lista grande: reduzir só quando o usuário pedir (ex.: "as 200 mais recentes"), **mantendo a proporção por assunto** e priorizando Ano mais recente e nível "Alta incidência".
+- Classificação (Sinal/Armadilha) dos itens sem classificação: **propor e aplicar só após aprovação**.
+
 ## Depois da formatação
 Para ligar cada questão ao texto oficial da lei (pop-up ⚖️ com o dispositivo destacado e a teoria da apostila), use a skill **`aplicar-teoria-materia`**, só quando o usuário pedir. Para isso a linha ⚖️ da resolução deve seguir o formato `**Art. N** ▸ **inciso** ▸ **"alínea"** e **§ N** · NORMA` (ADCT, EC 132 e súmulas: `**Art. 125** · ADCT`, `**Súmula Vinculante 19** · STF`) e o campo **Artigo** deve ficar preenchido.
