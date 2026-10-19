@@ -672,3 +672,5 @@ function ajustarMotivacao(){
 }
 new MutationObserver(()=>{ if(document.querySelector('.resumo-motiva')) ajustarMotivacao(); }).observe(document.documentElement,{childList:true,subtree:true});
 window.addEventListener('resize', ajustarMotivacao);
+
+document.addEventListener('click', (ev)=>{ if(ev.target && ev.target.closest && ev.target.closest('#btn-diagnostico-materia')) exportarDiagnosticoMateria(); });
