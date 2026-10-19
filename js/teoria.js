@@ -242,6 +242,7 @@ function teoriaLeiDaQuestao(q){
 const LEI_FONTES = {
   CTN:{ arquivo:'js/ctn-texto.js', global:'CTN_TEXTO', titulo:'Código Tributário Nacional · Lei 5.172/1966', max:218 },
   CF:{ arquivo:'js/cf-texto.js', global:'CF_TEXTO', titulo:'Constituição Federal de 1988', max:250 },
+  'RI TCDF':{ arquivo:'js/ri-texto.js', global:'RITCDF_TEXTO', titulo:'Regimento Interno do TCDF · Resolução 296/2016 (arts. 1º a 118)', max:118 },
   LODF:{ arquivo:'js/lodf-texto.js', global:'LODF_TEXTO', titulo:'Lei Orgânica do Distrito Federal', max:365 },
   'LC 1':{ arquivo:'js/lc1-texto.js', global:'LC1_TEXTO', titulo:'Lei Orgânica do TCDF · Lei Complementar 1/1994', max:101 },
   'LC 116':{ arquivo:'js/lc116-texto.js', global:'LC116_TEXTO', titulo:'Lei Complementar 116/2003 · ISS', max:10 },
