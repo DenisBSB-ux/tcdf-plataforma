@@ -10,6 +10,14 @@ const TEORIA = { links:{}, locais:{}, carregado:false, carregando:false, msg:nul
 const TEORIA_LINKS_KEY = 'teoria-links';
 
 function teoriaSlug(materia){ return slugify(materia); }
+/* link cadastrado pela conta; senão o link público padrão do índice (se a matéria tiver um) */
+function teoriaLinkDaMateria(materia){
+  const k = teoriaSlug(materia); if(TEORIA.links[k]) return TEORIA.links[k];
+  if(typeof TEORIA_INDICE==='undefined') return null;
+  const chave = Object.keys(TEORIA_INDICE).find(c=> k.startsWith(c));
+  const url = chave && TEORIA_INDICE[chave].drive;
+  return url ? { url, nome:'Apostila (Drive)', id: teoriaIdDrive(url), padrao:true } : null;
+}
 function teoriaFormatarTamanho(b){
   if(b >= 1048576) return (b/1048576).toFixed(1).replace('.',',') + ' MB';
   return Math.max(1, Math.round(b/1024)) + ' KB';
@@ -190,7 +198,7 @@ async function teoriaAbrirMateria(materia, pagina, rotulo){
   if(!TEORIA.carregado) await teoriaCarregarTudo();
   const local = await teoriaLocal(materia);
   if(local && local.dados){ leitorAbrirPdf(local.dados, pagina, rotulo || local.nome); return true; }
-  const link = TEORIA.links[teoriaSlug(materia)];
+  const link = teoriaLinkDaMateria(materia);
   if(link){ leitorAbrirDrive(link, pagina, rotulo || link.nome); return true; }
   alert('Nenhuma apostila cadastrada para esta matéria. Na aba 06 Teoria (PDF), cole o link do Drive ou guarde o PDF neste aparelho.');
   return false;
@@ -226,14 +234,14 @@ function renderTeoria(){
   const materia = STATE.materia; const k = teoriaSlug(materia);
   if(!TEORIA.carregado && !TEORIA.carregando) setTimeout(teoriaCarregarTudo, 0);
   if(TEORIA.locais[k]===undefined) teoriaLocal(materia).then(()=>render());
-  const link = TEORIA.links[k]; const local = TEORIA.locais[k];
+  const link = teoriaLinkDaMateria(materia); const local = TEORIA.locais[k];
   const msg = TEORIA.msg ? `<div class="teoria-msg ${TEORIA.msg.tipo}">${esc(TEORIA.msg.txt)}</div>` : '';
   const linhaLink = link ? `
     <div class="teoria-linha"><span class="teoria-ico">☁️</span>
       <button type="button" class="teoria-nome" data-teoria-ler="1" title="Abrir na plataforma">${esc(link.nome)}</button>
       <span class="teoria-meta">Google Drive</span>
       <a class="btn-ui" href="${esc(link.url)}" target="_blank" rel="noopener">Abrir no Drive ↗</a>
-      <button type="button" class="btn-ui teoria-rem" data-teoria-rem-link="1">Remover</button></div>` : '';
+      ${link.padrao ? '' : '<button type="button" class="btn-ui teoria-rem" data-teoria-rem-link="1">Remover</button>'}</div>` : '';
   const linhaLocal = (local && local.nome) ? `
     <div class="teoria-linha"><span class="teoria-ico">📄</span>
       <button type="button" class="teoria-nome" data-teoria-ler="1" title="Abrir no leitor da plataforma">${esc(local.nome)}</button>
@@ -246,8 +254,8 @@ function renderTeoria(){
     ${msg}
     <div class="teoria-bloco"><div class="teoria-tit">☁️ Link do Google Drive</div>
       <div class="teoria-form">
-        <input type="url" id="teoria-url" class="teoria-input" placeholder="https://drive.google.com/file/d/…/view" value="${link ? esc(link.url) : ''}">
-        <input type="text" id="teoria-nome" class="teoria-input teoria-input-nome" placeholder="Nome (opcional)" value="${link ? esc(link.nome) : ''}">
+        <input type="url" id="teoria-url" class="teoria-input" placeholder="https://drive.google.com/file/d/…/view" value="${link && !link.padrao ? esc(link.url) : ''}">
+        <input type="text" id="teoria-nome" class="teoria-input teoria-input-nome" placeholder="Nome (opcional)" value="${link && !link.padrao ? esc(link.nome) : ''}">
         <button type="button" class="btn btn-gold btn-sm" data-teoria-salvar-link="1">Salvar link</button>
       </div>
       <div class="teoria-dica">No Drive: botão direito no PDF → Compartilhar → "Qualquer pessoa com o link" (leitor) → Copiar link. A pré-visualização não pula para a página sozinha; o botão da questão mostra o número da página.</div>
