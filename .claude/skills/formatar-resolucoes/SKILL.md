@@ -96,3 +96,13 @@ A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`S
 
 ## Depois da formatação
 Para ligar cada questão ao texto oficial da lei (pop-up ⚖️ com o dispositivo destacado e a teoria da apostila), use a skill **`aplicar-teoria-materia`**, só quando o usuário pedir. Para isso a linha ⚖️ da resolução deve seguir o formato `**Art. N** ▸ **inciso** ▸ **"alínea"** e **§ N** · NORMA` (ADCT, EC 132 e súmulas: `**Art. 125** · ADCT`, `**Súmula Vinculante 19** · STF`) e o campo **Artigo** deve ficar preenchido.
+
+## Fluxo de entrega e auditoria (decidido pelo usuário — seguir em toda lista, sem perguntar)
+1. **Antes de gerar a lista final e de atualizar a plataforma, rodar a auditoria**: `node .claude/skills/formatar-resolucoes/auditar_lista.js <original.md> <final.md>` (da raiz do repo). Ela confere nº de questões, ids únicos, gabarito presente e igual ao original, resolução presente e, em CADA questão, que o botão de teoria (pop-up) abre e que o dispositivo citado existe no texto carregado. Rodar também `verificar_resolucoes.py` e `verificar_importador.js`.
+2. **Relatório da auditoria: simples e objetivo** (uma tabela: questões, gabaritos, resolução, pop-up, importador; depois só os pontos em aberto: gabaritos a conferir e itens sem Sinal/Armadilha; e as fontes usadas). Nada além disso.
+3. **Todas as questões devem ter pop-up de teoria.** Conferir cada dispositivo citado na linha ⚖️ contra o texto oficial (artigo, §, inciso existem e dizem o que a resolução afirma); corrigir a resolução quando não bater. Se o texto oficial contradiz a resolução original ou o enunciado, não alterar o gabarito: sinalizar com "Conferir o gabarito" (ou aviso no ⚠️ quando o gabarito se mantém).
+4. **Faltantes**: listar em tópicos simples (questões sem teoria + teoria necessária, com link). Procurar **primeiro no Drive** (o usuário costuma subir os arquivos depois: pesquisar de novo por título — Lei, Decreto, IN, súmula) e só então pedir upload. O texto que o usuário colar na conversa (ex.: enunciado de súmula) vale como fonte.
+5. Classificação (Sinal/Armadilha) dos itens sem classificação: **propor em arquivo `.md` (tabela) e só aplicar com `classificar` após o "sim"**. Item cujo gabarito está em conferência fica fora da proposta.
+6. Citação de **anexo** da IN 5: `**Anexo V** ▸ **item 2.6** ▸ **"d.1.3"** · IN 5/2017`; **súmula do TCU**: `**Súmula 251** · TCU`. Ambos abrem pop-up.
+7. Publicação: se o PR der "merge conflicts" depois de um squash anterior, `git fetch origin main`, `git checkout -B <branch> origin/main`, `git cherry-pick <commit>` e `git push --force-with-lease`; esperar alguns segundos e repetir o merge.
+8. Entrega do arquivo: SendUserFile do `.md` completo (cópia em `scratchpad/entrega/`), sem relatório extenso.
