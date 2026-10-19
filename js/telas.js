@@ -714,7 +714,7 @@ function renderEstatisticasPorMateria(){
     </div>
     <div style="height:10px;"></div>
     <div class="tabela-scroll">${renderTabelaEstatisticas(linhas, estiloCelula)}</div>
-    <div style="text-align:right;margin-top:6px;"><button type="button" class="btn-ui" id="btn-diagnostico-materia" style="font-size:12px;opacity:.75;" title="Baixa um relatório (sem enunciados) com as contagens da matéria selecionada, para achar divergências">🔍 Diagnóstico da matéria</button></div>
+    <div style="text-align:right;margin-top:6px;">${(()=>{ const a = STATE.auditoria; if(!a) return ''; const prob = a.materias.filter(x=>x.simulado && x.simulado.respostasSemProgresso>0 && !x.simulado.restauradas).length; return `<span style="font-size:11.5px;opacity:.7;margin-right:10px;" title="Conferência automática do progresso de todas as matérias ao abrir o app">${prob ? '⚠ '+prob+' matéria(s) com divergência' : '✔ Dados conferidos'} · ${a.materias.length} matérias${a.restauradas ? ' · '+a.restauradas+' respostas restauradas' : ''}</span>`; })()}<button type="button" class="btn-ui" id="btn-diagnostico-materia" style="font-size:12px;opacity:.75;" title="Baixa um relatório (sem enunciados) com as contagens da matéria selecionada, para achar divergências">🔍 Diagnóstico da matéria</button></div>
   </div>
   `;
 }
