@@ -191,7 +191,7 @@ function tendenciasDisponiveis(){
 function getLocalTab(materiaKey){
   const tab = STATE.tabByMateria[materiaKey];
   // abas que ainda existem ("Resumo p/ revisão" foi removida)
-  return ['simulado','erros','flashcards','guia-arm'].includes(tab) ? tab : 'simulado';
+  return ['simulado','erros','flashcards','guia-arm','teoria'].includes(tab) ? tab : 'simulado';
 }
 function setLocalTab(materiaKey, tab){
   STATE.tabByMateria[materiaKey] = tab;
@@ -1120,6 +1120,7 @@ function renderLocalTabs(){
     {id:'flashcards', n:'03', label:'Flashcards'},
     {id:'guia-arm', n:'04', label:'Guia de armadilhas'},
     {id:'importar', n:'05', label:'Importar questões'},
+    {id:'teoria', n:'06', label:'Teoria (PDF)'},
   ];
   const atual = STATE.viewImportar ? 'importar' : getLocalTab(STATE.materia);
   return `<div class="tabs">${tabs.map(t=>`
@@ -1157,6 +1158,7 @@ function renderMainPanel(tabAtual){
   if(tabAtual==='flashcards') return renderFlashcards();
   if(tabAtual==='guia-arm') return renderGuiaArmadilhas();
   if(tabAtual==='importar') return renderImportarConteudo();
+  if(tabAtual==='teoria') return renderTeoria();
   return '';
 }
 
