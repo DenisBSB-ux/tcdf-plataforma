@@ -216,8 +216,30 @@ async function storageSet(key, value){
   }
 }
 
+// resultado de uma tentativa: aceita true/false e também 1/0 ou "true"/"false" (progresso importado
+// ou sincronizado de versões antigas); qualquer outro valor = sem resultado
+function resultadoNormalizado(v){
+  if(v===true || v===1 || v==='1' || v==='true') return true;
+  if(v===false || v===0 || v==='0' || v==='false') return false;
+  return null;
+}
+// garante que ultimoResultado e historico[].c sejam booleanos: as contagens (cabeçalho, tabela de
+// estatísticas, grade, caderno de erros) comparam com === e ignoravam as questões gravadas como 1/0
+function normalizarBucketProgresso(b){
+  if(!b || b.__norm) return b;
+  Object.values(b.perguntas||{}).forEach(p=>{
+    if(!p) return;
+    (p.historico||[]).forEach(h=>{ if(h){ const n = resultadoNormalizado(h.c); if(n!==null) h.c = n; } });
+    let r = resultadoNormalizado(p.ultimoResultado);
+    if(r===null && p.historico && p.historico.length) r = resultadoNormalizado(p.historico[p.historico.length-1].c);
+    p.ultimoResultado = r;
+  });
+  Object.defineProperty(b,'__norm',{ value:true, enumerable:false, configurable:true });
+  return b;
+}
 function getBucket(materiaKey){
   if(!PROGRESS[materiaKey]) PROGRESS[materiaKey] = { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
+  normalizarBucketProgresso(PROGRESS[materiaKey]);
   if(!PROGRESS[materiaKey].simuladosSalvos) PROGRESS[materiaKey].simuladosSalvos = [];
   // "chutes": histórico independente de questões marcadas como "eu chutei essa"
   // — não mexe em tentativas/acertos, só registra a marcação (item novo; bucket
