@@ -97,6 +97,9 @@ A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`S
 ## Depois da formatação
 Para ligar cada questão ao texto oficial da lei (pop-up ⚖️ com o dispositivo destacado e a teoria da apostila), use a skill **`aplicar-teoria-materia`**, só quando o usuário pedir. Para isso a linha ⚖️ da resolução deve seguir o formato `**Art. N** ▸ **inciso** ▸ **"alínea"** e **§ N** · NORMA` (ADCT, EC 132 e súmulas: `**Art. 125** · ADCT`, `**Súmula Vinculante 19** · STF`) e o campo **Artigo** deve ficar preenchido.
 
+## Dúvida sobre gabarito, dispositivo ou dado (regra do usuário)
+Na dúvida, **siga sempre a lei, o decreto e as normas oficiais** (texto do Drive primeiro). Se a norma não resolver, **busque fontes externas** (WebSearch/WebFetch; cite a fonte na entrega). Só se ainda não achar, **o usuário decide**: liste a dúvida em uma linha (questão, o que falta) e mantenha o gabarito do arquivo até a resposta.
+
 ## Fluxo de entrega e auditoria (decidido pelo usuário — seguir em toda lista, sem perguntar)
 1. **Antes de gerar a lista final e de atualizar a plataforma, rodar a auditoria**: `node .claude/skills/formatar-resolucoes/auditar_lista.js <original.md> <final.md>` (da raiz do repo). Ela confere nº de questões, ids únicos, gabarito presente e igual ao original, resolução presente e, em CADA questão, que o botão de teoria (pop-up) abre e que o dispositivo citado existe no texto carregado. Rodar também `verificar_resolucoes.py` e `verificar_importador.js`.
 2. **Relatório da auditoria: simples e objetivo** (uma tabela: questões, gabaritos, resolução, pop-up, importador; depois só os pontos em aberto: gabaritos a conferir e itens sem Sinal/Armadilha; e as fontes usadas). Nada além disso.
