@@ -1091,6 +1091,48 @@ function exportarProgresso(){
   setTimeout(()=>URL.revokeObjectURL(url), 1000);
 }
 
+// Relatório de diagnóstico da matéria selecionada (sem enunciados): conta o que existe no progresso oficial,
+// no simulado em andamento e na base de questões, para achar divergências entre grade e tabela de estatísticas.
+function exportarDiagnosticoMateria(){
+  const m = STATE.materia; if(!m){ alert('Selecione uma matéria na barra lateral.'); return; }
+  const b = getBucket(m); const perg = b.perguntas || {};
+  const conta = (arr)=> arr.reduce((o,k)=>{ o[k] = (o[k]||0)+1; return o; }, {});
+  const entradas = Object.entries(perg);
+  const quizzes = {}; Object.entries(STATE.quizzesEmAndamento||{}).forEach(([k,q])=>{ if(q) quizzes[k] = q; });
+  if(STATE.quiz && STATE.quiz.materia) quizzes['__em_memoria__'+STATE.quiz.materia] = STATE.quiz;
+  const resumoQuiz = Object.entries(quizzes).map(([k,q])=>{
+    const resp = Object.entries(q.respostas||{});
+    return { chave:k, materia:q.materia, fila:(q.queue||[]).length, filaNaBase:(q.queue||[]).filter(u=>BY_UID[u]).length, respostas:resp.length,
+      respostasNaBase: resp.filter(([u])=>BY_UID[u]).length,
+      respostasComProgresso: resp.filter(([u])=>{ const p=perg[u]; return p && p.tentativas>0 && (p.ultimoResultado===true||p.ultimoResultado===false); }).length,
+      recuperadasDoHistorico: resp.filter(([,r])=>r&&r.recuperadaDoHistorico).length,
+      tiposCorrect: conta(resp.map(([,r])=>typeof (r&&r.correct)+':'+(r&&r.correct))), ultimoSalvamento:q.ultimoSalvamento||null, startedAt:q.startedAt||null };
+  });
+  const rel = {
+    versao: (window.__TCDF_BUILD__||{}).versao, geradoEm: new Date().toISOString(), materia: m,
+    chavesDeProgresso: Object.keys(PROGRESS),
+    questoesNaBase: ALL_QUESTIONS.filter(q=>q.materia===m).length,
+    progresso: {
+      entradas: entradas.length,
+      naBase: entradas.filter(([u])=>BY_UID[u]).length,
+      orfas: entradas.filter(([u])=>!BY_UID[u]).length,
+      comTentativas: entradas.filter(([,p])=>p.tentativas>0).length,
+      ultimoResultado: conta(entradas.map(([,p])=>typeof p.ultimoResultado+':'+p.ultimoResultado)),
+      semHistorico: entradas.filter(([,p])=>!p.historico||!p.historico.length).length,
+      exemplosOrfas: entradas.filter(([u])=>!BY_UID[u]).slice(0,5).map(([u])=>u),
+    },
+    snapshot: computeSnapshotMateria(m),
+    quizzes: resumoQuiz,
+    exemploUidsDaBase: ALL_QUESTIONS.filter(q=>q.materia===m).slice(0,5).map(q=>q.uid),
+    sessoes: (b.sessoes||[]).length,
+  };
+  const blob = new Blob([JSON.stringify(rel, null, 2)], { type:'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `diagnostico-${slugify(m)}-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
 async function importarProgresso(file){
   const reader = new FileReader();
   reader.onload = async (e) => {
