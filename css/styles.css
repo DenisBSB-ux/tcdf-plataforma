@@ -2224,3 +2224,17 @@ body:not(.theme-light) .prova-motiva{ background:rgba(255,255,255,.06); }
 
 .resumo-dia.msg-linha .resumo-esq{ flex-direction:row; }
 .resumo-dia.msg-linha .resumo-motiva{ position:static !important; transform:none !important; flex-basis:100%; margin:6px 0 2px; text-align:center; }
+
+/* v244: aba Teoria (PDF) */
+.teoria-wrap{ max-width:900px; }
+.teoria-sub{ margin:6px 0 14px; font-size:14px; opacity:.85; }
+.teoria-acoes{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.teoria-up{ cursor:pointer; }
+.teoria-prog{ font-size:13px; font-weight:600; }
+.teoria-msg{ margin:8px 0 12px; padding:9px 12px; border-radius:8px; font-size:13.5px; }
+.teoria-msg.err{ background:#fee2e2; color:#7f1d1d; border:1px solid #fecaca; }
+.teoria-msg.ok{ background:#dcfce7; color:#14532d; border:1px solid #bbf7d0; }
+.teoria-linha{ display:flex; align-items:center; gap:10px; padding:10px 8px; border-bottom:1px solid rgba(128,128,128,.25); }
+.teoria-nome{ flex:1; text-align:left; background:none; border:0; padding:0; font:inherit; font-weight:600; color:inherit; text-decoration:underline; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.teoria-meta{ font-size:12px; opacity:.75; white-space:nowrap; }
+.teoria-vazio{ padding:18px 8px; opacity:.75; font-size:14px; }
