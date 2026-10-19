@@ -278,6 +278,10 @@ const DOUTRINA = {
       peg:'Não existe norma constitucional sem eficácia; a diferença é de grau. Norma programática não gera direito subjetivo pleno, mas tem eficácia jurídica.' },
     { titulo:'Classificação de José Afonso da Silva', lei:['Classificação tricotômica de José Afonso da Silva (Aplicabilidade das normas constitucionais, 1968): eficácia plena, contida e limitada.','O STF adota essa classificação. O autor passou a preferir o termo "normas dirigentes" em vez de "programáticas".'] }
   ], fontes:[['Grupo GEN · eficácia e aplicabilidade','https://blog.grupogen.com.br/juridico/postagens/artigos/eficacia-e-aplicabilidade-das-normas-constitucionais/'],['Jus.com.br · eficácia e aplicabilidade','https://jus.com.br/artigos/33391/a-eficacia-e-aplicabilidade-das-normas-constitucionais']] },
+  mpc:{ titulo:'MP de Contas e mandado de segurança · STF', secs:[
+    { titulo:'Tese do STF (Tema 1044)', lei:['O ==Ministério Público de Contas não tem legitimidade== para impetrar mandado de segurança contra acórdão do Tribunal de Contas perante o qual atua (RE 1.178.617, repercussão geral, Tema 1044, 2019).','Fundamento: o MP de Contas não tem fisionomia institucional própria nem personalidade para demandar contra o órgão do qual faz parte; é ente despersonalizado ligado à estrutura do Tribunal de Contas.'], peg:'Independência funcional dos membros não equivale a capacidade para impetrar MS contra a própria Corte.' },
+    { titulo:'Base: estrutura e autonomia', lei:['ADI 789 (1994): o MP junto ao Tribunal de Contas integra a estrutura do próprio Tribunal.','Mais recentemente (ADI 5.254, 2024), o STF reafirmou que o MP de Contas não tem autonomia administrativa e financeira, embora seus membros mantenham independência funcional.','Antes da tese do STF, o STJ admitia a legitimidade para defesa de prerrogativas institucionais (RMS 52.741-GO); esse entendimento cedeu à tese fixada pelo STF.'] }
+  ], fontes:[['Dizer o Direito · MP de Contas e mandado de segurança','https://www.dizerodireito.com.br/2019/06/ministerio-publico-do-tribunal-de.html'],['Conjur · MP de Contas não pode impetrar MS','https://www.conjur.com.br/2019-abr-28/mp-contas-nao-impetrar-ms-tribunal-contas//?print=1'],['Trilhante · Tema 1044 do STF','https://informativos.trilhante.com.br/temas-stf/tema-1044-stf']] },
   geracoes:{ titulo:'Gerações (dimensões) dos direitos fundamentais · Bonavides', secs:[
     { titulo:'1ª geração · liberdade', lei:['Direitos de liberdade: civis e políticos, exercidos pelo indivíduo contra o Estado (postura de não interferência).'] },
     { titulo:'2ª geração · igualdade', lei:['Direitos de igualdade: sociais, econômicos e culturais, que exigem prestações do Estado.'] },
@@ -306,6 +310,7 @@ function doutrinaDaQuestao(q){
   if(!q) return null; const t = String(q.q||'') + ' ' + String(q.tema||'');
   if(/Bonavides|gera[çc][õo]es|dimens[õo]es.{0,30}direitos fundamentais/i.test(t)) return 'geracoes';
   if(/efic[áa]cia (plena|contida|limitada)|normas (constitucionais )?program[áa]ticas|classifica[çc][ãa]o tripartite|aplicabilidade das normas|restringida pelo legislador infraconstitucional/i.test(t)) return 'eficacia';
+  if(/^reg/i.test(String(q.materia||'')) && /mandado de seguran[çc]a/i.test(String(q.q||'')) && /Minist[ée]rio P[úu]blico|MP\b/.test(String(q.q||''))) return 'mpc';
   const tema = String(q.tema||'').trim();
   if(!/^adm(inistra[çc][ãa]o)? geral/i.test(String(q.materia||''))) return null;   // os códigos de assunto repetem entre matérias
   for(const tm of [tema, String(q.temaOriginal||'').trim()]) for(const [re,k] of DOUTRINA_TEMAS) if(re.test(tm)) return 'adm:'+k;
