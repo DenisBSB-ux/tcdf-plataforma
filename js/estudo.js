@@ -167,7 +167,8 @@ function renderQuiz(){
   }
 
   const respondidas = Object.keys(quiz.respostas).length;
-  const progressPct = pct(respondidas, quiz.queue.length);
+  const cFilaPB = contagemDaFila(quiz);
+  const progressPct = pct(cFilaPB.ac + cFilaPB.erradas, quiz.queue.length);
   const temaLinha = q.tema && q.tema!=='Geral' ? `<div class="q-tema-line">${esc(q.tema)}</div>` : '';
   const historicoHtml = ''; // removido a pedido: poluía o cabeçalho sem agregar valor suficiente
   const idxUltimaRespondida = acharIdxUltimaRespondida(quiz);
@@ -179,14 +180,9 @@ function renderQuiz(){
   // Mesma regra da tabela de estatísticas: vale o resultado ATUAL gravado no progresso
   // (ultimoResultado) de cada questão que existe hoje na base. Resposta que existe só na
   // sessão (sem progresso gravado) NÃO entra, senão o cabeçalho diverge da tabela.
-  const snapM = { ac:0, erradas:0 };
-  const vistosM = new Set();
-  quiz.queue.forEach(u=>{
-    if(vistosM.has(u) || !BY_UID[u]) return; vistosM.add(u);
-    const h = bucketQ.perguntas[u];
-    const res = h ? h.ultimoResultado : null; // só o progresso gravado: idêntico à tabela de estatísticas
-    if(res===true) snapM.ac++; else if(res===false) snapM.erradas++;
-  });
+  // UMA contagem só (a mesma da grade abaixo): resposta da sessão, senão o resultado gravado no progresso
+  const snapM = contagemDaFila(quiz);
+  const vistosM = new Set(quiz.queue.filter(u=>BY_UID[u]));
   const resolvidasM = snapM.ac + snapM.erradas;
   const pctAcM = resolvidasM ? Math.round(snapM.ac*100/resolvidasM) : 0;
   const pctErM = resolvidasM ? 100 - pctAcM : 0;
@@ -195,7 +191,7 @@ function renderQuiz(){
   <div class="case-file">
     <div class="case-header qm-header">
       <div class="qm-title">
-        <div class="qm-numero" title="Posição na fila: ${quiz.idx+1}">Questão ${resolvidasM} de ${vistosM.size}
+        <div class="qm-numero" title="Posição na fila. Já resolvidas: ${resolvidasM} de ${vistosM.size}">Questão ${quiz.idx+1} de ${quiz.queue.length}
           <small><b class="qm-ac">${snapM.ac}</b> Certas (${pctAcM}%) / <b class="qm-er">${snapM.erradas}</b> Erradas (${pctErM}%)</small></div>
       </div>
       <div class="qm-tags">
@@ -255,29 +251,40 @@ function renderQuiz(){
     </button>
     ${STATE.paginacaoAberta ? (() => {
         const bucketAtual = getBucket(quiz.materia);
-        let nCorretas=0, nErradas=0, nSemTentativa=0;
         const celulas = quiz.queue.map((u,i)=>{
-          const r = quiz.respostas[u];
-          // mesma checagem usada em computeSnapshotMateria (o cálculo oficial do
-          // "37" no topo da tela): ignora uid órfão, que não existe mais na base
-          // atual de questões — sem essa checagem, o grid podia contar diferente
-          // do número oficial
-          const hist = (!r && BY_UID[u]) ? bucketAtual.perguntas[u] : null;
+          const est = estadoDaQuestaoNaFila(quiz, bucketAtual, u);
           let cls = 'page-num';
-          if(r){ cls += r.correct ? ' page-correct' : ' page-incorrect'; r.correct ? nCorretas++ : nErradas++; }
-          else if(hist && hist.tentativas>0){ cls += hist.ultimoResultado ? ' page-correct' : ' page-incorrect'; hist.ultimoResultado ? nCorretas++ : nErradas++; }
-          else nSemTentativa++;
+          if(est===true) cls += ' page-correct'; else if(est===false) cls += ' page-incorrect';
           if(i===quiz.idx) cls += ' page-current';
           return `<button class="${cls}" data-jump="${i}" title="Ir para a questão ${i+1}" aria-label="Questão ${i+1}"></button>`;
         }).join('');
-        // contador de diagnóstico: calculado a partir dos MESMOS dados que colorem
-        // as células — número mostrado aqui e o grid abaixo nunca podem divergir
-        // entre si, já que vêm exatamente da mesma passada
+        const { ac:nCorretas, erradas:nErradas, sem:nSemTentativa } = contagemDaFila(quiz);
         return `<div style="font-size:11px;color:var(--ink-soft);margin-bottom:4px;">🟢 ${nCorretas} corretas · 🔴 ${nErradas} erradas · ⬜ ${nSemTentativa} sem tentativa nesta fila (${quiz.queue.length} total)</div>
         <div class="pagination-strip">${celulas}</div>`;
       })() : ''}` : ''}
   </div>
   `;
+}
+
+// estado de uma questão da fila: true (certa), false (errada) ou null (sem tentativa).
+// Vale a resposta desta sessão; senão o resultado gravado no progresso. Questão órfã (fora da base) = null.
+function estadoDaQuestaoNaFila(quiz, bucket, u){
+  if(!BY_UID[u]) return null;
+  const r = quiz.respostas[u];
+  if(r) return resultadoNormalizado(r.correct) ?? !!r.correct;
+  const h = bucket.perguntas[u];
+  if(h && h.tentativas>0){ const n = resultadoNormalizado(h.ultimoResultado); return n===null ? null : n; }
+  return null;
+}
+// contagem única usada pelo cabeçalho, pela barra de progresso e pela grade
+function contagemDaFila(quiz){
+  const bucket = getBucket(quiz.materia); const vistos = new Set(); let ac = 0, erradas = 0, sem = 0;
+  quiz.queue.forEach(u=>{
+    if(vistos.has(u)) return; vistos.add(u);
+    const e = estadoDaQuestaoNaFila(quiz, bucket, u);
+    if(e===true) ac++; else if(e===false) erradas++; else sem++;
+  });
+  return { ac, erradas, sem, total: vistos.size };
 }
 
 function renderResolucaoPlaceholder(q){
