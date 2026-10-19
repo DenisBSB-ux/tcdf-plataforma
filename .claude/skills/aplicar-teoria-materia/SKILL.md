@@ -29,7 +29,7 @@ Formato da linha ⚖️ que o destaque entende: `**Art. 150** ▸ **VI** ▸ **"
 
 ## Passo a passo (por matéria)
 1. **Levantar o que a matéria cita**: rode `node .claude/skills/aplicar-teoria-materia/cobertura_teoria.js lista.md "<Matéria>"` na lista já formatada (skill `formatar-resolucoes`; reimportada). Ele lista as questões sem pop-up e a linha ⚖️ delas. Agrupe por norma (artigos citados × fontes disponíveis).
-2. **Conseguir as fontes** (nesta ordem): (a) PDFs/pasta do Drive do usuário; (b) PDFs anexados no chat; (c) pedir os links oficiais (Planalto/STF). **Não há acesso à internet para páginas** (Planalto, STF, Câmara, Jusbrasil… bloqueados; só `WebSearch`, que traz resumos de sites didáticos — não use como texto de lei).
+2. **Conseguir as fontes** (nesta ordem): (a) **pasta de teoria no Drive do usuário** (ver "Ordem de busca da teoria"); (b) PDFs anexados no chat; (c) fontes externas; (d) pedir os links oficiais (Planalto/STF). **Não há acesso à internet para páginas** (Planalto, STF, Câmara, Jusbrasil… bloqueados; só `WebSearch`, que traz resumos de sites didáticos — não use como texto de lei).
 3. **Extrair o texto**:
    - PDF com texto: `download_file_content` (Drive) → o resultado é salvo em arquivo JSON; decodifique o base64 e rode `pdftotext -layout`. (`read_file_content` **trunca perto de 500 mil caracteres**; serve para leis curtas.)
    - PDF só imagem ("Microsoft Print to PDF"): `pdftoppm -r 70 -png` e leia a imagem. Dá para ler enunciado de súmula; **para lei longa peça o PDF de novo** (Ctrl+P → Salvar como PDF no Chrome) em vez de transcrever.
@@ -40,6 +40,15 @@ Formato da linha ⚖️ que o destaque entende: `**Art. 150** ▸ **VI** ▸ **"
 7. **Registrar** em `LEI_FONTES` (e `TEORIA_LEI_URL` se houver URL oficial); se a matéria for nova no índice, apelide a chave (ex.: `D.Tributário` → `d-tributario`).
 8. **Testar com Playwright** (servidor `python3 -m http.server`, abortar requisições externas): botões gerados para cada formato de linha ⚖️, pop-up abre, destaque correto (`.lei-alvo`), ‹ › Esc, console sem erro; rode `cobertura_teoria.js` de novo e informe o que ainda falta.
 9. **Publicar**: subir a versão (`vNNN` e data em `index.html`, via `sed`), commit com os trailers, `git push -u origin HEAD:claude/epic-fermi-09davj --force-with-lease`, PR e squash-merge para `main`; se o PR acusar conflito após squash anterior, `git checkout -B claude/epic-fermi-09davj origin/main` e reaplique o commit. Reporte em português: quantas questões têm pop-up, quais faltam e **o que o usuário precisa enviar**.
+
+## Ordem de busca da teoria (decidido em 19/10/2026): Drive primeiro, internet depois
+Para **cada questão sem teoria**, siga sempre esta ordem e diga ao usuário de onde veio:
+1. **Google Drive do usuário** (pasta de teoria do TCDF: apostilas, leis, decretos e afins). Use `search_files` do Drive **restrito à árvore dessa pasta** (`parentId = '<id>'`, descendo pelas subpastas); o link da pasta o usuário já informou no chat, e, se não estiver no contexto, peça. Subpastas conhecidas: `# Leis`, `# Decretos`, `# Instrução Normativa`, `# Regimento Interno`, `# Códigos`, `# Vade Mecum` (comercial: **não copiar para o repositório**), `07 # Leis TCDF`, `08 # Conhecimentos do DF`, e uma pasta por matéria (`010 # Direito Previdenciário`, `011 # Direito Civil`, `012 # Direito Tributário`, `015 # AFO`, `017 # Licitações`, `018 # Direito Constitucional` etc.). Procure também PDF avulso na raiz da pasta (ex.: `LC 116.pdf`, `SV 19.pdf`, `Constituição.pdf`).
+   - **Cuidado:** o Drive do usuário também contém documentos de trabalho sem relação com o concurso (outras pastas da organização). Nunca use arquivo fora da árvore da pasta de teoria, e **não faça busca global** por título.
+   - Arquivo de 0 KB = upload incompleto: peça reenvio. PDF só imagem: ver passo 3 abaixo. Docs com anotações do usuário não são texto oficial.
+2. **Se o Drive não tiver**: fontes externas. Texto de **lei, decreto, súmula**: só de fonte oficial (peça o arquivo/link se o proxy bloquear o site). **Doutrina e conceitos**: `WebSearch` (revistas, órgãos públicos, obras de referência), síntese própria e fontes citadas.
+3. Se nada confiável: liste a questão como faltante e peça o arquivo ao usuário (ele sobe na pasta do Drive e eu busco de novo).
+Ao entregar, informe por matéria: o que veio do **Drive**, o que veio de **fonte externa** e o que **faltou**.
 
 ## Padrão para toda lista nova (decidido pelo usuário em 19/10/2026)
 **Toda questão deve ter teoria em pop-up.** Ordem de prioridade da fonte:

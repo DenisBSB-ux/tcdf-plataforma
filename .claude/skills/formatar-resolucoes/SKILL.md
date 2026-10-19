@@ -90,7 +90,7 @@ A plataforma mostra um pop-up explicativo ao passar o mouse em cada símbolo (`S
 
 ## Padrão fixo das próximas listas (19/10/2026)
 - **Entrega sem relatório**: só o arquivo `.md` completo + a **lista das questões que ficaram sem teoria (pop-up)**, mais os gabaritos duvidosos em poucas linhas.
-- **Toda questão com teoria em pop-up**: lei/decreto/súmula primeiro (⚖️); sem norma, ficha de **doutrina** (📖) feita com busca em fontes externas. Ver a skill `aplicar-teoria-materia`, seção "Padrão para toda lista nova".
+- **Toda questão com teoria em pop-up**: **1º procurar no Drive do usuário** (pasta de teoria: apostilas, leis, decretos), **2º fontes externas**. Lei/decreto/súmula primeiro (⚖️); sem norma, ficha de **doutrina** (📖). Ver a skill `aplicar-teoria-materia`, seção "Padrão para toda lista nova".
 - Lista grande: reduzir só quando o usuário pedir (ex.: "as 200 mais recentes"), **mantendo a proporção por assunto** e priorizando Ano mais recente e nível "Alta incidência".
 - Classificação (Sinal/Armadilha) dos itens sem classificação: **propor e aplicar só após aprovação**.
 
