@@ -224,8 +224,10 @@ const TEORIA_LEI_URL = {
   'LC 116':'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp116.htm',
   'LC 87':'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp87.htm',
   'Lei 9.430':'https://www.planalto.gov.br/ccivil_03/leis/l9430.htm',
-  'Decreto-Lei 1.598':'https://www.planalto.gov.br/ccivil_03/decreto-lei/del1598.htm',
-  'LC 109':'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp109.htm'
+  'Decreto-lei 1.598':'https://www.planalto.gov.br/ccivil_03/decreto-lei/del1598.htm',
+  'LC 109':'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp109.htm',
+  'ADCT':'https://www.planalto.gov.br/ccivil_03/constituicao/adct.htm',
+  'EC 132':'https://www.planalto.gov.br/ccivil_03/constituicao/emendas/emc/emc132.htm'
 };
 function teoriaLeiDaQuestao(q){
   if(!q || !q.materia || typeof TEORIA_INDICE==='undefined') return null;
@@ -239,16 +241,29 @@ function teoriaLeiDaQuestao(q){
 /* normas cujo texto oficial está dentro da plataforma (carregado só ao abrir): arquivo, nome, limite */
 const LEI_FONTES = {
   CTN:{ arquivo:'js/ctn-texto.js', global:'CTN_TEXTO', titulo:'Código Tributário Nacional · Lei 5.172/1966', max:218 },
-  CF:{ arquivo:'js/cf-texto.js', global:'CF_TEXTO', titulo:'Constituição Federal de 1988', max:167 },
+  CF:{ arquivo:'js/cf-texto.js', global:'CF_TEXTO', titulo:'Constituição Federal de 1988', max:250 },
   LODF:{ arquivo:'js/lodf-texto.js', global:'LODF_TEXTO', titulo:'Lei Orgânica do Distrito Federal', max:365 },
   'LC 1':{ arquivo:'js/lc1-texto.js', global:'LC1_TEXTO', titulo:'Lei Orgânica do TCDF · Lei Complementar 1/1994', max:101 },
+  'LC 116':{ arquivo:'js/lc116-texto.js', global:'LC116_TEXTO', titulo:'Lei Complementar 116/2003 · ISS', max:10 },
+  'LC 87':{ arquivo:'js/lc87-texto.js', global:'LC87_TEXTO', titulo:'Lei Complementar 87/1996 · Lei Kandir (ICMS)', max:36 },
+  'Lei 9.430':{ arquivo:'js/l9430-texto.js', global:'L9430_TEXTO', titulo:'Lei 9.430/1996', max:88 },
+  'Decreto-lei 1.598':{ arquivo:'js/del1598-texto.js', global:'DEL1598_TEXTO', titulo:'Decreto-Lei 1.598/1977 · Lucro real', max:67 },
+  ADCT:{ arquivo:'js/adct-texto.js', global:'ADCT_TEXTO', titulo:'ADCT · Ato das Disposições Constitucionais Transitórias', max:138 },
+  'EC 132':{ arquivo:'js/ec132-texto.js', global:'EC132_TEXTO', titulo:'Emenda Constitucional 132/2023 · Reforma Tributária', max:23 },
+  SUM:{ arquivo:'js/sumulas-texto.js', global:'SUMULAS_TEXTO', titulo:'Súmulas do STF', max:0 },
   'LC 109':{ arquivo:'js/lc109-texto.js', global:'LC109_TEXTO', titulo:'Lei Complementar 109/2001 · Previdência Complementar', max:79 }
 };
 function teoriaLeisDaQuestao(q){
   if(!q) return [];
   let refs = []; try{ refs = refsArtigosDaQuestao(q); }catch(_){}
   const vistos = new Set(), out = [];
-  refs.forEach(r=>{ const f = LEI_FONTES[r.norma]; const k = r.norma+':'+r.n; if(f && r.n>=1 && r.n<=f.max && !vistos.has(k)){ vistos.add(k); out.push({ norma:r.norma, n:r.n }); } });
+  const m = String(q.r||'').match(/⚖️\s*([^\n]*)/); const linha = m ? m[1].replace(/\*+/g,'') : '';
+  let mm;
+  if((mm = linha.match(/Art\.?\s*(\d+(?:-[A-Z])?)[^·]*·\s*ADCT/))) refs = refs.concat([{ norma:'ADCT', n:mm[1], txt:true }]);
+  if((mm = linha.match(/Art\.?\s*(\d+)[^·]*·\s*EC 132/))) refs = refs.concat([{ norma:'EC 132', n:+mm[1] }]);
+  if((mm = linha.match(/S[úu]mula Vinculante\s*(\d+)/i))) refs = refs.concat([{ norma:'SUM', n:'SV '+mm[1], txt:true }]);
+  else if((mm = linha.match(/S[úu]mula\s*(\d+)\s*·\s*STF/i))) refs = refs.concat([{ norma:'SUM', n:'S '+mm[1], txt:true }]);
+  refs.forEach(r=>{ const f = LEI_FONTES[r.norma]; const k = r.norma+':'+r.n; if(f && (r.txt || (r.n>=1 && r.n<=f.max)) && !vistos.has(k)){ vistos.add(k); out.push({ norma:r.norma, n:r.n }); } });
   return out.slice(0,3);
 }
 function teoriaBotaoHtml(q){
@@ -256,7 +271,7 @@ function teoriaBotaoHtml(q){
   const t = teoriaPaginaDaQuestao(q);
   if(t) h += `<button class="btn-corrigir-gabarito btn-ui" data-teoria-ver="${esc(q.uid)}" title="Ver o trecho da apostila sobre ${esc(t.rotulo)} (pág. ${t.pagina})">📖 Teoria · pág. ${t.pagina}</button>`;
   const leis = teoriaLeisDaQuestao(q);
-  leis.forEach(l=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${l.norma}:${l.n}" data-lei-q="${esc(q.uid)}" title="Ler o texto oficial: ${l.norma} art. ${l.n}">⚖️ ${l.norma} art. ${l.n}</button>`; });
+  leis.forEach(l=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${l.norma}:${l.n}" data-lei-q="${esc(q.uid)}" title="Ler o texto oficial: ${l.norma==='SUM' ? l.n : l.norma+' art. '+l.n}">⚖️ ${l.norma==='SUM' ? l.n.replace(/^S /,'Súmula ') : l.norma+' art. '+l.n}</button>`; });
   if(!t && !leis.length){
     const l = teoriaLeiDaQuestao(q);
     if(l) h += `<a class="btn-corrigir-gabarito btn-ui" href="${esc(l.url)}" target="_blank" rel="noopener" title="Este artigo não está no texto da plataforma: abrir o texto oficial (Planalto)">⚖️ Lei · ${esc(l.rotulo)} ↗</a>`;
@@ -280,6 +295,7 @@ function leiCarregar(norma){
 }
 function leiOrdem(norma){
   const d = eval(LEI_FONTES[norma].global); if(d.__ordem) return d.__ordem;
+  if(norma==='SUM'){ const k0 = Object.keys(d); Object.defineProperty(d,'__ordem',{ value:k0, enumerable:false }); return k0; }
   const k = Object.keys(d).sort((a,b)=>{ const x=a.split('-'), y=b.split('-'); return (+x[0]-+y[0]) || String(x[1]||'').localeCompare(String(y[1]||'')); });
   Object.defineProperty(d,'__ordem',{ value:k, enumerable:false }); return k;
 }
