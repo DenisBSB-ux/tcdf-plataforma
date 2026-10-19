@@ -76,6 +76,37 @@ async function teoriaRemover(materia, caminho){
   teoriaCarregar(materia, true);
 }
 
+/* ---- link "Teoria" na resolução: abre a página da apostila ligada ao artigo da questão ---- */
+function teoriaPaginaDaQuestao(q){
+  if(typeof TEORIA_INDICE==='undefined' || !q || !q.materia) return null;
+  const chave = Object.keys(TEORIA_INDICE).find(k=> slugify(q.materia).startsWith(k));
+  if(!chave) return null;
+  const idx = TEORIA_INDICE[chave];
+  let refs = []; try{ refs = refsArtigosDaQuestao(q); }catch(_){}
+  for(const r of refs){
+    const normas = r.norma ? [r.norma] : ['CTN','CF'];
+    for(const nm of normas){ const p = idx.paginas[`${nm}:${r.n}`]; if(p) return { chave, pagina:p, rotulo:`${nm} art. ${r.n}`, pdf:idx.pdf }; }
+  }
+  return null;
+}
+function teoriaBotaoHtml(q){
+  const t = teoriaPaginaDaQuestao(q); if(!t) return '';
+  return `<button class="btn-corrigir-gabarito btn-ui" data-teoria-ver="${esc(q.uid)}" title="Abrir a apostila em ${esc(t.rotulo)} (página ${t.pagina})">📖 Teoria · pág. ${t.pagina}</button>`;
+}
+async function teoriaVerDaQuestao(uid){
+  const q = BY_UID[uid]; const t = teoriaPaginaDaQuestao(q); if(!t) return;
+  const erro = teoriaDisponivel();
+  if(erro){ alert(erro); return; }
+  try{
+    const res = await fbStorage.ref(teoriaPasta(q.materia)).listAll();
+    if(!res.items.length){ alert('Nenhum PDF de teoria enviado para esta matéria. Envie na aba 06 Teoria (PDF).'); return; }
+    const metas = await Promise.all(res.items.map(async it=>({ it, nome: ((await it.getMetadata()).customMetadata||{}).nomeOriginal || it.name })));
+    const alvo = (metas.find(m=> new RegExp(t.pdf||'', 'i').test(m.nome)) || metas[0]).it;
+    const url = await alvo.getDownloadURL();
+    window.open(url + '#page=' + t.pagina, '_blank', 'noopener');
+  }catch(e){ alert(teoriaMensagemDeErro(e)); }
+}
+
 function renderTeoria(){
   const materia = STATE.materia;
   const indisponivel = teoriaDisponivel();
@@ -105,6 +136,8 @@ function renderTeoria(){
 }
 
 document.addEventListener('click', (ev)=>{
+  const v = ev.target.closest && ev.target.closest('[data-teoria-ver]');
+  if(v){ teoriaVerDaQuestao(v.dataset.teoriaVer); return; }
   const a = ev.target.closest && ev.target.closest('[data-teoria-abrir]');
   if(a){ teoriaAbrir(a.dataset.teoriaAbrir); return; }
   const r = ev.target.closest && ev.target.closest('[data-teoria-remover]');

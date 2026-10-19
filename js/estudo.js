@@ -397,6 +397,7 @@ function renderResolucao(q, resposta, quiz){
     <span class="acoes-questao">
       ${edicaoAtual===q.uid ? '' : botaoEditarTudo(q.uid)}
       <button class="btn-corrigir-gabarito btn-ui" data-alterar-gabarito="${esc(q.uid)}" title="Corrigir o gabarito desta questão (com justificativa) — não muda tentativas já registradas" >✏️ Corrigir gabarito</button>
+      ${typeof teoriaBotaoHtml==='function' ? teoriaBotaoHtml(q) : ''}
     </span>
   </div>
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
