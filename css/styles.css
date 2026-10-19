@@ -2294,3 +2294,8 @@ body.leitor-aberto{ overflow:hidden; }
 .lei-apostila-tit{ font-weight:700; margin-bottom:8px; color:#1b3a5c; }
 .lei-apostila-sec{ margin-bottom:10px; }
 .placeholder-leis{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-top:12px; }
+
+/* v262: detalhes do edital em pop-up */
+.prova-det-btn{ display:inline-block; margin-top:8px; padding:4px 10px; font:inherit; font-size:12px; font-weight:600; cursor:pointer; color:var(--ink); background:transparent; border:1px solid var(--paper-line); border-radius:6px; }
+.prova-caixa .lei-corpo{ font-size:14px; }
+.prova-caixa .prova-sub{ margin-top:12px; font-weight:700; }

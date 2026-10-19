@@ -200,7 +200,7 @@ async function teoriaAbrirMateria(materia, pagina, rotulo){
   if(local && local.dados){ leitorAbrirPdf(local.dados, pagina, rotulo || local.nome); return true; }
   const link = teoriaLinkDaMateria(materia);
   if(link){ leitorAbrirDrive(link, pagina, rotulo || link.nome); return true; }
-  alert('Nenhuma apostila cadastrada para esta matéria. Na aba 06 Teoria (PDF), cole o link do Drive ou guarde o PDF neste aparelho.');
+  alert('Nenhuma apostila está disponível para esta matéria no momento.');
   return false;
 }
 

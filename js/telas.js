@@ -191,7 +191,7 @@ function tendenciasDisponiveis(){
 function getLocalTab(materiaKey){
   const tab = STATE.tabByMateria[materiaKey];
   // abas que ainda existem ("Resumo p/ revisão" foi removida)
-  return ['simulado','erros','flashcards','guia-arm','teoria'].includes(tab) ? tab : 'simulado';
+  return ['simulado','erros','flashcards','guia-arm'].includes(tab) ? tab : 'simulado';
 }
 function setLocalTab(materiaKey, tab){
   STATE.tabByMateria[materiaKey] = tab;
@@ -1012,16 +1012,8 @@ function provaDias(){
   const hoje = new Date(); hoje.setHours(0,0,0,0);
   return Math.round((PROVA_TCDF.data - hoje)/86400000);
 }
-function provaContagemHtml(){
-  const dias = provaDias();
-  const txt = dias>1 ? `Faltam <b>${dias} dias</b>` : (dias===1 ? 'Falta <b>1 dia</b>' : (dias===0 ? '<b>A prova é hoje!</b>' : 'Prova realizada'));
-  return `<div class="prova-info">
-    <div class="prova-rot">Prova objetiva e discursiva</div>
-    <div class="prova-data">${PROVA_TCDF.rotulo}</div>
-    <div class="prova-conta">${txt}</div>
-    <a class="prova-link" href="${PROVA_TCDF.link}" target="_blank" rel="noopener noreferrer">Cespe: edital e avisos ↗</a>
-    <details class="prova-det">
-      <summary>Detalhes do edital</summary>
+function provaDetalhesHtml(){
+  return `
       <ul>
         <li><b>Cargo:</b> Analista Administrativo de Controle Externo, Área de Gestão (Serviços Técnico-Administrativos)</li>
         <li><b>Remuneração inicial:</b> R$ 14.990,41 (Lei 7.860/2026)</li>
@@ -1053,7 +1045,30 @@ function provaContagemHtml(){
         <li>Recesso de fim de ano e teletrabalho conforme o setor</li>
       </ul>
       <small>Datas e prazos podem mudar por edital: confira no link acima.</small>
-    </details>
+  `;
+}
+document.addEventListener('click', (ev)=>{
+  const b = ev.target.closest && ev.target.closest('[data-prova-detalhes]'); if(!b) return;
+  let el = document.getElementById('prova-modal');
+  if(!el){
+    el = document.createElement('div'); el.id = 'prova-modal'; el.className = 'lei-modal'; el.hidden = true;
+    el.innerHTML = `<div class="lei-caixa prova-caixa" role="dialog" aria-label="Detalhes do edital"><div class="lei-barra"><strong>Detalhes do edital</strong><button type="button" class="btn-ui" data-prova-fechar="1" title="Fechar (Esc)">✕</button></div><div class="lei-corpo prova-det" id="prova-corpo"></div></div>`;
+    el.addEventListener('mousedown', e=>{ if(e.target===el || (e.target.closest && e.target.closest('[data-prova-fechar]'))) el.hidden = true; });
+    el.addEventListener('click', e=>{ if(e.target.closest && e.target.closest('[data-prova-fechar]')) el.hidden = true; });
+    document.addEventListener('keydown', e=>{ if(e.key==='Escape' && !el.hidden) el.hidden = true; });
+    document.body.appendChild(el);
+  }
+  document.getElementById('prova-corpo').innerHTML = provaDetalhesHtml(); el.hidden = false;
+});
+function provaContagemHtml(){
+  const dias = provaDias();
+  const txt = dias>1 ? `Faltam <b>${dias} dias</b>` : (dias===1 ? 'Falta <b>1 dia</b>' : (dias===0 ? '<b>A prova é hoje!</b>' : 'Prova realizada'));
+  return `<div class="prova-info">
+    <div class="prova-rot">Prova objetiva (manhã) e Discursiva (tarde)</div>
+    <div class="prova-data">${PROVA_TCDF.rotulo}</div>
+    <div class="prova-conta">${txt}</div>
+    <a class="prova-link" href="${PROVA_TCDF.link}" target="_blank" rel="noopener noreferrer">Cespe: edital e avisos ↗</a>
+    <button type="button" class="prova-det-btn" data-prova-detalhes="1">Detalhes do edital</button>
   </div>`;
 }
 function renderSyncSidebarBlock(){
@@ -1120,8 +1135,7 @@ function renderLocalTabs(){
     {id:'erros', n:'02', label:'Caderno de erros'},
     {id:'flashcards', n:'03', label:'Flashcards'},
     {id:'guia-arm', n:'04', label:'Guia de armadilhas'},
-    {id:'importar', n:'05', label:'Importar questões'},
-    {id:'teoria', n:'06', label:'Teoria (PDF)'},
+    {id:'importar', n:'05', label:'Importar (Admin)'},
   ];
   const atual = STATE.viewImportar ? 'importar' : getLocalTab(STATE.materia);
   return `<div class="tabs">${tabs.map(t=>`
@@ -1159,7 +1173,6 @@ function renderMainPanel(tabAtual){
   if(tabAtual==='flashcards') return renderFlashcards();
   if(tabAtual==='guia-arm') return renderGuiaArmadilhas();
   if(tabAtual==='importar') return renderImportarConteudo();
-  if(tabAtual==='teoria') return renderTeoria();
   return '';
 }
 
