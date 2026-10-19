@@ -243,7 +243,7 @@ const LEI_FONTES = {
   CTN:{ arquivo:'js/ctn-texto.js', global:'CTN_TEXTO', titulo:'Código Tributário Nacional · Lei 5.172/1966', max:218 },
   CF:{ arquivo:'js/cf-texto.js', global:'CF_TEXTO', titulo:'Constituição Federal de 1988', max:250 },
   'RI TCDF':{ arquivo:'js/ri-texto.js', global:'RITCDF_TEXTO', titulo:'Regimento Interno do TCDF · Res. 296/2016 (arts. 119 em diante: texto de 2016, sem emendas)', max:306 },
-  'IN 5':{ arquivo:'js/in5-texto.js', global:'IN5_TEXTO', titulo:'Instrução Normativa SEGES/MP 5/2017 (atualizada) · arts. 1º a 75 e anexos V, VII-F e VIII-A', max:75 },
+  'IN 5':{ arquivo:'js/in5-texto.js', global:'IN5_TEXTO', titulo:'Instrução Normativa SEGES/MP 5/2017 (atualizada) · arts. 1º a 75 e anexos', max:75 },
   'Lei 14.133':{ arquivo:'js/l14133-texto.js', global:'L14133_TEXTO', titulo:'Lei 14.133/2021 · Licitações e Contratos Administrativos', max:194 },
   'Decreto 44.330':{ arquivo:'js/d44330-texto.js', global:'D44330_TEXTO', titulo:'Decreto Distrital 44.330/2023 · regulamenta a Lei 14.133 no DF', max:272 },
   'SUM TCU':{ arquivo:'js/sumulas-tcu-texto.js', global:'SUMULAS_TCU_TEXTO', titulo:'Súmulas do TCU', max:0 },
@@ -385,10 +385,11 @@ function leiCarregar(norma){
   });
   return leiCarregando[norma];
 }
+function anexoRank(k){ const m = String(k).match(/^ANEXO ([IVXL]+)/); if(!m) return 0; const v = {I:1,V:5,X:10,L:50}; let n=0, p=0; m[1].split('').reverse().forEach(c=>{ const x=v[c]; n += x<p ? -x : x; p = x; }); return n; }
 function leiOrdem(norma){
   const d = eval(LEI_FONTES[norma].global); if(d.__ordem) return d.__ordem;
   if(norma==='SUM'){ const k0 = Object.keys(d); Object.defineProperty(d,'__ordem',{ value:k0, enumerable:false }); return k0; }
-  const k = Object.keys(d).sort((a,b)=>{ const x=a.split('-'), y=b.split('-'), nx=isNaN(+x[0])?1e9:+x[0], ny=isNaN(+y[0])?1e9:+y[0]; return (nx-ny) || (nx===1e9 ? a.localeCompare(b) : 0) || String(x[1]||'').localeCompare(String(y[1]||'')); });
+  const k = Object.keys(d).sort((a,b)=>{ const x=a.split('-'), y=b.split('-'), nx=isNaN(+x[0])?1e9:+x[0], ny=isNaN(+y[0])?1e9:+y[0]; return (nx-ny) || (nx===1e9 ? (anexoRank(a)-anexoRank(b) || a.localeCompare(b)) : 0) || String(x[1]||'').localeCompare(String(y[1]||'')); });
   Object.defineProperty(d,'__ordem',{ value:k, enumerable:false }); return k;
 }
 
