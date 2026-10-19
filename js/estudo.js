@@ -37,6 +37,7 @@ function renderProgressoMateriaToolbar(materiaKey){
   </span>`;
 }
 function renderQuiz(){
+  try{ if(STATE.quiz && typeof reconciliarProgressoComQuiz==='function') reconciliarProgressoComQuiz(STATE.quiz); }catch(_){}
   const quiz = STATE.quiz;
   if(quiz.finished) return renderResults();
 

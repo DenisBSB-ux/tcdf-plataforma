@@ -259,6 +259,32 @@ function getBucket(materiaKey){
 // merge de outro aparelho. Chamar isto antes de usar quiz.respostas garante
 // que a marcação nunca se perde, qualquer que seja a ordem da fila.
 // Retorna true se recuperou alguma resposta (quem chama decide se salva).
+// CURA INVERSA: respostas que existem no simulado em andamento (quiz.respostas, as que colorem a grade)
+// mas não estão no progresso oficial (bucket.perguntas, que alimenta a tabela de estatísticas, o caderno
+// de erros e o "Total respondidas"). Acontece quando o progresso é substituído/importado/sincronizado
+// por uma cópia sem essas questões. Registra a tentativa que falta; nunca sobrescreve progresso existente.
+const _quizReconciliados = new WeakSet();
+function reconciliarProgressoComQuiz(quiz, materiaKey){
+  if(!quiz || !quiz.respostas) return 0;
+  const materia = materiaKey || quiz.materia; if(!materia) return 0;
+  if(_quizReconciliados.has(quiz) && !quiz.__resp_mudou) return 0;
+  const bucket = getBucket(materia); let n = 0;
+  const base = quiz.ultimoSalvamento || quiz.startedAt || Date.now();
+  Object.entries(quiz.respostas).forEach(([uid, r])=>{
+    if(!r || r.recuperadaDoHistorico || !BY_UID[uid]) return;
+    const c = resultadoNormalizado(r.correct); if(c===null) return;
+    const p = bucket.perguntas[uid];
+    if(p && p.tentativas>0 && resultadoNormalizado(p.ultimoResultado)!==null) return;   // já está no progresso
+    const novo = p || { tentativas:0, acertos:0, ultimoResultado:null, historico:[] };
+    novo.tentativas = (novo.tentativas||0) + 1; if(c) novo.acertos = (novo.acertos||0) + 1;
+    novo.ultimoResultado = c; novo.historico = (novo.historico||[]).concat([{ ts: r.ts || base, c }]).slice(-20);
+    bucket.perguntas[uid] = novo; n++;
+  });
+  _quizReconciliados.add(quiz);
+  if(n){ try{ if(typeof marcarProgressoSujo==='function') marcarProgressoSujo(materia); if(typeof saveProgress==='function') saveProgress(); }catch(_){} }
+  return n;
+}
+
 function curarRespostasDoHistorico(quiz){
   if(!quiz || !quiz.materia) return false;
   const bucket = getBucket(quiz.materia);
