@@ -235,12 +235,86 @@ function teoriaLeiDaQuestao(q){
   }
   return null;
 }
-function teoriaBotaoHtml(q){
-  const t = teoriaPaginaDaQuestao(q);
-  if(t) return `<button class="btn-corrigir-gabarito btn-ui" data-teoria-ver="${esc(q.uid)}" title="Abrir a apostila em ${esc(t.rotulo)} (página ${t.pagina})">📖 Teoria · pág. ${t.pagina}</button>`;
-  const l = teoriaLeiDaQuestao(q); if(!l) return '';
-  return `<a class="btn-corrigir-gabarito btn-ui" href="${esc(l.url)}" target="_blank" rel="noopener" title="A apostila não cobre este artigo: abrir o texto oficial (Planalto)">⚖️ Lei · ${esc(l.rotulo)} ↗</a>`;
+function teoriaCtnDaQuestao(q){
+  if(!q || !q.materia || typeof TEORIA_INDICE==='undefined') return [];
+  if(!Object.keys(TEORIA_INDICE).some(k=> slugify(q.materia).startsWith(k))) return [];
+  let refs = []; try{ refs = refsArtigosDaQuestao(q); }catch(_){}
+  return [...new Set(refs.filter(r=> r.norma==='CTN' && r.n>=1 && r.n<=218).map(r=>r.n))].slice(0,3);
 }
+function teoriaBotaoHtml(q){
+  let h = '';
+  const t = teoriaPaginaDaQuestao(q);
+  if(t) h += `<button class="btn-corrigir-gabarito btn-ui" data-teoria-ver="${esc(q.uid)}" title="Abrir a apostila em ${esc(t.rotulo)} (página ${t.pagina})">📖 Teoria · pág. ${t.pagina}</button>`;
+  const ctn = teoriaCtnDaQuestao(q);
+  ctn.forEach(n=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${n}" title="Ler o texto oficial do artigo ${n} do CTN">⚖️ CTN art. ${n}</button>`; });
+  if(!t && !ctn.length){
+    const l = teoriaLeiDaQuestao(q);
+    if(l) h += `<a class="btn-corrigir-gabarito btn-ui" href="${esc(l.url)}" target="_blank" rel="noopener" title="A apostila não cobre este artigo: abrir o texto oficial (Planalto)">⚖️ Lei · ${esc(l.rotulo)} ↗</a>`;
+  }
+  return h;
+}
+
+/* ---- texto oficial do CTN dentro da plataforma (js/ctn-texto.js, carregado só ao abrir) ---- */
+const LEI = { aberta:false, n:1 };
+let ctnPromessa = null;
+function ctnCarregar(){
+  if(typeof CTN_TEXTO!=='undefined') return Promise.resolve();
+  if(ctnPromessa) return ctnPromessa;
+  ctnPromessa = new Promise((ok,falha)=>{
+    const sc = document.createElement('script'); sc.src = 'js/ctn-texto.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
+    sc.onload = ok; sc.onerror = ()=>{ ctnPromessa = null; falha(new Error('Não foi possível carregar o texto do CTN.')); };
+    document.head.appendChild(sc);
+  });
+  return ctnPromessa;
+}
+function leiEl(){
+  let el = document.getElementById('lei-modal'); if(el) return el;
+  el = document.createElement('div'); el.id = 'lei-modal'; el.className = 'lei-modal'; el.hidden = true;
+  el.innerHTML = `<div class="lei-caixa" role="dialog" aria-label="Texto do CTN">
+    <div class="lei-barra"><strong>Código Tributário Nacional · Lei 5.172/1966</strong>
+      <span class="lei-nav"><button type="button" class="btn-ui" data-lei="prev" title="Artigo anterior (←)">‹</button>
+      <input type="number" id="lei-n" min="1" max="218" aria-label="Artigo"><button type="button" class="btn-ui" data-lei="next" title="Próximo artigo (→)">›</button></span>
+      <a class="btn-ui" id="lei-ext" target="_blank" rel="noopener">Planalto ↗</a>
+      <button type="button" class="btn-ui" data-lei="fechar" title="Fechar (Esc)">✕</button></div>
+    <div class="lei-corpo" id="lei-corpo"></div></div>`;
+  el.addEventListener('mousedown', ev=>{ if(ev.target===el) leiFechar(); });
+  document.body.appendChild(el); return el;
+}
+function leiFechar(){ const el = document.getElementById('lei-modal'); if(el) el.hidden = true; LEI.aberta = false; }
+function leiDesenhar(){
+  const n = Math.max(1, Math.min(218, LEI.n)); LEI.n = n;
+  document.getElementById('lei-n').value = n;
+  document.getElementById('lei-ext').href = `${TEORIA_LEI_URL['CTN']}#art${n}`;
+  const ps = (typeof CTN_TEXTO!=='undefined' && CTN_TEXTO[n]) || null;
+  const corpo = document.getElementById('lei-corpo');
+  corpo.innerHTML = ps ? ps.map((p,i)=>{
+    const m = p.match(/^(.*?)(\s*\((?:Reda[çc][ãa]o|Inclu[ií]d|Revogad|Vide|Vig[êe]ncia|Produ[çc][ãa]o).*)$/i);
+    const txt = m && i>0 ? m[1] : p; const nota = m && i>0 ? m[2] : '';
+    const cls = i===0 ? 'lei-art' : /^(§|Parágrafo único)/.test(p) ? 'lei-par' : 'lei-inc';
+    return `<p class="${cls}">${esc(txt)}${nota ? ` <span class="lei-nota">${esc(nota.trim())}</span>` : ''}</p>`;
+  }).join('') : `<p class="lei-nota">O artigo ${n} foi revogado ou não consta do texto compilado. Veja no Planalto.</p>`;
+  corpo.scrollTop = 0;
+}
+async function leiAbrir(n){
+  const el = leiEl(); LEI.n = +n; el.hidden = false; LEI.aberta = true;
+  document.getElementById('lei-corpo').textContent = 'Carregando…';
+  try{ await ctnCarregar(); leiDesenhar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; }
+}
+document.addEventListener('click', (ev)=>{
+  const v = ev.target.closest && ev.target.closest('[data-lei-ver]'); if(v){ leiAbrir(v.dataset.leiVer); return; }
+  const b = ev.target.closest && ev.target.closest('[data-lei]'); if(!b) return;
+  const a = b.dataset.lei;
+  if(a==='fechar') leiFechar(); else if(a==='prev'){ LEI.n--; leiDesenhar(); } else if(a==='next'){ LEI.n++; leiDesenhar(); }
+});
+document.addEventListener('change', (ev)=>{ if(ev.target && ev.target.id==='lei-n'){ LEI.n = parseInt(ev.target.value,10)||1; leiDesenhar(); } });
+document.addEventListener('keydown', (ev)=>{
+  if(!LEI.aberta) return;
+  if(ev.target && ev.target.tagName==='INPUT'){ ev.stopImmediatePropagation(); return; }
+  ev.stopImmediatePropagation();
+  if(ev.key==='Escape') leiFechar();
+  else if(ev.key==='ArrowLeft'){ ev.preventDefault(); LEI.n--; leiDesenhar(); }
+  else if(ev.key==='ArrowRight'){ ev.preventDefault(); LEI.n++; leiDesenhar(); }
+}, true);
 function teoriaVerDaQuestao(uid){
   const q = BY_UID[uid]; const t = teoriaPaginaDaQuestao(q); if(!t) return;
   teoriaAbrirMateria(q.materia, t.pagina, `Apostila · ${t.rotulo}`);

@@ -2263,3 +2263,19 @@ body.leitor-aberto{ overflow:hidden; }
 .leitor-iframe{ flex:1; width:100%; border:0; background:#fff; }
 .leitor-iframe[hidden]{ display:none; }
 .leitor-pdf [hidden]{ display:none !important; }
+
+/* v249: texto oficial do CTN dentro da plataforma */
+.lei-modal{ position:fixed; inset:0; z-index:9998; background:rgba(0,0,0,.55); display:flex; align-items:center; justify-content:center; padding:16px; }
+.lei-modal[hidden]{ display:none; }
+.lei-caixa{ width:min(760px,100%); max-height:88vh; display:flex; flex-direction:column; background:#fffdf8; color:#1d1d1f; border-radius:12px; box-shadow:0 10px 40px rgba(0,0,0,.45); overflow:hidden; }
+.lei-barra{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 14px; background:#1b3a5c; color:#fff; font-size:14px; }
+.lei-barra strong{ flex:1 1 200px; }
+.lei-nav{ display:flex; gap:4px; align-items:center; }
+.lei-barra .btn-ui{ background:#2d5a8a; color:#fff; border:1px solid #4a77a6; border-radius:6px; padding:4px 10px; font:inherit; font-size:13px; cursor:pointer; text-decoration:none; }
+.lei-barra input{ width:62px; padding:4px 6px; border-radius:6px; border:1px solid #4a77a6; background:#fff; color:#1d1d1f; font:inherit; font-size:13px; text-align:center; }
+.lei-corpo{ padding:16px 20px 20px; overflow:auto; line-height:1.6; font-size:15.5px; }
+.lei-corpo p{ margin:0 0 .7em; }
+.lei-art{ font-weight:600; }
+.lei-par{ padding-left:14px; }
+.lei-inc{ padding-left:28px; }
+.lei-nota{ font-size:12.5px; color:#6b6b70; font-style:italic; }
