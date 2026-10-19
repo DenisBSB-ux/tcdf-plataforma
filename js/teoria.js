@@ -285,15 +285,47 @@ const DOUTRINA = {
       peg:'A numeração varia entre autores (ex.: Uadi Lammêgo Bulos); a tríade liberdade, igualdade e fraternidade é a base comum. Há quem prefira "dimensões" a "gerações".' }
   ], fontes:[['Âmbito Jurídico · gerações ou dimensões','https://ambitojuridico.com.br/geracoes-ou-dimensoes-dos-direitos-fundamentais/'],['Jus.com.br · dimensões dos direitos fundamentais','https://jus.com.br/artigos/14844/antecedentes-e-desenvolvimento-historico-dos-direitos-fundamentais-em-dimensoes-ou-geracoes']] }
 };
+/* fichas de Administração (js/doutrina-adm.js, carregado ao abrir): assunto da questão -> ficha */
+const DOUTRINA_TEMAS = [
+  [/^1\.[123]/,'abordagens','Abordagens da administração'],[/^[23](\.\d)? Admin|^2 Evol|^3(\.\d)? Adm/,'evolucao','Patrimonialismo, burocracia e gerencial'],
+  [/^4\.1\.[56]|^4\.1\.5/,'accountability','Accountability e transparência'],[/^4(\.|\s)/,'governanca','Governança pública'],
+  [/^5 /,'funcoes','Funções administrativas'],[/^6\.[12]/,'swot','SWOT e matriz GUT'],[/^6\.5/,'bsc','BSC e mapa estratégico'],
+  [/^7/,'processos','Gestão de processos'],[/^8\.4/,'lideranca','Liderança e poder'],[/^8\.5/,'motivacao','Motivação'],
+  [/^9 |Fora do edital/,'ferramentas','PDCA, 5W2H, competências e projetos']
+];
 function doutrinaDaQuestao(q){
   if(!q) return null; const t = String(q.q||'') + ' ' + String(q.tema||'');
   if(/Bonavides|gera[çc][õo]es|dimens[õo]es.{0,30}direitos fundamentais/i.test(t)) return 'geracoes';
   if(/efic[áa]cia (plena|contida|limitada)|normas (constitucionais )?program[áa]ticas|classifica[çc][ãa]o tripartite|aplicabilidade das normas|restringida pelo legislador infraconstitucional/i.test(t)) return 'eficacia';
+  const tema = String(q.tema||'').trim();
+  if(!/^adm/i.test(String(q.materia||''))) return null;   // os códigos de assunto repetem entre matérias
+  for(const [re,k] of DOUTRINA_TEMAS) if(re.test(tema)) return 'adm:'+k;
   return null;
 }
-function doutrinaAbrir(chave, uid){
-  const d = DOUTRINA[chave]; if(!d) return;
+function doutrinaTitulo(chave){
+  if(DOUTRINA[chave]) return DOUTRINA[chave].titulo.split(' · ')[0];
+  const k = String(chave).replace(/^adm:/,''); const t = DOUTRINA_TEMAS.find(x=>x[1]===k); return t ? t[2] : 'Doutrina';
+}
+let doutrinaAdmPromessa = null;
+function doutrinaAdmCarregar(){
+  if(typeof DOUTRINA_ADM!=='undefined') return Promise.resolve();
+  if(doutrinaAdmPromessa) return doutrinaAdmPromessa;
+  doutrinaAdmPromessa = new Promise((ok,falha)=>{
+    const sc = document.createElement('script'); sc.src = 'js/doutrina-adm.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
+    sc.onload = ok; sc.onerror = ()=>{ doutrinaAdmPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
+    document.head.appendChild(sc);
+  });
+  return doutrinaAdmPromessa;
+}
+async function doutrinaAbrir(chave, uid){
   const el = leiEl(); LEI.modo = 'apostila'; LEI.q = uid; LEI.aberta = true; el.hidden = false; el.classList.add('modo-apostila');
+  let d = DOUTRINA[chave];
+  if(!d){
+    document.getElementById('lei-corpo').textContent = 'Carregando…';
+    try{ await doutrinaAdmCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
+    d = DOUTRINA_ADM[String(chave).replace(/^adm:/,'')];
+  }
+  if(!d){ leiFechar(); return; }
   LEI.secs = d.secs.map(x=> Object.assign({ doutrina:d }, x)); LEI.i = 0; apostilaDesenhar();
 }
 function teoriaBotaoHtml(q){
@@ -306,7 +338,7 @@ function teoriaBotaoHtml(q){
   }
   leis.forEach(l=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${l.norma}:${l.n}" data-lei-q="${esc(q.uid)}" title="Ler o texto oficial: ${l.norma==='SUM' ? l.n : l.norma+' art. '+l.n}">⚖️ ${l.norma==='SUM' ? l.n.replace(/^S /,'Súmula ') : l.norma+' art. '+l.n}</button>`; });
   const dk = (!t && !leis.length) ? doutrinaDaQuestao(q) : null;
-  if(dk) h += `<button class="btn-corrigir-gabarito btn-ui" data-doutrina="${dk}" data-lei-q="${esc(q.uid)}" title="Ler a síntese de doutrina sobre o tema">📖 Doutrina · ${esc(DOUTRINA[dk].titulo.split(' · ')[0])}</button>`;
+  if(dk) h += `<button class="btn-corrigir-gabarito btn-ui" data-doutrina="${dk}" data-lei-q="${esc(q.uid)}" title="Ler a síntese de doutrina sobre o tema">📖 Doutrina · ${esc(doutrinaTitulo(dk))}</button>`;
   if(!t && !leis.length && !dk){
     const l = teoriaLeiDaQuestao(q);
     if(l) h += `<a class="btn-corrigir-gabarito btn-ui" href="${esc(l.url)}" target="_blank" rel="noopener" title="Este artigo não está no texto da plataforma: abrir o texto oficial (Planalto)">⚖️ Lei · ${esc(l.rotulo)} ↗</a>`;
@@ -495,7 +527,7 @@ function apostilaDesenhar(){
     const c = document.getElementById('lei-corpo'); c.classList.remove('lei-com-alvo');
     c.innerHTML = x.lei.map((p,i)=>`<p class="${i===0 ? 'lei-art' : 'lei-inc'}">${esc(p)}</p>`).join('')
       + (x.peg ? `<div class="lei-peg"><strong>⚠️ Pegadinha provável.</strong> ${esc(x.peg)}</div>` : '')
-      + `<p class="lei-nota">${esc(x.doutrina.titulo)}. Síntese própria; fontes: ` + x.doutrina.fontes.map(f=>`<a href="${esc(f[1])}" target="_blank" rel="noopener">${esc(f[0])}</a>`).join(' · ') + `.</p>`;
+      + `<p class="lei-nota">${esc(x.doutrina.titulo)}. Síntese própria; fontes: ` + x.doutrina.fontes.map(f=> f[1] ? `<a href="${esc(f[1])}" target="_blank" rel="noopener">${esc(f[0])}</a>` : esc(f[0])).join(' · ') + `.</p>`;
     c.scrollTop = 0; return;
   }
   document.getElementById('lei-titulo').textContent = `Apostila · ${x.titulo}`;
