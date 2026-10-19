@@ -11,7 +11,7 @@ description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF
 - Resolução **sem** linha de perfil (🏷️): a plataforma já mostra o sinal/a armadilha no painel "Armadilha da banca".
 - **Sem** `### Resumo Flash`: o script remove (padrão da Lei 14.133). Só mantenha com `--manter-resumo-flash` se o usuário pedir.
 - "🔁 Substituir por matéria" usa sempre resolução, resumo flash e gabarito do arquivo, sem perguntas extras.
-- **Gabarito: avisar ANTES de alterar, sempre.** Nunca mude um gabarito sem antes listar ao usuário cada questão (número, gabarito atual, gabarito proposto, motivo e dispositivo) e esperar a confirmação, mesmo que ele já tenha autorizado correções em outra matéria. Enquanto não houver confirmação, mantenha o gabarito do arquivo e **sinalize** na resolução com "Conferir o gabarito".
+- **A lei prevalece sobre o gabarito (regra do usuário, 19/10/2026).** Quando o texto oficial (lei, decreto, IN, súmula) contradiz o gabarito do arquivo, **corrija o gabarito conforme a lei**, reescreva a classificação e registre no ⚠️ "Gabarito ajustado ao texto de <dispositivo>. Constava X."; na entrega liste apenas: número, de → para e dispositivo. Rode `verificar_resolucoes.py ... --gabaritos-alterados i,j` e confira que a auditoria só aponta esses. Em múltipla escolha em que nenhuma alternativa reproduz a lei, mantenha a mais próxima e avise na entrega. Resolução antiga que cita prazo/valor ausente do texto oficial: não use o dado e diga isso no ⚠️.
 - Matéria **sem base legal** (estatística, gráficos, Excel, IA etc.): **omita a linha ⚖️**; cite norma só onde ela existir (ex.: LGPD; projeto de lei, com aviso de tramitação).
 
 ## Entrada
