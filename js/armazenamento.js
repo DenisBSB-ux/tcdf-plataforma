@@ -263,6 +263,7 @@ function getBucket(materiaKey){
 // mas não estão no progresso oficial (bucket.perguntas, que alimenta a tabela de estatísticas, o caderno
 // de erros e o "Total respondidas"). Acontece quando o progresso é substituído/importado/sincronizado
 // por uma cópia sem essas questões. Registra a tentativa que falta; nunca sobrescreve progresso existente.
+// (Confirmado em diagnóstico real: respostas marcadas recuperadaDoHistorico no simulado salvo, mas sem entrada no progresso.)
 const _quizReconciliados = new WeakSet();
 function reconciliarProgressoComQuiz(quiz, materiaKey){
   if(!quiz || !quiz.respostas) return 0;
@@ -271,7 +272,7 @@ function reconciliarProgressoComQuiz(quiz, materiaKey){
   const bucket = getBucket(materia); let n = 0;
   const base = quiz.ultimoSalvamento || quiz.startedAt || Date.now();
   Object.entries(quiz.respostas).forEach(([uid, r])=>{
-    if(!r || r.recuperadaDoHistorico || !BY_UID[uid]) return;
+    if(!r || !BY_UID[uid]) return;   // inclui as 'recuperadaDoHistorico': elas vieram de um progresso que depois foi perdido/substituído
     const c = resultadoNormalizado(r.correct); if(c===null) return;
     const p = bucket.perguntas[uid];
     if(p && p.tentativas>0 && resultadoNormalizado(p.ultimoResultado)!==null) return;   // já está no progresso
