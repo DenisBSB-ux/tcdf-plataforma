@@ -42,17 +42,14 @@ Para ter mais de um administrador, coloque os UIDs na lista:
 `request.auth.uid in ['UID_1', 'UID_2']`.
 
 
-## PDFs de teoria (Firebase Storage)
+## PDFs de teoria (sem custo, sem Storage)
 
-A aba **06 Teoria (PDF)** guarda os PDFs de cada matéria na nuvem, em
-`teoria/{uid}/{matéria}/...`. Para ela funcionar:
+A aba **06 Teoria (PDF)** não usa o Firebase Storage (que exige plano pago). Cada matéria
+pode ter:
 
-1. **Ativar o Storage:** Firebase Console → *Storage* → *Começar*. O Storage
-   exige o plano **Blaze** (pago por uso, com cota gratuita mensal). Defina um
-   **alerta de orçamento** em *Uso e faturamento* para não ter surpresa.
-2. **Publicar as regras:** abrir `storage.rules`, colar em *Storage* → *Regras*
-   → *Publicar*. Cada conta lê e grava só a própria pasta, apenas PDF e até
-   50 MB por arquivo.
-3. **Entrar com Google** na plataforma. Sem login a aba avisa o que falta.
+- um **link do Google Drive** (compartilhado como "Qualquer pessoa com o link"): só o texto
+  do link é guardado, no aparelho e, logado, em `progresso/_teoria_{uid}` (já coberto pelas
+  regras de `progresso`, sem alterar o `firestore.rules`);
+- um **PDF neste aparelho** (IndexedDB), que abre direto na página da questão no leitor
+  da plataforma (PDF.js carregado do cdnjs).
 
-Os arquivos não passam pelo Firestore (ele limita cada documento a ~1 MB).

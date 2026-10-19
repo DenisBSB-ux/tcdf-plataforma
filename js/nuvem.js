@@ -108,7 +108,6 @@ function formatarDataHoraSalvamento(ts){
 let FIREBASE_OK = false;
 let fbDb = null;
 let fbAuth = null;
-let fbStorage = null; // PDFs de teoria (Firebase Storage)
 let USUARIO_ATUAL = null; // { uid, email } quando logado com Google
 let APP_INICIADO = false;
 let AUTH_RESOLVIDO = false; // o Firebase já disse se há conta logada
@@ -116,7 +115,6 @@ try{
   if(typeof firebase !== 'undefined' && FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey){
     firebase.initializeApp(FIREBASE_CONFIG);
     fbDb = firebase.firestore();
-    try{ if(firebase.storage) fbStorage = firebase.storage(); }catch(_){ fbStorage = null; }
     FIREBASE_OK = true;
     if(firebase.auth){
       fbAuth = firebase.auth();
