@@ -1021,6 +1021,8 @@ async function sincronizarMateriasPublicas(){
   // arquivo bruto a cada versão nova do site e trazia duplicatas de volta.
   try{ await comLimiteDeTempo(verificarTodosQuizzesSalvos(), 8000, 'tempo esgotado ao verificar simulados em andamento'); }
   catch(e){ console.warn('Verificação de simulados em andamento não respondeu a tempo — algumas matérias podem não mostrar "Continuar" até você entrar nelas.', e); }
+  // auditoria de todas as matérias: normaliza, concilia simulado × progresso e guarda o relatório
+  try{ STATE.auditoria = auditarIntegridadeProgresso(true); if(STATE.auditoria.restauradas) render(); }catch(e){ console.warn('Auditoria de integridade falhou', e); }
 }
 
 let saveTimer = null;
@@ -1101,12 +1103,12 @@ function exportarDiagnosticoMateria(){
   const quizzes = {}; Object.entries(STATE.quizzesEmAndamento||{}).forEach(([k,q])=>{ if(q) quizzes[k] = q; });
   if(STATE.quiz && STATE.quiz.materia) quizzes['__em_memoria__'+STATE.quiz.materia] = STATE.quiz;
   const resumoQuiz = Object.entries(quizzes).map(([k,q])=>{
-    const resp = Object.entries(q.respostas||{});
+    const resp = Object.entries(q.respostas||{}); const perg2 = (PROGRESS[q.materia] ? PROGRESS[q.materia].perguntas : {}) || {};
     return { chave:k, materia:q.materia, fila:(q.queue||[]).length, filaNaBase:(q.queue||[]).filter(u=>BY_UID[u]).length, respostas:resp.length,
       respostasNaBase: resp.filter(([u])=>BY_UID[u]).length,
-      respostasComProgresso: resp.filter(([u])=>{ const p=perg[u]; return p && p.tentativas>0 && (p.ultimoResultado===true||p.ultimoResultado===false); }).length,
+      respostasComProgresso: resp.filter(([u])=>{ const p=perg2[u]; return p && p.tentativas>0 && (p.ultimoResultado===true||p.ultimoResultado===false); }).length,
       recuperadasDoHistorico: resp.filter(([,r])=>r&&r.recuperadaDoHistorico).length,
-      tiposCorrect: conta(resp.map(([,r])=>typeof (r&&r.correct)+':'+(r&&r.correct))), ultimoSalvamento:q.ultimoSalvamento||null, startedAt:q.startedAt||null };
+      tiposCorrect: conta(resp.map(([,r])=>typeof (r&&r.correct)+':'+(r&&r.correct))), ultimoSalvamento:q.ultimoSalvamento||null };
   });
   const rel = {
     versao: (window.__TCDF_BUILD__||{}).versao, geradoEm: new Date().toISOString(), materia: m,
@@ -1125,6 +1127,7 @@ function exportarDiagnosticoMateria(){
     quizzes: resumoQuiz,
     exemploUidsDaBase: ALL_QUESTIONS.filter(q=>q.materia===m).slice(0,5).map(q=>q.uid),
     sessoes: (b.sessoes||[]).length,
+    auditoriaTodasAsMaterias: auditarIntegridadeProgresso(false),
   };
   const blob = new Blob([JSON.stringify(rel, null, 2)], { type:'application/json' });
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob);

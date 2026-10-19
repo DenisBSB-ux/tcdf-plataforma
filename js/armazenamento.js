@@ -259,6 +259,33 @@ function getBucket(materiaKey){
 // merge de outro aparelho. Chamar isto antes de usar quiz.respostas garante
 // que a marcação nunca se perde, qualquer que seja a ordem da fila.
 // Retorna true se recuperou alguma resposta (quem chama decide se salva).
+// AUDITORIA DE INTEGRIDADE de todas as matérias: normaliza o progresso, concilia o simulado em andamento com o
+// progresso oficial e devolve um relatório por matéria. Roda no boot (depois de carregar os simulados salvos) e no diagnóstico.
+function auditarIntegridadeProgresso(corrigir){
+  const nomes = new Set(Object.keys(PROGRESS||{}));
+  (typeof ALL_QUESTIONS!=='undefined' ? ALL_QUESTIONS : []).forEach(q=>nomes.add(q.materia));
+  Object.values(STATE.quizzesEmAndamento||{}).forEach(q=>{ if(q && q.materia) nomes.add(q.materia); });
+  const linhas = []; let restauradas = 0;
+  nomes.forEach(m=>{
+    if(!m || m==='undefined') return;
+    const temBase = ALL_QUESTIONS.some(q=>q.materia===m);
+    const quiz = (STATE.quizzesEmAndamento||{})[m] || null;
+    const b = PROGRESS[m] ? getBucket(m) : null;
+    const perg = b ? Object.entries(b.perguntas||{}) : [];
+    const resp = quiz && quiz.respostas ? Object.entries(quiz.respostas) : [];
+    const semProgresso = resp.filter(([u,r])=>{ if(!r || !BY_UID[u]) return false; const p = b && b.perguntas[u]; return !(p && p.tentativas>0 && (p.ultimoResultado===true||p.ultimoResultado===false)); }).length;
+    let rest = 0;
+    if(corrigir && quiz && temBase){ try{ rest = reconciliarProgressoComQuiz(quiz, m); }catch(_){} restauradas += rest; }
+    const b2 = PROGRESS[m] ? getBucket(m) : null;
+    const perg2 = b2 ? Object.entries(b2.perguntas||{}) : [];
+    linhas.push({ materia:m, naBase:temBase, questoes:ALL_QUESTIONS.filter(q=>q.materia===m).length,
+      progresso:perg2.length, orfas:perg2.filter(([u])=>!BY_UID[u]).length,
+      certas:perg2.filter(([u,p])=>BY_UID[u]&&p.ultimoResultado===true).length, erradas:perg2.filter(([u,p])=>BY_UID[u]&&p.ultimoResultado===false).length,
+      simulado: quiz ? { fila:(quiz.queue||[]).length, filaForaDaBase:(quiz.queue||[]).filter(u=>!BY_UID[u]).length, respostas:resp.length, respostasSemProgresso:semProgresso, restauradas:rest } : null });
+  });
+  return { quando: Date.now(), restauradas, materias: linhas };
+}
+
 // CURA INVERSA: respostas que existem no simulado em andamento (quiz.respostas, as que colorem a grade)
 // mas não estão no progresso oficial (bucket.perguntas, que alimenta a tabela de estatísticas, o caderno
 // de erros e o "Total respondidas"). Acontece quando o progresso é substituído/importado/sincronizado

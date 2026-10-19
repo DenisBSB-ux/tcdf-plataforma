@@ -670,6 +670,8 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   const opSub = (modo === 'substituir' && STATE.substituirOpcoes) || {}; // escolhas do diálogo de "Substituir por matéria"
   if(modo === 'substituir') STATE.substituirOpcoes = null;
   if(modo === 'substituir'){
+    // 1) o simulado em andamento pode ter respostas que não estão no progresso: grava-as antes de trocar a lista
+    try{ const qa = (STATE.quizzesEmAndamento||{})[materiaNome] || (STATE.quiz && STATE.quiz.materia===materiaNome ? STATE.quiz : null); if(qa) reconciliarProgressoComQuiz(qa, materiaNome); }catch(_){}
     progressoAnterior = {};
     anteriores.forEach(q=>{
       if(EDICOES_USUARIO[q.uid]){ edOld[q.uid] = EDICOES_USUARIO[q.uid]; delete EDICOES_USUARIO[q.uid]; }
@@ -718,6 +720,9 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
     added++;
   });
   if(progressoAnterior){
+    // 2) os uids são `${slug}-${número}` e o número muda entre arquivos: o simulado salvo (respostas por uid) passaria a apontar
+    //    para outra questão. O progresso já acompanhou cada questão pelo enunciado; o simulado é descartado e recomeça dele.
+    try{ limparQuizSalvo(materiaNome); if(STATE.quiz && STATE.quiz.materia===materiaNome) STATE.quiz = null; }catch(_){}
     // o arquivo novo pode ter a mesma questão repetida: não deixa cópia
     deduplicarMateriaNaMemoria(materiaNome);
     salvarEdicoesUsuario(); salvarGabaritosAlterados();
