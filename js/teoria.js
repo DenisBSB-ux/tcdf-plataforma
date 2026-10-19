@@ -246,6 +246,7 @@ const LEI_FONTES = {
   'IN 5':{ arquivo:'js/in5-texto.js', global:'IN5_TEXTO', titulo:'Instrução Normativa SEGES/MP 5/2017 (atualizada) · arts. 1º a 75 e anexos V, VII-F e VIII-A', max:75 },
   'Lei 14.133':{ arquivo:'js/l14133-texto.js', global:'L14133_TEXTO', titulo:'Lei 14.133/2021 · Licitações e Contratos Administrativos', max:194 },
   'Decreto 44.330':{ arquivo:'js/d44330-texto.js', global:'D44330_TEXTO', titulo:'Decreto Distrital 44.330/2023 · regulamenta a Lei 14.133 no DF', max:272 },
+  'SUM TCU':{ arquivo:'js/sumulas-tcu-texto.js', global:'SUMULAS_TCU_TEXTO', titulo:'Súmulas do TCU', max:0 },
   LODF:{ arquivo:'js/lodf-texto.js', global:'LODF_TEXTO', titulo:'Lei Orgânica do Distrito Federal', max:365 },
   'LC 1':{ arquivo:'js/lc1-texto.js', global:'LC1_TEXTO', titulo:'Lei Orgânica do TCDF · Lei Complementar 1/1994', max:101 },
   'LC 116':{ arquivo:'js/lc116-texto.js', global:'LC116_TEXTO', titulo:'Lei Complementar 116/2003 · ISS', max:10 },
@@ -266,6 +267,7 @@ function teoriaLeisDaQuestao(q){
   if((mm = linha.match(/Art\.?\s*(\d+(?:-[A-Z])?)[^·]*·\s*ADCT/))) refs = refs.concat([{ norma:'ADCT', n:mm[1], txt:true }]);
   if((mm = linha.match(/Anexo\s+([IVX]+(?:-[A-Z])?)[^·]*·\s*IN 5/i))) refs = refs.concat([{ norma:'IN 5', n:'ANEXO '+mm[1].toUpperCase(), txt:true }]);
   if((mm = linha.match(/Art\.?\s*(\d+)[^·]*·\s*EC 132/))) refs = refs.concat([{ norma:'EC 132', n:+mm[1] }]);
+  if((mm = linha.match(/S[úu]mula\s*(\d+)\s*·\s*TCU/i))) refs = refs.concat([{ norma:'SUM TCU', n:mm[1], txt:true }]);
   if((mm = linha.match(/S[úu]mula Vinculante\s*(\d+)/i))) refs = refs.concat([{ norma:'SUM', n:'SV '+mm[1], txt:true }]);
   else if((mm = linha.match(/S[úu]mula\s*(\d+)\s*·\s*STF/i))) refs = refs.concat([{ norma:'SUM', n:'S '+mm[1], txt:true }]);
   refs.forEach(r=>{ const f = LEI_FONTES[r.norma]; const k = r.norma+':'+r.n; if(f && (r.txt || (r.n>=1 && r.n<=f.max)) && !vistos.has(k)){ vistos.add(k); out.push({ norma:r.norma, n:r.n }); } });
