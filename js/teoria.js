@@ -251,9 +251,9 @@ function teoriaLeisDaQuestao(q){
 function teoriaBotaoHtml(q){
   let h = '';
   const t = teoriaPaginaDaQuestao(q);
-  if(t) h += `<button class="btn-corrigir-gabarito btn-ui" data-teoria-ver="${esc(q.uid)}" title="Abrir a apostila em ${esc(t.rotulo)} (página ${t.pagina})">📖 Teoria · pág. ${t.pagina}</button>`;
+  if(t) h += `<button class="btn-corrigir-gabarito btn-ui" data-teoria-ver="${esc(q.uid)}" title="Ver o trecho da apostila sobre ${esc(t.rotulo)} (pág. ${t.pagina})">📖 Teoria · pág. ${t.pagina}</button>`;
   const leis = teoriaLeisDaQuestao(q);
-  leis.forEach(l=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${l.norma}:${l.n}" title="Ler o texto oficial: ${l.norma} art. ${l.n}">⚖️ ${l.norma} art. ${l.n}</button>`; });
+  leis.forEach(l=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${l.norma}:${l.n}" data-lei-q="${esc(q.uid)}" title="Ler o texto oficial: ${l.norma} art. ${l.n}">⚖️ ${l.norma} art. ${l.n}</button>`; });
   if(!t && !leis.length){
     const l = teoriaLeiDaQuestao(q);
     if(l) h += `<a class="btn-corrigir-gabarito btn-ui" href="${esc(l.url)}" target="_blank" rel="noopener" title="Este artigo não está no texto da plataforma: abrir o texto oficial (Planalto)">⚖️ Lei · ${esc(l.rotulo)} ↗</a>`;
@@ -262,7 +262,7 @@ function teoriaBotaoHtml(q){
 }
 
 /* ---- texto oficial dentro da plataforma (js/ctn-texto.js, js/cf-texto.js) ---- */
-const LEI = { aberta:false, norma:'CTN', n:'1' };
+const LEI = { aberta:false, norma:'CTN', n:'1', q:null, modo:'lei', secs:[], i:0 };
 const leiCarregando = {};
 function leiCarregar(norma){
   const f = LEI_FONTES[norma]; let d = null; try{ d = eval(f.global); }catch(_){}
@@ -279,6 +279,45 @@ function leiOrdem(norma){
   const d = eval(LEI_FONTES[norma].global); if(d.__ordem) return d.__ordem;
   const k = Object.keys(d).sort((a,b)=>{ const x=a.split('-'), y=b.split('-'); return (+x[0]-+y[0]) || String(x[1]||'').localeCompare(String(y[1]||'')); });
   Object.defineProperty(d,'__ordem',{ value:k, enumerable:false }); return k;
+}
+
+/* ---- dispositivo citado na linha ⚖️ da questão (ex.: Art. 150 ▸ VI ▸ "a" e § 2º) ---- */
+function leiAlvosDaQuestao(q, norma, n){
+  const m = String((q && q.r) || '').match(/⚖️\s*([^\n]*)/); if(!m) return [];
+  const linha = m[1].replace(/\*+/g,'').replace(/[“”]/g,'"');
+  const pos = linha.search(new RegExp('Art\\.?\\s*'+String(n).replace('-','\\-')+'\\b')); if(pos<0) return [];
+  const resto = linha.slice(pos).replace(/^Art\.?\s*[\w-]+[º°]?\s*/,'').split('·')[0];
+  const alvos = []; let cur = null;
+  const novo = ()=>{ cur = { par:null, inc:null, ali:[] }; alvos.push(cur); return cur; };
+  resto.split(/▸|,|\se\s/).map(x=>x.trim()).filter(Boolean).forEach(t=>{
+    let mm;
+    if((mm = t.match(/^§\s*(\d+)/))){ novo().par = mm[1]; }
+    else if(/^par[áa]grafo [úu]nico/i.test(t)){ novo().par = 'U'; }
+    else if((mm = t.match(/^([IVXL]+)$/))){ if(!cur || cur.inc || cur.ali.length) { const p = cur && cur.par; novo().par = p||null; } cur.inc = mm[1]; }
+    else if((mm = t.match(/^"?([a-z])"?$/))){ (cur||novo()).ali.push(mm[1]); }
+  });
+  return alvos.filter(a=>a.par||a.inc||a.ali.length);
+}
+function leiMarcar(ps, alvos){
+  const marca = new Set();
+  const ehPar = p=> /^(§|Parágrafo único)/.test(p);
+  const ini = []; ps.forEach((p,i)=>{ if(ehPar(p)) ini.push(i); });
+  alvos.forEach(a=>{
+    let a0 = 1, a1 = ini.length ? ini[0] : ps.length;         // escopo: caput + incisos
+    if(a.par){
+      const k = ini.findIndex(i=> a.par==='U' ? /^Parágrafo único/.test(ps[i]) : new RegExp('^§\\s*'+a.par+'\\b').test(ps[i]));
+      if(k<0) return; a0 = ini[k]; a1 = k+1<ini.length ? ini[k+1] : ps.length;
+      if(!a.inc && !a.ali.length){ for(let i=a0;i<a1;i++) marca.add(i); return; }
+      a0++;
+    }
+    if(!a.inc){ for(let i=a0;i<a1;i++) if(a.ali.some(l=> new RegExp('^'+l+'\\)').test(ps[i]))) marca.add(i); return; }
+    const ri = new RegExp('^'+a.inc+'\\s*[-–]');
+    let i = a0; while(i<a1 && !ri.test(ps[i])) i++; if(i>=a1) return;
+    marca.add(i); let j = i+1;
+    while(j<a1 && !/^[IVXL]+\s*[-–]/.test(ps[j])){ if(!a.ali.length || a.ali.some(l=> new RegExp('^'+l+'\\)').test(ps[j]))) marca.add(j); j++; }
+  });
+  if(!marca.size && !alvos.length) return null;
+  return marca.size ? marca : null;
 }
 function leiEl(){
   let el = document.getElementById('lei-modal'); if(el) return el;
@@ -297,7 +336,7 @@ function leiFechar(){ const el = document.getElementById('lei-modal'); if(el) el
 function leiPasso(delta){
   const ord = leiOrdem(LEI.norma); let i = ord.indexOf(LEI.n);
   if(i<0){ i = ord.findIndex(k=> parseInt(k,10) >= parseInt(LEI.n,10)); if(i<0) i = ord.length-1; if(delta>0) delta = 0; }
-  LEI.n = ord[Math.max(0, Math.min(ord.length-1, i+delta))]; leiDesenhar();
+  const novo = ord[Math.max(0, Math.min(ord.length-1, i+delta))]; if(novo!==LEI.n) LEI.q = null; LEI.n = novo; leiDesenhar();
 }
 function leiDesenhar(){
   const f = LEI_FONTES[LEI.norma], d = eval(f.global), n = LEI.n;
@@ -306,36 +345,88 @@ function leiDesenhar(){
   document.getElementById('lei-ext').href = `${TEORIA_LEI_URL[LEI.norma]}#art${String(n).replace(/-.*/,'')}`;
   const ps = d[n] || null;
   const corpo = document.getElementById('lei-corpo');
+  const marca = (ps && LEI.q) ? leiMarcar(ps, leiAlvosDaQuestao(BY_UID[LEI.q], LEI.norma, n)) : null;
+  corpo.classList.toggle('lei-com-alvo', !!marca);
   corpo.innerHTML = ps ? ps.map((p,i)=>{
     const m = p.match(/^(.*?)(\s*\((?:Reda[çc][ãa]o|Inclu[ií]d|Revogad|Vide|Vig[êe]ncia|Produ[çc][ãa]o|Regulament|Promulga|Vetad|Execu[çc]).*)$/i);
     const txt = m && i>0 ? m[1] : p; const nota = m && i>0 ? m[2] : '';
     const cls = i===0 ? 'lei-art' : /^(§|Parágrafo único)/.test(p) ? 'lei-par' : 'lei-inc';
-    return `<p class="${cls}">${esc(txt)}${nota ? ` <span class="lei-nota">${esc(nota.trim())}</span>` : ''}</p>`;
+    return `<p class="${cls}${marca && marca.has(i) ? ' lei-alvo' : ''}">${esc(txt)}${nota ? ` <span class="lei-nota">${esc(nota.trim())}</span>` : ''}</p>`;
   }).join('') : `<p class="lei-nota">O artigo ${esc(n)} foi revogado ou não consta do texto da plataforma. Veja no Planalto.</p>`;
   corpo.scrollTop = 0;
+  const al = corpo.querySelector('.lei-alvo'); if(al) corpo.scrollTop = Math.max(0, al.offsetTop - 70);
 }
-async function leiAbrir(ref){
+async function leiAbrir(ref, uid){
   const [norma, n] = String(ref).split(':'); if(!LEI_FONTES[norma]) return;
-  const el = leiEl(); LEI.norma = norma; LEI.n = String(n); el.hidden = false; LEI.aberta = true;
+  const el = leiEl(); LEI.modo = 'lei'; LEI.q = uid || null; LEI.norma = norma; LEI.n = String(n); el.hidden = false; LEI.aberta = true;
+  el.classList.remove('modo-apostila');
   document.getElementById('lei-corpo').textContent = 'Carregando…';
   try{ await leiCarregar(norma); leiDesenhar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; }
 }
 document.addEventListener('click', (ev)=>{
-  const v = ev.target.closest && ev.target.closest('[data-lei-ver]'); if(v){ leiAbrir(v.dataset.leiVer); return; }
+  const v = ev.target.closest && ev.target.closest('[data-lei-ver]'); if(v){ leiAbrir(v.dataset.leiVer, v.dataset.leiQ); return; }
+  const pdf = ev.target.closest && ev.target.closest('[data-lei-pdf]'); if(pdf){ const q = BY_UID[LEI.q]; leiFechar(); if(q) teoriaAbrirMateria(q.materia, +pdf.dataset.leiPdf, 'Apostila'); return; }
   const b = ev.target.closest && ev.target.closest('[data-lei]'); if(!b) return;
   const a = b.dataset.lei;
-  if(a==='fechar') leiFechar(); else if(a==='prev') leiPasso(-1); else if(a==='next') leiPasso(1);
+  if(a==='fechar') leiFechar();
+  else if(LEI.modo==='apostila'){ const d = a==='prev' ? -1 : 1; LEI.i = Math.max(0, Math.min(LEI.secs.length-1, LEI.i+d)); apostilaDesenhar(); }
+  else if(a==='prev') leiPasso(-1); else if(a==='next') leiPasso(1);
 });
-document.addEventListener('change', (ev)=>{ if(ev.target && ev.target.id==='lei-n'){ LEI.n = String(ev.target.value).trim().toUpperCase() || '1'; leiPasso(0); } });
+document.addEventListener('change', (ev)=>{ if(ev.target && ev.target.id==='lei-n' && LEI.modo==='lei'){ LEI.n = String(ev.target.value).trim().toUpperCase() || '1'; leiPasso(0); } });
 document.addEventListener('keydown', (ev)=>{
   if(!LEI.aberta) return;
   if(ev.target && ev.target.tagName==='INPUT'){ ev.stopImmediatePropagation(); return; }
   ev.stopImmediatePropagation();
   if(ev.key==='Escape') leiFechar();
-  else if(ev.key==='ArrowLeft'){ ev.preventDefault(); leiPasso(-1); }
-  else if(ev.key==='ArrowRight'){ ev.preventDefault(); leiPasso(1); }
+  else if(ev.key==='ArrowLeft'){ ev.preventDefault(); document.querySelector('[data-lei=prev]').click(); }
+  else if(ev.key==='ArrowRight'){ ev.preventDefault(); document.querySelector('[data-lei=next]').click(); }
 }, true);
 
+
+/* ---- trecho da apostila no mesmo pop-up (js/teoria-dt.js) ---- */
+let apostilaPromessa = null;
+function apostilaCarregar(){
+  if(typeof TEORIA_TEXTO!=='undefined') return Promise.resolve();
+  if(apostilaPromessa) return apostilaPromessa;
+  apostilaPromessa = new Promise((ok,falha)=>{
+    const sc = document.createElement('script'); sc.src = 'js/teoria-dt.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
+    sc.onload = ok; sc.onerror = ()=>{ apostilaPromessa = null; falha(new Error('Não foi possível carregar a apostila.')); };
+    document.head.appendChild(sc);
+  });
+  return apostilaPromessa;
+}
+function apostilaSecoes(q){
+  const t = teoriaPaginaDaQuestao(q); if(!t || typeof TEORIA_TEXTO==='undefined') return [];
+  const lista = TEORIA_TEXTO[t.chave] || []; const [nm, n] = t.rotulo.replace(' art. ',':').split(':');
+  let sec = lista.filter(x=> x.norma===nm && x.artigos.includes(+n));
+  const m = String(q.r||'').match(/⚖️\s*([^\n]*)/); const linha = m ? m[1].replace(/\*+/g,'') : '';
+  const rom = (linha.match(/▸\s*([IVXL]+)\b/)||[])[1]; const par = (linha.match(/§\s*(\d+)/)||[])[1];
+  const pontos = x=>{ const ti = x.titulo; let p = 0;
+    if(rom && new RegExp('(^|[^A-Z])'+rom+'([^A-Z]|$)').test(ti)) p += 2;
+    if(par && new RegExp('§\\s*'+par).test(ti)) p += 2;
+    if(!rom && !par && /caput/i.test(ti)) p += 1; return p; };
+  return sec.sort((a,b)=> pontos(b)-pontos(a));
+}
+function apostilaDesenhar(){
+  const q = BY_UID[LEI.q]; const x = LEI.secs[LEI.i]; if(!x) return;
+  document.getElementById('lei-titulo').textContent = `Apostila · ${x.titulo}`;
+  document.getElementById('lei-n').value = `${LEI.i+1}/${LEI.secs.length}`;
+  document.getElementById('lei-ext').removeAttribute('href');
+  const corpo = document.getElementById('lei-corpo'); corpo.classList.remove('lei-com-alvo');
+  corpo.innerHTML = x.lei.map((p,i)=>`<p class="${i===0 ? 'lei-art' : /^(§|Parágrafo único)/.test(p) ? 'lei-par' : 'lei-inc'}">${esc(p)}</p>`).join('')
+    + (x.peg ? `<div class="lei-peg"><strong>⚠️ Pegadinha provável.</strong> ${esc(x.peg)}</div>` : '')
+    + `<p class="lei-nota">Apostila de ${esc(q.materia)} · página ${x.pagina}. <button type="button" class="btn-ui lei-pdf" data-lei-pdf="${x.pagina}">Abrir o PDF nesta página</button></p>`;
+  corpo.scrollTop = 0;
+}
+async function apostilaAbrir(uid){
+  const q = BY_UID[uid]; if(!q) return;
+  const el = leiEl(); LEI.modo = 'apostila'; LEI.q = uid; LEI.aberta = true; el.hidden = false; el.classList.add('modo-apostila');
+  document.getElementById('lei-corpo').textContent = 'Carregando…';
+  try{ await apostilaCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
+  LEI.secs = apostilaSecoes(q); LEI.i = 0;
+  if(!LEI.secs.length){ leiFechar(); teoriaVerDaQuestao(uid); return; }
+  apostilaDesenhar();
+}
 function teoriaVerDaQuestao(uid){
   const q = BY_UID[uid]; const t = teoriaPaginaDaQuestao(q); if(!t) return;
   teoriaAbrirMateria(q.materia, t.pagina, `Apostila · ${t.rotulo}`);
@@ -382,7 +473,7 @@ function renderTeoria(){
 document.addEventListener('click', (ev)=>{
   const t = ev.target.closest && ev.target.closest.bind(ev.target);
   if(!t) return;
-  const v = t('[data-teoria-ver]'); if(v){ teoriaVerDaQuestao(v.dataset.teoriaVer); return; }
+  const v = t('[data-teoria-ver]'); if(v){ apostilaAbrir(v.dataset.teoriaVer); return; }
   if(t('[data-teoria-ler]')){ teoriaAbrirMateria(STATE.materia, 1); return; }
   if(t('[data-teoria-salvar-link]')){ teoriaSalvarLink(STATE.materia, document.getElementById('teoria-url').value, document.getElementById('teoria-nome').value.trim()); return; }
   if(t('[data-teoria-rem-link]')){ teoriaRemoverLink(STATE.materia); return; }

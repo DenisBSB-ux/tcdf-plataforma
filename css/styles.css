@@ -2279,3 +2279,11 @@ body.leitor-aberto{ overflow:hidden; }
 .lei-par{ padding-left:14px; }
 .lei-inc{ padding-left:28px; }
 .lei-nota{ font-size:12.5px; color:#6b6b70; font-style:italic; }
+
+/* v251: pop-up com o trecho citado destacado e trecho da apostila */
+.lei-com-alvo p:not(.lei-alvo){ opacity:.55; }
+.lei-alvo{ background:#fff3b0; border-left:4px solid #e0a800; padding:6px 8px; margin-left:-8px; border-radius:4px; opacity:1 !important; }
+.lei-peg{ margin:12px 0 8px; padding:10px 12px; background:#fdecea; border-left:4px solid #c0392b; border-radius:4px; font-size:14.5px; }
+.lei-pdf{ margin-left:6px; background:#2d5a8a; color:#fff; border:1px solid #4a77a6; border-radius:6px; padding:3px 9px; font:inherit; font-size:12.5px; cursor:pointer; }
+.modo-apostila #lei-ext{ display:none; }
+.modo-apostila #lei-n{ pointer-events:none; width:56px; }
