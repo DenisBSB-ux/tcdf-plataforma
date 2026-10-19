@@ -266,6 +266,36 @@ function teoriaLeisDaQuestao(q){
   refs.forEach(r=>{ const f = LEI_FONTES[r.norma]; const k = r.norma+':'+r.n; if(f && (r.txt || (r.n>=1 && r.n<=f.max)) && !vistos.has(k)){ vistos.add(k); out.push({ norma:r.norma, n:r.n }); } });
   return out.slice(0,3);
 }
+
+/* ---- fichas de doutrina (sem artigo de lei): síntese própria a partir de fontes públicas ---- */
+const DOUTRINA = {
+  eficacia:{ titulo:'Eficácia e aplicabilidade das normas constitucionais', secs:[
+    { titulo:'Eficácia plena', lei:['Eficácia plena · aplicabilidade direta, imediata e integral.','Produzem todos os efeitos desde a entrada em vigor, sem depender de lei. Ex.: art. 22 (competências privativas da União).'] },
+    { titulo:'Eficácia contida (restringível)', lei:['Eficácia contida · aplicabilidade direta e imediata, mas restringível.','Produzem efeitos desde logo, porém a lei (ou a própria Constituição) pode reduzir o alcance. Sem a lei restritiva, funcionam como normas de eficácia plena. Ex.: art. 5º, XIII (livre exercício de profissão, atendidas as qualificações que a lei estabelecer).'],
+      peg:'Eficácia contida não é "dependente de lei": ela já vale; a lei só pode restringir.' },
+    { titulo:'Eficácia limitada', lei:['Eficácia limitada (ou reduzida) · aplicabilidade indireta, mediata e reduzida.','Dependem de lei para produzir todos os efeitos. Mesmo assim têm eficácia jurídica: vinculam o legislador, revogam normas anteriores incompatíveis e impedem a edição de normas contrárias.','Dividem-se em: normas de princípio institutivo (organizam instituições; ex.: art. 18, § 2º) e normas programáticas (programas de ação social, econômica e cultural dirigidos ao legislador; ex.: art. 196, 205).'],
+      peg:'Não existe norma constitucional sem eficácia; a diferença é de grau. Norma programática não gera direito subjetivo pleno, mas tem eficácia jurídica.' },
+    { titulo:'Classificação de José Afonso da Silva', lei:['Classificação tricotômica de José Afonso da Silva (Aplicabilidade das normas constitucionais, 1968): eficácia plena, contida e limitada.','O STF adota essa classificação. O autor passou a preferir o termo "normas dirigentes" em vez de "programáticas".'] }
+  ], fontes:[['Grupo GEN · eficácia e aplicabilidade','https://blog.grupogen.com.br/juridico/postagens/artigos/eficacia-e-aplicabilidade-das-normas-constitucionais/'],['Jus.com.br · eficácia e aplicabilidade','https://jus.com.br/artigos/33391/a-eficacia-e-aplicabilidade-das-normas-constitucionais']] },
+  geracoes:{ titulo:'Gerações (dimensões) dos direitos fundamentais · Bonavides', secs:[
+    { titulo:'1ª geração · liberdade', lei:['Direitos de liberdade: civis e políticos, exercidos pelo indivíduo contra o Estado (postura de não interferência).'] },
+    { titulo:'2ª geração · igualdade', lei:['Direitos de igualdade: sociais, econômicos e culturais, que exigem prestações do Estado.'] },
+    { titulo:'3ª geração · fraternidade', lei:['Direitos de fraternidade (solidariedade): coletivos e difusos, de titularidade indeterminada. Ex.: meio ambiente.'] },
+    { titulo:'4ª e 5ª gerações', lei:['Para Paulo Bonavides, a 4ª geração decorre da globalização: direito à democracia (especialmente direta), à informação e ao pluralismo. A 5ª é o direito à paz.'],
+      peg:'A numeração varia entre autores (ex.: Uadi Lammêgo Bulos); a tríade liberdade, igualdade e fraternidade é a base comum. Há quem prefira "dimensões" a "gerações".' }
+  ], fontes:[['Âmbito Jurídico · gerações ou dimensões','https://ambitojuridico.com.br/geracoes-ou-dimensoes-dos-direitos-fundamentais/'],['Jus.com.br · dimensões dos direitos fundamentais','https://jus.com.br/artigos/14844/antecedentes-e-desenvolvimento-historico-dos-direitos-fundamentais-em-dimensoes-ou-geracoes']] }
+};
+function doutrinaDaQuestao(q){
+  if(!q) return null; const t = String(q.q||'') + ' ' + String(q.tema||'');
+  if(/Bonavides|gera[çc][õo]es|dimens[õo]es.{0,30}direitos fundamentais/i.test(t)) return 'geracoes';
+  if(/efic[áa]cia (plena|contida|limitada)|normas (constitucionais )?program[áa]ticas|classifica[çc][ãa]o tripartite|aplicabilidade das normas|restringida pelo legislador infraconstitucional/i.test(t)) return 'eficacia';
+  return null;
+}
+function doutrinaAbrir(chave, uid){
+  const d = DOUTRINA[chave]; if(!d) return;
+  const el = leiEl(); LEI.modo = 'apostila'; LEI.q = uid; LEI.aberta = true; el.hidden = false; el.classList.add('modo-apostila');
+  LEI.secs = d.secs.map(x=> Object.assign({ doutrina:d }, x)); LEI.i = 0; apostilaDesenhar();
+}
 function teoriaBotaoHtml(q){
   let h = '';
   const t = teoriaPaginaDaQuestao(q);
@@ -275,7 +305,9 @@ function teoriaBotaoHtml(q){
     if(!leis.some(l=> l.norma===nm && String(l.n)===String(n))) leis = [{ norma:nm, n:+n }].concat(leis).slice(0,3);
   }
   leis.forEach(l=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${l.norma}:${l.n}" data-lei-q="${esc(q.uid)}" title="Ler o texto oficial: ${l.norma==='SUM' ? l.n : l.norma+' art. '+l.n}">⚖️ ${l.norma==='SUM' ? l.n.replace(/^S /,'Súmula ') : l.norma+' art. '+l.n}</button>`; });
-  if(!t && !leis.length){
+  const dk = (!t && !leis.length) ? doutrinaDaQuestao(q) : null;
+  if(dk) h += `<button class="btn-corrigir-gabarito btn-ui" data-doutrina="${dk}" data-lei-q="${esc(q.uid)}" title="Ler a síntese de doutrina sobre o tema">📖 Doutrina · ${esc(DOUTRINA[dk].titulo.split(' · ')[0])}</button>`;
+  if(!t && !leis.length && !dk){
     const l = teoriaLeiDaQuestao(q);
     if(l) h += `<a class="btn-corrigir-gabarito btn-ui" href="${esc(l.url)}" target="_blank" rel="noopener" title="Este artigo não está no texto da plataforma: abrir o texto oficial (Planalto)">⚖️ Lei · ${esc(l.rotulo)} ↗</a>`;
   }
@@ -410,6 +442,7 @@ async function leiAbrir(ref, uid){
   try{ await leiCarregar(norma); leiDesenhar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; }
 }
 document.addEventListener('click', (ev)=>{
+  const dv = ev.target.closest && ev.target.closest('[data-doutrina]'); if(dv){ doutrinaAbrir(dv.dataset.doutrina, dv.dataset.leiQ); return; }
   const v = ev.target.closest && ev.target.closest('[data-lei-ver]'); if(v){ leiAbrir(v.dataset.leiVer, v.dataset.leiQ); return; }
   const pdf = ev.target.closest && ev.target.closest('[data-lei-pdf]'); if(pdf){ const q = BY_UID[LEI.q]; leiFechar(); if(q) teoriaAbrirMateria(q.materia, +pdf.dataset.leiPdf, 'Apostila'); return; }
   const b = ev.target.closest && ev.target.closest('[data-lei]'); if(!b) return;
@@ -455,6 +488,16 @@ function apostilaSecoes(q){
 }
 function apostilaDesenhar(){
   const q = BY_UID[LEI.q]; const x = LEI.secs[LEI.i]; if(!x) return;
+  if(x.doutrina){
+    document.getElementById('lei-titulo').textContent = `Doutrina · ${x.titulo}`;
+    document.getElementById('lei-n').value = `${LEI.i+1}/${LEI.secs.length}`;
+    document.getElementById('lei-ext').removeAttribute('href');
+    const c = document.getElementById('lei-corpo'); c.classList.remove('lei-com-alvo');
+    c.innerHTML = x.lei.map((p,i)=>`<p class="${i===0 ? 'lei-art' : 'lei-inc'}">${esc(p)}</p>`).join('')
+      + (x.peg ? `<div class="lei-peg"><strong>⚠️ Pegadinha provável.</strong> ${esc(x.peg)}</div>` : '')
+      + `<p class="lei-nota">${esc(x.doutrina.titulo)}. Síntese própria; fontes: ` + x.doutrina.fontes.map(f=>`<a href="${esc(f[1])}" target="_blank" rel="noopener">${esc(f[0])}</a>`).join(' · ') + `.</p>`;
+    c.scrollTop = 0; return;
+  }
   document.getElementById('lei-titulo').textContent = `Apostila · ${x.titulo}`;
   document.getElementById('lei-n').value = `${LEI.i+1}/${LEI.secs.length}`;
   document.getElementById('lei-ext').removeAttribute('href');
