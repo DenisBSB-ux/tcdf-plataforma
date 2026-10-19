@@ -2299,3 +2299,11 @@ body.leitor-aberto{ overflow:hidden; }
 .prova-det-btn{ display:inline-block; margin-top:8px; padding:4px 10px; font:inherit; font-size:12px; font-weight:600; cursor:pointer; color:var(--ink); background:transparent; border:1px solid var(--paper-line); border-radius:6px; }
 .prova-caixa .lei-corpo{ font-size:14px; }
 .prova-caixa .prova-sub{ margin-top:12px; font-weight:700; }
+
+/* v266: placar do simulado em três linhas (Total / Certas / Erradas) */
+.qm-placar{ display:grid; grid-template-columns:auto auto auto; justify-content:start; column-gap:10px; row-gap:1px; margin-top:4px; font-size:13px; font-weight:400; color:var(--ink-soft); }
+.qm-placar b{ font-weight:700; text-align:right; color:var(--ink); }
+.qm-placar b.qm-ac{ color:var(--stamp-green); }
+.qm-placar b.qm-er{ color:var(--stamp-red); }
+
+body:not(.theme-light) .qm-placar{ color:#a9b6cc; }

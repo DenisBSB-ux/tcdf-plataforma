@@ -187,13 +187,18 @@ function renderQuiz(){
   const resolvidasM = snapM.ac + snapM.erradas;
   const pctAcM = resolvidasM ? Math.round(snapM.ac*100/resolvidasM) : 0;
   const pctErM = resolvidasM ? 100 - pctAcM : 0;
+  const pctTotM = vistosM.size ? Math.round(resolvidasM*100/vistosM.size) : 0;
   return `
   <div class="qm-breadcrumb">Estudo <span>›</span> ${esc(quiz.materia||'')} <span>›</span> Questões</div>
   <div class="case-file">
     <div class="case-header qm-header">
       <div class="qm-title">
         <div class="qm-numero" title="Posição na fila. Já resolvidas: ${resolvidasM} de ${vistosM.size}">Questão ${quiz.idx+1} de ${quiz.queue.length}
-          <small><b class="qm-ac">${snapM.ac}</b> Certas (${pctAcM}%) / <b class="qm-er">${snapM.erradas}</b> Erradas (${pctErM}%)</small></div>
+          <div class="qm-placar">
+            <span>Total:</span><b>${resolvidasM}</b><span>(${pctTotM}%)</span>
+            <span>Certas:</span><b class="qm-ac">${snapM.ac}</b><span>(${pctAcM}%)</span>
+            <span>Erradas:</span><b class="qm-er">${snapM.erradas}</b><span>(${pctErM}%)</span>
+          </div></div>
       </div>
       <div class="qm-tags">
         ${ineditaBadge(q)}
