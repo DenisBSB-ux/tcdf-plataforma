@@ -2288,3 +2288,8 @@ body.leitor-aberto{ overflow:hidden; }
 .modo-apostila #lei-ext{ display:none; }
 .modo-apostila #lei-n{ pointer-events:none; width:56px; }
 .lei-barra [hidden]{ display:none !important; }
+
+/* v254: teoria da apostila dentro do pop-up da lei */
+.lei-apostila{ margin-top:18px; padding-top:12px; border-top:2px solid #c9d6e6; }
+.lei-apostila-tit{ font-weight:700; margin-bottom:8px; color:#1b3a5c; }
+.lei-apostila-sec{ margin-bottom:10px; }

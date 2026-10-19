@@ -269,8 +269,11 @@ function teoriaLeisDaQuestao(q){
 function teoriaBotaoHtml(q){
   let h = '';
   const t = teoriaPaginaDaQuestao(q);
-  if(t) h += `<button class="btn-corrigir-gabarito btn-ui" data-teoria-ver="${esc(q.uid)}" title="Ver o trecho da apostila sobre ${esc(t.rotulo)} (pág. ${t.pagina})">📖 Teoria · pág. ${t.pagina}</button>`;
-  const leis = teoriaLeisDaQuestao(q);
+  let leis = teoriaLeisDaQuestao(q);
+  if(t){   // a teoria da apostila aparece dentro do pop-up da lei do mesmo artigo
+    const [nm, n] = t.rotulo.replace(' art. ',':').split(':');
+    if(!leis.some(l=> l.norma===nm && String(l.n)===String(n))) leis = [{ norma:nm, n:+n }].concat(leis).slice(0,3);
+  }
   leis.forEach(l=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${l.norma}:${l.n}" data-lei-q="${esc(q.uid)}" title="Ler o texto oficial: ${l.norma==='SUM' ? l.n : l.norma+' art. '+l.n}">⚖️ ${l.norma==='SUM' ? l.n.replace(/^S /,'Súmula ') : l.norma+' art. '+l.n}</button>`; });
   if(!t && !leis.length){
     const l = teoriaLeiDaQuestao(q);
@@ -374,6 +377,30 @@ function leiDesenhar(){
   }).join('') : `<p class="lei-nota">O artigo ${esc(n)} foi revogado ou não consta do texto da plataforma. Consulte a fonte oficial.</p>`;
   corpo.scrollTop = 0;
   const al = corpo.querySelector('.lei-alvo'); if(al) corpo.scrollTop = Math.max(0, al.offsetTop - 70);
+  leiApostilaAnexar(n);
+}
+/* teoria da apostila do mesmo artigo, no fim do pop-up da lei */
+function apostilaSecoesDoArtigo(q, norma, n){
+  const t = teoriaPaginaDaQuestao(q); if(!t || typeof TEORIA_TEXTO==='undefined') return [];
+  const sec = (TEORIA_TEXTO[t.chave] || []).filter(x=> x.norma===norma && x.artigos.includes(+n));
+  const m = String(q.r||'').match(/⚖️\s*([^\n]*)/); const linha = m ? m[1].replace(/\*+/g,'') : '';
+  const rom = (linha.match(/▸\s*([IVXL]+)\b/)||[])[1]; const par = (linha.match(/§\s*(\d+)/)||[])[1];
+  const pontos = x=>{ let p = 0; if(rom && new RegExp('(^|[^A-Z])'+rom+'([^A-Z]|$)').test(x.titulo)) p += 2; if(par && new RegExp('§\\s*'+par).test(x.titulo)) p += 2; if(!rom && !par && /caput/i.test(x.titulo)) p += 1; return p; };
+  sec.sort((a,b)=> pontos(b)-pontos(a));
+  const mx = sec.length ? pontos(sec[0]) : 0;
+  return mx>0 ? sec.filter(x=> pontos(x)===mx) : sec;   // só o trecho que a questão cita (se houver)
+}
+async function leiApostilaAnexar(n){
+  const q = LEI.q && BY_UID[LEI.q]; if(!q || !teoriaPaginaDaQuestao(q) || (LEI.norma!=='CF' && LEI.norma!=='CTN')) return;
+  const norma = LEI.norma, chave = String(n);
+  try{ await apostilaCarregar(); }catch(_){ return; }
+  if(!LEI.aberta || LEI.norma!==norma || String(LEI.n)!==chave) return;
+  const secs = apostilaSecoesDoArtigo(q, norma, n); if(!secs.length) return;
+  const corpo = document.getElementById('lei-corpo'); if(!corpo || corpo.querySelector('.lei-apostila')) return;
+  corpo.insertAdjacentHTML('beforeend', `<div class="lei-apostila"><div class="lei-apostila-tit">📖 Na apostila</div>` + secs.map(x=>
+    `<div class="lei-apostila-sec"><strong>${esc(x.titulo)}</strong> <span class="lei-nota">pág. ${x.pagina}</span>`
+    + (x.peg ? `<div class="lei-peg"><strong>⚠️ Pegadinha provável.</strong> ${esc(x.peg)}</div>` : '')
+    + `<button type="button" class="btn-ui lei-pdf" data-lei-pdf="${x.pagina}">Abrir o PDF nesta página</button></div>`).join('') + `</div>`);
 }
 async function leiAbrir(ref, uid){
   const [norma, n] = String(ref).split(':'); if(!LEI_FONTES[norma]) return;
@@ -492,7 +519,7 @@ function renderTeoria(){
 document.addEventListener('click', (ev)=>{
   const t = ev.target.closest && ev.target.closest.bind(ev.target);
   if(!t) return;
-  const v = t('[data-teoria-ver]'); if(v){ apostilaAbrir(v.dataset.teoriaVer); return; }
+  
   if(t('[data-teoria-ler]')){ teoriaAbrirMateria(STATE.materia, 1); return; }
   if(t('[data-teoria-salvar-link]')){ teoriaSalvarLink(STATE.materia, document.getElementById('teoria-url').value, document.getElementById('teoria-nome').value.trim()); return; }
   if(t('[data-teoria-rem-link]')){ teoriaRemoverLink(STATE.materia); return; }
