@@ -243,7 +243,7 @@ const LEI_FONTES = {
   CTN:{ arquivo:'js/ctn-texto.js', global:'CTN_TEXTO', titulo:'Código Tributário Nacional · Lei 5.172/1966', max:218 },
   CF:{ arquivo:'js/cf-texto.js', global:'CF_TEXTO', titulo:'Constituição Federal de 1988', max:250 },
   'RI TCDF':{ arquivo:'js/ri-texto.js', global:'RITCDF_TEXTO', titulo:'Regimento Interno do TCDF · Res. 296/2016 (arts. 119 em diante: texto de 2016, sem emendas)', max:306 },
-  'IN 5':{ arquivo:'js/in5-texto.js', global:'IN5_TEXTO', titulo:'Instrução Normativa SEGES/MP 5/2017 (atualizada) · arts. 1º a 75', max:75 },
+  'IN 5':{ arquivo:'js/in5-texto.js', global:'IN5_TEXTO', titulo:'Instrução Normativa SEGES/MP 5/2017 (atualizada) · arts. 1º a 75 e anexos V, VII-F e VIII-A', max:75 },
   'Lei 14.133':{ arquivo:'js/l14133-texto.js', global:'L14133_TEXTO', titulo:'Lei 14.133/2021 · Licitações e Contratos Administrativos', max:194 },
   'Decreto 44.330':{ arquivo:'js/d44330-texto.js', global:'D44330_TEXTO', titulo:'Decreto Distrital 44.330/2023 · regulamenta a Lei 14.133 no DF', max:272 },
   LODF:{ arquivo:'js/lodf-texto.js', global:'LODF_TEXTO', titulo:'Lei Orgânica do Distrito Federal', max:365 },
@@ -264,6 +264,7 @@ function teoriaLeisDaQuestao(q){
   const m = String(q.r||'').match(/⚖️\s*([^\n]*)/); const linha = m ? m[1].replace(/\*+/g,'') : '';
   let mm;
   if((mm = linha.match(/Art\.?\s*(\d+(?:-[A-Z])?)[^·]*·\s*ADCT/))) refs = refs.concat([{ norma:'ADCT', n:mm[1], txt:true }]);
+  if((mm = linha.match(/Anexo\s+([IVX]+(?:-[A-Z])?)[^·]*·\s*IN 5/i))) refs = refs.concat([{ norma:'IN 5', n:'ANEXO '+mm[1].toUpperCase(), txt:true }]);
   if((mm = linha.match(/Art\.?\s*(\d+)[^·]*·\s*EC 132/))) refs = refs.concat([{ norma:'EC 132', n:+mm[1] }]);
   if((mm = linha.match(/S[úu]mula Vinculante\s*(\d+)/i))) refs = refs.concat([{ norma:'SUM', n:'SV '+mm[1], txt:true }]);
   else if((mm = linha.match(/S[úu]mula\s*(\d+)\s*·\s*STF/i))) refs = refs.concat([{ norma:'SUM', n:'S '+mm[1], txt:true }]);
@@ -385,7 +386,7 @@ function leiCarregar(norma){
 function leiOrdem(norma){
   const d = eval(LEI_FONTES[norma].global); if(d.__ordem) return d.__ordem;
   if(norma==='SUM'){ const k0 = Object.keys(d); Object.defineProperty(d,'__ordem',{ value:k0, enumerable:false }); return k0; }
-  const k = Object.keys(d).sort((a,b)=>{ const x=a.split('-'), y=b.split('-'); return (+x[0]-+y[0]) || String(x[1]||'').localeCompare(String(y[1]||'')); });
+  const k = Object.keys(d).sort((a,b)=>{ const x=a.split('-'), y=b.split('-'), nx=isNaN(+x[0])?1e9:+x[0], ny=isNaN(+y[0])?1e9:+y[0]; return (nx-ny) || (nx===1e9 ? a.localeCompare(b) : 0) || String(x[1]||'').localeCompare(String(y[1]||'')); });
   Object.defineProperty(d,'__ordem',{ value:k, enumerable:false }); return k;
 }
 
