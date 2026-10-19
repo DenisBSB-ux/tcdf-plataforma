@@ -217,7 +217,7 @@ function renderQuiz(){
         <div class="answers">${optionsHtml}</div>
       </div>
       <div class="case-col-right">
-        ${revelado ? renderResolucao(q, resposta, quiz) : renderResolucaoPlaceholder()}
+        ${revelado ? renderResolucao(q, resposta, quiz) : renderResolucaoPlaceholder(q)}
       </div>
     </div>
 
@@ -280,10 +280,12 @@ function renderQuiz(){
   `;
 }
 
-function renderResolucaoPlaceholder(){
+function renderResolucaoPlaceholder(q){
+  const leis = (q && typeof teoriaBotaoHtml==='function') ? teoriaBotaoHtml(q) : '';
   return `<div class="resolucao-placeholder">
     <div class="glyph">📖</div>
     <p>A resolução e o resumo flash aparecem aqui assim que você responder a questão.</p>
+    ${leis ? `<div class="placeholder-leis">${leis}</div>` : ''}
   </div>`;
 }
 
