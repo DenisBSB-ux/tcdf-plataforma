@@ -87,6 +87,7 @@ async function verificarQuizSalvo(materiaKey){
   if(q && (!atual || (q.ultimoSalvamento||0) >= (atual.ultimoSalvamento||0))){
     STATE.quizzesEmAndamento[materiaKey] = q;
   }
+  try{ if(STATE.quizzesEmAndamento[materiaKey]) reconciliarProgressoComQuiz(STATE.quizzesEmAndamento[materiaKey], materiaKey); }catch(_){}
   render();
 }
 // Confere o simulado em andamento de TODAS as matérias (pro botão "Continuar"
@@ -1192,6 +1193,7 @@ function registrarSessao(materiaKey, total, acertos, tema, queue, respostas){
 }
 
 function resetProgressoMateria(materiaKey){
+  limparQuizSalvo(materiaKey);   // sem isso o simulado em andamento ressuscitaria o progresso (reconciliarProgressoComQuiz)
   PROGRESS[materiaKey] = { perguntas:{}, flash:{}, sessoes:[] };
   marcarProgressoSujo(materiaKey);
   saveProgress();
