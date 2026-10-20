@@ -2314,3 +2314,5 @@ body:not(.theme-light) .qm-placar{ color:#a9b6cc; }
 .badge-atualizacao-legal.sem{ background:#eee; color:#555; border-color:#d4d4d8; }
 .tag-cobranca-corner{ gap:6px; flex-wrap:wrap; }
 .tag-cobranca-corner .tag-cobranca-A{ background:#b45309; cursor:help; }
+.res-erros{ margin:2px 0 8px 20px; padding:0; }
+.res-erros li{ font-style:italic; margin:2px 0; }

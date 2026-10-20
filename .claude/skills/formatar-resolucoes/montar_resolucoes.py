@@ -96,7 +96,8 @@ def destaca(texto, kws, max_bold, marca=0):
 
 def monta(q, d, i=0, sinal_extra=None):
     """Sem linha 🏷️: o perfil (sinal ou armadilha) já aparece no painel "Armadilha da banca" da plataforma."""
-    ess, kw, base, ate, arm, mac = d
+    ess, kw, base, ate, arm, mac = d[:6]
+    erros = d[6] if len(d) > 6 else []   # múltipla escolha: uma linha por alternativa errada ("Letra B: motivo (art. X)")
     L = []
     if base: L.append('⚖️ ' + base)
     L.append('📌 ' + destaca(ess, kw, 2, 1))
@@ -106,6 +107,9 @@ def monta(q, d, i=0, sinal_extra=None):
         ate = (ate + ' ' if ate else '') + '**Gabarito resolvido por IA**, sem gabarito oficial (confiança média): **conferir** na norma.'
     if ate: L.append('⚠️ ' + ate)
     if arm: L.append('🪤 ' + destaca(arm, kw, 1))
+    if erros:
+        L.append('⚠️ ERROS')
+        L += ['- ' + e for e in erros]
     if mac: L.append('💡 ' + mac)
     return '\n'.join(L)
 
