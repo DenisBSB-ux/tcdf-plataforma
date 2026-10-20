@@ -467,7 +467,7 @@ function leiDesenhar(){
     const m = p.match(/^(.*?)(\s*\((?:Reda[çc][ãa]o|Inclu[ií]d|Revogad|Vide|Vig[êe]ncia|Produ[çc][ãa]o|Regulament|Promulga|Vetad|Execu[çc]).*)$/i);
     const txt = m && i>0 ? m[1] : p; const nota = m && i>0 ? m[2] : '';
     const cls = i===0 ? 'lei-art' : /^(§|Parágrafo único)/.test(p) ? 'lei-par' : 'lei-inc';
-    return `<p class="${cls}${marca && marca.has(i) ? ' lei-alvo' : ''}">${esc(txt)}${nota ? ` <span class="lei-nota">${esc(nota.trim())}</span>` : ''}</p>`;
+    return `<p class="${cls}${marca && marca.has(i) ? ' lei-alvo' : ''}">${esc(txt).replace(/~~(.+?)~~/g,'<del class="lei-vencido">$1</del>')}${nota ? ` <span class="lei-nota">${esc(nota.trim())}</span>` : ''}</p>`;
   }).join('') : `<p class="lei-nota">O artigo ${esc(n)} foi revogado ou não consta do texto da plataforma. Consulte a fonte oficial.</p>`;
   corpo.scrollTop = 0;
   const al = corpo.querySelector('.lei-alvo'); if(al) corpo.scrollTop = Math.max(0, al.offsetTop - 70);

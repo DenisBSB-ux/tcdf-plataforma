@@ -2278,6 +2278,7 @@ body.leitor-aberto{ overflow:hidden; }
 .lei-art{ font-weight:600; }
 .lei-par{ padding-left:14px; }
 .lei-inc{ padding-left:28px; }
+.lei-vencido{ text-decoration:line-through; color:#b42318; opacity:.8; }
 .lei-nota{ font-size:12.5px; color:#6b6b70; font-style:italic; }
 
 /* v251: pop-up com o trecho citado destacado e trecho da apostila */
