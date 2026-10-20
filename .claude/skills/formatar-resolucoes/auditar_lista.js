@@ -28,7 +28,7 @@ const srv = spawn('python3', ['-m', 'http.server', '8398'], { stdio: 'ignore' })
       let badge = false; try { badge = !!questaoAtualizadaAviso(q); } catch (_) {}
       rows.push({ n: i + 1, vide, juris, conferido, badge, g: q.g || '', gIgual: !!O[i] && q.g === O[i].g, res: !!(q.r && q.r.length > 30), pop: l.length > 0 || botao, botao, texto: texto || (botao && l.length === 0), ref });
     }
-    const semArtigo = []; md.split(/\n(?=## QUESTÃO )/).slice(1).forEach((bl, k) => { if (/^⚖️/m.test(bl) && !/^\*\*Artigo:\*\*/m.test(bl)) semArtigo.push(k + 1); });
+    const semArtigo = []; md.split(/\n(?=## QUESTÃO )/).slice(1).forEach((bl, k) => { if (/^⚖️(?!.*Eixo \d)/m.test(bl) && !/^\*\*Artigo:\*\*/m.test(bl)) semArtigo.push(k + 1); });
     const ids = md.match(/\*\*ID:\*\* \S+/g) || [];
     window.__semArtigo = semArtigo;
     const mcSemErros = []; md.split(/\n(?=## QUESTÃO )/).slice(1).forEach((bl, k) => { if (/^- \*\*[A-E]\)\*\*/m.test(bl) && !/^⚠️ ERROS/m.test(bl)) mcSemErros.push(k + 1); });
