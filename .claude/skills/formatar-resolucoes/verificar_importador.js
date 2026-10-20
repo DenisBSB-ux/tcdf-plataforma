@@ -16,8 +16,8 @@ const srv = spawn('python3', ['-m', 'http.server', '8399'], { stdio: 'ignore' })
   const out = await p.evaluate(([md, or]) => {
     const a = parseMarkdownQuestoes(md), o = parseMarkdownQuestoes(or); const R = a.results, O = o.results;
     const ruins = [];
-    R.forEach((q, i) => { const linhas = limparResolucao(q.r).split('\n').filter(Boolean).length; const d = document.createElement('div');
-      d.innerHTML = formatarTextoComDestaque(limparResolucao(q.r)); if (d.querySelectorAll('p').length !== linhas || d.querySelectorAll('.sim-dica').length !== linhas) ruins.push(i); });
+    R.forEach((q, i) => { const todas = limparResolucao(q.r).split('\n').filter(Boolean); const itens = todas.filter(l => /^- /.test(l)).length, linhas = todas.length - itens; const d = document.createElement('div');
+      d.innerHTML = formatarTextoComDestaque(limparResolucao(q.r)); if (d.querySelectorAll('p').length !== linhas || d.querySelectorAll('.sim-dica').length !== linhas || d.querySelectorAll('li').length !== itens) ruins.push(i); });
     return { lidas: R.length, originais: O.length, ignoradas: a.ignoradas, semGabarito: a.semGabarito,
       enunciadosIguais: R.every((q, i) => q.q === O[i].q), gabaritosDivergentes: R.map((q, i) => q.g === O[i].g ? -1 : i).filter(i => i >= 0),
       comResumoFlash: R.filter(q => q.rf).length, comArtigo: R.filter(q => q.art || q.artn).length, resolucoesMalFormatadas: ruins };
