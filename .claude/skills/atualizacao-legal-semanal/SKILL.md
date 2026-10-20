@@ -14,3 +14,6 @@ Objetivo: manter o selo `⚖️ Atualizada em DD/MM/AAAA` de cada matéria (arqu
 4. Com mudança: atualizar `data` e `resumo` (uma frase com a mudança e a fonte); NÃO alterar gabaritos nem textos de lei sozinho. Listar no PR as questões/dispositivos afetados e o que o usuário precisa decidir (regras em `formatar-resolucoes`: lei prevalece sobre gabarito divergente, avisar antes de alterar; riscar trecho vencido no pop-up com `~~...~~`).
 5. Subir a versão (`vNNN` e data/hora em `index.html`), commit com os trailers, push na branch de trabalho e abrir PR. Não fazer merge: o usuário revisa. Corpo do PR: tabela matéria | conferido | mudou? | fonte | pendência.
 6. Nunca inventar artigo, valor ou julgamento; sem fonte, escrever "não localizei".
+
+## Critérios de análise (valem aqui e em toda lista nova)
+Os critérios completos estão em `.claude/skills/formatar-resolucoes/SKILL.md`, seção "Checklist único de análise de toda lista". Na rotina semanal: o selo do painel (`js/atualizacoes-legais.js`) só muda de data depois de pesquisa real; quando algo mudou, descrever a mudança no `resumo` e listar no PR as matérias e os dispositivos cujas questões precisam de selo/badge ou de gabarito revisto (as listas ficam com o usuário, não no repositório). Nunca registrar "conferido" sem fonte.
