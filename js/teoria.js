@@ -454,9 +454,12 @@ function leiAlvosDaQuestao(q, norma, n){
   const linha = m[1].replace(/\*+/g,'').replace(/[“”]/g,'"');
   const pos = linha.search(new RegExp('Art\\.?\\s*'+String(n).replace('-','\\-')+'\\b')); if(pos<0) return [];
   const resto = linha.slice(pos).replace(/^Art\.?\s*[\w-]+[º°]?\s*/,'').split('·')[0].replace(/§§\s*([^▸]*)/g,(m,l)=>l.split(/,|\se\s/).map(x=>'§ '+x.trim()).filter(x=>x!=='§').join(', '));
+  const romN = r=>{ const v = {I:1,V:5,X:10,L:50}; let n=0, pv=0; r.split('').reverse().forEach(c=>{ const x=v[c]; n += x<pv ? -x : x; pv = x; }); return n; };
+  const romS = n=>{ let r=''; [[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']].forEach(([v,l])=>{ while(n>=v){ r+=l; n-=v; } }); return r; };
+  const resto2 = resto.replace(/\b([IVXL]+)\s+a\s+([IVXL]+)\b/g,(m,x,y)=>{ const a0 = romN(x), a1 = romN(y); if(!(a1>a0 && a1-a0<30)) return m; const l=[]; for(let k=a0;k<=a1;k++) l.push(romS(k)); return l.join(', '); });
   const alvos = []; let cur = null;
   const novo = ()=>{ cur = { par:null, inc:null, ali:[] }; alvos.push(cur); return cur; };
-  resto.split(/▸|,|\se\s/).map(x=>x.trim()).filter(Boolean).forEach(t=>{
+  resto2.split(/▸|,|\se\s/).map(x=>x.trim()).filter(Boolean).forEach(t=>{
     let mm;
     if((mm = t.match(/^§\s*(\d+)/))){ novo().par = mm[1]; }
     else if(/^par[áa]grafo [úu]nico/i.test(t)){ novo().par = 'U'; }
@@ -514,6 +517,11 @@ function leiDesenhar(){
   const corpo = document.getElementById('lei-corpo');
   const marca = (ps && LEI.q) ? leiMarcar(ps, leiAlvosDaQuestao(BY_UID[LEI.q], LEI.norma, n)) : null;
   let marca2 = marca;
+  if(!marca2 && ps && LEI.q && LEI.modo!=='apostila' && !/^ANEXO/.test(n)){   // só o artigo foi citado: destaca o caput
+    const lm0 = String((BY_UID[LEI.q]||{}).r||'').match(/⚖️\s*([^\n]*)/); const l0 = lm0 ? lm0[1].replace(/\*+/g,'') : '';
+    if(new RegExp('Art\\.?\\s*'+String(n).replace('-','\\-')+'(?![\\w-])').test(l0)) marca2 = new Set([0]);
+  }
+
   if(!marca2 && ps && LEI.q && LEI.norma==='Decreto 42.590' && /^ANEXO/.test(n)){
     const lm = String((BY_UID[LEI.q]||{}).r||'').match(/⚖️\s*([^\n]*)/); const ln = lm ? lm[1].replace(/\*+/g,'') : '';
     const pre = []; if(/Objetivos?\s+espec[íi]ficos?/i.test(ln)) pre.push('Objetivo específico:'); if(/Metas?\b/i.test(ln)) pre.push('Meta:'); if(/Objetivo geral/i.test(ln)) pre.push('Objetivo Geral:');
