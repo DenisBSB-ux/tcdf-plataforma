@@ -286,6 +286,7 @@ function teoriaLeisDaQuestao(q){
   if((mm = linha.match(/S[úu]mula\s*(\d+)\s*·\s*TCU/i))) refs = refs.concat([{ norma:'SUM TCU', n:mm[1], txt:true }]);
   if((mm = linha.match(/S[úu]mula Vinculante\s*(\d+)/i))) refs = refs.concat([{ norma:'SUM', n:'SV '+mm[1], txt:true }]);
   else if((mm = linha.match(/S[úu]mula\s*(\d+)\s*·\s*STF/i))) refs = refs.concat([{ norma:'SUM', n:'S '+mm[1], txt:true }]);
+  if((mm = linha.match(/Art\.?\s*(\d+-[A-Z])\b[^·]*·\s*([^·(]+?)\s*$/))){ const nn = normalizarNorma(mm[2].replace(/\/\d{4}$/,'').trim()); if(LEI_FONTES[nn]) refs = [{ norma:nn, n:mm[1], txt:true }].concat(refs.filter(r=> !(r.norma===nn && String(r.n)===mm[1].split('-')[0]))); }
   refs.forEach(r=>{ const f = LEI_FONTES[r.norma]; const k = r.norma+':'+r.n; if(f && (r.txt || (r.n>=1 && r.n<=f.max)) && !vistos.has(k)){ vistos.add(k); out.push({ norma:r.norma, n:r.n }); } });
   // um botão só: o artigo citado primeiro na linha ⚖️ (os demais ficam a um ‹ › de distância no pop-up)
   const p1 = linha.match(/Art\.?\s*(\d+(?:-[A-Z])?)/);
@@ -331,11 +332,33 @@ const DOUTRINA_TEXTO = [
   [/planejamento|organiza[çc][ãa]o|dire[çc][ãa]o|controle|departamentaliza|amplitude|estrutura|fun[çc][õo]es/i,'funcoes'],
   [/pol[íi]ticas p[úu]blicas/i,'governanca']
 ];
+function doutrinaPdpmDaQuestao(q){
+  const t = String(q.q||'');
+  if(/tr[áa]fico de mulheres/i.test(t)) return 'pdpm:penal@0';
+  if(/crimes contra as mulheres/i.test(t)) return 'pdpm:penal@1';
+  if(/sursis|substitui[çc][ãa]o da pena privativa|restritiva de direitos/i.test(t)) return 'pdpm:penal@2';
+  if(/laicidade/i.test(t)) return /Pol[íi]tica Nacional/i.test(t) ? 'pdpm:principios@0' : 'pdpm:principios@1';
+  if(/a[çc][ãa]o afirmativa|cotas/i.test(t)) return 'pdpm:principios@2';
+  if(/misoginia/i.test(t)) return 'pdpm:diversidade@0';
+  if(/No que diz respeito [àa] sa[úu]de, o PDPM/i.test(t)) return 'pdpm:diversidade@1';
+  if(/Prospera/i.test(t)) return 'pdpm:acoes@0';
+  if(/cidade segura/i.test(t)) return 'pdpm:acoes@4';
+  if(/EMATER|extens[ãa]o rural/i.test(t)) return 'pdpm:acoes@5';
+  if(/Projeto DELAS/i.test(t)) return 'pdpm:acoes@6';
+  if(/Terezas/i.test(t)) return 'pdpm:acoes@8';
+  if(/Eixo 9|mulheres jovens, mulheres idosas/i.test(t) && /prioridade|a[çc][ãa]o priorit/i.test(t)) return 'pdpm:acoes@8';
+  if(/a[çc][ãa]o priorit[áa]ria|primeira a[çc][ãa]o|terceira prioridade|ações? priorit/i.test(t)) { const m = t.match(/Eixo\s*(\d)/i); return 'pdpm:acoes@'+(m ? +m[1]-1 : 0); }
+  if(/escuta virtual|oficinas virtuais/i.test(t)) return 'pdpm:consulta@1';
+  if(/consulta p[úu]blica/i.test(t)) return 'pdpm:consulta@0';
+  if(/principal instrumento de planejamento|Objetivos de Desenvolvimento Sustent|\bODS\b|RIDE/i.test(t)) return 'pdpm:consulta@2';
+  return null;
+}
 function doutrinaDaQuestao(q){
   if(!q) return null; const t = String(q.q||'') + ' ' + String(q.tema||'');
   if(/Bonavides|gera[çc][õo]es|dimens[õo]es.{0,30}direitos fundamentais/i.test(t)) return 'geracoes';
   if(/efic[áa]cia (plena|contida|limitada)|normas (constitucionais )?program[áa]ticas|classifica[çc][ãa]o tripartite|aplicabilidade das normas|restringida pelo legislador infraconstitucional/i.test(t)) return 'eficacia';
   if(/^reg/i.test(String(q.materia||'')) && /mandado de seguran[çc]a/i.test(String(q.q||'')) && /Minist[ée]rio P[úu]blico|MP\b/.test(String(q.q||''))) return 'mpc';
+  if(/PDPM|mulher|maria da penha/i.test(String(q.materia||''))){ const k = doutrinaPdpmDaQuestao(q); if(k) return k; }
   const tema = String(q.tema||'').trim();
   if(!/^adm(inistra[çc][ãa]o)? geral/i.test(String(q.materia||''))) return null;   // os códigos de assunto repetem entre matérias
   for(const tm of [tema, String(q.temaOriginal||'').trim()]) for(const [re,k] of DOUTRINA_TEMAS) if(re.test(tm)) return 'adm:'+k;
@@ -344,8 +367,20 @@ function doutrinaDaQuestao(q){
   return null;
 }
 function doutrinaTitulo(chave){
+  if(/^pdpm:/.test(chave)){ const T = { consulta:'Consulta pública do II PDPM', acoes:'Ações e projetos do II PDPM', diversidade:'Misoginia e saúde (II PDPM)', principios:'Laicidade e ação afirmativa', penal:'Crimes contra a mulher e súmulas' }; return T[String(chave).split(':')[1].split('@')[0]] || 'Doutrina'; }
   if(DOUTRINA[chave]) return DOUTRINA[chave].titulo.split(' · ')[0];
   const k = String(chave).replace(/^adm:/,''); const t = DOUTRINA_TEMAS.find(x=>x[1]===k); return t ? t[2] : 'Doutrina';
+}
+let doutrinaPdpmPromessa = null;
+function doutrinaPdpmCarregar(){
+  if(typeof DOUTRINA_PDPM!=='undefined') return Promise.resolve();
+  if(doutrinaPdpmPromessa) return doutrinaPdpmPromessa;
+  doutrinaPdpmPromessa = new Promise((ok,falha)=>{
+    const sc = document.createElement('script'); sc.src = 'js/doutrina-pdpm.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
+    sc.onload = ok; sc.onerror = ()=>{ doutrinaPdpmPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
+    document.head.appendChild(sc);
+  });
+  return doutrinaPdpmPromessa;
 }
 let doutrinaAdmPromessa = null;
 function doutrinaAdmCarregar(){
@@ -360,14 +395,18 @@ function doutrinaAdmCarregar(){
 }
 async function doutrinaAbrir(chave, uid){
   const el = leiEl(); LEI.modo = 'apostila'; LEI.q = uid; LEI.aberta = true; el.hidden = false; el.classList.add('modo-apostila');
-  let d = DOUTRINA[chave];
-  if(!d){
+  let d = DOUTRINA[chave], ini = 0;
+  if(!d && /^pdpm:/.test(chave)){
+    document.getElementById('lei-corpo').textContent = 'Carregando…';
+    try{ await doutrinaPdpmCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
+    const m = String(chave).match(/^pdpm:(\w+)(?:@(\d+))?$/); d = m ? DOUTRINA_PDPM[m[1]] : null; ini = m && m[2] ? +m[2] : 0;
+  } else if(!d){
     document.getElementById('lei-corpo').textContent = 'Carregando…';
     try{ await doutrinaAdmCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
     d = DOUTRINA_ADM[String(chave).replace(/^adm:/,'')];
   }
   if(!d){ leiFechar(); return; }
-  LEI.secs = d.secs.map(x=> Object.assign({ doutrina:d }, x)); LEI.i = 0; apostilaDesenhar();
+  LEI.secs = d.secs.map(x=> Object.assign({ doutrina:d }, x)); LEI.i = Math.min(ini, d.secs.length-1); apostilaDesenhar();
 }
 function teoriaBotaoHtml(q){
   let h = '';
