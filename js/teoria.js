@@ -247,6 +247,8 @@ const LEI_FONTES = {
   'Lei 14.133':{ arquivo:'js/l14133-texto.js', global:'L14133_TEXTO', titulo:'Lei 14.133/2021 · Licitações e Contratos Administrativos', max:194 },
   'Decreto 44.330':{ arquivo:'js/d44330-texto.js', global:'D44330_TEXTO', titulo:'Decreto Distrital 44.330/2023 · regulamenta a Lei 14.133 no DF', max:272 },
   'SUM TCU':{ arquivo:'js/sumulas-tcu-texto.js', global:'SUMULAS_TCU_TEXTO', titulo:'Súmulas do TCU', max:0 },
+  'Lei 13.709':{ arquivo:'js/l13709-texto.js', global:'L13709_TEXTO', titulo:'Lei 13.709/2018 · LGPD (artigos transcritos do compilado do Planalto; conferir o texto oficial)', max:65 },
+  'Lei 12.527':{ arquivo:'js/l12527-texto.js', global:'L12527_TEXTO', titulo:'Lei 12.527/2011 · Lei de Acesso à Informação (LAI)', max:47 },
   'Lei 8.429':{ arquivo:'js/l8429-texto.js', global:'L8429_TEXTO', titulo:'Lei 8.429/1992 · Improbidade Administrativa (com a Lei 14.230/2021)', max:25 },
   'Lei 9.784':{ arquivo:'js/l9784-texto.js', global:'L9784_TEXTO', titulo:'Lei 9.784/1999 · Processo Administrativo Federal', max:70 },
   'Lei 2.834':{ arquivo:'js/l2834-texto.js', global:'L2834_TEXTO', titulo:'Lei Distrital 2.834/2001 · recepciona a Lei 9.784/1999', max:3 },
