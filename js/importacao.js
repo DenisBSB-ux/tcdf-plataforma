@@ -289,6 +289,7 @@ function armadilhaDoTexto(bloco, origemPadrao){
   const sinal = campo('Sinal|Sinal certo|sinal_certo').toUpperCase();
   const trecho = campo('Trecho|trecho_chave');
   const expl = campo('Explica[çc][ãa]o|Explicacao|explicacao_armadilha');
+  const corr = campo('Corre[çc][ãa]o|Correcao');
   const origem = campo('Origem da classifica[çc][ãa]o|classificacao_origem').toLowerCase();
   const cods = (arm.toUpperCase().match(/\b(GEN|SUF|DIS|JUS|INV|TRO|RES|EXT)\b/g) || []).filter((c,i,a)=>a.indexOf(c)===i);
   const out = {};
@@ -298,6 +299,7 @@ function armadilhaDoTexto(bloco, origemPadrao){
   if(sc) out.sc = sc;
   if(trecho) out.tr = trecho;
   if(expl) out.ex = expl;
+  if(corr) out.co = corr;
   if(Object.keys(out).length) out.ao = /manual/.test(origem) ? 'manual' : (/gemini/.test(origem) ? 'gemini' : (/\bia\b/.test(origem) ? 'ia' : (origemPadrao || 'ia')));
   return out;
 }

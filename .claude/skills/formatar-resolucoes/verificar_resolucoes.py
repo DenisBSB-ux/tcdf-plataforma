@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from montar_resolucoes import ler
 
 ORDEM = ['⚖', '📌', '🔑', '⚠', '🪤', '💡']
-CAMPOS_ADICIONAIS = ('ID', 'Artigo', 'Sinal', 'Armadilha', 'Trecho', 'Explicação', 'Origem da classificação')
+CAMPOS_ADICIONAIS = ('ID', 'Artigo', 'Sinal', 'Armadilha', 'Trecho', 'Correção', 'Explicação', 'Origem da classificação')
 
 
 def mascara(txt):

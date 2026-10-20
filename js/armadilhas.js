@@ -62,7 +62,7 @@ function armHidratar(q){
   if(!r){ const u = ix.uid.get(q.uid); if(u && armNorm(q.q).slice(0,60)===u[2]) r = u; }
   if(!r) return;
   if(r[3]) q.ap = r[3]; if(r[4]) q.as = r[4]; if(r[5]) q.sc = r[5];
-  if(r[6]) q.tr = r[6]; if(r[7]) q.ex = r[7];
+  if(r[6]) q.tr = r[6]; if(r[7]) q.ex = r[7]; if(r[8]) q.co = r[8];
   q.ao = 'ia';
 }
 function armEfetiva(q){
@@ -76,11 +76,11 @@ function armEfetiva(q){
   const errado = gabaritoEfetivo(q)==='Errado';
   if(man){
     return { p: errado ? man.p : '', s: errado ? man.s : '', sinal: errado ? '' : man.sinal,
-             trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), origem:'manual', errado, classificada: !!(errado ? man.p : true) };
+             trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), correcao: q.co||'', origem:'manual', errado, classificada: !!(errado ? man.p : true) };
   }
   const p = (q.ap||'').toUpperCase(), s = (q.as||'').toUpperCase(), sinal = (q.sc||'').toUpperCase();
   const classificada = errado ? !!p : !!(p||sinal||q.ao);
-  return { p, s, sinal, trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), origem: (exEd!==undefined||trEd!==undefined) ? 'manual' : (q.ao||'ia'), errado, classificada };
+  return { p, s, sinal, trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), correcao: q.co||'', origem: (exEd!==undefined||trEd!==undefined) ? 'manual' : (q.ao||'ia'), errado, classificada };
 }
 function armCodigos(a){ return a ? [a.p, a.s].filter(c=>c && ARM_TIPOS[c]) : []; }
 function armTemClassificacao(q){ const a = armEfetiva(q); return !!(a && a.classificada); }
@@ -120,14 +120,18 @@ function armNucleoDoTrecho(parte, kws){
   while(w.length > 1 && ARM_STOP.has(w[w.length-1].toLowerCase().replace(/[.,;:]$/,''))) w.pop();
   return [w.join(' ')];
 }
-function armDestacarTrecho(html, trecho, uid, kws){
+function armDestacarTrecho(html, trecho, uid, kws, opcoes){
+  const op = opcoes || {};   // { literal:true, classe:'arm-chave', correcao:'palavra | outra' }
   if(uid) ARM_DESTACADOS.delete(uid);
   if(!html || !trecho) return html;
-  const partes = String(trecho).split(' | ').map(s=>s.trim()).filter(Boolean).flatMap(p=>armNucleoDoTrecho(p, kws));
+  const bruto = String(trecho).split(' | ').map(s=>s.trim()).filter(Boolean);
+  const partes = op.literal ? bruto : bruto.flatMap(p=>armNucleoDoTrecho(p, kws));
+  const corrs = String(op.correcao||'').split(' | ').map(s=>s.trim());
   if(!partes.length) return html;
   const box = document.createElement('div');
   box.innerHTML = html;
-  partes.forEach(parte=>{
+  partes.forEach((parte, pi)=>{
+    const marcas = [];
     const nos = [];
     const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
     let n; while((n = walker.nextNode())) nos.push(n);
@@ -151,11 +155,15 @@ function armDestacarTrecho(html, trecho, uid, kws){
         const r = document.createRange();
         r.setStart(no, a-pos); r.setEnd(no, b-pos);
         const mk = document.createElement('mark');
-        mk.className = 'arm-trecho';
-        try{ r.surroundContents(mk); if(uid) ARM_DESTACADOS.add(uid); }catch(e){ /* trecho cruza elementos: ignora */ }
+        mk.className = op.classe || 'arm-trecho';
+        try{ r.surroundContents(mk); marcas.push(mk); if(uid) ARM_DESTACADOS.add(uid); }catch(e){ /* trecho cruza elementos: ignora */ }
       }
       pos += len;
     });
+    if(op.correcao && corrs[pi] && marcas.length){   // palavra certa ao lado do termo riscado
+      const ins = document.createElement('ins'); ins.className = 'arm-correcao'; ins.textContent = corrs[pi];
+      marcas[marcas.length-1].after(document.createTextNode(' '), ins);
+    }
   });
   return box.innerHTML;
 }
