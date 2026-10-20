@@ -118,3 +118,12 @@ Em TODA lista, antes de entregar e depois do merge, confirmar nos dois lugares q
 
 ## Mudança recente de norma ou jurisprudência (aviso do usuário)
 Quando o texto compilado traz "Vide ADI ..." ou o usuário avisa que um item "sofreu alteração recente", **buscar o resultado em fonte externa** (WebSearch, mais de uma fonte; o acórdão costuma não estar acessível) antes de fechar o gabarito: o entendimento atual do STF/STJ prevalece sobre o texto compilado e sobre o gabarito antigo. Registrar no ⚠️ a decisão, a data e que o acórdão não foi conferido, e acrescentar nota (Vide ADI ...) no texto do pop-up. Exemplo (19–20/10/2026): ADI 7236/7156, concluída em 1º/7/2026, tornou a extensão da perda da função a regra (art. 12, § 1º, Lei 8.429).
+
+## Regra de atualização de norma e jurisprudência (item obrigatório da auditoria final)
+Gabarito pode mudar por **reforma da lei, ADI/ADC/ADPF, tese de repercussão geral, súmula nova ou cancelada, decisão do STJ/TCU**. Exemplo: ADI 7236 (1º/7/2026) inverteu a regra do art. 12, § 1º, da Lei 8.429. A auditoria final deve, portanto:
+1. Rodar `auditar_lista.js`. Os campos `atualizacaoAConferir` (questão cita STF/STJ/TST/TSE/TCU, Tema, Súmula, "entendimento consolidado", "recentemente", Lei 14.xxx ou EC) e `dispositivoComVideADI` (o dispositivo citado tem "Vide ADI/ADC/ADPF/MP", "(Vigência)") listam os itens de risco.
+2. Para **cada item de risco** sem selo: pesquisar o estado atual em fonte externa (WebSearch, ao menos duas fontes; o acórdão costuma não estar acessível), na ordem: norma oficial do Drive → fonte externa → o usuário decide.
+3. Registrar no ⚠️ o selo **"Atualização verificada em DD/MM/AAAA: <resultado, órgão e data da decisão; acórdão não conferido>"**. O selo tira o item da lista de pendências do script. Se o entendimento atual contraria o gabarito, ajustar o gabarito (regra "a lei prevalece" estendida à jurisprudência atual) e avisar na entrega; se a fonte não for conclusiva, manter o gabarito e deixar "Conferir o gabarito".
+4. Quando uma decisão afeta um dispositivo, procurar **todas as questões da lista que o citam** (busca pelo artigo/§ e pelo tema) e conferir se alguma outra muda de gabarito (ex.: a decisão que mudou a questão A também muda a questão B, espelhada).
+5. Acrescentar nota "(Vide ADI ...: ...)" ao texto do pop-up do dispositivo atingido.
+6. Na entrega: uma linha "Atualização de norma/jurisprudência: N itens conferidos (fontes); X gabaritos ajustados; Y pendentes", com os pendentes listados.
