@@ -109,3 +109,9 @@ Na dúvida, **siga sempre a lei, o decreto e as normas oficiais** (texto do Driv
 6. Citação de **anexo** da IN 5: `**Anexo V** ▸ **item 2.6** ▸ **"d.1.3"** · IN 5/2017`; **súmula do TCU**: `**Súmula 251** · TCU`. Ambos abrem pop-up.
 7. Publicação: se o PR der "merge conflicts" depois de um squash anterior, `git fetch origin main`, `git checkout -B <branch> origin/main`, `git cherry-pick <commit>` e `git push --force-with-lease`; esperar alguns segundos e repetir o merge.
 8. Entrega do arquivo: SendUserFile do `.md` completo (cópia em `scratchpad/entrega/`), sem relatório extenso.
+
+## Verificação obrigatória: arquivo E plataforma (regra do usuário)
+Em TODA lista, antes de entregar e depois do merge, confirmar nos dois lugares que cada questão tem o pop-up de teoria:
+1. **Arquivo:** `auditar_lista.js` (campos `semPopup` e `popupSemTexto` vazios).
+2. **Plataforma:** o mesmo script confere `teoriaBotaoHtml` (campo `semBotaoNaPlataforma` vazio; use `MATERIA="..."` quando a lista depende de ficha de doutrina) e o código publicado: `git fetch origin main` e confirmar que o `index.html` da `main` traz a versão nova e que os arquivos `js/*-texto.js` citados em `LEI_FONTES` existem na `main`.
+3. Na entrega, dizer em uma linha que os dois foram verificados e listar as exceções. Orientar sempre: Ctrl+F5 no navegador e reimportar com "🔁 Substituir por matéria".
