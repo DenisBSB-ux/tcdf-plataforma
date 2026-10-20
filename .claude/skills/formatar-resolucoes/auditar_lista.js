@@ -25,14 +25,17 @@ const srv = spawn('python3', ['-m', 'http.server', '8398'], { stdio: 'ignore' })
       if (l.length) { try { const dd = eval(LEI_FONTES[l[0].norma].global); const ps0 = dd[String(l[0].n)] || []; const mk = leiMarcar(ps0, leiAlvosDaQuestao(q, l[0].norma, l[0].n)); const ps = mk ? ps0.filter((_, ii) => mk.has(ii)) : ps0.slice(0, 1); vide = ps.some(x => /\(Vide (ADI|ADC|ADPF|ADO|Medida Provis|S[úu]mula|Tema)|\(Vig[êe]ncia\)|\(Vide Decreto/i.test(x)); } catch (_) {} }
       const juris = /(STF|STJ|TST|TSE|TCU|Tema \d|S[úu]mula|jurisprud|entendimento (consolidado|sumulado|do Supremo)|repercuss[ãa]o geral|recentemente|Lei n?[º.]* ?14\.\d{3}|Emenda Constitucional)/i.test((q.q || '') + ' ' + (q.r || ''));
       const conferido = /(Atualiza[çc][ãa]o verificada|Verificado em|Conferido em)/i.test(q.r || '');
-      rows.push({ n: i + 1, vide, juris, conferido, g: q.g || '', gIgual: !!O[i] && q.g === O[i].g, res: !!(q.r && q.r.length > 30), pop: l.length > 0 || botao, botao, texto: texto || (botao && l.length === 0), ref });
+      let badge = false; try { badge = !!questaoAtualizadaAviso(q); } catch (_) {}
+      rows.push({ n: i + 1, vide, juris, conferido, badge, g: q.g || '', gIgual: !!O[i] && q.g === O[i].g, res: !!(q.r && q.r.length > 30), pop: l.length > 0 || botao, botao, texto: texto || (botao && l.length === 0), ref });
     }
+    const semArtigo = []; md.split(/\n(?=## QUESTÃO )/).slice(1).forEach((bl, k) => { if (/^⚖️/m.test(bl) && !/^\*\*Artigo:\*\*/m.test(bl)) semArtigo.push(k + 1); });
     const ids = md.match(/\*\*ID:\*\* \S+/g) || [];
-    return { lidas: R.length, originais: O.length, idsUnicos: new Set(ids).size === ids.length, rows };
+    window.__semArtigo = semArtigo;
+    return { lidas: R.length, originais: O.length, idsUnicos: new Set(ids).size === ids.length, rows, semArtigo };
   }, [MD, OR, process.env.MATERIA || '']);
   const f = (fn) => o.rows.filter(fn).map(x => x.n);
   console.log(JSON.stringify({ lidas: o.lidas, originais: o.originais, idsUnicos: o.idsUnicos,
     semGabarito: f(x => !x.g), gabaritoAlterado: f(x => !x.gIgual), semResolucao: f(x => !x.res),
-    semBotaoNaPlataforma: f(x => !x.botao), atualizacaoAConferir: f(x => (x.vide || x.juris) && !x.conferido), dispositivoComVideADI: f(x => x.vide), semPopup: f(x => !x.pop), popupSemTexto: f(x => x.pop && !x.texto) }, null, 1));
+    semBotaoNaPlataforma: f(x => !x.botao), atualizacaoAConferir: f(x => (x.vide || x.juris) && !x.conferido), dispositivoComVideADI: f(x => x.vide), semPopup: f(x => !x.pop), popupSemTexto: f(x => x.pop && !x.texto), semCampoArtigo: o.semArtigo, comBadgeAtualizada: f(x => x.badge) }, null, 1));
   await b.close(); srv.kill(); process.exit(0);
 })();
