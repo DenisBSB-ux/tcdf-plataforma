@@ -250,7 +250,7 @@ const LEI_FONTES = {
   'Decreto 93.872':{ arquivo:'js/d93872-texto.js', global:'D93872_TEXTO', titulo:'Decreto 93.872/1986 · Conta Única do Tesouro, execução da despesa e suprimento de fundos (arquivo do Drive; conferir alterações posteriores)', max:158 },
   'Portaria 42':{ arquivo:'js/mog42-texto.js', global:'MOG42_TEXTO', titulo:'Portaria MOG 42/1999 · funções, subfunções, programas, projetos e atividades (versão atualizada em 2012, arquivo do Drive; conferir a Portaria SOF/ME 2.520/2022)', max:7 },
   'Lei 11.340':{ arquivo:'js/l11340-texto.js', global:'L11340_TEXTO', titulo:'Lei 11.340/2006 · Lei Maria da Penha (compilado do Planalto, PDF do Drive; conferir alterações posteriores)', max:46 },
-  'Decreto 42.590':{ arquivo:'js/d42590-texto.js', global:'D42590_TEXTO', titulo:'Decreto Distrital 42.590/2021 · II PDPM e Comitê de Articulação e Monitoramento (arquivo do Drive; o Anexo com os eixos não está no pop-up)', max:12 },
+  'Decreto 42.590':{ arquivo:'js/d42590-texto.js', global:'D42590_TEXTO', titulo:'Decreto Distrital 42.590/2021 · II PDPM e Comitê de Articulação e Monitoramento (arquivo do Drive; com o Anexo dos eixos)', max:12 },
   'Decreto 32.598':{ arquivo:'js/d32598-texto.js', global:'D32598_TEXTO', titulo:'Decreto Distrital 32.598/2010 · Normas de Planejamento, Orçamento, Finanças, Patrimônio e Contabilidade do DF (texto do SINJ-DF; conferir alterações posteriores)', max:142 },
   'Decreto 44.330':{ arquivo:'js/d44330-texto.js', global:'D44330_TEXTO', titulo:'Decreto Distrital 44.330/2023 · regulamenta a Lei 14.133 no DF', max:272 },
   'SUM TCU':{ arquivo:'js/sumulas-tcu-texto.js', global:'SUMULAS_TCU_TEXTO', titulo:'Súmulas do TCU', max:0 },
@@ -281,6 +281,7 @@ function teoriaLeisDaQuestao(q){
   let mm;
   if((mm = linha.match(/Art\.?\s*(\d+(?:-[A-Z])?)[^·]*·\s*ADCT/))) refs = refs.concat([{ norma:'ADCT', n:mm[1], txt:true }]);
   if((mm = linha.match(/Anexo\s+([IVX]+(?:-[A-Z])?)[^·]*·\s*IN 5/i))) refs = refs.concat([{ norma:'IN 5', n:'ANEXO '+mm[1].toUpperCase(), txt:true }]);
+  if((mm = linha.match(/Eixo\s+(\d)[^·]*·\s*Decreto 42\.590/i))) refs = refs.concat([{ norma:'Decreto 42.590', n:'ANEXO '+['I','II','III','IV','V','VI','VII','VIII','IX'][+mm[1]-1], txt:true }]);
   if((mm = linha.match(/Art\.?\s*(\d+)[^·]*·\s*EC 132/))) refs = refs.concat([{ norma:'EC 132', n:+mm[1] }]);
   if((mm = linha.match(/S[úu]mula\s*(\d+)\s*·\s*TCU/i))) refs = refs.concat([{ norma:'SUM TCU', n:mm[1], txt:true }]);
   if((mm = linha.match(/S[úu]mula Vinculante\s*(\d+)/i))) refs = refs.concat([{ norma:'SUM', n:'SV '+mm[1], txt:true }]);
@@ -376,7 +377,7 @@ function teoriaBotaoHtml(q){
     const [nm, n] = t.rotulo.replace(' art. ',':').split(':');
     if(!leis.some(l=> l.norma===nm && String(l.n)===String(n))) leis = [{ norma:nm, n:+n }].concat(leis).slice(0,1);
   }
-  leis.forEach(l=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${l.norma}:${l.n}" data-lei-q="${esc(q.uid)}" title="Ler o texto oficial: ${l.norma==='SUM' ? l.n : l.norma+' art. '+l.n}">⚖️ ${l.norma==='SUM' ? l.n.replace(/^S /,'Súmula ') : l.norma+' art. '+l.n}</button>`; });
+  leis.forEach(l=>{ h += `<button class="btn-corrigir-gabarito btn-ui" data-lei-ver="${l.norma}:${l.n}" data-lei-q="${esc(q.uid)}" title="Ler o texto oficial: ${l.norma==='SUM' ? l.n : l.norma+' art. '+l.n}">⚖️ ${l.norma==='SUM' ? l.n.replace(/^S /,'Súmula ') : l.norma==='Decreto 42.590' && /^ANEXO/.test(l.n) ? l.norma+' · Eixo '+(['I','II','III','IV','V','VI','VII','VIII','IX'].indexOf(l.n.slice(6))+1) : l.norma+' art. '+l.n}</button>`; });
   const dk = (!t && !leis.length) ? doutrinaDaQuestao(q) : null;
   if(dk) h += `<button class="btn-corrigir-gabarito btn-ui" data-doutrina="${dk}" data-lei-q="${esc(q.uid)}" title="Ler a síntese de doutrina sobre o tema">📖 Doutrina · ${esc(doutrinaTitulo(dk))}</button>`;
   if(!t && !leis.length && !dk){
@@ -413,7 +414,7 @@ function leiAlvosDaQuestao(q, norma, n){
   const m = String((q && q.r) || '').match(/⚖️\s*([^\n]*)/); if(!m) return [];
   const linha = m[1].replace(/\*+/g,'').replace(/[“”]/g,'"');
   const pos = linha.search(new RegExp('Art\\.?\\s*'+String(n).replace('-','\\-')+'\\b')); if(pos<0) return [];
-  const resto = linha.slice(pos).replace(/^Art\.?\s*[\w-]+[º°]?\s*/,'').split('·')[0];
+  const resto = linha.slice(pos).replace(/^Art\.?\s*[\w-]+[º°]?\s*/,'').split('·')[0].replace(/§§\s*([^▸]*)/g,(m,l)=>l.split(/,|\se\s/).map(x=>'§ '+x.trim()).filter(x=>x!=='§').join(', '));
   const alvos = []; let cur = null;
   const novo = ()=>{ cur = { par:null, inc:null, ali:[] }; alvos.push(cur); return cur; };
   resto.split(/▸|,|\se\s/).map(x=>x.trim()).filter(Boolean).forEach(t=>{
@@ -473,12 +474,24 @@ function leiDesenhar(){
   const ps = d[n] || null;
   const corpo = document.getElementById('lei-corpo');
   const marca = (ps && LEI.q) ? leiMarcar(ps, leiAlvosDaQuestao(BY_UID[LEI.q], LEI.norma, n)) : null;
-  corpo.classList.toggle('lei-com-alvo', !!marca);
+  let marca2 = marca;
+  if(!marca2 && ps && LEI.q && LEI.norma==='Decreto 42.590' && /^ANEXO/.test(n)){
+    const lm = String((BY_UID[LEI.q]||{}).r||'').match(/⚖️\s*([^\n]*)/); const ln = lm ? lm[1].replace(/\*+/g,'') : '';
+    const pre = []; if(/Objetivos?\s+espec[íi]ficos?/i.test(ln)) pre.push('Objetivo específico:'); if(/Metas?\b/i.test(ln)) pre.push('Meta:'); if(/Objetivo geral/i.test(ln)) pre.push('Objetivo Geral:');
+    if(pre.length){ marca2 = new Set(); ps.forEach((x,i)=>{ if(pre.some(pf=>x.startsWith(pf))) marca2.add(i); }); if(marca2.size > 1){   // fica só com os itens mais parecidos com o enunciado (se algum se destacar)
+      const nz = x=> new Set(String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').match(/[a-z]{6,}/g)||[]);
+      const qw = nz((BY_UID[LEI.q]||{}).q||''); const sc = new Map(); let mx = 0;
+      marca2.forEach(i=>{ let c = 0; nz(ps[i]).forEach(w=>{ if(qw.has(w)) c++; }); sc.set(i,c); if(c>mx) mx = c; });
+      if(mx>=2){ const lim = Math.max(2, Math.ceil(mx*0.6)); marca2 = new Set([...marca2].filter(i=>sc.get(i)>=lim)); }
+    }
+    if(!marca2.size) marca2 = null; }
+  }
+  corpo.classList.toggle('lei-com-alvo', !!marca2);
   corpo.innerHTML = ps ? ps.map((p,i)=>{
     const m = p.match(/^(.*?)(\s*\((?:Reda[çc][ãa]o|Inclu[ií]d|Revogad|Vide|Vig[êe]ncia|Produ[çc][ãa]o|Regulament|Promulga|Vetad|Execu[çc]).*)$/i);
     const txt = m && i>0 ? m[1] : p; const nota = m && i>0 ? m[2] : '';
     const cls = i===0 ? 'lei-art' : /^(§|Parágrafo único)/.test(p) ? 'lei-par' : 'lei-inc';
-    return `<p class="${cls}${marca && marca.has(i) ? ' lei-alvo' : ''}">${esc(txt).replace(/~~(.+?)~~/g,'<del class="lei-vencido">$1</del>')}${nota ? ` <span class="lei-nota">${esc(nota.trim())}</span>` : ''}</p>`;
+    return `<p class="${cls}${marca2 && marca2.has(i) ? ' lei-alvo' : ''}">${esc(txt).replace(/~~(.+?)~~/g,'<del class="lei-vencido">$1</del>')}${nota ? ` <span class="lei-nota">${esc(nota.trim())}</span>` : ''}</p>`;
   }).join('') : `<p class="lei-nota">O artigo ${esc(n)} foi revogado ou não consta do texto da plataforma. Consulte a fonte oficial.</p>`;
   corpo.scrollTop = 0;
   const al = corpo.querySelector('.lei-alvo'); if(al) corpo.scrollTop = Math.max(0, al.offsetTop - 70);
