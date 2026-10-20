@@ -338,7 +338,7 @@ function temListaAlfabetica(texto){
 // "c. e d)" (quando duas letras são combinadas numa análise só)
 function quebrarItensAlfabeticos(texto){
   if(!texto || !temListaAlfabetica(texto)) return texto;
-  return texto.replace(/\s*\b([a-e])(\)|\.\s*e\s*[a-e]\))/gi, '\n$1$2');
+  return texto.replace(/\s*(?<![-–])\b([a-e])(\)|\.\s*e\s*[a-e]\))/gi, '\n$1$2');   // não quebra "art. 147-B)"
 }
 
 // combina a quebra em frases (item 5) com o destaque de palavras-chave (item 6):
@@ -396,7 +396,7 @@ function simbolosComDica(html){
 }
 // marcadores de negrito (\u0001..\u0002) e itálico (\u0003..\u0004) da resolução viram <strong> e <em>
 function marcadoresParaHtml(h){
-  return String(h).replace(/\u0001/g,'<strong>').replace(/\u0002/g,'</strong>').replace(/\u0003/g,'<em>').replace(/\u0004/g,'</em>').replace(/\u0005/g,'<mark class="res-marca">').replace(/\u0006/g,'</mark>');
+  return String(h).replace(/\u0001/g,'<strong>').replace(/\u0002/g,'</strong>').replace(/\u0003/g,'<em>').replace(/\u0004/g,'</em>').replace(/\u0005/g,'<mark class="res-marca">').replace(/\u0006/g,'</mark>').replace(/~~(.+?)~~/g,'<del class="res-riscado">$1</del>');   // ~~termo errado~~ aparece riscado
 }
 function formatarTextoComDestaque(texto, palavrasExtras){
   if(!texto) return '';
