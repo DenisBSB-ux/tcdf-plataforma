@@ -13,7 +13,7 @@ def parse(t,maxart=None):
     linhas=[re.sub(r'\s+',' ',l).strip() for l in t.split('\n')]; linhas=[l for l in linhas if l]
     ocs=[]; cur=None
     for l in linhas:
-        m=re.match(r'^Art\.?\s*(\d+)(?:-([A-Z]))?\s*[º°o]?\.?(?=\s|$)',l)
+        m=re.match(r'^Art\.?\s*(\d+)\s*[º°o]?(?:\s*-\s*([A-Z]))?\s*[º°o]?\.?(?=\s|$)',l)
         if m:
             cur=[m.group(1)+('-'+m.group(2) if m.group(2) else ''),[l]]; ocs.append(cur); continue
         if cur is None: continue
@@ -24,8 +24,8 @@ def parse(t,maxart=None):
     for k,ps in ocs: art[k]=ps            # última ocorrência = versão vigente (as anteriores aparecem riscadas)
     return {k:dedupe(ps) for k,ps in art.items()}
 def rotulo(p):
-    m=re.match(r'^§\s*(\d+)',p)
-    if m: return ('par',m.group(1))
+    m=re.match(r'^§\s*(\d+)\s*[º°o]?(?:\s*-\s*([A-Z]))?',p)
+    if m: return ('par',m.group(1)+('-'+m.group(2) if m.group(2) else ''))
     if p.startswith('Parágrafo único'): return ('par','U')
     m=re.match(r'^([IVXLC]+)\s*[-–—]\s',p)
     if m: return ('inc',m.group(1))
