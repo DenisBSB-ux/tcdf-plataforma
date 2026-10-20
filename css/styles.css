@@ -2319,3 +2319,4 @@ body:not(.theme-light) .qm-placar{ color:#a9b6cc; }
 /* armadilha possível (linha 🪤 da resolução): fundo vermelho claro */
 .res-arm{ background:rgba(239,68,68,.18); border-radius:6px; padding:3px 8px; }
 body.theme-light .res-arm{ background:#fde2e2; }
+.res-riscado{ text-decoration:line-through; text-decoration-color:#dc2626; text-decoration-thickness:2px; opacity:.85; }
