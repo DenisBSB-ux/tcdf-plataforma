@@ -224,6 +224,7 @@ const TEORIA_LEI_URL = {
   'LC 116':'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp116.htm',
   'LC 87':'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp87.htm',
   'Lei 9.430':'https://www.planalto.gov.br/ccivil_03/leis/l9430.htm',
+  'Decreto-lei 2.848':'https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm',
   'Decreto-lei 1.598':'https://www.planalto.gov.br/ccivil_03/decreto-lei/del1598.htm',
   'LC 109':'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp109.htm',
   'ADCT':'https://www.planalto.gov.br/ccivil_03/constituicao/adct.htm',
@@ -267,6 +268,7 @@ const LEI_FONTES = {
   'LC 116':{ arquivo:'js/lc116-texto.js', global:'LC116_TEXTO', titulo:'Lei Complementar 116/2003 · ISS', max:10 },
   'LC 87':{ arquivo:'js/lc87-texto.js', global:'LC87_TEXTO', titulo:'Lei Complementar 87/1996 · Lei Kandir (ICMS)', max:36 },
   'Lei 9.430':{ arquivo:'js/l9430-texto.js', global:'L9430_TEXTO', titulo:'Lei 9.430/1996', max:88 },
+  'Decreto-lei 2.848':{ arquivo:'js/cp-texto.js', global:'CP_TEXTO', titulo:'Código Penal · art. 135, omissão de socorro (fonte secundária; conferir no Planalto)', max:135 },
   'Decreto-lei 1.598':{ arquivo:'js/del1598-texto.js', global:'DEL1598_TEXTO', titulo:'Decreto-Lei 1.598/1977 · Lucro real', max:67 },
   ADCT:{ arquivo:'js/adct-texto.js', global:'ADCT_TEXTO', titulo:'ADCT · Ato das Disposições Constitucionais Transitórias', max:138 },
   'EC 132':{ arquivo:'js/ec132-texto.js', global:'EC132_TEXTO', titulo:'Emenda Constitucional 132/2023 · Reforma Tributária', max:23 },
@@ -332,6 +334,21 @@ const DOUTRINA_TEXTO = [
   [/planejamento|organiza[çc][ãa]o|dire[çc][ãa]o|controle|departamentaliza|amplitude|estrutura|fun[çc][õo]es/i,'funcoes'],
   [/pol[íi]ticas p[úu]blicas/i,'governanca']
 ];
+function doutrinaPsDaQuestao(q){
+  const t = String(q.q||'');
+  const R = [[0,/XABCDE|\bAVDI\b|gerenciamento de riscos|hierarquia|isolar a [áa]rea|seguran[çc]a (da cena|do local)/i],
+    [2,/engasg|obstru[çc][ãa]o (grave|leve|total)|obstru[çc][ãa]o d[ae] via|heimlich|OVACE|desengas|varredura digital/i],
+    [8,/golpe de calor|interma[çc][ãa]o|exaust[ãa]o pelo calor|afog|salva-vidas/i],
+    [5,/fratura (exposta|aberta)/i],
+    [4,/queimad|choque el[ée]trico|roupa em chamas|\bchamas\b|[áa]cido|flictena|bolhas/i],
+    [1,/\bRCP\b|ressuscita|parada (cardio|card[ií]aca)|\bPCR\b|\bDEA\b|desfibril|compress[õo]es tor[áa]cicas|massagem card|Holger/i],
+    [3,/hemorragi|sangrament|torniquete|garrote|press[ãa]o direta|epistaxe|ponto.? arterial|art[ée]ria|empalad|perfurante|estado de choque/i],
+    [5,/fratur|entorse|luxa[çc][ãa]o|imobiliza|escoria|contus|trauma cranio|TCE|DEDI/i],
+    [6,/convuls|compuls|desmai|hipoglic|pr[ée]-s[íi]ncope/i],
+    [7,/intoxica|envenen|cobra|escorpi|picada|carv[ãa]o|produtos? qu[íi]micos?|vapores|gases/i]];
+  for(const [i,re] of R) if(re.test(t)) return 'ps:'+i;
+  return 'ps:0';
+}
 function doutrinaPdpmDaQuestao(q){
   const t = String(q.q||'');
   if(/tr[áa]fico de mulheres/i.test(t)) return 'pdpm:penal@0';
@@ -358,6 +375,7 @@ function doutrinaDaQuestao(q){
   if(/Bonavides|gera[çc][õo]es|dimens[õo]es.{0,30}direitos fundamentais/i.test(t)) return 'geracoes';
   if(/efic[áa]cia (plena|contida|limitada)|normas (constitucionais )?program[áa]ticas|classifica[çc][ãa]o tripartite|aplicabilidade das normas|restringida pelo legislador infraconstitucional/i.test(t)) return 'eficacia';
   if(/^reg/i.test(String(q.materia||'')) && /mandado de seguran[çc]a/i.test(String(q.q||'')) && /Minist[ée]rio P[úu]blico|MP\b/.test(String(q.q||''))) return 'mpc';
+  if(/primeiros socorros/i.test(String(q.materia||''))) return doutrinaPsDaQuestao(q);
   if(/PDPM|mulher|maria da penha/i.test(String(q.materia||''))){ const k = doutrinaPdpmDaQuestao(q); if(k) return k; }
   const tema = String(q.tema||'').trim();
   if(!/^adm(inistra[çc][ãa]o)? geral/i.test(String(q.materia||''))) return null;   // os códigos de assunto repetem entre matérias
@@ -367,9 +385,21 @@ function doutrinaDaQuestao(q){
   return null;
 }
 function doutrinaTitulo(chave){
+  if(/^ps:/.test(chave)){ const T = ['Segurança da cena e avaliação','RCP e DEA','Engasgo','Hemorragias e choque','Queimaduras e choque elétrico','Fraturas, entorse e luxação','Convulsão, desmaio e hipoglicemia','Intoxicações e peçonhentos','Calor e afogamento']; return T[+String(chave).slice(3)] || 'Primeiros socorros'; }
   if(/^pdpm:/.test(chave)){ const T = { consulta:'Consulta pública do II PDPM', acoes:'Ações e projetos do II PDPM', diversidade:'Misoginia e saúde (II PDPM)', principios:'Laicidade e ação afirmativa', penal:'Crimes contra a mulher e súmulas' }; return T[String(chave).split(':')[1].split('@')[0]] || 'Doutrina'; }
   if(DOUTRINA[chave]) return DOUTRINA[chave].titulo.split(' · ')[0];
   const k = String(chave).replace(/^adm:/,''); const t = DOUTRINA_TEMAS.find(x=>x[1]===k); return t ? t[2] : 'Doutrina';
+}
+let doutrinaPsPromessa = null;
+function doutrinaPsCarregar(){
+  if(typeof DOUTRINA_PS!=='undefined') return Promise.resolve();
+  if(doutrinaPsPromessa) return doutrinaPsPromessa;
+  doutrinaPsPromessa = new Promise((ok,falha)=>{
+    const sc = document.createElement('script'); sc.src = 'js/doutrina-ps.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
+    sc.onload = ok; sc.onerror = ()=>{ doutrinaPsPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
+    document.head.appendChild(sc);
+  });
+  return doutrinaPsPromessa;
 }
 let doutrinaPdpmPromessa = null;
 function doutrinaPdpmCarregar(){
@@ -396,7 +426,11 @@ function doutrinaAdmCarregar(){
 async function doutrinaAbrir(chave, uid){
   const el = leiEl(); LEI.modo = 'apostila'; LEI.q = uid; LEI.aberta = true; el.hidden = false; el.classList.add('modo-apostila');
   let d = DOUTRINA[chave], ini = 0;
-  if(!d && /^pdpm:/.test(chave)){
+  if(!d && /^ps:/.test(chave)){
+    document.getElementById('lei-corpo').textContent = 'Carregando…';
+    try{ await doutrinaPsCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
+    const m = String(chave).match(/^ps:(\d+)$/); d = DOUTRINA_PS.ps; ini = m ? +m[1] : 0;
+  } else if(!d && /^pdpm:/.test(chave)){
     document.getElementById('lei-corpo').textContent = 'Carregando…';
     try{ await doutrinaPdpmCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
     const m = String(chave).match(/^pdpm:(\w+)(?:@(\d+))?$/); d = m ? DOUTRINA_PDPM[m[1]] : null; ini = m && m[2] ? +m[2] : 0;
