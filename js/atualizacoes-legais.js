@@ -30,5 +30,5 @@ function atualizacaoLegalBadge(m){
 function questaoAtualizadaAviso(q){
   const m = String((q && q.r) || '').match(/Atualiza[çc][ãa]o verificada em (\d{2}\/\d{2}\/\d{4}):\s*([^\n]*)/i);
   if(!m || /n[ãa]o localizei|sem altera|sem mudan|mantid[oa]s?\b(?!.*(ADI|inconstitucion))/i.test(m[2]) && !/ADI 7236|invalidaram|declarou inconstitucional|dispensaram/i.test(m[2])) return '';
-  return `<div class="aviso-questao-atualizada" title="${esc(m[2])}">⚠️ <b>Atenção:</b> questão atualizada em ${m[1].slice(0,5)}. <span>${esc(m[2])}</span></div>`;
+  return `<div class="aviso-questao-atualizada"><span class="tag-cobranca" title="${esc(m[2])}">⚠️ Atenção: Questão atualizada em ${m[1].slice(0,5)}</span></div>`;
 }
