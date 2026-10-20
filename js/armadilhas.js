@@ -181,17 +181,10 @@ function armPainelHtml(q){
   if(a.errado){
     const cods = armCodigos(a);
     const p = ARM_TIPOS[a.p];
-    // não repete a explicação se ela já consta na justificativa
-    const rTxt = armNorm(typeof limparResolucao==='function' ? limparResolucao(q.r||'') : (q.r||''));
-    const exN = armNorm(armExplTexto(a.expl));
-    const explRepetida = exN && rTxt.includes(exN);
-    // nome (fundo claro) + definição + explicação, tudo na mesma linha
-    const nomes = cods.map(c=>ARM_TIPOS[c]?`<span class="arm-nome" style="background:${ARM_TIPOS[c].bg};">${esc(ARM_TIPOS[c].nome)}</span> <span class="arm-def-txt">— ${esc(ARM_TIPOS[c].def)}</span>`:'').filter(Boolean).join(' · ');
-    const corpo = [nomes, (a.expl && !explRepetida) ? armExplHtml(a.expl) : ''].filter(Boolean).join(' ');
+    // só o nome da armadilha (sem definição, explicação nem trecho): pedido do usuário em 20/10/2026
+    const nomes = cods.map(c=>ARM_TIPOS[c]?`<span class="arm-nome" style="background:${ARM_TIPOS[c].bg};">${esc(ARM_TIPOS[c].nome)}</span>`:'').filter(Boolean).join(' · ');
     return `<div class="arm-box">
-      <div class="arm-linha"><span class="arm-rot">Armadilha da banca</span> ${lapis}<span class="arm-origem">classificação: ${origemTxt}</span></div>
-      ${(a.trecho && !ARM_DESTACADOS.has(uid)) ? `<div class="arm-expl"><b>Trecho:</b> <mark class="arm-trecho">${esc(a.trecho.replace(/ \| /g,' … '))}</mark></div>` : ''}
-      ${corpo ? `<div class="arm-expl arm-corpo">${corpo}</div>` : ''}
+      <div class="arm-linha"><span class="arm-rot">Armadilha da banca:</span> ${nomes} ${lapis}<span class="arm-origem">classificação: ${origemTxt}</span></div>
     </div>`;
   }
   const s = ARM_SINAIS[a.sinal];
