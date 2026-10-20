@@ -115,3 +115,6 @@ Em TODA lista, antes de entregar e depois do merge, confirmar nos dois lugares q
 1. **Arquivo:** `auditar_lista.js` (campos `semPopup` e `popupSemTexto` vazios).
 2. **Plataforma:** o mesmo script confere `teoriaBotaoHtml` (campo `semBotaoNaPlataforma` vazio; use `MATERIA="..."` quando a lista depende de ficha de doutrina) e o código publicado: `git fetch origin main` e confirmar que o `index.html` da `main` traz a versão nova e que os arquivos `js/*-texto.js` citados em `LEI_FONTES` existem na `main`.
 3. Na entrega, dizer em uma linha que os dois foram verificados e listar as exceções. Orientar sempre: Ctrl+F5 no navegador e reimportar com "🔁 Substituir por matéria".
+
+## Mudança recente de norma ou jurisprudência (aviso do usuário)
+Quando o texto compilado traz "Vide ADI ..." ou o usuário avisa que um item "sofreu alteração recente", **buscar o resultado em fonte externa** (WebSearch, mais de uma fonte; o acórdão costuma não estar acessível) antes de fechar o gabarito: o entendimento atual do STF/STJ prevalece sobre o texto compilado e sobre o gabarito antigo. Registrar no ⚠️ a decisão, a data e que o acórdão não foi conferido, e acrescentar nota (Vide ADI ...) no texto do pop-up. Exemplo (19–20/10/2026): ADI 7236/7156, concluída em 1º/7/2026, tornou a extensão da perda da função a regra (art. 12, § 1º, Lei 8.429).
