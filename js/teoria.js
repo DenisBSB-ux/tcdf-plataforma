@@ -249,6 +249,7 @@ const LEI_FONTES = {
   'Decreto 10.426':{ arquivo:'js/d10426-texto.js', global:'D10426_TEXTO', titulo:'Decreto 10.426/2020 · Termo de Execução Descentralizada (norma atualizada, arquivo do Drive; conferir alterações posteriores)', max:33 },
   'Decreto 93.872':{ arquivo:'js/d93872-texto.js', global:'D93872_TEXTO', titulo:'Decreto 93.872/1986 · Conta Única do Tesouro, execução da despesa e suprimento de fundos (arquivo do Drive; conferir alterações posteriores)', max:158 },
   'Portaria 42':{ arquivo:'js/mog42-texto.js', global:'MOG42_TEXTO', titulo:'Portaria MOG 42/1999 · funções, subfunções, programas, projetos e atividades (versão atualizada em 2012, arquivo do Drive; conferir a Portaria SOF/ME 2.520/2022)', max:7 },
+  'Lei 11.340':{ arquivo:'js/l11340-texto.js', global:'L11340_TEXTO', titulo:'Lei 11.340/2006 · Lei Maria da Penha (compilado do Planalto, PDF do Drive; conferir alterações posteriores)', max:46 },
   'Decreto 32.598':{ arquivo:'js/d32598-texto.js', global:'D32598_TEXTO', titulo:'Decreto Distrital 32.598/2010 · Normas de Planejamento, Orçamento, Finanças, Patrimônio e Contabilidade do DF (texto do SINJ-DF; conferir alterações posteriores)', max:142 },
   'Decreto 44.330':{ arquivo:'js/d44330-texto.js', global:'D44330_TEXTO', titulo:'Decreto Distrital 44.330/2023 · regulamenta a Lei 14.133 no DF', max:272 },
   'SUM TCU':{ arquivo:'js/sumulas-tcu-texto.js', global:'SUMULAS_TCU_TEXTO', titulo:'Súmulas do TCU', max:0 },
