@@ -31,11 +31,13 @@ const srv = spawn('python3', ['-m', 'http.server', '8398'], { stdio: 'ignore' })
     const semArtigo = []; md.split(/\n(?=## QUESTÃO )/).slice(1).forEach((bl, k) => { if (/^⚖️/m.test(bl) && !/^\*\*Artigo:\*\*/m.test(bl)) semArtigo.push(k + 1); });
     const ids = md.match(/\*\*ID:\*\* \S+/g) || [];
     window.__semArtigo = semArtigo;
-    return { lidas: R.length, originais: O.length, idsUnicos: new Set(ids).size === ids.length, rows, semArtigo };
+    const mcSemErros = []; md.split(/\n(?=## QUESTÃO )/).slice(1).forEach((bl, k) => { if (/^- \*\*[A-E]\)\*\*/m.test(bl) && !/^⚠️ ERROS/m.test(bl)) mcSemErros.push(k + 1); });
+    window.__mcSemErros = mcSemErros;
+    return { lidas: R.length, originais: O.length, idsUnicos: new Set(ids).size === ids.length, rows, semArtigo, mcSemErros: window.__mcSemErros };
   }, [MD, OR, process.env.MATERIA || '']);
   const f = (fn) => o.rows.filter(fn).map(x => x.n);
   console.log(JSON.stringify({ lidas: o.lidas, originais: o.originais, idsUnicos: o.idsUnicos,
     semGabarito: f(x => !x.g), gabaritoAlterado: f(x => !x.gIgual), semResolucao: f(x => !x.res),
-    semBotaoNaPlataforma: f(x => !x.botao), atualizacaoAConferir: f(x => (x.vide || x.juris) && !x.conferido), dispositivoComVideADI: f(x => x.vide), semPopup: f(x => !x.pop), popupSemTexto: f(x => x.pop && !x.texto), semCampoArtigo: o.semArtigo, comBadgeAtualizada: f(x => x.badge) }, null, 1));
+    semBotaoNaPlataforma: f(x => !x.botao), atualizacaoAConferir: f(x => (x.vide || x.juris) && !x.conferido), dispositivoComVideADI: f(x => x.vide), semPopup: f(x => !x.pop), popupSemTexto: f(x => x.pop && !x.texto), semCampoArtigo: o.semArtigo, comBadgeAtualizada: f(x => x.badge), mcSemBlocoErros: o.mcSemErros }, null, 1));
   await b.close(); srv.kill(); process.exit(0);
 })();

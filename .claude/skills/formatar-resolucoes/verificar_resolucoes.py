@@ -49,6 +49,7 @@ def main():
         pos = -1
         for l in linhas:
             s = l.strip()
+            if s.startswith('- ') or s.startswith('⚠️ ERROS'): continue   # bloco ERROS (múltipla escolha)
             if s.startswith('🏷'):
                 erros.append(f'#{i} tem linha 🏷️ (perfil não entra)'); continue
             k = next((j for j, sim in enumerate(ORDEM) if s.startswith(sim)), None)

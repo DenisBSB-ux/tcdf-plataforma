@@ -390,6 +390,7 @@ function resumoFlashDaResolucao(q){
   return String((q && q.r) || '').split(/\n+/).filter(l=>/^\s*(?:📌|🔑|💡)/u.test(l)).join('\n');
 }
 function simbolosComDica(html){
+  html = String(html).replace(/<p>(\s*)(⚠)(\uFE0F?)(?=\s*ERROS)/g, (m, sp, sim, vs)=> `<p>${sp}<span class="sim-dica" tabindex="0" role="note" data-dica="Erros: por que cada alternativa errada está errada.">${sim+vs}</span>`);
   return String(html).replace(/<p>(\s*)(🏷|⚖|📌|🔑|⚠|🪤|💡)(\uFE0F?)/g, (m, sp, sim, vs)=>
     `<p>${sp}<span class="sim-dica" tabindex="0" role="note" data-dica="${SIMBOLOS_RESOLUCAO[sim].replace(/"/g,'&quot;')}">${sim==='🪤' ? '⚠️' : sim+vs}</span>`);  // a armadilha (🪤 no arquivo) aparece com o símbolo de atenção
 }
@@ -400,9 +401,18 @@ function marcadoresParaHtml(h){
 function formatarTextoComDestaque(texto, palavrasExtras){
   if(!texto) return '';
   const comQuebras = quebrarItensAlfabeticos(texto);
-  // cada linha que abre com um símbolo da legenda (🏷️ ⚖️ 📌 🔑 ⚠️ 🪤 💡) é UM parágrafo, mesmo com mais de uma frase
-  const frases = comQuebras.split(/\n+/).flatMap(l => /^\s*(?:🏷|⚖|📌|🔑|⚠|🪤|💡)/u.test(l) ? [l.trim()] : dividirEmFrases(l)).filter(Boolean);
-  return simbolosComDica(frases.map(f => `<p>${marcadoresParaHtml(destacarPalavrasChave(f, palavrasExtras))}</p>`).join(''));
+  // cada linha que abre com um símbolo da legenda (🏷️ ⚖️ 📌 🔑 ⚠️ 🪤 💡) é UM parágrafo, mesmo com mais de uma frase;
+  // linhas "- ..." em sequência (bloco "⚠️ ERROS": por que cada alternativa errada está errada) viram uma lista
+  let html = '', lista = [];
+  const fechaLista = () => { if(lista.length){ html += '<ul class="res-erros">' + lista.map(i => `<li>${marcadoresParaHtml(destacarPalavrasChave(i, palavrasExtras))}</li>`).join('') + '</ul>'; lista = []; } };
+  comQuebras.split(/\n+/).forEach(l => {
+    if(/^\s*[-•]\s+/.test(l)){ lista.push(l.replace(/^\s*[-•]\s+/, '')); return; }
+    fechaLista();
+    const frases = /^\s*(?:🏷|⚖|📌|🔑|⚠|🪤|💡)/u.test(l) ? [l.trim()] : dividirEmFrases(l);
+    frases.filter(Boolean).forEach(f => { html += `<p>${marcadoresParaHtml(destacarPalavrasChave(f, palavrasExtras))}</p>`; });
+  });
+  fechaLista();
+  return simbolosComDica(html);
 }
 // edição salva sem os pop-ups dos símbolos (o atributo data-dica não passa pelo sanitizador): desfaz o invólucro
 // e deixa simbolosComDica recolocá-lo na hora de exibir
