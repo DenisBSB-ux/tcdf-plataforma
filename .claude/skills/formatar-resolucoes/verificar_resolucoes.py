@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Confere o arquivo final de uma matéria contra o original.
 
-Uso: python3 verificar_resolucoes.py <original.md> <final.md> [--gabaritos-alterados 3,17,...]
+Uso: python3 verificar_resolucoes.py <original.md> <final.md> [--gabaritos-alterados 3,17,...] [--removidas 5,9,...]
+  (--removidas: índices do ORIGINAL, a partir de 0, das questões tiradas na redução; --gabaritos-alterados usa os índices do arquivo FINAL)
 
 Verifica:
-  1. mesmo número de questões e mesmos IDs, na mesma ordem;
+  1. mesmo número de questões e mesmos IDs (quando o arquivo tem ID), na mesma ordem;
   2. enunciados idênticos; gabaritos idênticos (exceto os índices declarados em --gabaritos-alterados);
   3. o arquivo, sem as seções Resolução/Resumo Flash e sem os campos Artigo/Sinal/Armadilha/Trecho/Explicação/
      Origem da classificação, é idêntico ao original (só as adições declaradas passam);
@@ -17,7 +18,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from montar_resolucoes import ler
 
 ORDEM = ['⚖', '📌', '🔑', '⚠', '🪤', '💡']
-CAMPOS_ADICIONAIS = ('Artigo', 'Sinal', 'Armadilha', 'Trecho', 'Explicação', 'Origem da classificação')
+CAMPOS_ADICIONAIS = ('ID', 'Artigo', 'Sinal', 'Armadilha', 'Trecho', 'Explicação', 'Origem da classificação')
 
 
 def mascara(txt):
@@ -25,6 +26,9 @@ def mascara(txt):
     txt = re.sub(r'(?ms)^### Resumo Flash\n.*?(?=\n---|\Z)', '', txt)
     for c in CAMPOS_ADICIONAIS:
         txt = re.sub(r'(?m)^\*\*' + c + r':\*\*.*\n', '', txt)
+    txt = re.sub(r'(?m)^\*\*Ano:\*\* [^|\n]*?\s*\| ', '', txt)          # Ano redundante pode sair (padrão de entrega)
+    txt = re.sub(r'(?m)^\*\*Gabarito:\*\*.*\n?', '', txt)             # gabarito é conferido à parte (--gabaritos-alterados)
+    txt = re.sub(r'(?m)^## QUESTÃO \d+', '## QUESTÃO', txt)            # a redução renumera
     return re.sub(r'\n{3,}', '\n\n', txt).strip()
 
 
@@ -35,11 +39,17 @@ def main():
     alt = set()
     if '--gabaritos-alterados' in sys.argv:
         alt = {int(x) for x in sys.argv[sys.argv.index('--gabaritos-alterados') + 1].split(',') if x}
+    rem = set()
+    if '--removidas' in sys.argv:
+        rem = {int(x) for x in sys.argv[sys.argv.index('--removidas') + 1].split(',') if x}
     to, _, Qo = ler(ori); tf, _, Qf = ler(fin); erros = []
+    if rem:   # redução: tira do original as questões removidas (texto e lista) e os índices de --gabaritos-alterados são os do arquivo FINAL
+        pt = re.split(r'(?m)^(## QUESTÃO \d+\s*$)', to); bl = [pt[k] + pt[k + 1] for k in range(1, len(pt), 2)]
+        to = pt[0] + ''.join(b for i, b in enumerate(bl) if i not in rem); Qo = [q for i, q in enumerate(Qo) if i not in rem]
     if len(Qo) != len(Qf):
         erros.append(f'nº de questões: original {len(Qo)} × final {len(Qf)}')
     for i, (o, f) in enumerate(zip(Qo, Qf)):
-        if o['id'] != f['id']: erros.append(f'#{i} ID diferente: {o["id"]} × {f["id"]}')
+        if o['id'] and f['id'] and o['id'] != f['id']: erros.append(f'#{i} ID diferente: {o["id"]} × {f["id"]}')
         if o['enun'] != f['enun']: erros.append(f'#{i} enunciado alterado ({f["id"]})')
         if o['gab'] != f['gab'] and i not in alt:
             erros.append(f'#{i} GABARITO alterado sem declaração: {o["gab"]} → {f["gab"]} ({f["id"]})')
