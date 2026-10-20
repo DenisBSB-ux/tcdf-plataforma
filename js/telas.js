@@ -933,6 +933,7 @@ function renderMateriaTopStrip(){
         return `<button class="subject-tab materia-tab-btn ${ativo?'active':''} ${concluidaM?'materia-concluida':''}" data-macro-materia="${esc(m)}">
           <span class="materia-tab-row1"><span>${esc(m)}</span><span class="cnt">${n}</span></span>
           <span class="materia-tab-stats">${statsTxt}</span>
+          <span class="materia-tab-stats">${atualizacaoLegalBadge(m)}</span>
         </button>`;
       }).join('')}
     </div>` : ''}
@@ -1297,6 +1298,7 @@ function renderLanding(){
   return `
   <div class="landing-hero">
     <h2 class="section-title">${esc(STATE.materia || 'Painel do candidato')}${STATE.tema!=='todos' ? ` <span class="materia-assunto-label" style="font-size:14px;">· ${esc(STATE.tema)}</span>` : ''} ${qtdSimuladosGerados>0 ? `<span class="sim-count-badge">${qtdSimuladosGerados}</span>` : ''}</h2>
+    ${STATE.materia ? `<div style="margin-top:6px;">${atualizacaoLegalBadge(STATE.materia)}</div>` : ''}
     ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin-bottom:8px;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
   </div>
   ${renderEstatisticasPorMateria()}
