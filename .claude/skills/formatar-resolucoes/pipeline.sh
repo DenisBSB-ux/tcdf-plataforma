@@ -1,7 +1,7 @@
 #!/bin/bash
 # Pipeline de montagem de uma lista (rodar na pasta de trabalho, com original.md, res/bNN.py e limite_destaques.py ao lado).
 # build -> destaques do 📌 (1 ==fundo== + 1 **negrito**) -> final2.md. Item Errado força 🪤 vazia (padrão: sem 🪤 em Errado). Depois: reduzir, limpar, classificar (após "sim"), verificações.
-cd "$(dirname "$0")" 2>/dev/null; cd "${1:-.}"
+cd "${1:-.}"
 SK=/home/user/tcdf-plataforma/.claude/skills/formatar-resolucoes
 rm -rf res2; mkdir -p res2
 python3 - <<'P'
