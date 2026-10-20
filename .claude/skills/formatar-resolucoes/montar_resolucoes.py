@@ -8,6 +8,8 @@ Uso:
   python3 montar_resolucoes.py faltantes <arquivo.md>                  # itens certo/errado sem classificação (Sinal/Armadilha)
   python3 montar_resolucoes.py classificar <arquivo.md> <proposta.py> <saida.md>   # aplica a classificação APROVADA pelo usuário
   python3 montar_resolucoes.py repetidas <arquivo.md> [limiar=0.85]    # questões quase repetidas (enunciado)
+  python3 montar_resolucoes.py reduzir <arquivo.md> <idx,idx,...> <saida.md>        # remove as questões (índices a partir de 0) e renumera "## QUESTÃO n"
+  python3 montar_resolucoes.py limpar <arquivo.md> <saida.md>          # padrão de entrega: tira **ID:**, **Explicação:** e o **Ano:** redundante (quando o Banca/Cargo já traz o ano)
 
 Negrito só nos termos mais relevantes (📌 até 2; ⚠️/🪤 até 1; 🔑 sem negrito); o termo mais importante do 📌 vira ==fundo amarelo==.
 Cada lote em <pasta_lotes>/bNN.py define  R = { indice: (ess, [palavras-chave], base, atencao, armadilha, macete) }
@@ -174,6 +176,23 @@ if __name__ == '__main__':
                 b, ok = re.subn(r'(?m)^(\*\*Cobrança:\*\*.*\n)', lambda m: m.group(1) + novos, b, count=1); assert ok == 1; n += 1
             out += [cab, b]
         open(sys.argv[4], 'w', encoding='utf-8').write(''.join(out)); print('classificadas:', n)
+    elif cmd == 'reduzir':
+        txt, partes, Q = ler(sys.argv[2]); rm = {int(x) for x in sys.argv[3].split(',') if x.strip()}
+        blocos = [(partes[k], partes[k + 1]) for k in range(1, len(partes), 2)]; keep = [bl for i, bl in enumerate(blocos) if i not in rm]
+        out = [partes[0]]
+        for n, (cab, b) in enumerate(keep, 1): out += [f'## QUESTÃO {n}', b]
+        open(sys.argv[4], 'w', encoding='utf-8').write(''.join(out)); print(f'removidas {len(blocos) - len(keep)}; restam {len(keep)}')
+    elif cmd == 'limpar':
+        txt, partes, Q = ler(sys.argv[2]); out = [partes[0]]; ni = na = ne = 0
+        for k in range(1, len(partes), 2):
+            cab, b = partes[k], partes[k + 1]
+            b, c = re.subn(r'(?m)^\*\*ID:\*\*.*\n', '', b); ni += c
+            b, c = re.subn(r'(?m)^\*\*Explicação:\*\*.*\n', '', b); ne += c
+            bc = re.search(r'\*\*Banca/Cargo:\*\*\s*(.*)', b); tem_ano = bool(bc and re.search(r'\b(19|20)\d{2}\b', bc.group(1)))
+            m = re.search(r'(?m)^\*\*Ano:\*\* ([^|\n]*?)\s*\| ', b)
+            if m and (tem_ano or not re.fullmatch(r'\d{4}', m.group(1).strip())): b = b.replace(m.group(0), '', 1); na += 1
+            out += [cab, b]
+        open(sys.argv[3], 'w', encoding='utf-8').write(''.join(out)); print(f'ID removidos: {ni} · Explicação removidas: {ne} · Ano redundante removido: {na}')
     elif cmd == 'repetidas':
         import difflib
         txt, partes, Q = ler(sys.argv[2]); lim = float(sys.argv[3]) if len(sys.argv) > 3 else 0.85
