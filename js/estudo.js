@@ -211,8 +211,8 @@ function renderQuiz(){
     <div class="case-columns ${revelado?'revelado':'nao-revelado'}" style="zoom:${STATE.zoomLevel};">
       <div class="case-col-left">
         <div class="case-body">
-          <div class="enunciado ${isInedita(q)?'is-inedita':''} ${revelado?'com-selo':''}">
-            ${revelado ? `<div class="tag-cobranca-corner">${cobrancaTag(q)}</div>` : ''}
+          <div class="enunciado ${isInedita(q)?'is-inedita':''} ${(revelado || questaoAtualizadaAviso(q))?'com-selo':''}">
+            ${(revelado || questaoAtualizadaAviso(q)) ? `<div class="tag-cobranca-corner">${revelado ? cobrancaTag(q) : ''}${questaoAtualizadaAviso(q)}</div>` : ''}
             ${blocoEnunciadoEditavel(q)}
           </div>
         </div>
@@ -416,7 +416,6 @@ function renderResolucao(q, resposta, quiz){
     </span>
   </div>
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
-  ${typeof questaoAtualizadaAviso==='function' ? questaoAtualizadaAviso(q) : ''}
   <div class="resolucao-box ${tintClass} resolucao-unica">
     ${armPainelHtml(q)}
     ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(limparResolucao(q.r), palavrasChave))}
