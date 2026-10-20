@@ -3,10 +3,14 @@
    re = regex (sem distinção de maiúsculas) aplicada ao nome da matéria; data = AAAA-MM-DD da última conferência;
    resumo = o que foi conferido/mudou. Matéria sem entrada (ou sem data) aparece como "sem conferência registrada". */
 const ATUALIZACOES_LEGAIS = [
-  { re: '8\\.?429|9\\.?784|2\\.?834|improbidade', data: '2026-10-20', resumo: 'ADIs 7156/7236 (STF, 1º/7/2026): perda da função (art. 12 §1º), prescrição (art. 23 §5º), indisponibilidade (art. 16), ANPC (art. 17-B §3º). Tema 1199 e ADIs 7042/7043 mantidos.' },
-  { re: '14\\.?133|licita|contrata', data: '', resumo: '' },
-  { re: 'IN (n[ºo°] ?)?5\\b|instru[çc][ãa]o normativa', data: '', resumo: '' },
-  { re: '44\\.?330', data: '', resumo: '' },
+  { re: '8\\.?429|9\\.?784|2\\.?834|improbidade', data: '2026-10-20', resumo: 'ADIs 7156/7236 (STF, 1º/7/2026): perda da função (art. 12 §1º), prescrição (art. 23 §5º), indisponibilidade (art. 16), ANPC (art. 17-B §3º). Tema 1199 e ADIs 7042/7043 mantidos. Lei 9.784: sem alteração localizada; Súmula 633 do STJ vigente.' },
+  { re: '14\\.?133|licita|contrat', data: '2026-10-20', resumo: 'Sem alteração legislativa da Lei 14.133 localizada em 2026. Valores reajustados pelo Decreto 12.807/2025 (+4,41%, desde 1º/1/2026; fonte secundária, conferir no DOU).' },
+  { re: 'IN (n[ºo°] ?)?5\\b|instru[çc][ãa]o normativa', data: '2026-10-20', resumo: 'IN SEGES 5/2017 segue vigente (gov.br: atualizada em 14/4/2026). Nova IN SEGES/MGI 147/2026 (reembolso-creche em dedicação exclusiva de mão de obra).' },
+  { re: '44\\.?330', data: '2026-10-20', resumo: 'Decreto 44.330/2023 foi alterado pelos Decretos 46.308/2024 e 47.386/2025 (e há referência ao Decreto 48.509/2026): conferir se o texto da plataforma já os incorpora.' },
+  { re: 'regimento|RI TCDF|TCDF|org[âa]nica|controle externo', data: '2026-10-20', resumo: 'Sem alteração de 2026 localizada no Regimento Interno (Res. 296/2016) nem na Lei Orgânica (LC 1/1994); fonte oficial não acessada.' },
+  { re: 'tribut|ICMS|ISS|IBS|CBS|reforma|9\\.?430|lucro', data: '2026-10-20', resumo: 'Reforma tributária: LC 214/2025 regulamentada em 2026 (decretos e resoluções do CGIBS), LC 227/2026 e LC 225/2026 alteraram a Lei 9.430. Conferir ICMS/ISS (LC 87/LC 116) no texto consolidado.' },
+  { re: 'previd|109', data: '2026-10-20', resumo: 'LC 109/2001: última alteração detectada em 15/6/2026 (dispositivo não identificado). STJ: art. 69 §1º afasta exigência de plano para todos os empregados (Lei 8.212, art. 28 §9º, "p").' },
+  { re: 'constitucional|CF|direitos fundamentais', data: '2026-10-20', resumo: 'Emendas constitucionais de 2026 não localizadas em fonte confiável; conferir no Planalto.' },
 ];
 function atualizacaoLegalDaMateria(m){
   const e = ATUALIZACOES_LEGAIS.find(x => new RegExp(x.re, 'i').test(m || ''));
