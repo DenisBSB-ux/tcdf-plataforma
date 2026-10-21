@@ -20,7 +20,8 @@ def processa(q,manual=None):
         # (a2) linhas que só diferem pelo trecho riscado (mesmo texto fora do ~~…~~): viram uma linha sem o riscado
         nucleo = lambda t: re.sub(r'\s+', ' ', re.sub(r',? ?~~.+?~~', '', t)).strip()
         cont = collections.Counter(nucleo(t) for _, t in nl)
-        nl = [(L, nucleo(t) if cont[nucleo(t)] > 1 else t) for L, t in nl]
+        # (desligado 21/10/2026: o usuário quer a correção e o erro de CADA alternativa; não apagar o riscado por letra)
+        #         nl = [(L, nucleo(t) if cont[nucleo(t)] > 1 else t) for L, t in nl]
         # (b) junta linhas com o mesmo texto
         grupos=collections.OrderedDict()
         for L,t in nl: grupos.setdefault(t,[]).append(L)
