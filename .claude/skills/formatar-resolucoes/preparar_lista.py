@@ -70,7 +70,9 @@ def main():
         erros = re.findall(r'^- Letras? .*', q, re.M)
         out.append(f'M{n} (gab {gab(q)}): {enun(q)[:300]}')
         for L, x in alts: out.append(f'   {L}) {x[:200]}')
-        out.append('   ERROS_ATUAIS:'); out += ['     ' + e for e in erros]; out.append('')
+        out.append('   ERROS_ATUAIS:'); out += ['     ' + e for e in erros]
+        errad = [L for L, _ in alts if L != gab(q)]
+        out.append('   LETRAS_QUE_PRECISAM_DE_LINHA: ' + ', '.join(errad) + ('' if erros else '  (a questão ainda não tem bloco ERROS: escreva todas)')); out.append('')
     open(os.path.join(pasta, 'tarefas.md'), 'w', encoding='utf-8').write('\n'.join(out))
     open(os.path.join(pasta, 'modelo_respostas.py'), 'w', encoding='utf-8').write(
         "# E = { nº: ('trecho literal e único no enunciado', 'palavra ou expressão que torna o item certo') }  (use ' | ' para várias partes, mesmo nº de partes)\nE = {}\n"
