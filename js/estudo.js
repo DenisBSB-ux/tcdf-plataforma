@@ -142,7 +142,8 @@ function renderQuiz(){
     optionsHtml = chuteHint + q.alt.map((a,idx)=>{
       const letraUp = a.letra.toUpperCase();
       const customAlt = EDICOES_USUARIO[uidAtual] && EDICOES_USUARIO[uidAtual]['alt'+idx] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uidAtual]['alt'+idx]));
-      const textoHtml = customAlt || esc(a.texto);
+      let textoHtml = customAlt || esc(a.texto);
+      if(!emEdicaoAlt && !customAlt && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uidAtual] && String(gabaritoEfetivo(q)||'').toUpperCase()===letraUp) textoHtml = destacarChavesNoEnunciado(textoHtml, q);   // alternativa correta: palavras-chave da justificativa
       if(emEdicaoAlt){
         return `<div class="answer-opt-edit">
           <span class="letter">${letraUp}</span>
@@ -226,11 +227,11 @@ function renderQuiz(){
     <div class="quiz-toolbar">
       <div class="toolbar-btn-row" role="toolbar" aria-label="Navegação e ferramentas da questão">
         <div class="toolbar-grupo" role="group" aria-label="Navegar entre questões">
-          ${btnBarra('btn-prev','esq','Questão anterior',{atalho:'← ou Shift',off:quiz.idx===0})}
+          ${btnBarra('btn-prev','esq','Questão anterior',{atalho:'←',off:quiz.idx===0})}
           <span class="q-jump-label" aria-live="polite">${quiz.idx+1} / ${quiz.queue.length}</span>
           ${btnBarra('btn-next-arrow','dir','Próxima questão',{atalho:'→',off:quiz.idx===quiz.queue.length-1})}
           ${btnBarra('btn-jump-ultima-respondida','dupla','Próxima não respondida',{atalho:'N',off:!quiz.queue.some((u,i)=>i!==quiz.idx && !quiz.respostas[u])})}
-          ${btnBarra('btn-jump-proximo-assunto','assunto','Próximo assunto',{atalho:'S',off:idxProximoAssunto<0})}
+          ${btnBarra('btn-jump-proximo-assunto','assunto','Próximo assunto',{off:idxProximoAssunto<0})}
         </div>
         <span class="toolbar-divider" role="separator"></span>
         <div class="toolbar-grupo" role="group" aria-label="Ferramentas">
@@ -358,6 +359,14 @@ function editorToolbarHtml(uid){
 function botaoEditarTudo(uid){
   return `<button class="btn-editar-campo btn-ui" data-uid="${esc(uid)}" title="Editar todos os campos desta questão: enunciado, armadilha, justificativa e resumo flash">✏️ Editar</button>`;
 }
+// destaca no enunciado (HTML já escapado) as palavras-chave 🔑 da justificativa, só no texto entre tags
+function destacarChavesNoEnunciado(html, q){
+  const linha = String(q.r||'').split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'');
+  const kws = linha.split(/\s*[·|]\s*/).map(k=>k.trim()).filter(k=>k.length>=4);
+  if(!kws.length || /arm-chave|arm-trecho/.test(html)) return html;
+  const re = new RegExp('(?<![\\p{L}\\p{N}])(?:' + kws.sort((x,y)=>y.length-x.length).map(k=>esc(k).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+')).join('|') + ')(?![\\p{L}\\p{N}])', 'giu');
+  return String(html).replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(re, x => `<mark class="arm-chave">${x}</mark>`));
+}
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
   const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
@@ -369,6 +378,7 @@ function blocoEnunciadoEditavel(q){
     const a = armEfetiva(q);
     if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid, String(q.r||'').split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'').split(' · '), a.correcao ? { literal:true, correcao:a.correcao } : undefined);
     else if(a && a.classificada && !a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid, null, { literal:true, classe:'arm-chave' });   // item certo: só as palavras-chave que levam à resposta
+    else conteudo = destacarChavesNoEnunciado(conteudo, q);   // múltipla escolha e itens sem trecho: as palavras-chave (🔑) da justificativa
   }
   return `
     <div class="campo-editavel-header" style="justify-content:flex-end;">
@@ -419,7 +429,7 @@ function renderResolucao(q, resposta, quiz){
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   <div class="resolucao-box ${tintClass} resolucao-unica">
     ${armPainelHtml(q)}
-    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(limparResolucao(q.r), palavrasChave))}
+    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(String(limparResolucao(q.r)||'').split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).join('\n'), palavrasChave))}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
     : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}
