@@ -52,6 +52,7 @@ def main():
             d = M.get(n)
             if not d: erros.append((n, 'falta M')); continue
             if set(d) != set(esperadas): erros.append((n, 'letras', esperadas, sorted(d))); continue
+            d = {L: re.sub(r'(?<=[ ,])([a-e])(?=\)[\s.;,)]|\)$)', r'"\1"', t) for L, t in d.items()}   # "a)" no meio do texto vira alínea entre aspas (o leitor trataria como alternativa)
             corpo = '\n'.join('- Letra %s: %s' % (L, d[L]) for L in sorted(d)) + '\n'
             if tem:
                 q = re.sub(r'(?m)^- Letras? [A-E](?:(?:, | e )[A-E])*: .*\n?', '', q)
