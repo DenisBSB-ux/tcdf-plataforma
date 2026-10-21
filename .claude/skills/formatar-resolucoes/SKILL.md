@@ -8,6 +8,7 @@ description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF
 **Este é o modelo fechado** (Lei 14.133 e Análise de Dados e IA já seguem). Aplique-o igual a toda matéria nova, sem perguntar de novo o que já está decidido aqui. Exemplos reais aprovados: `exemplos.md` (nesta pasta).
 
 ## Decisões já tomadas pelo usuário (não perguntar de novo)
+- **Classificação (Sinal/Armadilha) dos itens sem classificação: pré-autorizada (21/10/2026).** Em qualquer lista, proponha e aplique sem esperar novo "sim" (campo `Origem da classificação: ia`), usando o código de cobrança e o formato do erro (Trecho × Correção); relate no fim quantos itens foram classificados. Vale só para a classificação; a regra sobre gabarito não muda.
 - Resolução **sem** linha de perfil (🏷️): a plataforma já mostra o sinal/a armadilha no painel "Armadilha da banca".
 - **Sem** `### Resumo Flash`: o script remove (padrão da Lei 14.133). Só mantenha com `--manter-resumo-flash` se o usuário pedir.
 - "🔁 Substituir por matéria" usa sempre resolução, resumo flash e gabarito do arquivo, sem perguntas extras.
