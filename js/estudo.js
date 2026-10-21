@@ -143,7 +143,7 @@ function renderQuiz(){
       const letraUp = a.letra.toUpperCase();
       const customAlt = EDICOES_USUARIO[uidAtual] && EDICOES_USUARIO[uidAtual]['alt'+idx] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uidAtual]['alt'+idx]));
       let textoHtml = customAlt || esc(a.texto);
-      if(!emEdicaoAlt && !customAlt && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uidAtual] && String(gabaritoEfetivo(q)||'').toUpperCase()===letraUp) textoHtml = destacarChavesNoEnunciado(textoHtml, q);   // alternativa correta: palavras-chave da justificativa
+      if(!emEdicaoAlt && !customAlt && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uidAtual] && String(gabaritoEfetivo(q)||'').toUpperCase()===letraUp) textoHtml = destacarChavesNoEnunciado(textoHtml, q, 'alt');   // alternativa correta: palavras-chave da justificativa
       if(emEdicaoAlt){
         return `<div class="answer-opt-edit">
           <span class="letter">${letraUp}</span>
@@ -359,16 +359,53 @@ function editorToolbarHtml(uid){
 function botaoEditarTudo(uid){
   return `<button class="btn-editar-campo btn-ui" data-uid="${esc(uid)}" title="Editar todos os campos desta questão: enunciado, armadilha, justificativa e resumo flash">✏️ Editar</button>`;
 }
-// destaca no enunciado (HTML já escapado) as palavras-chave 🔑 da justificativa, só no texto entre tags
-function destacarChavesNoEnunciado(html, q){
+// ---- destaque das palavras-chave: cada palavra é destacada UMA vez só, entre enunciado, alternativa correta e justificativa ----
+function _normDest(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
+// base do destaque: palavras-chave (🔑) + termos em negrito/marca-texto da essência (📌)
+function kwsDestaqueDaQuestao(q){
   const linhas = String(q.r||'').split(/\n+/);
   const linha = linhas.filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'');
-  // base do destaque: palavras-chave (🔑) + termos em negrito/marca-texto da essência (📌)
   const ess = []; linhas.filter(l=>/^\s*📌/u.test(l)).forEach(l=>{ l.replace(/\*\*(.+?)\*\*|==(.+?)==/g,(m,a,b)=>{ ess.push(a||b); return m; }); });
-  const kws = linha.split(/\s*[·|]\s*/).concat(ess).map(k=>k.trim()).filter(k=>k.length>=4);
+  return linha.split(/\s*[·|]\s*/).concat(ess).map(k=>k.trim()).filter(k=>k.length>=4);
+}
+function _alternativaCorreta(q){
+  if(q.t!=='MC' || !q.alt) return '';
+  const g = String(gabaritoEfetivo(q)||'').toUpperCase(); const a = q.alt.find(x=>x.letra.toUpperCase()===g); return a ? a.texto : '';
+}
+// destaca (HTML já escapado) só a 1ª ocorrência de cada palavra-chave, só no texto entre tags;
+// onde='alt': ignora as palavras já destacadas no enunciado
+function destacarChavesNoEnunciado(html, q, onde){
+  let kws = kwsDestaqueDaQuestao(q);
+  if(onde==='alt'){ const en = _normDest(q.q); kws = kws.filter(k=>!en.includes(_normDest(k))); }
   if(!kws.length || /arm-chave|arm-trecho/.test(html)) return html;
-  const re = new RegExp('(?<![\\p{L}\\p{N}])(?:' + kws.sort((x,y)=>y.length-x.length).map(k=>esc(k).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+')).join('|') + ')(?![\\p{L}\\p{N}])', 'giu');
-  return String(html).replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(re, x => `<mark class="arm-chave">${x}</mark>`));
+  kws = [...new Set(kws)].sort((x,y)=>y.length-x.length);
+  let out = String(html);
+  kws.forEach(k=>{
+    const re = new RegExp('(?<![\\p{L}\\p{N}])' + esc(k).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+') + '(?![\\p{L}\\p{N}])', 'iu');
+    let feito = false, dentro = false;
+    out = out.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => {
+      if(tag){ if(/^<mark\b/i.test(tag)) dentro = true; else if(/^<\/mark/i.test(tag)) dentro = false; return tag; }
+      if(feito || dentro) return txt;
+      return txt.replace(re, x => { feito = true; return `<mark class="arm-chave">${x}</mark>`; });
+    });
+  });
+  return out;
+}
+// termos já destacados no enunciado/alternativa correta (para não repetir na justificativa)
+function termosJaDestacados(q){
+  const en = _normDest(q.q), alt = _normDest(_alternativaCorreta(q)); const usados = [];
+  kwsDestaqueDaQuestao(q).forEach(k=>{ const n = _normDest(k); if(en.includes(n) || alt.includes(n)) usados.push(n); });
+  try{ const a = armEfetiva(q); if(a && a.classificada && a.trecho) String(a.trecho).split(/\s*\|\s*/).forEach(t=>{ const n=_normDest(t); if(n) usados.push(n); }); }catch(_){}
+  return usados;
+}
+// tira o negrito/marca-texto da essência (📌) nos termos que já estão destacados no enunciado ou na alternativa
+function semDestaqueRepetido(q, resolucao){
+  if(edicaoAtual===q.uid) return resolucao;
+  const usados = termosJaDestacados(q); if(!usados.length) return resolucao;
+  return String(resolucao||'').split('\n').map(l=>{
+    if(!/^\s*📌/u.test(l)) return l;
+    return l.replace(/\*\*(.+?)\*\*|==(.+?)==/g,(m,a,b)=>{ const t = a||b, n = _normDest(t); return usados.some(u=>u.includes(n)||n.includes(u)) ? t : m; });
+  }).join('\n');
 }
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
@@ -381,7 +418,7 @@ function blocoEnunciadoEditavel(q){
     const a = armEfetiva(q);
     if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid, String(q.r||'').split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'').split(' · '), a.correcao ? { literal:true, correcao:a.correcao } : undefined);
     else if(a && a.classificada && !a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid, null, { literal:true, classe:'arm-chave' });   // item certo: só as palavras-chave que levam à resposta
-    else conteudo = destacarChavesNoEnunciado(conteudo, q);   // múltipla escolha e itens sem trecho: as palavras-chave (🔑) da justificativa
+    else conteudo = destacarChavesNoEnunciado(conteudo, q, 'enun');   // múltipla escolha e itens sem trecho: as palavras-chave (🔑) da justificativa
   }
   return `
     <div class="campo-editavel-header" style="justify-content:flex-end;">
@@ -432,7 +469,7 @@ function renderResolucao(q, resposta, quiz){
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   <div class="resolucao-box ${tintClass} resolucao-unica">
     ${armPainelHtml(q)}
-    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(String(limparResolucao(q.r)||'').split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).join('\n'), palavrasChave))}
+    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(String(limparResolucao(semDestaqueRepetido(q, q.r))||'').split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).join('\n'), palavrasChave))}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
     : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}
