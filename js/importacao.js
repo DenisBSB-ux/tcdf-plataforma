@@ -686,6 +686,10 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
     ALL_QUESTIONS = ALL_QUESTIONS.filter(q => !(q.materia===materiaNome && q.origem!=='embutido'));
   }
   const slug = slugify(materiaNome);
+  if(modo === 'substituir'){   // sobras de edições (aparelho ou nuvem) com uid desta matéria caem em outra questão quando o número muda
+    Object.keys(EDICOES_USUARIO).filter(u => u.startsWith(slug+'-')).forEach(u => delete EDICOES_USUARIO[u]);
+    if(opSub.descartarGab) Object.keys(GABARITOS_ALTERADOS).filter(u => u.startsWith(slug+'-')).forEach(u => delete GABARITOS_ALTERADOS[u]);
+  }
   const existingUids = new Set(ALL_QUESTIONS.map(q=>q.uid));
   let added = 0, puladasPorJaExistir = 0, progressosMantidos = 0;
   results.forEach(r=>{

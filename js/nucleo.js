@@ -351,11 +351,34 @@ function marcarDuplicatas(){
     });
   });
 }
+/* edição manual órfã: o uid é "matéria-número" e o número muda entre arquivos; uma edição antiga (guardada no aparelho ou na nuvem)
+   cairia em OUTRA questão e mostraria o enunciado, a resolução ou o resumo de uma questão diferente. A edição só vale se o enunciado
+   editado ainda é parecido com o da questão (palavras de 4+ letras em comum). */
+function edicaoCorrespondeAQuestao(q, ed){
+  if(!q || !ed || typeof ed.q !== 'string') return true;
+  const palavras = t => new Set(String(t||'').replace(/<[^>]*>/g,' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().match(/[a-z0-9]{4,}/g) || []);
+  const A = palavras(ed.q), B = palavras(q.q);
+  if(A.size < 3 || B.size < 3) return true;
+  let comum = 0; A.forEach(w => { if(B.has(w)) comum++; });
+  return comum / A.size >= 0.5;
+}
+function descartarEdicoesOrfas(){
+  try{
+    let n = 0;
+    Object.keys(EDICOES_USUARIO).forEach(uid => {
+      const q = BY_UID[uid];
+      if(q && !edicaoCorrespondeAQuestao(q, EDICOES_USUARIO[uid])){ delete EDICOES_USUARIO[uid]; n++; }
+    });
+    if(n && typeof salvarEdicoesUsuario === 'function') salvarEdicoesUsuario();
+    return n;
+  }catch(_){ return 0; }
+}
 function reindex(){
   ALL_QUESTIONS.forEach(sanitizarFonteEmbutida);
   ALL_QUESTIONS.forEach(aplicarTemaDoEdital);
   marcarDuplicatas();
   BY_UID = Object.fromEntries(ALL_QUESTIONS.map(q => [q.uid, q]));
+  descartarEdicoesOrfas();
 }
 reindex();
 
