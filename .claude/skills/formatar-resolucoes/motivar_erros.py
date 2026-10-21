@@ -28,5 +28,7 @@ def main():
             t = reescreve(mm.group(2)); n += 1
             out += [f'- Letra {L}: {t}' for L in re.findall(r'[A-E]', mm.group(1))]
         return m.group(1) + '\n'.join(out) + '\n'
-    open(sai, 'w', encoding='utf-8').write(re.sub(r'(?m)^(⚠️ ERROS\n)((?:- .*\n?)+)', troca, txt)); print('linhas de ERROS no formato "Errada; motivo":', n)
+    out = re.sub(r'(?m)^(⚠️ ERROS\n)((?:- .*\n?)+)', troca, txt)
+    out = re.sub(r'(?<!\n)\n---', '\n\n---', out)    # linha em branco antes do separador (evita '---' dentro da Resolução)
+    open(sai, 'w', encoding='utf-8').write(out); print('linhas de ERROS no formato "Errada; motivo":', n)
 main()
