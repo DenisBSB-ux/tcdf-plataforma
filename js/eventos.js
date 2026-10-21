@@ -638,11 +638,10 @@ document.addEventListener('keydown', (e)=>{
 
   if(!STATE.quiz || STATE.quiz.finished) return;
   const quiz = STATE.quiz;
-  if(e.key==='ArrowLeft' || e.key==='Shift'){ e.preventDefault(); goPrev(); return; }
+  if(e.key==='ArrowLeft'){ e.preventDefault(); goPrev(); return; }
   if(e.key==='ArrowRight'){ e.preventDefault(); goNext(); return; }
   if(!e.ctrlKey && !e.metaKey && !e.altKey){
     if(e.key==='n' || e.key==='N'){ e.preventDefault(); goNextNaoRespondida(); return; }
-    if(e.key==='s' || e.key==='S'){ e.preventDefault(); irParaProximoAssunto(); return; }
   }
   const uid = quiz.queue[quiz.idx];
   const q = BY_UID[uid];
