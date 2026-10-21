@@ -64,7 +64,7 @@ def main():
             q = processa(q)
         Q[n-1] = q
     for x in erros: print('PROBLEMA', x)
-    if avisos: print('SEM CLASSIFICAÇÃO (propor ao usuário):', avisos)
+    if avisos: print('SEM CLASSIFICAÇÃO (classificar_auto.py cuida; pré-autorizado):', avisos)
     open(saida, 'w', encoding='utf-8').write(head + '\n' + '\n'.join(Q))
     print('itens:', len(Q), '| problemas:', len(erros)); sys.exit(1 if erros else 0)
 if __name__ == '__main__':
