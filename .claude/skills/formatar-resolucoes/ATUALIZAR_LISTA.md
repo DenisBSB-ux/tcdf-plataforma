@@ -13,6 +13,9 @@ Uma lista por vez. Ferramentas desta pasta; arquivos de trabalho numa pasta de r
 - `M[nº] = {'B': 'correto, ~~errado~~ (dispositivo).'}` uma linha por letra errada das **múltipla escolha**; letras com o mesmo motivo viram uma linha (`Letras B e D:`) automaticamente.
 - Pesquisar a norma/diretriz vigente; corrigir resolução e gabarito **só com autorização** do usuário (senão "Conferir o gabarito" no ⚠️ e relatar na entrega).
 
+## 2b. Tirar redundância (pedido do usuário, 21/10/2026)
+Depois de `aplicar_padrao.py`: `python3 reduzir_redundancia.py saida.md saida_enxuta.md` — remove 💡, 🪤, ⚠️ e linhas de ERROS (sem termo riscado) que só repetem o 📌. Use a `saida_enxuta.md` como final.
+
 ## 3. Aplicar e conferir
 `python3 aplicar_padrao.py pasta/base.md pasta/respostas.py saida.md` (valida trecho literal/único, partes, letras do ERROS).
 Depois: `verificar_resolucoes.py original saida [--gabaritos-alterados i,j] [--removidas i,j]`, `verificar_importador.js original saida`, `MATERIA="Nome" node auditar_lista.js original saida`.
