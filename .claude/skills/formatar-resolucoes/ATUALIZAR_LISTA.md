@@ -9,8 +9,8 @@ Uma lista por vez. Ferramentas desta pasta; arquivos de trabalho numa pasta de r
 - Se a norma/apostila precisa de texto novo (pop-up), crie-o antes (PADRAO.md §5).
 
 ## 2. Redigir (subagente ou direto)
-- `pasta/respostas.py`: `E[nº] = ('trecho literal e único', 'palavra que torna o item certo')` em **todo** item Errado (` | ` para várias partes); `C[nº] = [palavras-chave]` onde a sugestão automática não serve; `M[nº] = {'B': 'correto, ~~errado~~ (dispositivo).'}` uma linha por letra errada das múltipla escolha.
-- `pasta/erros.py` (ideal para múltipla escolha): `E = {idx: {'A': '~~termo errado da alternativa~~ está errado: <motivo específico>.', ...}}` — UMA linha por alternativa errada, cada uma com o seu motivo (idx = posição 0-based da questão no arquivo).
+- `pasta/respostas.py`: `E[nº] = ('trecho literal e único', 'palavra que torna o item certo')` em **todo** item Errado (` | ` para várias partes); `C[nº] = [palavras-chave]` onde a sugestão automática não serve; `M[nº] = {'B': 'Errada; <motivo> (dispositivo).'}` uma linha por letra errada das múltipla escolha.
+- `pasta/erros.py` (ideal para múltipla escolha): `E = {idx: {'A': 'Errada; <motivo específico, sem reescrever a alternativa>.', ...}}` — UMA linha por alternativa errada, cada uma com o seu motivo (idx = posição 0-based da questão no arquivo).
 - Pesquisar a norma vigente; corrigir gabarito só conforme PADRAO.md §4.
 
 ## 3. Fechar tudo com um comando

@@ -20,13 +20,13 @@ Cada bloco é uma linha que **começa pelo símbolo**; ordem fixa; omita o que n
 - **Sem redundância:** 💡, 🪤, ⚠️ e linhas de ERROS que só repetem o 📌 são removidos (`reduzir_redundancia.py`, limiar 0,7; linhas com termo ~~riscado~~ ficam).
 - Não invente número, data, nome, valor, decreto, jurisprudência. Matéria com número que muda por decreto: cite o que a lei diz e avise para conferir o vigente.
 
-## 3. ERROS (múltipla escolha) — UMA letra por linha, cada uma MOTIVADA
-- **Uma linha por alternativa errada, nunca agrupar letras** ("Letras A, B e C" é proibido) e **nunca compactar** vários erros numa linha só (decidido 21/10/2026).
-- Formato: `- Letra B: ~~termo errado copiado da própria alternativa~~ está errado: <motivo específico, 1 frase, dizendo por que não procede e o fato correto>.`
-- **Cada letra tem o seu próprio motivo** (não repetir a mesma frase em todas). Ex.: `- Letra A: ~~estilo Jardim Medieval~~ está errado: Burle Marx era modernista e usava vegetação nativa em formas orgânicas, não o estilo medieval.`
-- Assertivas I–IV ("Apenas I e II"): aponte a assertiva falsa e o termo errado dela, com o motivo. Questão "assinale a incorreta": as letras verdadeiras levam `<trecho> está certo: <por quê>` (sem riscado).
-- Dispositivo entre parênteses só quando conferido (`(art. 5º, II)`); em alínea use aspas (`I, "a"`). Não escrever `)` logo após uma letra (o leitor trata `A)` como lista alfabética).
-- Fluxo: `aplicar_padrao.py` cria um ERROS inicial (via `M[n]` do `respostas.py`); entregue `erros.py` (`E = {idx: {'A': '~~x~~ está errado: motivo.', ...}}`) para `aplicar_erros.py` trocar o bloco; `motivar_erros.py` separa letras agrupadas e reescreve "<correto>, ~~errado~~" como "~~errado~~ está errado: <correto>" (rede de segurança; o motivo específico vem do `erros.py`).
+## 3. ERROS (múltipla escolha) — UMA letra por linha, SEM reescrever a alternativa
+- **Uma linha por alternativa errada, nunca agrupar letras.** Formato do usuário (21/10/2026): `- Letra B: Errada; a CF (art. 32) veda a divisão do DF em municípios; Brasília é a capital, não um município.`
+- **Não reescrever/citar o texto da alternativa errada** (nada de ~~riscado~~ da alternativa nem repetir o que ela diz): vai direto ao **motivo** — o fato correto, com o dispositivo quando conferido. O motivo deve se entender sozinho (sem "é o oposto", "isso", "ela").
+- **Cada letra tem o seu próprio motivo** (não repetir a mesma frase em todas). Letras verdadeiras de uma questão "assinale a incorreta": `- Letra A: Certa; <por quê>.`
+- Assertivas I–IV ("Apenas I e II"): `- Letra C: Errada; a assertiva III é falsa (não houve incêndio total no STF) e a I, verdadeira, ficou de fora.`
+- Dispositivo entre parênteses só quando conferido; em alínea use aspas (`I, "a"`). Não escrever `)` logo após uma letra (o leitor trata `A)` como lista alfabética).
+- Fluxo: `aplicar_padrao.py` cria um ERROS inicial (via `M[n]`); entregue `erros.py` (`E = {idx: {'A': 'Errada; motivo.', ...}}`) para `aplicar_erros.py` trocar o bloco; `motivar_erros.py` separa letras agrupadas e converte formatos antigos ("~~x~~ está errado: M", "<certo>, ~~errado~~") para `Errada; M`.
 
 ## 4. Gabarito
 - **A lei prevalece sobre o gabarito** quando o texto oficial **carregado** contradiz o arquivo (regra do usuário, 19/10/2026): corrija conforme o dispositivo, registre no ⚠️ "Gabarito ajustado ao texto de <dispositivo>. Constava X." e liste na entrega só: nº, de → para, dispositivo (`verificar_resolucoes.py --gabaritos-alterados i,j`).
