@@ -17,6 +17,8 @@ Uma lista por vez. Ferramentas desta pasta; arquivos de trabalho numa pasta de r
 `python3 aplicar_padrao.py pasta/base.md pasta/respostas.py saida.md` (valida trecho literal/único, partes, letras do ERROS).
 Depois: `verificar_resolucoes.py original saida [--gabaritos-alterados i,j] [--removidas i,j]`, `verificar_importador.js original saida`, `MATERIA="Nome" node auditar_lista.js original saida`.
 
+- Itens sem classificação (Sinal/Armadilha): aplicar direto (pré-autorizado pelo usuário em 21/10/2026; origem `ia`) e informar quantos. A regra do gabarito não muda.
+
 ## 4. Entrega (curta, em português)
 Arquivo `.md` completo + 1 linha por: gabaritos alterados, itens sem pop-up, pendências do usuário. Orientar "🔁 Substituir por matéria" e Ctrl+F5. Se mexer em JS/CSS: subir `vNNN`, commit com trailers, PR e squash-merge.
 
