@@ -375,8 +375,23 @@ function doutrinaPdpmDaQuestao(q){
   if(/principal instrumento de planejamento|Objetivos de Desenvolvimento Sustent|\bODS\b|RIDE/i.test(t)) return 'pdpm:consulta@2';
   return null;
 }
+const DF_TEMAS = [ [/^RIDE/i,'ride'], [/geografia f[íi]sica|hidrografia|bacias/i,'geografia-fisica'], [/hist[óo]ria/i,'historia-brasilia'], [/patrim[ôo]nio/i,'patrimonio'], [/regi[õo]es administrativas/i,'regioes-administrativas'], [/saneamento/i,'saneamento'], [/meio ambiente/i,'meio-ambiente'], [/demografia|censo|seguran[çc]a p[úu]blica/i,'demografia'], [/socioeconomia/i,'socioeconomia'], [/geografia e sociedade/i,'geografia-sociedade'], [/economia/i,'economia'], [/[áa]rea metropolitana/i,'area-metropolitana'] ];
+const DF_TITULOS = { 'ride':'RIDE-DF', 'geografia-fisica':'Geografia física, clima e hidrografia', 'historia-brasilia':'História de Brasília', 'patrimonio':'Patrimônio cultural e urbanístico', 'regioes-administrativas':'Regiões administrativas', 'saneamento':'Saneamento', 'meio-ambiente':'Meio ambiente', 'demografia':'Demografia', 'socioeconomia':'Socioeconomia', 'geografia-sociedade':'Geografia e sociedade', 'economia':'Economia', 'area-metropolitana':'Área Metropolitana de Brasília' };
+function doutrinaDfDaQuestao(q){
+  if(!/conhec/i.test(String(q.materia||''))) return null;
+  const t = String(q.tema||'').replace(/^Realidade do DF\s*[—-]\s*/i,'').trim() || String(q.temaOriginal||'');
+  const f = DF_TEMAS.find(([re])=>re.test(t));
+  return f ? 'df:'+f[1] : null;
+}
+function doutrinaDfSecao(d, q){
+  const txt = String(q.q||'') + ' ' + (q.alt||[]).map(a=>a.texto).join(' ');
+  let melhor = 0, pontos = 0;
+  d.secs.forEach((sc,i)=>{ let n = 0; (sc.chaves||[]).forEach(r=>{ try{ if(new RegExp(r,'iu').test(txt)) n++; }catch(_){} }); if(n>pontos){ pontos = n; melhor = i; } });
+  return melhor;
+}
 function doutrinaDaQuestao(q){
-  if(!q) return null; const t = String(q.q||'') + ' ' + String(q.tema||'');
+  if(!q) return null;
+  { const k = doutrinaDfDaQuestao(q); if(k) return k; } const t = String(q.q||'') + ' ' + String(q.tema||'');
   if(/Bonavides|gera[çc][õo]es|dimens[õo]es.{0,30}direitos fundamentais/i.test(t)) return 'geracoes';
   if(/efic[áa]cia (plena|contida|limitada)|normas (constitucionais )?program[áa]ticas|classifica[çc][ãa]o tripartite|aplicabilidade das normas|restringida pelo legislador infraconstitucional/i.test(t)) return 'eficacia';
   if(/^reg/i.test(String(q.materia||'')) && /mandado de seguran[çc]a/i.test(String(q.q||'')) && /Minist[ée]rio P[úu]blico|MP\b/.test(String(q.q||''))) return 'mpc';
@@ -390,6 +405,7 @@ function doutrinaDaQuestao(q){
   return null;
 }
 function doutrinaTitulo(chave){
+  if(/^df:/.test(chave)) return DF_TITULOS[String(chave).slice(3)] || 'Conhecimentos do DF';
   if(/^ps:/.test(chave)){ const T = ['Segurança da cena e avaliação','RCP e DEA','Engasgo','Hemorragias e choque','Queimaduras e choque elétrico','Fraturas, entorse e luxação','Convulsão, desmaio e hipoglicemia','Intoxicações e peçonhentos','Calor e afogamento']; return T[+String(chave).slice(3)] || 'Primeiros socorros'; }
   if(/^pdpm:/.test(chave)){ const T = { consulta:'Consulta pública do II PDPM', acoes:'Ações e projetos do II PDPM', diversidade:'Misoginia e saúde (II PDPM)', principios:'Laicidade e ação afirmativa', penal:'Crimes contra a mulher e súmulas' }; return T[String(chave).split(':')[1].split('@')[0]] || 'Doutrina'; }
   if(DOUTRINA[chave]) return DOUTRINA[chave].titulo.split(' · ')[0];
@@ -417,6 +433,17 @@ function doutrinaPdpmCarregar(){
   });
   return doutrinaPdpmPromessa;
 }
+let doutrinaDfPromessa = null;
+function doutrinaDfCarregar(){
+  if(typeof DOUTRINA_DF!=='undefined') return Promise.resolve();
+  if(doutrinaDfPromessa) return doutrinaDfPromessa;
+  doutrinaDfPromessa = new Promise((ok,falha)=>{
+    const sc = document.createElement('script'); sc.src = 'js/doutrina-df.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
+    sc.onload = ok; sc.onerror = ()=>{ doutrinaDfPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
+    document.head.appendChild(sc);
+  });
+  return doutrinaDfPromessa;
+}
 let doutrinaAdmPromessa = null;
 function doutrinaAdmCarregar(){
   if(typeof DOUTRINA_ADM!=='undefined') return Promise.resolve();
@@ -435,6 +462,10 @@ async function doutrinaAbrir(chave, uid){
     document.getElementById('lei-corpo').textContent = 'Carregando…';
     try{ await doutrinaPsCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
     const m = String(chave).match(/^ps:(\d+)$/); d = DOUTRINA_PS.ps; ini = m ? +m[1] : 0;
+  } else if(!d && /^df:/.test(chave)){
+    document.getElementById('lei-corpo').textContent = 'Carregando…';
+    try{ await doutrinaDfCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
+    d = DOUTRINA_DF[String(chave).slice(3)]; if(d) ini = doutrinaDfSecao(d, BY_UID[uid]||{});
   } else if(!d && /^pdpm:/.test(chave)){
     document.getElementById('lei-corpo').textContent = 'Carregando…';
     try{ await doutrinaPdpmCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
@@ -665,7 +696,12 @@ function apostilaDesenhar(){
     document.getElementById('lei-n').value = `${LEI.i+1}/${LEI.secs.length}`;
     document.getElementById('lei-ext').removeAttribute('href');
     const c = document.getElementById('lei-corpo'); c.classList.remove('lei-com-alvo');
-    c.innerHTML = x.lei.map((p,i)=>`<p class="${i===0 ? 'lei-art' : 'lei-inc'}">${esc(p)}</p>`).join('')
+    const alvos = (x.chaves||[]).map(r=>{ try{ return new RegExp(r,'iu'); }catch(_){ return null; } }).filter(Boolean);
+    const txtQ = q ? String(q.q||'') + ' ' + (q.alt||[]).map(a=>a.texto).join(' ') : '';
+    const ativos = alvos.filter(re=>re.test(txtQ));
+    const ehAlvo = p => ativos.some(re=>re.test(p));
+    if(ativos.length && x.lei.some(ehAlvo)) c.classList.add('lei-com-alvo');
+    c.innerHTML = x.lei.map((p,i)=>`<p class="${i===0 ? 'lei-art' : 'lei-inc'}${ativos.length && ehAlvo(p) ? ' lei-alvo' : ''}">${esc(p)}</p>`).join('')
       + (x.peg ? `<div class="lei-peg"><strong>⚠️ Pegadinha provável.</strong> ${esc(x.peg)}</div>` : '')
       + `<p class="lei-nota">${esc(x.doutrina.titulo)}. Síntese própria; fontes: ` + x.doutrina.fontes.map(f=> f[1] ? `<a href="${esc(f[1])}" target="_blank" rel="noopener">${esc(f[0])}</a>` : esc(f[0])).join(' · ') + `.</p>`;
     c.scrollTop = 0; return;
