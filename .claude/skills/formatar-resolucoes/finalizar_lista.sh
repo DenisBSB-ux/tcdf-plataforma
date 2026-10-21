@@ -11,6 +11,7 @@ if [ -f $D/erros.py ]; then python3 $SK/aplicar_erros.py $D/f3.md $D/erros.py $D
 python3 $SK/motivar_erros.py $D/f4.md $D/f5.md
 python3 $SK/limpar_chaves.py $D/f5.md $D/final.md
 echo "--- verificações"
+python3 $SK/verificar_erros.py $D/final.md | head -12
 python3 $SK/verificar_resolucoes.py $O $D/final.md | tail -3
 node $SK/verificar_importador.js $O $D/final.md 2>&1 | tr -d '\n ' | grep -o '"enunciadosIguais":[a-z]*\|"gabaritosDivergentes":\[[^]]*\]\|"resolucoesMalFormatadas":\[[^]]*\]' | tr '\n' ' '; echo
 node $SK/contar_distintas.js $D/final.md 2>&1 | tail -1 | tee $D/.distintas | cut -c1-200

@@ -25,6 +25,7 @@ Cada bloco é uma linha que **começa pelo símbolo**; ordem fixa; omita o que n
 - **Não reescrever/citar o texto da alternativa errada** (nada de ~~riscado~~ da alternativa nem repetir o que ela diz): vai direto ao **motivo** — o fato correto, com o dispositivo quando conferido. O motivo deve se entender sozinho (sem "é o oposto", "isso", "ela").
 - **Cada letra tem o seu próprio motivo** (não repetir a mesma frase em todas). Letras verdadeiras de uma questão "assinale a incorreta": `- Letra A: Certa; <por quê>.`
 - Assertivas I–IV ("Apenas I e II"): `- Letra C: Errada; a assertiva III é falsa (não houve incêndio total no STF) e a I, verdadeira, ficou de fora.`
+- **NÃO REPETIR A MESMA INFORMAÇÃO (reclamação repetida do usuário):** o fato correto já está no 📌 — não o repita nas letras; cada linha traz só o que é específico da alternativa (o elemento errado, em poucas palavras, e por que está errado). Nenhuma cláusula (texto entre `;`) pode aparecer em duas letras do bloco nem copiar o 📌. `verificar_erros.py` confere isso (≥80% das palavras de conteúdo) e `finalizar_lista.sh` o roda.
 - Dispositivo entre parênteses só quando conferido; em alínea use aspas (`I, "a"`). Não escrever `)` logo após uma letra (o leitor trata `A)` como lista alfabética).
 - Fluxo: `aplicar_padrao.py` cria um ERROS inicial (via `M[n]`); entregue `erros.py` (`E = {idx: {'A': 'Errada; motivo.', ...}}`) para `aplicar_erros.py` trocar o bloco; `motivar_erros.py` separa letras agrupadas e converte formatos antigos ("~~x~~ está errado: M", "<certo>, ~~errado~~") para `Errada; M`.
 
