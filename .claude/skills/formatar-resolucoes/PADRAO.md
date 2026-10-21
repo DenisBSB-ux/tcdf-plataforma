@@ -16,16 +16,17 @@ Cada bloco é uma linha que **começa pelo símbolo**; ordem fixa; omita o que n
 - **Sem** linha de perfil (🏷️); **não repetir o gabarito** ("o item está certo/errado") nem o enunciado.
 - **⚖️:** só com dispositivo conferido no texto de lei carregado (`js/*-texto.js`); formato `**Art. N** ▸ **inciso** ▸ **"alínea"** · Norma/ano`. Matéria sem base legal (dados, IA, geografia, história…): omitir ⚖️. Nunca citar artigo de memória; se não conferir, omita.
 - **Destaques:** pouco negrito. 📌 até 2 termos em **negrito** e o mais importante em `==fundo amarelo==`; ⚠️/🪤 até 1; 🔑 sem negrito. As palavras-chave devem ser as que **definem o gabarito** (a plataforma as destaca no enunciado e na alternativa correta a partir de 📌 + 🔑 — escolha-as com isso em mente; evite termo solto fora de contexto, ex.: "Três Poderes" quando só aparece na assertiva errada).
+- **🔑 só com termos reais da questão:** cada termo deve aparecer no enunciado, nas alternativas ou no 📌 — nada de rótulos abstratos ("generalização", "inversão", "negação absoluta"); `limpar_chaves.py` remove os que não aparecem.
 - **Sem redundância:** 💡, 🪤, ⚠️ e linhas de ERROS que só repetem o 📌 são removidos (`reduzir_redundancia.py`, limiar 0,7; linhas com termo ~~riscado~~ ficam).
 - Não invente número, data, nome, valor, decreto, jurisprudência. Matéria com número que muda por decreto: cite o que a lei diz e avise para conferir o vigente.
 
-## 3. ERROS (múltipla escolha) — por alternativa
-- **Uma linha por alternativa errada**: o que ela deveria dizer + o termo errado **da própria alternativa riscado**: `- Letra B: a Casa do Cantador é obra de Niemeyer, ~~projeto de Lúcio Costa~~.` Nunca repetir só a resposta certa sem mostrar o erro.
-- Assertivas I–IV ("Apenas I e II"): aponte a assertiva falsa e o termo errado dela.
-- Letras que só mudam o riscado viram **uma** linha: `- Letras A, B e C: <frase certa>. Erros — letra A: ~~x~~; letra B: ~~y~~; letra C: ~~z~~.` (`compactar_erros.py`; **nunca** escrever `)` logo após a letra — o leitor trata `A)` como lista alfabética e quebra a linha).
-- Questão "assinale a incorreta": as letras verdadeiras levam uma frase curta dizendo por que são verdadeiras (sem riscado).
-- Dispositivo entre parênteses só quando conferido (`(art. 5º, II)`); em alínea use aspas (`I, "a"`).
-- Fluxo: `aplicar_padrao.py` cria um ERROS inicial (via `M[n]` do `respostas.py`); o ideal é entregar `erros.py` (`E = {idx: {'A': '...'}}`) para `aplicar_erros.py` trocar o bloco por linhas por alternativa.
+## 3. ERROS (múltipla escolha) — UMA letra por linha, cada uma MOTIVADA
+- **Uma linha por alternativa errada, nunca agrupar letras** ("Letras A, B e C" é proibido) e **nunca compactar** vários erros numa linha só (decidido 21/10/2026).
+- Formato: `- Letra B: ~~termo errado copiado da própria alternativa~~ está errado: <motivo específico, 1 frase, dizendo por que não procede e o fato correto>.`
+- **Cada letra tem o seu próprio motivo** (não repetir a mesma frase em todas). Ex.: `- Letra A: ~~estilo Jardim Medieval~~ está errado: Burle Marx era modernista e usava vegetação nativa em formas orgânicas, não o estilo medieval.`
+- Assertivas I–IV ("Apenas I e II"): aponte a assertiva falsa e o termo errado dela, com o motivo. Questão "assinale a incorreta": as letras verdadeiras levam `<trecho> está certo: <por quê>` (sem riscado).
+- Dispositivo entre parênteses só quando conferido (`(art. 5º, II)`); em alínea use aspas (`I, "a"`). Não escrever `)` logo após uma letra (o leitor trata `A)` como lista alfabética).
+- Fluxo: `aplicar_padrao.py` cria um ERROS inicial (via `M[n]` do `respostas.py`); entregue `erros.py` (`E = {idx: {'A': '~~x~~ está errado: motivo.', ...}}`) para `aplicar_erros.py` trocar o bloco; `motivar_erros.py` separa letras agrupadas e reescreve "<correto>, ~~errado~~" como "~~errado~~ está errado: <correto>" (rede de segurança; o motivo específico vem do `erros.py`).
 
 ## 4. Gabarito
 - **A lei prevalece sobre o gabarito** quando o texto oficial **carregado** contradiz o arquivo (regra do usuário, 19/10/2026): corrija conforme o dispositivo, registre no ⚠️ "Gabarito ajustado ao texto de <dispositivo>. Constava X." e liste na entrega só: nº, de → para, dispositivo (`verificar_resolucoes.py --gabaritos-alterados i,j`).

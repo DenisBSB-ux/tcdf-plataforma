@@ -10,15 +10,15 @@ Uma lista por vez. Ferramentas desta pasta; arquivos de trabalho numa pasta de r
 
 ## 2. Redigir (subagente ou direto)
 - `pasta/respostas.py`: `E[nº] = ('trecho literal e único', 'palavra que torna o item certo')` em **todo** item Errado (` | ` para várias partes); `C[nº] = [palavras-chave]` onde a sugestão automática não serve; `M[nº] = {'B': 'correto, ~~errado~~ (dispositivo).'}` uma linha por letra errada das múltipla escolha.
-- `pasta/erros.py` (ideal para múltipla escolha): `E = {idx: {'A': 'o certo, ~~o errado da alternativa~~.', ...}}` — uma linha por alternativa errada, termo riscado copiado da própria alternativa (idx = posição 0-based da questão no arquivo).
+- `pasta/erros.py` (ideal para múltipla escolha): `E = {idx: {'A': '~~termo errado da alternativa~~ está errado: <motivo específico>.', ...}}` — UMA linha por alternativa errada, cada uma com o seu motivo (idx = posição 0-based da questão no arquivo).
 - Pesquisar a norma vigente; corrigir gabarito só conforme PADRAO.md §4.
 
 ## 3. Fechar tudo com um comando
 `bash finalizar_lista.sh pasta/ original_ou_ultima_entrega.md "Matéria"` → `pasta/final.md`
-(aplicar_padrao → reduzir_redundancia → classificar_auto → aplicar_erros → compactar_erros → verificar_resolucoes → verificar_importador → contar_distintas → auditar_lista). Corrija o que o resumo apontar e rode de novo.
+(aplicar_padrao → reduzir_redundancia → classificar_auto → aplicar_erros → motivar_erros → verificar_resolucoes → verificar_importador → contar_distintas → auditar_lista). Corrija o que o resumo apontar e rode de novo.
 
 ## 4. Entrega
 Arquivo `.md` completo (SendUserFile) + 1 linha por: gabaritos alterados, itens sem pop-up, dúvidas a conferir. Orientar **🔁 Substituir por matéria** e **Ctrl+F5**. Mexeu em JS/CSS: subir `vNNN`, commit com trailers, cherry-pick em `origin/main`, PR e squash-merge.
 
 ## Scripts (resumo)
-`preparar_lista.py` · `montar_resolucoes.py` (dump/build/faltantes/reduzir/repetidas/limpar) · `aplicar_padrao.py` (Trecho/Correção/ERROS inicial) · `reduzir_redundancia.py` · `classificar_auto.py` · `aplicar_erros.py` · `compactar_erros.py` · `dedup_erros.py` · `verificar_resolucoes.py` · `verificar_importador.js` · `contar_distintas.js` · `auditar_lista.js` · `finalizar_lista.sh`.
+`preparar_lista.py` · `montar_resolucoes.py` (dump/build/faltantes/reduzir/repetidas/limpar) · `aplicar_padrao.py` (Trecho/Correção/ERROS inicial) · `reduzir_redundancia.py` · `classificar_auto.py` · `aplicar_erros.py` · `motivar_erros.py` · `dedup_erros.py` · `verificar_resolucoes.py` · `verificar_importador.js` · `contar_distintas.js` · `auditar_lista.js` · `finalizar_lista.sh`.
