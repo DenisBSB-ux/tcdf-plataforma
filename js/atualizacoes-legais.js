@@ -22,11 +22,11 @@ function atualizacaoLegalDaMateria(m){
 }
 function atualizacaoLegalBadge(m){
   const a = atualizacaoLegalDaMateria(m);
-  if(!a.data) return `<span class="badge-atualizacao-legal sem" title="Ainda não houve conferência de mudanças em leis, decretos e jurisprudência desta matéria.">⚖️ sem conferência registrada</span>`;
+  if(!a.data) return `<span class="badge-atualizacao-legal sem" title="Ainda não houve conferência de mudanças em leis, decretos e jurisprudência desta matéria.">⚖️ sem conferência</span>`;
   const [y, mo, d] = a.data.split('-');
   const dias = Math.floor((Date.now() - new Date(a.data + 'T12:00:00').getTime()) / 86400000);
   const velha = dias > 30;
-  return `<span class="badge-atualizacao-legal${velha ? ' velha' : ''}" title="${esc(a.resumo || 'Última conferência de mudanças em leis, decretos e jurisprudência.')}">⚖️ Atualizada em ${d}/${mo}/${y}</span>`;
+  return `<span class="badge-atualizacao-legal${velha ? ' velha' : ''}" title="${esc('Atualizada em ' + d + '/' + mo + '/' + y + '. ' + (a.resumo || 'Última conferência de mudanças em leis, decretos e jurisprudência.'))}">⚖️ ${d}/${mo}/${y}</span>`;
 }
 
 /* Questão cuja resolução traz o selo "Atualização verificada em DD/MM/AAAA: ..." com mudança real
