@@ -252,6 +252,8 @@ const LEI_FONTES = {
   'Portaria 42':{ arquivo:'js/mog42-texto.js', global:'MOG42_TEXTO', titulo:'Portaria MOG 42/1999 · funções, subfunções, programas, projetos e atividades (versão atualizada em 2012, arquivo do Drive; conferir a Portaria SOF/ME 2.520/2022)', max:7 },
   'Lei 11.340':{ arquivo:'js/l11340-texto.js', global:'L11340_TEXTO', titulo:'Lei 11.340/2006 · Lei Maria da Penha (compilado do Planalto, PDF do Drive; conferir alterações posteriores)', max:46 },
   'Decreto 42.590':{ arquivo:'js/d42590-texto.js', global:'D42590_TEXTO', titulo:'Decreto Distrital 42.590/2021 · II PDPM e Comitê de Articulação e Monitoramento (arquivo do Drive; com o Anexo dos eixos)', max:12 },
+  'LC 94':{ arquivo:'js/lc94-texto.js', global:'LC94_TEXTO', titulo:'LC 94/1998 · RIDE-DF (arquivo do Drive; texto do Planalto com a LC 163/2018)', max:8 },
+  'Decreto 7.469':{ arquivo:'js/d7469-texto.js', global:'D7469_TEXTO', titulo:'Decreto 7.469/2011 · regulamenta a LC 94/1998 (redação dos Decretos 9.913/2019 e 11.911/2024; arquivo do Drive)', max:12 },
   'Decreto 32.598':{ arquivo:'js/d32598-texto.js', global:'D32598_TEXTO', titulo:'Decreto Distrital 32.598/2010 · Normas de Planejamento, Orçamento, Finanças, Patrimônio e Contabilidade do DF (texto do SINJ-DF; conferir alterações posteriores)', max:142 },
   'Decreto 44.330':{ arquivo:'js/d44330-texto.js', global:'D44330_TEXTO', titulo:'Decreto Distrital 44.330/2023 · regulamenta a Lei 14.133 no DF', max:272 },
   'SUM TCU':{ arquivo:'js/sumulas-tcu-texto.js', global:'SUMULAS_TCU_TEXTO', titulo:'Súmulas do TCU', max:0 },
