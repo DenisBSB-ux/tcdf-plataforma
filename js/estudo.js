@@ -367,7 +367,8 @@ function blocoEnunciadoEditavel(q){
   // depois de responder, o trecho-chave da armadilha aparece destacado em vermelho
   if(!emEdicao && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uid]){
     const a = armEfetiva(q);
-    if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid, String(q.r||'').split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'').split(' · '));
+    if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid, String(q.r||'').split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'').split(' · '), a.correcao ? { literal:true, correcao:a.correcao } : undefined);
+    else if(a && a.classificada && !a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid, null, { literal:true, classe:'arm-chave' });   // item certo: só as palavras-chave que levam à resposta
   }
   return `
     <div class="campo-editavel-header" style="justify-content:flex-end;">
@@ -872,8 +873,8 @@ function gerarMarkdownDaMateria(materiaKey){
     { const cobv = (typeof COBRANCA!=='undefined' && COBRANCA[q.uid]) || q.cob; if(cobv) md += `**Cobrança:** ${cobv}\n`; }
     { const a = (typeof armEfetiva==='function') ? armEfetiva(q) : null;
       if(a && a.classificada){
-        if(a.errado){ md += `**Armadilha:** ${[a.p,a.s].filter(Boolean).join(' + ')}\n`; if(a.trecho) md += `**Trecho:** ${a.trecho}\n`; if(a.expl) md += `**Explicação:** ${armExplTexto(a.expl)}\n`; }
-        else if(a.sinal) md += `**Sinal:** ${a.sinal}\n`;
+        if(a.errado){ md += `**Armadilha:** ${[a.p,a.s].filter(Boolean).join(' + ')}\n`; if(a.trecho) md += `**Trecho:** ${a.trecho}\n`; if(a.correcao) md += `**Correção:** ${a.correcao}\n`; if(a.expl) md += `**Explicação:** ${armExplTexto(a.expl)}\n`; }
+        else { if(a.sinal) md += `**Sinal:** ${a.sinal}\n`; if(a.trecho) md += `**Trecho:** ${a.trecho}\n`; }
         md += `**Origem da classificação:** ${a.origem}\n`;
       } }
     md += `\n`;
