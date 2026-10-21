@@ -361,8 +361,11 @@ function botaoEditarTudo(uid){
 }
 // destaca no enunciado (HTML já escapado) as palavras-chave 🔑 da justificativa, só no texto entre tags
 function destacarChavesNoEnunciado(html, q){
-  const linha = String(q.r||'').split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'');
-  const kws = linha.split(/\s*[·|]\s*/).map(k=>k.trim()).filter(k=>k.length>=4);
+  const linhas = String(q.r||'').split(/\n+/);
+  const linha = linhas.filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'');
+  // base do destaque: palavras-chave (🔑) + termos em negrito/marca-texto da essência (📌)
+  const ess = []; linhas.filter(l=>/^\s*📌/u.test(l)).forEach(l=>{ l.replace(/\*\*(.+?)\*\*|==(.+?)==/g,(m,a,b)=>{ ess.push(a||b); return m; }); });
+  const kws = linha.split(/\s*[·|]\s*/).concat(ess).map(k=>k.trim()).filter(k=>k.length>=4);
   if(!kws.length || /arm-chave|arm-trecho/.test(html)) return html;
   const re = new RegExp('(?<![\\p{L}\\p{N}])(?:' + kws.sort((x,y)=>y.length-x.length).map(k=>esc(k).replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+')).join('|') + ')(?![\\p{L}\\p{N}])', 'giu');
   return String(html).replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(re, x => `<mark class="arm-chave">${x}</mark>`));
