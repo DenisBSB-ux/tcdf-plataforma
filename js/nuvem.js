@@ -337,6 +337,7 @@ function mergeRemoteEdicoesNaMemoria(remoteEdicoes){
       }
     });
   });
+  try{ if(mudou && descartarEdicoesOrfas()) mudou = true; }catch(_){}
   return mudou;
 }
 
@@ -871,6 +872,7 @@ async function loadProgress(){
   try{
     const resEd = await storageGet(EDICOES_KEY);
     if(resEd && resEd.value) EDICOES_USUARIO = JSON.parse(resEd.value);
+    try{ descartarEdicoesOrfas(); }catch(_){}
   }catch(e){ /* nenhuma edição manual salva ainda */ }
 
   await carregarImagensLocais();
