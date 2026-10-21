@@ -699,9 +699,12 @@ function apostilaDesenhar(){
     const alvos = (x.chaves||[]).map(r=>{ try{ return new RegExp(r,'iu'); }catch(_){ return null; } }).filter(Boolean);
     const txtQ = q ? String(q.q||'') + ' ' + (q.alt||[]).map(a=>a.texto).join(' ') : '';
     const ativos = alvos.filter(re=>re.test(txtQ));
-    const ehAlvo = p => ativos.some(re=>re.test(p));
-    if(ativos.length && x.lei.some(ehAlvo)) c.classList.add('lei-com-alvo');
-    c.innerHTML = x.lei.map((p,i)=>`<p class="${i===0 ? 'lei-art' : 'lei-inc'}${ativos.length && ehAlvo(p) ? ' lei-alvo' : ''}">${esc(p)}</p>`).join('')
+    // termos 🔑 da justificativa também marcam as linhas da ficha que tratam do foco da questão
+    const kwQ = (q && typeof q.r==='string' ? q.r.split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'').split(/\s*[·|]\s*/).map(k=>k.trim()).filter(k=>k.length>=4) : []);
+    const reKw = kwQ.length ? new RegExp(kwQ.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+')).join('|'),'iu') : null;
+    const ehAlvo = p => ativos.some(re=>re.test(p)) || (reKw && reKw.test(p));
+    if(x.lei.some(ehAlvo)) c.classList.add('lei-com-alvo');
+    c.innerHTML = x.lei.map((p,i)=>`<p class="${i===0 ? 'lei-art' : 'lei-inc'}${ehAlvo(p) ? ' lei-alvo' : ''}">${esc(p)}</p>`).join('')
       + (x.peg ? `<div class="lei-peg"><strong>⚠️ Pegadinha provável.</strong> ${esc(x.peg)}</div>` : '')
       + `<p class="lei-nota">${esc(x.doutrina.titulo)}. Síntese própria; fontes: ` + x.doutrina.fontes.map(f=> f[1] ? `<a href="${esc(f[1])}" target="_blank" rel="noopener">${esc(f[0])}</a>` : esc(f[0])).join(' · ') + `.</p>`;
     c.scrollTop = 0; return;
