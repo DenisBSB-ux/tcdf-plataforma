@@ -2326,3 +2326,11 @@ mark.arm-chave{ background:#fde68a; color:#78350f !important; font-weight:700; p
 body:not(.theme-light) ins.arm-correcao{ background:#bbf7d0; color:#14532d !important; }
 body:not(.theme-light) mark.arm-chave{ background:#fde68a; color:#78350f !important; }
 
+
+/* badge de atualização ao lado do nome da matéria (21/10/2026) */
+.materia-tab-nome{ display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; min-width:0; }
+.badge-atualizacao-legal{ white-space:nowrap; font-weight:600; vertical-align:middle; }
+/* matéria selecionada: cor clara e diferente (azul-claro), em vez do dourado forte */
+.materia-tab-btn.active, body:not(.theme-light) .materia-tab-btn.active{ background:#dbeafe; border-color:#60a5fa; color:#0f2a4a; font-weight:700; box-shadow:0 0 0 2px rgba(96,165,250,.35); }
+.materia-tab-btn.active .materia-tab-stats, body:not(.theme-light) .materia-tab-btn.active .materia-tab-stats, .materia-tab-btn.active .cnt{ color:#0f2a4a; opacity:1; }
+.materia-tab-btn.active.materia-concluida .materia-tab-stats, .materia-tab-btn.active.materia-concluida .cnt{ color:#0f2a4a !important; }
