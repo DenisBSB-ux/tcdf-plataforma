@@ -359,7 +359,7 @@ function editorToolbarHtml(uid){
 function botaoEditarTudo(uid){
   return `<button class="btn-editar-campo btn-ui" data-uid="${esc(uid)}" title="Editar todos os campos desta questão: enunciado, armadilha, justificativa e resumo flash">✏️ Editar</button>`;
 }
-// ---- destaque das palavras-chave: cada palavra é destacada UMA vez só, entre enunciado, alternativa correta e justificativa ----
+// ---- destaque das palavras-chave: dentro de cada campo (enunciado, alternativa correta) cada palavra é destacada uma vez só ----
 function _normDest(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
 // base do destaque: palavras-chave (🔑) + termos em negrito/marca-texto da essência (📌)
 function kwsDestaqueDaQuestao(q){
@@ -372,11 +372,10 @@ function _alternativaCorreta(q){
   if(q.t!=='MC' || !q.alt) return '';
   const g = String(gabaritoEfetivo(q)||'').toUpperCase(); const a = q.alt.find(x=>x.letra.toUpperCase()===g); return a ? a.texto : '';
 }
-// destaca (HTML já escapado) só a 1ª ocorrência de cada palavra-chave, só no texto entre tags;
-// onde='alt': ignora as palavras já destacadas no enunciado
+// destaca (HTML já escapado) só a 1ª ocorrência de cada palavra-chave NO CAMPO, só no texto entre tags
+// (o mesmo termo pode aparecer destacado em campos diferentes: enunciado, alternativa e justificativa)
 function destacarChavesNoEnunciado(html, q, onde){
   let kws = kwsDestaqueDaQuestao(q);
-  if(onde==='alt'){ const en = _normDest(q.q); kws = kws.filter(k=>!en.includes(_normDest(k))); }
   if(!kws.length || /arm-chave|arm-trecho/.test(html)) return html;
   kws = [...new Set(kws)].sort((x,y)=>y.length-x.length);
   let out = String(html);
@@ -390,22 +389,6 @@ function destacarChavesNoEnunciado(html, q, onde){
     });
   });
   return out;
-}
-// termos já destacados no enunciado/alternativa correta (para não repetir na justificativa)
-function termosJaDestacados(q){
-  const en = _normDest(q.q), alt = _normDest(_alternativaCorreta(q)); const usados = [];
-  kwsDestaqueDaQuestao(q).forEach(k=>{ const n = _normDest(k); if(en.includes(n) || alt.includes(n)) usados.push(n); });
-  try{ const a = armEfetiva(q); if(a && a.classificada && a.trecho) String(a.trecho).split(/\s*\|\s*/).forEach(t=>{ const n=_normDest(t); if(n) usados.push(n); }); }catch(_){}
-  return usados;
-}
-// tira o negrito/marca-texto da essência (📌) nos termos que já estão destacados no enunciado ou na alternativa
-function semDestaqueRepetido(q, resolucao){
-  if(edicaoAtual===q.uid) return resolucao;
-  const usados = termosJaDestacados(q); if(!usados.length) return resolucao;
-  return String(resolucao||'').split('\n').map(l=>{
-    if(!/^\s*📌/u.test(l)) return l;
-    return l.replace(/\*\*(.+?)\*\*|==(.+?)==/g,(m,a,b)=>{ const t = a||b, n = _normDest(t); return usados.some(u=>u.includes(n)||n.includes(u)) ? t : m; });
-  }).join('\n');
 }
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
@@ -469,7 +452,7 @@ function renderResolucao(q, resposta, quiz){
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   <div class="resolucao-box ${tintClass} resolucao-unica">
     ${armPainelHtml(q)}
-    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(String(limparResolucao(semDestaqueRepetido(q, q.r))||'').split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).join('\n'), palavrasChave))}
+    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(String(limparResolucao(q.r)||'').split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).join('\n'), palavrasChave))}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
     : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}
