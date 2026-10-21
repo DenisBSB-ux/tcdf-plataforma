@@ -1,14 +1,15 @@
 #!/bin/bash
 # Fecha uma lista no PADRÃO (ver PADRAO.md). Uso: finalizar_lista.sh <pasta> <arquivo_original_ou_ultima_entrega.md> "<Matéria>"
 # A <pasta> tem base.md (preparar_lista.py) e respostas.py; opcional erros.py (ERROS por alternativa: E = {idx: {'A': '...'}}).
-# Passos: aplicar_padrao -> reduzir_redundancia -> classificar_auto -> aplicar_erros -> compactar_erros -> verificadores -> contagem de distintas -> auditoria de pop-up.
+# Passos: aplicar_padrao -> reduzir_redundancia -> classificar_auto -> aplicar_erros -> motivar_erros -> limpar_chaves -> verificadores -> contagem de distintas -> auditoria de pop-up.
 cd /home/user/tcdf-plataforma; SK=.claude/skills/formatar-resolucoes; D=$1; O=$2; M=$3
 pkill -f "http[.]server 839[789]" 2>/dev/null
 python3 $SK/aplicar_padrao.py $D/base.md $D/respostas.py $D/f1.md | tail -3
 python3 $SK/reduzir_redundancia.py $D/f1.md $D/f2.md
 python3 $SK/classificar_auto.py $D/f2.md $D/f3.md
 if [ -f $D/erros.py ]; then python3 $SK/aplicar_erros.py $D/f3.md $D/erros.py $D/f4.md; else cp $D/f3.md $D/f4.md; fi
-python3 $SK/compactar_erros.py $D/f4.md $D/final.md
+python3 $SK/motivar_erros.py $D/f4.md $D/f5.md
+python3 $SK/limpar_chaves.py $D/f5.md $D/final.md
 echo "--- verificações"
 python3 $SK/verificar_resolucoes.py $O $D/final.md | tail -3
 node $SK/verificar_importador.js $O $D/final.md 2>&1 | tr -d '\n ' | grep -o '"enunciadosIguais":[a-z]*\|"gabaritosDivergentes":\[[^]]*\]\|"resolucoesMalFormatadas":\[[^]]*\]' | tr '\n' ' '; echo
