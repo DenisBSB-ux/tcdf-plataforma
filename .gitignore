@@ -1,2 +1,11 @@
-node_modules/
+# Arquivos de credenciais e senhas secretas (NUNCA ENVIAR AO GITHUB)
+chave-firebase.json
+config.json
+
+# Arquivos de log e execução do robô
+sentinela.log
+*.log
+
+# Cache do Python
 __pycache__/
+*.pyc
