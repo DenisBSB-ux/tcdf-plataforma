@@ -105,5 +105,105 @@ const obsQuestoes = new MutationObserver(() => {
 obsQuestoes.observe(document.body, { childList: true, subtree: true });
 </script>
 
+
+<script>
+const DIRETORIO_12_FONTES = {
+  'improbidade': {
+    titulo: 'Improbidade Administrativa (Lei 8.429 / 14.230)',
+    normas: 'Lei 14.230/2021 + STF (ADIs 7156 e 7236 / Tema 1.199)',
+    links: [
+      { nome: 'Informativos do STF (ADIs 7156 e 7236)', url: 'https://portal.stf.jus.br/jurisprudencia/informativos/' },
+      { nome: 'Legislação Planalto (Lei 8.429/92 atualizada)', url: 'https://www.planalto.gov.br/ccivil_03/leis/l8429.htm' },
+      { nome: 'Dizer o Direito (Comentários ADIs 7156 e 7236)', url: 'https://www.dizerodireito.com.br' },
+      { nome: 'DOU Seção 1 (in.gov.br)', url: 'https://www.in.gov.br' }
+    ]
+  },
+  '14133': {
+    titulo: 'Nova Lei de Licitações (Lei 14.133/2021)',
+    normas: 'Revogação total das Leis 8.666/93 e 10.520/02',
+    links: [
+      { nome: 'Legislação Planalto (Lei 14.133/21)', url: 'https://www.planalto.gov.br/ccivil_03/_ato2021-2024/2021/lei/l14133.htm' },
+      { nome: 'Jurisprudência TCU (Acórdãos Licitações)', url: 'https://pesquisa.apps.tcu.gov.br/' },
+      { nome: 'DOU Seção 1 (Atos SEGES/MGI)', url: 'https://www.in.gov.br' }
+    ]
+  },
+  '44330': {
+    titulo: 'Decreto Distrital nº 44.330/2023',
+    normas: 'Regulamento da Nova Lei de Licitações no Distrito Federal',
+    links: [
+      { nome: 'SINJ-DF (Texto Integral Decreto 44.330/23)', url: 'https://www.sinj.df.gov.br' },
+      { nome: 'DODF Seção 1 (dodf.df.gov.br)', url: 'https://dodf.df.gov.br' },
+      { nome: 'Jurisprudência TCDF (Decisões Normativas)', url: 'https://www.tc.df.gov.br/jurisprudencia/' }
+    ]
+  },
+  'afo': {
+    titulo: 'AFO (Orçamento e Responsabilidade Fiscal)',
+    normas: 'LC 200/2023 (Arcabouço Fiscal) + ECs Orçamentárias',
+    links: [
+      { nome: 'Legislação Planalto (LC 200/2023)', url: 'https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp200.htm' },
+      { nome: 'Jurisprudência TCU (Contas e LRF)', url: 'https://pesquisa.apps.tcu.gov.br/' },
+      { nome: 'DOU Seção 1 (Portarias STN/SOF)', url: 'https://www.in.gov.br' }
+    ]
+  },
+  '840': {
+    titulo: 'RJU dos Servidores do DF (LC 840/2011)',
+    normas: 'Regime Jurídico dos Servidores Públicos Civis do DF',
+    links: [
+      { nome: 'SINJ-DF (LC 840/11 com emendas)', url: 'https://www.sinj.df.gov.br' },
+      { nome: 'DODF Seção 1', url: 'https://dodf.df.gov.br' },
+      { nome: 'Jurisprudência TCDF', url: 'https://www.tc.df.gov.br/jurisprudencia/' }
+    ]
+  },
+  'lotcdf': {
+    titulo: 'Lei Orgânica e Regimento do TCDF',
+    normas: 'LC Distrital nº 1/1994 e Resolução TCDF nº 296/2016',
+    links: [
+      { nome: 'Diário Oficial do TCDF (DO-TCDF)', url: 'https://www.tc.df.gov.br/dotcdf' },
+      { nome: 'Jurisprudência TCDF (Súmulas)', url: 'https://www.tc.df.gov.br/jurisprudencia/' },
+      { nome: 'SINJ-DF (LC 1/94)', url: 'https://www.sinj.df.gov.br' }
+    ]
+  },
+  'padrao': {
+    titulo: 'Fontes Oficiais do Concurso TCDF',
+    normas: 'Legislação Federal, Distrital e Jurisprudência dos Tribunais Superiores',
+    links: [
+      { nome: 'Informativos STF', url: 'https://portal.stf.jus.br/jurisprudencia/informativos/' },
+      { nome: 'Informativos STJ', url: 'https://www.stj.jus.br/sites/portalp/Jurisprudencia/Informativos' },
+      { nome: 'Legislação Planalto', url: 'https://www.planalto.gov.br/legislacao' },
+      { nome: 'SINJ-DF', url: 'https://www.sinj.df.gov.br' },
+      { nome: 'ANPD (gov.br/anpd)', url: 'https://www.gov.br/anpd' },
+      { nome: 'IPEDF (Conhecimentos DF)', url: 'https://www.ipedf.df.gov.br' }
+    ]
+  }
+};
+
+window.abrirModalFontes = function(chave) {
+  const antigo = document.getElementById('modal-12-fontes');
+  if(antigo) antigo.remove();
+  const d = DIRETORIO_12_FONTES[chave] || DIRETORIO_12_FONTES['padrao'];
+  const m = document.createElement('div');
+  m.id = 'modal-12-fontes';
+  m.style = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:999999;backdrop-filter:blur(5px);';
+  m.onclick = (e) => { if(e.target===m) m.remove(); };
+  m.innerHTML = `
+    <div style="background:#1e293b;border:1px solid #475569;border-radius:14px;width:90%;max-width:540px;padding:24px;color:#f8fafc;font-family:system-ui,sans-serif;box-shadow:0 25px 50px -12px rgba(0,0,0,0.7);">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #334155;padding-bottom:10px;margin-bottom:14px;">
+        <h3 style="color:#fbbf24;margin:0;font-size:16px;">🏛️ Fontes Oficiais da Auditoria TCDF</h3>
+        <button onclick="document.getElementById('modal-12-fontes').remove()" style="background:none;border:none;color:#94a3b8;font-size:24px;cursor:pointer;">&times;</button>
+      </div>
+      <p style="margin:0 0 6px 0;font-weight:700;color:#38bdf8;font-size:15px;">${d.titulo}</p>
+      <p style="margin:0 0 14px 0;font-size:12px;color:#94a3b8;">${d.normas}</p>
+      <div style="background:#0f172a;border-radius:8px;padding:12px;border:1px solid #334155;">
+        <span style="font-size:11px;color:#38bdf8;text-transform:uppercase;font-weight:700;display:block;margin-bottom:8px;">🔗 Links Oficiais Verificados (Clique para abrir):</span>
+        ${d.links.map(l => `<div style="margin-bottom:8px;"><a href="${l.url}" target="_blank" style="color:#67e8f9;text-decoration:none;font-size:13px;display:flex;align-items:center;gap:6px;font-weight:500;">🌐 ${l.nome} ↗</a></div>`).join('')}
+      </div>
+      <div style="text-align:right;margin-top:16px;">
+        <button onclick="document.getElementById('modal-12-fontes').remove()" style="background:#334155;color:#fff;border:none;padding:7px 18px;border-radius:6px;font-size:12px;cursor:pointer;">Fechar</button>
+      </div>
+    </div>`;
+  document.body.appendChild(m);
+};
+</script>
+
 </body>
 </html>
