@@ -769,39 +769,44 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
       <div style="width:90px;text-align:right;">${thOrd('ultima','Atualização')}</div>
     </div>
     ${linhas.map((l,i)=>{
-      const concluida = l.total>0 && l.respondidas>=l.total;
-      const cor = concluida ? { bg:'#1e293b', fg:'#38bdf8', fgForte:'#0284c7' } : faixaCorPct(l.pct, l.respondidas);
-      const corBg = '#1e293b';
+      const cor = faixaCorPct(l.pct, l.respondidas);
       const bordaLateral = l.ativa ? '4px solid #38bdf8' : `4px solid ${cor.fgForte || '#475569'}`;
-      const sombraDestaque = l.ativa ? 'box-shadow: 0 4px 14px rgba(0,0,0,0.35);' : 'box-shadow: 0 2px 4px rgba(0,0,0,0.15);';
-
+      
+      // Lista restrita: SOMENTE matérias cuja legislação realmente sofreu alteração
       const nomeMin = l.nome.toLowerCase();
-      let chaveF = 'padrao';
-      if(nomeMin.includes('pdpm') || nomeMin.includes('mulher')) chaveF = 'pdpm';
-      else if(nomeMin.includes('socorros')) chaveF = 'primeiros';
-      else if(nomeMin.includes('44.330') || nomeMin.includes('44330')) chaveF = '44330';
-      else if(nomeMin.includes('840')) chaveF = '840';
-      else if(nomeMin.includes('lotcdf') || nomeMin.includes('orgânica')) chaveF = 'lotcdf';
-      else if(nomeMin.includes('lodf')) chaveF = 'lodf';
-      else if(nomeMin.includes('reg. interno')) chaveF = 'reg_interno';
-      else if(nomeMin.includes('afo')) chaveF = 'afo';
+      let normaAfetada = null;
+      if(nomeMin.includes('44.330') || nomeMin.includes('44330')) normaAfetada = { lei: "Dec. Distrital 44.330/23", chave: "44330" };
+      else if(nomeMin.includes('14.133') || nomeMin.includes('14133')) normaAfetada = { lei: "Lei 14.133/21", chave: "14133" };
+      else if(nomeMin.includes('contratos')) normaAfetada = { lei: "Regulamento Contratos 14.133", chave: "contratos" };
+      else if(nomeMin.includes('8.429') || nomeMin.includes('8429') || nomeMin.includes('improbidade')) normaAfetada = { lei: "Lei 14.230/21 (Improbidade)", chave: "improbidade" };
+      else if(nomeMin.includes('afo') || nomeMin.includes('orçamento')) normaAfetada = { lei: "LC 200/23 (Arcabouço) + ECs", chave: "afo" };
+      else if(nomeMin.includes('pdpm') || nomeMin.includes('mulher')) normaAfetada = { lei: "Dec. Distrital 42.590/21", chave: "pdpm" };
+      else if(nomeMin.includes('previdenciário') || nomeMin.includes('previdenciario')) normaAfetada = { lei: "EC 103/19 e LC 769/08", chave: "previdenciario" };
+      else if(nomeMin.includes('840') || nomeMin.includes('lc840')) normaAfetada = { lei: "LC Distrital 840/11 atualizada", chave: "840" };
+      else if(nomeMin.includes('reg. interno') || nomeMin.includes('regimento')) normaAfetada = { lei: "Resolução TCDF 296/16 e emendas", chave: "reg_interno" };
+      else if(nomeMin.includes('lotcdf') || nomeMin.includes('orgânica do tcdf')) normaAfetada = { lei: "LC Distrital 1/94 e emendas", chave: "lotcdf" };
 
-      return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${corBg};border:1px solid #334155;border-left:${bordaLateral};border-radius:8px;padding:10px 14px;margin-bottom:8px;${sombraDestaque}transition:all 0.15s ease;" title="${esc(l.nome)}: ${l.respondidas ? l.pct+'% de acerto' : 'nada respondido'}">
-        <button type="button" class="mat-seta" data-toggle-mat="${esc(l.nome)}" title="Distribuição por assunto" aria-label="Distribuição por assunto de ${esc(l.nome)}" style="width:18px;color:#94a3b8;">${COMPOSICAO_ABERTOS.has('mat:'+l.nome)?'▴':'▾'}</button>
+      // Se a matéria sofreu alteração, gera a badge âmbar e o botão para ver a norma
+      const tagNormaHtml = normaAfetada ? `
+        <span style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">⚖️ ${normaAfetada.lei}</span>
+        <button type="button" onclick="event.stopPropagation();window.abrirModalNorma('${normaAfetada.chave}')" style="background:#334155;color:#f8fafc;border:none;padding:1px 6px;border-radius:4px;font-size:10px;cursor:pointer;font-weight:600;" title="Ver detalhes das fontes oficiais consultadas">ℹ️ Ver Norma</button>
+      ` : '';
+
+      return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:#1e293b;border:1px solid #334155;border-left:${bordaLateral};border-radius:8px;padding:10px 14px;margin-bottom:8px;box-shadow:0 2px 5px rgba(0,0,0,0.25);" title="${esc(l.nome)}">
+        <button type="button" class="mat-seta" data-toggle-mat="${esc(l.nome)}" style="width:18px;color:#94a3b8;">${COMPOSICAO_ABERTOS.has('mat:'+l.nome)?'▴':'▾'}</button>
         <div style="width:26px;${estiloCelula}color:#64748b;">${l.ativa?'<b style="color:#38bdf8;">▸</b>':i+1}</div>
         <div class="name" style="cursor:pointer;flex:1;${estiloCelula}color:#f8fafc;font-weight:${l.ativa?800:600};display:flex;align-items:center;gap:6px;flex-wrap:wrap;" data-macro-materia="${esc(l.nome)}">
           <span>${esc(l.nome)}${l.ativa?' <span style="font-size:10px;font-weight:700;color:#38bdf8;">(selecionada)</span>':''}</span>
-          <span style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;">✨ 2026</span>
-          <button type="button" onclick="event.stopPropagation();window.abrirModalFontes('${chaveF}')" style="background:rgba(245,158,11,0.15);color:#fbbf24;border:1px solid rgba(245,158,11,0.3);padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;" title="Ver fontes legais consultadas">ℹ️ Fontes</button>
-          ${l.ativa ? `<button data-continuar-materia="${esc(l.nome)}" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #38bdf8;background:rgba(56,189,248,0.1);color:#38bdf8;cursor:pointer;white-space:nowrap;">▶ Continuar</button>` : ''}
-          ${l.ativa ? `<button class="js-config" title="Configurar simulado: quantidade, ordem e filtros" aria-label="Configurar simulado" style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid #94a3b8;background:transparent;color:#94a3b8;cursor:pointer;line-height:1.3;">⚙</button>` : ''}
+          ${tagNormaHtml}
+          ${l.ativa ? `<button data-continuar-materia="${esc(l.nome)}" style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;border:1px solid #38bdf8;background:rgba(56,189,248,0.1);color:#38bdf8;cursor:pointer;">▶ Continuar</button>` : ''}
+          ${l.ativa ? `<button class="js-config" style="font-size:11px;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid #94a3b8;background:transparent;color:#94a3b8;cursor:pointer;">⚙</button>` : ''}
         </div>
         <div style="width:56px;text-align:right;${estiloCelula}color:#94a3b8;">${l.total}</div>
         <div style="width:76px;text-align:right;${estiloCelula}color:#94a3b8;">${l.respondidas || '—'}</div>
         <div style="width:60px;text-align:right;${estiloCelula}color:#94a3b8;">${l.respondidas ? l.acertos : '—'}</div>
         <div style="width:52px;text-align:right;${estiloCelula}color:#94a3b8;">${l.respondidas ? l.erros : '—'}</div>
         <div style="width:56px;text-align:right;${estiloCelula}color:${cor.fgForte || '#38bdf8'};font-weight:700;font-size:14px;">${l.respondidas ? l.pct+'%' : '—'}</div>
-        <div style="width:90px;text-align:right;${estiloCelula}color:#64748b;font-size:11px;" title="${l.ultimaRespostaTs ? new Date(l.ultimaRespostaTs).toLocaleString('pt-BR') : ''}">${l.ultimaRespostaTs ? formatarDataHoraSalvamento(l.ultimaRespostaTs) : '—'}</div>
+        <div style="width:90px;text-align:right;${estiloCelula}color:#64748b;font-size:11px;">${l.ultimaRespostaTs ? formatarDataHoraSalvamento(l.ultimaRespostaTs) : '—'}</div>
       </div>
       <details class="composicao-det composicao-det-mat" data-comp-tema="mat:${esc(l.nome)}" ${COMPOSICAO_ABERTOS.has('mat:'+l.nome)?'open':''}>
         <summary class="composicao-mat-sum"></summary>

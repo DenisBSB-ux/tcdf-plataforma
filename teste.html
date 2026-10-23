@@ -15,7 +15,7 @@
 <link rel="stylesheet" href="css/styles.css?v=v311">
 </head>
 <body>
-<div style="background:#f59e0b;color:#000;text-align:center;padding:8px;font-size:13px;font-weight:700;">🧪 AMBIENTE DE TESTES (NOVO DESIGN CLEAN + FONTES) — Página Original Intacta</div>
+<div style="background:#f59e0b;color:#000;text-align:center;padding:7px;font-size:12px;font-weight:700;">🧪 AMBIENTE DE TESTE: DESTAQUE SELETIVO DAS LEIS & ALERTAS DE GABARITO (Original Intacta)</div>
 <div class="app" id="app"></div>
 <div id="print-area"></div>
 
@@ -48,47 +48,61 @@
 <script src="js/revisao_ia.js"></script>
 
 <script>
-const FONTES_OFICIAIS = {
-  "pdpm": { titulo: "PDPM Mulheres", normas: ["II Plano Distrital de Políticas para Mulheres (PDPM)", "Decreto Distrital nº 42.590/2021"], orgaos: ["Secretaria da Mulher DF", "DODF"] },
-  "primeiros": { titulo: "Primeiros Socorros", normas: ["Diretrizes Internacionais AHA (Suporte Básico de Vida)", "Protocolos CBMDF"], orgaos: ["Corpo de Bombeiros Militar do DF", "Ministério da Saúde"] },
-  "44330": { titulo: "Decreto Distrital nº 44.330/2023", normas: ["Decreto Distrital nº 44.330/23 (Regulamento de Licitações do DF)", "Lei Federal 14.133/21"], orgaos: ["Governo do DF", "PNCP"] },
-  "840": { titulo: "RJU - LC nº 840/2011", normas: ["Lei Complementar Distrital nº 840/2011 e alterações"], orgaos: ["Tribunal de Contas do DF", "CLDF"] },
-  "lotcdf": { titulo: "Lei Orgânica do TCDF", normas: ["LC Distrital nº 1/1994 (LOTCDF)"], orgaos: ["TCDF (tc.df.gov.br)"] },
-  "lodf": { titulo: "LODF - Lei Orgânica do DF", normas: ["Lei Orgânica do Distrito Federal atualizada"], orgaos: ["CLDF (cl.df.gov.br)"] },
-  "reg_interno": { titulo: "Regimento Interno do TCDF", normas: ["Resolução TCDF nº 296/2016"], orgaos: ["Plenário do TCDF"] },
-  "afo": { titulo: "AFO - Orçamento Público", normas: ["LRF (LC 101/00)", "Lei 4.320/64", "CF/88"], orgaos: ["Portal do Planalto", "STN"] },
-  "padrao": { titulo: "Legislação do Concurso TCDF", normas: ["Constituição Federal de 1988", "Normas vigentes"], orgaos: ["Planalto.gov.br", "DODF", "STF"] }
+const DETALHES_NORMAS = {
+  "44330": { titulo: "Decreto Distrital nº 44.330/2023", desc: "Regulamento da Nova Lei de Licitações (Lei 14.133/21) no DF. Prazos recursais, lances e comissões de contratação foram substancialmente alterados." },
+  "14133": { titulo: "Nova Lei de Licitações (Lei 14.133/2021)", desc: "Revogação total das Leis 8.666/93 e 10.520/02. Extinção da Tomada de Preços e Convite, criação do Diálogo Competitivo e novos crimes licitatórios." },
+  "contratos": { titulo: "Regime Contratual da Lei 14.133/2021", desc: "Duração dos contratos, garantias, matriz de riscos e limites de alteração contratual conforme o art. 124 da Nova Lei." },
+  "improbidade": { titulo: "Reforma da Lei de Improbidade (Lei 14.230/2021)", desc: "Exigência de dolo específico; revogação da modalidade culposa no art. 10; novo prazo prescricional de 8 anos (Tema 1.199 STF)." },
+  "afo": { titulo: "Regime Fiscal Sustentável (LC 200/2023) + ECs Orçamentárias", desc: "Substituição do antigo teto de gastos, novas regras de superávit e prazos de emendas impositivas e precatórios." },
+  "pdpm": { titulo: "II Plano Distrital de Políticas para Mulheres (Dec. 42.590/21)", desc: "Estruturação dos 5 eixos temáticos e diretrizes orçamentárias de proteção à mulher no Distrito Federal." },
+  "previdenciario": { titulo: "Reforma Previdenciária (EC 103/19 e LC 769/08)", desc: "Novas idades mínimas, tempo de contribuição e regras de transição dos servidores públicos do DF." },
+  "840": { titulo: "Regime Jurídico dos Servidores do DF (LC 840/11)", desc: "Atualizações normativas da Câmara Legislativa sobre regime disciplinar, teletrabalho e direitos funcionais." },
+  "lotcdf": { titulo: "Lei Orgânica do TCDF (LC 1/94)", desc: "Competências e ritos de julgamento de contas dos gestores do DF." },
+  "reg_interno": { titulo: "Regimento Interno do TCDF (Res. 296/16)", desc: "Processo eletrônico, prazos processuais e recursos regimentais vigentes." }
 };
 
-window.abrirModalFontes = function(chave) {
-  const antigo = document.getElementById("modal-fontes-popup");
-  if (antigo) antigo.remove();
-  const d = FONTES_OFICIAIS[chave] || FONTES_OFICIAIS["padrao"];
-  const modal = document.createElement("div");
-  modal.id = "modal-fontes-popup";
-  modal.style = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.75);display:flex;align-items:center;justify-content:center;z-index:999999;backdrop-filter:blur(5px);";
-  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
-  modal.innerHTML = `
-    <div style="background:#1e293b;border:1px solid #334155;border-radius:14px;width:90%;max-width:500px;padding:24px;color:#f8fafc;box-shadow:0 25px 50px -12px rgba(0,0,0,0.6);font-family:system-ui,sans-serif;">
-      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #334155;padding-bottom:10px;margin-bottom:14px;">
-        <h3 style="color:#fbbf24;margin:0;font-size:16px;">🏛️ Auditoria Jurídica Oficial</h3>
-        <button onclick="document.getElementById('modal-fontes-popup').remove()" style="background:none;border:none;color:#94a3b8;font-size:22px;cursor:pointer;">&times;</button>
-      </div>
-      <p style="margin:0 0 10px 0;"><b>Matéria:</b> <span style="color:#38bdf8;">${d.titulo}</span></p>
-      <div style="margin-bottom:12px;">
-        <span style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;">Legislação Aplicada:</span>
-        <ul style="margin:4px 0 0 18px;padding:0;font-size:13px;color:#cbd5e1;">${d.normas.map(n=>`<li>${n}</li>`).join("")}</ul>
-      </div>
-      <div style="margin-bottom:16px;">
-        <span style="font-size:11px;color:#94a3b8;text-transform:uppercase;font-weight:700;">Portais Oficiais Verificados:</span>
-        <ul style="margin:4px 0 0 18px;padding:0;font-size:13px;color:#cbd5e1;">${d.orgaos.map(o=>`<li>${o}</li>`).join("")}</ul>
-      </div>
-      <div style="text-align:right;">
-        <button onclick="document.getElementById('modal-fontes-popup').remove()" style="background:#334155;color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:12px;cursor:pointer;">Fechar</button>
+window.abrirModalNorma = function(chave) {
+  const antigo = document.getElementById("modal-norma-box");
+  if(antigo) antigo.remove();
+  const d = DETALHES_NORMAS[chave] || { titulo: "Legislação Oficial", desc: "Normas em vigor conferidas." };
+  const m = document.createElement("div");
+  m.id = "modal-norma-box";
+  m.style = "position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:999999;backdrop-filter:blur(4px);";
+  m.onclick = (e) => { if(e.target===m) m.remove(); };
+  m.innerHTML = `
+    <div style="background:#1e293b;border:1px solid #475569;border-radius:12px;width:90%;max-width:480px;padding:24px;color:#f8fafc;font-family:system-ui,sans-serif;box-shadow:0 20px 25px -5px rgba(0,0,0,0.6);">
+      <h3 style="color:#fbbf24;margin-top:0;font-size:16px;display:flex;align-items:center;gap:6px;">⚖️ Base Teórica Atualizada</h3>
+      <p style="font-weight:700;color:#38bdf8;margin:8px 0;">${d.titulo}</p>
+      <p style="font-size:13px;line-height:1.5;color:#cbd5e1;background:#0f172a;padding:12px;border-radius:6px;border-left:3px solid #f59e0b;">${d.desc}</p>
+      <div style="text-align:right;margin-top:16px;">
+        <button onclick="document.getElementById('modal-norma-box').remove()" style="background:#334155;color:#fff;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:12px;">Entendido</button>
       </div>
     </div>`;
-  document.body.appendChild(modal);
+  document.body.appendChild(m);
 };
+
+// Estiliza o alerta de gabarito diretamente na resolução da questão
+const obsQuestoes = new MutationObserver(() => {
+  document.querySelectorAll(".resolucao-box, .resolucao, .comentario").forEach(box => {
+    if(box.textContent.includes("🚨 [ATENÇÃO: GABARITO/LEGISLAÇÃO REVISADA") && !box.querySelector(".card-alerta-gabarito")) {
+      const match = box.innerHTML.match(/🚨 \[ATENÇÃO: GABARITO\/LEGISLAÇÃO REVISADA EM (.*?)\]<br>Norma Atualizadora: (.*?)<br>Impacto Jurídico: (.*?)<br>Gabarito Vigente: (.*?)(?:<br>|$)/);
+      if(match) {
+        box.innerHTML = box.innerHTML.replace(/🚨 \[ATENÇÃO: GABARITO\/LEGISLAÇÃO REVISADA.*?Gabarito Vigente: .*?(?:<br>|$)/, "");
+        const card = document.createElement("div");
+        card.className = "card-alerta-gabarito";
+        card.style = "background:rgba(239,68,68,0.1);border:1px solid #ef4444;border-left:4px solid #ef4444;border-radius:6px;padding:12px;margin-bottom:12px;color:#fca5a5;font-size:13px;";
+        card.innerHTML = `
+          <strong style="color:#f87171;display:block;margin-bottom:4px;font-size:14px;">🚨 Gabarito / Legislação Retificada (${match[1]})</strong>
+          <div><b>Norma:</b> ${match[2]}</div>
+          <div><b>Motivo da Mudança:</b> ${match[3]}</div>
+          <div style="margin-top:6px;font-weight:700;color:#fff;background:#dc2626;display:inline-block;padding:2px 8px;border-radius:4px;">Gabarito Vigente: ${match[4]}</div>
+        `;
+        box.prepend(card);
+      }
+    }
+  });
+});
+obsQuestoes.observe(document.body, { childList: true, subtree: true });
 </script>
 
 </body>
