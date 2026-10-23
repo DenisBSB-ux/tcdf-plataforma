@@ -9,22 +9,129 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>TCDF Questoes</title>
+<title>TCDF Questoes (TESTE CLEAN)</title>
 <link rel="icon" type="image/png" href="img/favicon.png">
 <script>window.__TCDF_BUILD__ = { versao: 'v311', build: '2026-10-21 00:07' };</script>
 <link rel="stylesheet" href="css/styles.css?v=v311">
 
-<style id="estilos-teste-direto">
-  #barra-aviso-teste { background: #f59e0b; color: #000; text-align: center; padding: 8px; font-size: 13px; font-weight: 700; }
-  .frase-dia, [class*="frase"], .quote-box, .app > div:has(> em, > q) {
+<style id="design-clean-direto">
+  /* Barra superior do ambiente de teste */
+  #barra-aviso-teste {
+    background: #f59e0b;
+    color: #000;
+    text-align: center;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 700;
   }
-  .badge-materia-atualizada { background: rgba(16,185,129,0.2); color: #34d399; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; margin-left: 8px; }
-  .btn-fontes-popup { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.4); padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; margin-left: 6px; }
+
+  /* Fundo geral sofisticado (Slate escuro) */
+  body, .app {
+    background-color: #0b1120 !important;
+    color: #e2e8f0 !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif !important;
+  }
+
+  /* 🎯 FIM DA POLUIÇÃO: Remove o fundo pastel berrante (azul/verde/amarelo) das linhas e células */
+  table tbody tr,
+  table tbody tr td,
+  table tbody tr th {
+    background-color: #1e293b !important;
+    color: #f1f5f9 !important;
+    border: none !important;
+    padding: 12px 14px !important;
+    font-size: 13.5px !important;
+    transition: background 0.15s ease !important;
+  }
+
+  /* Efeito hover suave ao passar o mouse */
+  table tbody tr:hover td {
+    background-color: #283548 !important;
+  }
+
+  /* Matéria selecionada (Lei Orgânica): ganha borda esquerda azul sutil em vez de pintar a linha inteira */
+  table tbody tr:has(button),
+  table tbody tr:has(.selecionada),
+  table tbody tr:nth-child(3) td:first-child {
+    border-left: 4px solid #38bdf8 !important;
+  }
+
+  /* Card da frase motivacional moderno (estilo card de vidro) */
+  .frase-dia, [class*="frase"], .quote-box, .app div:has(> em, > q) {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.8), rgba(15, 23, 42, 0.9)) !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+    border-left: 4px solid #f59e0b !important;
+    border-radius: 10px !important;
+    color: #f8fafc !important;
+    padding: 14px 20px !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  /* Badges e Botões de Fontes */
+  .badge-materia-2026 {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 2px 7px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-left: 8px;
+  }
+
+  .btn-fontes-popup {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.4);
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-left: 6px;
+    transition: all 0.2s;
+  }
+  .btn-fontes-popup:hover {
+    background: rgba(245, 158, 11, 0.3);
+    color: #fff;
+  }
+
+  /* Oculta o bloco de literalidade nas questões */
+  .arm-box, .badge-literalidade {
+    display: none !important;
+  }
+
+  /* Pop-up Modal */
+  .modal-fontes-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    backdrop-filter: blur(5px);
+  }
+  .modal-fontes-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 14px;
+    width: 90%;
+    max-width: 520px;
+    padding: 24px;
+    color: #f8fafc;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+  }
 </style>
 
 </head>
 <body>
-<div id="barra-aviso-teste">🧪 AMBIENTE DE TESTES OFICIAL (teste.html) — Página Original Intacta</div>
+<div id="barra-aviso-teste">🧪 AMBIENTE DE TESTES (NOVO DESIGN CLEAN + FONTES) — Página Original Intacta</div>
 <div class="app" id="app"></div>
 <div id="print-area"></div>
 
@@ -55,6 +162,87 @@
 <script src="js/init.js?v=v311"></script>
 <script src="js/verificador-versao.js?v=v311"></script>
 <script src="js/revisao_ia.js"></script>
-<script src="js/teste_layout.js"></script>
+
+<script id="script-clean-direto">
+const FONTES_OFICIAIS = {
+  "pdpm": { titulo: "PDPM Mulheres", normas: ["II Plano Distrital de Políticas para Mulheres (PDPM)", "Decreto Distrital nº 42.590/2021"], orgaos: ["Secretaria da Mulher DF (mulher.df.gov.br)", "Diário Oficial do DF"] },
+  "primeiros": { titulo: "Primeiros Socorros", normas: ["Diretrizes AHA (Suporte Básico de Vida)", "Protocolos CBMDF"], orgaos: ["Corpo de Bombeiros Militar do DF", "Ministério da Saúde"] },
+  "44330": { titulo: "Decreto Distrital nº 44.330/2023", normas: ["Decreto Distrital 44.330/23 (Regulamento de Licitações do DF)", "Lei 14.133/21"], orgaos: ["Governo do DF", "PNCP"] },
+  "840": { titulo: "RJU - LC nº 840/2011", normas: ["Lei Complementar Distrital nº 840/2011"], orgaos: ["Tribunal de Contas do DF", "CLDF"] },
+  "lotcdf": { titulo: "Lei Orgânica do TCDF", normas: ["LC Distrital nº 1/1994 (LOTCDF) e Emendas"], orgaos: ["TCDF (tc.df.gov.br)"] },
+  "lodf": { titulo: "LODF - Lei Orgânica do DF", normas: ["Lei Orgânica do Distrito Federal atualizada"], orgaos: ["CLDF (cl.df.gov.br)"] },
+  "reg_interno": { titulo: "Regimento Interno do TCDF", normas: ["Resolução TCDF nº 296/2016"], orgaos: ["Plenário do TCDF"] },
+  "afo": { titulo: "AFO - Orçamento Público", normas: ["LRF (LC 101/00)", "Lei 4.320/64", "CF/88 (arts. 165 a 169)"], orgaos: ["Portal do Planalto", "STN"] },
+  "padrao": { titulo: "Legislação do Concurso TCDF", normas: ["Constituição Federal de 1988", "Normas Federais e Distritais vigentes"], orgaos: ["Planalto.gov.br", "DODF", "STF"] }
+};
+
+window.abrirModalFontes = function(chave) {
+  const antigo = document.getElementById("modal-fontes-popup");
+  if (antigo) antigo.remove();
+
+  const d = FONTES_OFICIAIS[chave] || FONTES_OFICIAIS["padrao"];
+  const modal = document.createElement("div");
+  modal.id = "modal-fontes-popup";
+  modal.className = "modal-fontes-backdrop";
+  modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+  modal.innerHTML = `
+    <div class="modal-fontes-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #334155; padding-bottom:10px; margin-bottom:14px;">
+        <h3 style="color:#fbbf24; margin:0; font-size:16px;">🏛️ Auditoria Jurídica Oficial</h3>
+        <button onclick="document.getElementById('modal-fontes-popup').remove()" style="background:none; border:none; color:#94a3b8; font-size:20px; cursor:pointer;">&times;</button>
+      </div>
+      <p style="margin:0 0 10px 0;"><b>Matéria:</b> <span style="color:#38bdf8;">${d.titulo}</span></p>
+      <div style="margin-bottom:12px;">
+        <span style="font-size:12px; color:#94a3b8; text-transform:uppercase; font-weight:700;">Legislação Aplicada:</span>
+        <ul style="margin:4px 0 0 18px; padding:0; font-size:13px; color:#cbd5e1;">
+          ${d.normas.map(n => `<li>${n}</li>`).join("")}
+        </ul>
+      </div>
+      <div style="margin-bottom:16px;">
+        <span style="font-size:12px; color:#94a3b8; text-transform:uppercase; font-weight:700;">Portais Oficiais Verificados:</span>
+        <ul style="margin:4px 0 0 18px; padding:0; font-size:13px; color:#cbd5e1;">
+          ${d.orgaos.map(o => `<li>${o}</li>`).join("")}
+        </ul>
+      </div>
+      <div style="text-align:right;">
+        <button onclick="document.getElementById('modal-fontes-popup').remove()" style="background:#334155; color:#fff; border:none; padding:7px 16px; border-radius:6px; font-size:12px; cursor:pointer;">Fechar</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+};
+
+function aplicarMelhoriasTabela() {
+  document.querySelectorAll("table tbody tr").forEach(linha => {
+    if (linha.dataset.injetado) return;
+    linha.dataset.injetado = "true";
+
+    const cNome = linha.querySelector("td:nth-child(2)");
+    const cData = linha.querySelector("td:last-child");
+
+    if (cNome && cData) {
+      const txt = cNome.textContent.toLowerCase();
+      let ch = "padrao";
+      if (txt.includes("pdpm") || txt.includes("mulher")) ch = "pdpm";
+      else if (txt.includes("socorros")) ch = "primeiros";
+      else if (txt.includes("44.330") || txt.includes("44330")) ch = "44330";
+      else if (txt.includes("840")) ch = "840";
+      else if (txt.includes("lotcdf") || txt.includes("orgânica")) ch = "lotcdf";
+      else if (txt.includes("lodf")) ch = "lodf";
+      else if (txt.includes("reg. interno")) ch = "reg_interno";
+      else if (txt.includes("afo")) ch = "afo";
+
+      // Injeta badge e botão
+      cNome.innerHTML += ' <span class="badge-materia-2026">✨ 2026</span>';
+      cData.innerHTML += ` <button class="btn-fontes-popup" onclick="event.stopPropagation(); window.abrirModalFontes('${ch}')">ℹ️ Fontes</button>`;
+    }
+  });
+}
+
+new MutationObserver(aplicarMelhoriasTabela).observe(document.body, { childList: true, subtree: true });
+window.addEventListener("DOMContentLoaded", aplicarMelhoriasTabela);
+</script>
+
 </body>
 </html>
