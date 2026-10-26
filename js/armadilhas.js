@@ -736,6 +736,7 @@ function armCritCarregar(){
 function armCritSalvar(cfg){
   try{ if(cfg) localStorage.setItem(ARM_CRIT_KEY, JSON.stringify(cfg)); else localStorage.removeItem(ARM_CRIT_KEY); }catch(e){}
   armCritAplicar(cfg);
+  if(typeof sincronizarPrefs==='function') sincronizarPrefs();
 }
 armCritCarregar();
 
