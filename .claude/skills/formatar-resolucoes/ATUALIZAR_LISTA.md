@@ -17,6 +17,9 @@ Uma lista por vez. Ferramentas desta pasta; arquivos de trabalho numa pasta de r
 `bash finalizar_lista.sh pasta/ original_ou_ultima_entrega.md "Matéria"` → `pasta/final.md`
 (aplicar_padrao → reduzir_redundancia → classificar_auto → aplicar_erros → motivar_erros → limpar_chaves → preencher_artigo → verificar_resolucoes → verificar_importador → contar_distintas → auditar_lista). Corrija o que o resumo apontar e rode de novo. Gabarito ajustado à lei (PADRAO §4): rode com `GAB_ALT=i,j bash finalizar_lista.sh …` (índices 0-based do arquivo final). Os números `#n` do relatório e da auditoria seguem o cabeçalho `## QUESTÃO n` (pode repetir em listas importadas) ou a posição 1-based — confirme pelo conteúdo antes de editar.
 
+## 3b. Modelo das justificativas (PADRAO §2)
+Depois do `finalizar_lista.sh`: gerar a revisão `rev_K.py` (subagentes, 3 lotes: `REV = {pos: {'📌':…, '⚠️':…, '💡':…, 'ERROS': {...}}}`, sem artigo, palavras certas em `==`, erradas em `~~`), aplicar com `aplicar_modelo.py final.md saida.md rev_*.py`, rodar `limpar_chaves.py` e `verificar_modelo.py` (0 problemas) e repetir os verificadores. Em lista nova, já redija 📌/⚠️/💡/ERROS neste modelo.
+
 ## 4. Entrega
 Arquivo `.md` completo (SendUserFile) + 1 linha por: gabaritos alterados, itens sem pop-up, dúvidas a conferir. Orientar **🔁 Substituir por matéria** e **Ctrl+F5**. Mexeu em JS/CSS: subir `vNNN`, commit com trailers, cherry-pick em `origin/main`, PR e squash-merge.
 
