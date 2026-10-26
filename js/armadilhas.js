@@ -215,7 +215,7 @@ function armEditorHtml(q, a){
         <label>Principal <select id="arm-sel-p">${opts(a.p,'— escolha —')}</select></label>
         <label>Secundária <select id="arm-sel-s">${opts(a.s,'— nenhuma —')}</select></label>
       </div>` : `<div class="arm-edit-grid"><label>Sinal de item certo <select id="arm-sel-sinal">${sinais}</select></label></div>`}
-    ${a.errado ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão) <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Preenche o campo com o texto completo do item">↧ Usar texto completo do item</button>
+    ${true ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão) <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Preenche o campo com o texto completo do item">↧ Usar texto completo do item</button>
       <button type="button" class="btn-ui" data-arm-selecao="troca" title="Selecione palavras no enunciado (acima) e clique para usá-las como trecho">🎯 Marcar seleção como trecho</button>
       <button type="button" class="btn-ui" data-arm-selecao="soma" title="Selecione outras palavras no enunciado e adicione como mais um trecho">＋ Adicionar seleção</button>
       <small class="arm-dica-sel">Selecione as palavras no enunciado acima e clique em um dos botões.</small><textarea id="arm-txt-tr" class="arm-autosize" rows="2">${esc(a.trecho||'')}</textarea></label>
@@ -239,9 +239,9 @@ function armAplicarEdicao(q){
   if(s===p) s = '';
   if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
   EDICOES_USUARIO[uid].arm = armCodificar(errado?p:'', errado?s:'', errado?'':sinal);
-  if(errado){
+  {   // trecho e explicação valem para qualquer item (certo ou errado)
     const orig = { tr: q.tr||'', ex: q.ex||'' };
-    const tr = g('arm-txt-tr').trim();
+    const tr = (g('arm-txt-tr')||'').trim();
     const exDiv = document.getElementById('arm-txt-ex');
     let ex = '';
     if(exDiv){ prepararEditorParaSalvar(exDiv); ex = limparHtmlEditado(exDiv.innerHTML).trim(); if(ex === esc(orig.ex)) ex = orig.ex; }
