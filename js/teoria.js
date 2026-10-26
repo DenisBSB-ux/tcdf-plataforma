@@ -389,9 +389,16 @@ function doutrinaDfSecao(d, q){
   d.secs.forEach((sc,i)=>{ let n = 0; (sc.chaves||[]).forEach(r=>{ try{ if(new RegExp(r,'iu').test(txt)) n++; }catch(_){} }); if(n>pontos){ pontos = n; melhor = i; } });
   return melhor;
 }
+const DADM_TEMAS = [ [/estado, governo/i,'estado-governo'], [/ato administrativo/i,'ato-administrativo'], [/agentes p[úu]blicos/i,'agentes-publicos'], [/poderes da/i,'poderes'], [/regime jur[íi]dico/i,'regime-juridico'], [/responsabilidade civil/i,'responsabilidade-civil'], [/servi[çc]os p[úu]blicos/i,'servicos-publicos'], [/organiza[çc][ãa]o administrativa/i,'organizacao-administrativa'], [/controle da/i,'controle'] ];
+const DADM_TITULOS = { 'estado-governo':'Estado, governo e administração', 'ato-administrativo':'Ato administrativo', 'agentes-publicos':'Agentes públicos', 'poderes':'Poderes da administração', 'regime-juridico':'Regime jurídico-administrativo', 'responsabilidade-civil':'Responsabilidade civil do Estado', 'servicos-publicos':'Serviços públicos', 'organizacao-administrativa':'Organização administrativa', 'controle':'Controle da administração' };
+function doutrinaDadmDaQuestao(q){
+  if(!/^(direito )?administrativo \(geral\)/i.test(String(q.materia||'').trim())) return null;
+  for(const tm of [String(q.tema||''), String(q.temaOriginal||'')]){ const f = DADM_TEMAS.find(([re])=>re.test(tm)); if(f) return 'dadm:'+f[1]; }
+  return null;
+}
 function doutrinaDaQuestao(q){
   if(!q) return null;
-  { const k = doutrinaDfDaQuestao(q); if(k) return k; } const t = String(q.q||'') + ' ' + String(q.tema||'');
+  { const k = doutrinaDfDaQuestao(q) || doutrinaDadmDaQuestao(q); if(k) return k; } const t = String(q.q||'') + ' ' + String(q.tema||'');
   if(/Bonavides|gera[çc][õo]es|dimens[õo]es.{0,30}direitos fundamentais/i.test(t)) return 'geracoes';
   if(/efic[áa]cia (plena|contida|limitada)|normas (constitucionais )?program[áa]ticas|classifica[çc][ãa]o tripartite|aplicabilidade das normas|restringida pelo legislador infraconstitucional/i.test(t)) return 'eficacia';
   if(/^reg/i.test(String(q.materia||'')) && /mandado de seguran[çc]a/i.test(String(q.q||'')) && /Minist[ée]rio P[úu]blico|MP\b/.test(String(q.q||''))) return 'mpc';
@@ -406,6 +413,7 @@ function doutrinaDaQuestao(q){
 }
 function doutrinaTitulo(chave){
   if(/^df:/.test(chave)) return DF_TITULOS[String(chave).slice(3)] || 'Conhecimentos do DF';
+  if(/^dadm:/.test(chave)) return DADM_TITULOS[String(chave).slice(5)] || 'Direito Administrativo';
   if(/^ps:/.test(chave)){ const T = ['Segurança da cena e avaliação','RCP e DEA','Engasgo','Hemorragias e choque','Queimaduras e choque elétrico','Fraturas, entorse e luxação','Convulsão, desmaio e hipoglicemia','Intoxicações e peçonhentos','Calor e afogamento']; return T[+String(chave).slice(3)] || 'Primeiros socorros'; }
   if(/^pdpm:/.test(chave)){ const T = { consulta:'Consulta pública do II PDPM', acoes:'Ações e projetos do II PDPM', diversidade:'Misoginia e saúde (II PDPM)', principios:'Laicidade e ação afirmativa', penal:'Crimes contra a mulher e súmulas' }; return T[String(chave).split(':')[1].split('@')[0]] || 'Doutrina'; }
   if(DOUTRINA[chave]) return DOUTRINA[chave].titulo.split(' · ')[0];
@@ -444,6 +452,17 @@ function doutrinaDfCarregar(){
   });
   return doutrinaDfPromessa;
 }
+let doutrinaDadmPromessa = null;
+function doutrinaDadmCarregar(){
+  if(typeof DOUTRINA_DADM!=='undefined') return Promise.resolve();
+  if(doutrinaDadmPromessa) return doutrinaDadmPromessa;
+  doutrinaDadmPromessa = new Promise((ok,falha)=>{
+    const sc = document.createElement('script'); sc.src = 'js/doutrina-dadm.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
+    sc.onload = ok; sc.onerror = ()=>{ doutrinaDadmPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
+    document.head.appendChild(sc);
+  });
+  return doutrinaDadmPromessa;
+}
 let doutrinaAdmPromessa = null;
 function doutrinaAdmCarregar(){
   if(typeof DOUTRINA_ADM!=='undefined') return Promise.resolve();
@@ -466,6 +485,10 @@ async function doutrinaAbrir(chave, uid){
     document.getElementById('lei-corpo').textContent = 'Carregando…';
     try{ await doutrinaDfCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
     d = DOUTRINA_DF[String(chave).slice(3)]; if(d) ini = doutrinaDfSecao(d, BY_UID[uid]||{});
+  } else if(!d && /^dadm:/.test(chave)){
+    document.getElementById('lei-corpo').textContent = 'Carregando…';
+    try{ await doutrinaDadmCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
+    d = DOUTRINA_DADM[String(chave).slice(5)]; if(d) ini = doutrinaDfSecao(d, BY_UID[uid]||{});
   } else if(!d && /^pdpm:/.test(chave)){
     document.getElementById('lei-corpo').textContent = 'Carregando…';
     try{ await doutrinaPdpmCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
