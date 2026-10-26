@@ -2362,3 +2362,7 @@ body:not(.theme-light) mark.arm-chave{ background:#fde68a; color:#78350f !import
 .alt-legais-caixa, .alt-legais-caixa h3, .alt-legais-caixa b, .alt-legais-caixa p, .alt-legais-item b, .alt-legais-item p{ color:#1d1f22 !important; }
 .alt-legais-caixa h4, .alt-legais-sub, .alt-legais-dica, .alt-legais-item small, .alt-legais-st, .alt-legais-fechar{ color:#585c63 !important; }
 .alt-legais-caixa{ background:#f7f3e8 !important; }
+
+/* aviso de dispositivo alterado no pop-up da lei */
+.lei-alt-aviso{ margin:0 0 10px; padding:8px 12px; border-radius:8px; background:#fef3c7; border:1px solid #f3d98a; border-left:4px solid #d97706; color:#78350f !important; font-size:13px; line-height:1.45; }
+.lei-alt-aviso b{ color:#78350f !important; }
