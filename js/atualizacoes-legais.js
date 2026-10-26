@@ -125,7 +125,7 @@ function marcarAlteracaoDom(html, al){
 /* gabarito ainda sem confirmação do moderador: virado pela norma, já ajustado no arquivo, ou proposto */
 function gabaritoAguardaConfirmacao(q){
   if(!q || q.t!=='CE') return null;
-  const g = typeof GABARITOS_ALTERADOS!=='undefined' ? GABARITOS_ALTERADOS[q.uid] : null; if(g && g.homologado) return null;
+  const g = typeof GABARITOS_ALTERADOS!=='undefined' ? GABARITOS_ALTERADOS[q.uid] : null; if(g && g.homologado && !g.removido) return null;
   const a = alteracaoComTrecho(q); if(a && a.gabaritoNovo) return a;
   return propostaPorNormaNova(q);
 }
@@ -137,7 +137,7 @@ function alteracoesDoArtigo(norma, n){
 function questaoAtualizadaPendente(q){
   if(!questaoAtualizadaAviso(q)) return false;
   const g = typeof GABARITOS_ALTERADOS!=='undefined' ? GABARITOS_ALTERADOS[q.uid] : null;
-  return !(g && g.homologado);
+  return !(g && g.homologado && !g.removido);
 }
 function _dataBr(iso){ const [y,m,d] = String(iso).split('-'); return d+'/'+m+'/'+y; }
 /* Questão cuja resolução traz o selo "Atualização verificada em DD/MM/AAAA: ..." com mudança real
