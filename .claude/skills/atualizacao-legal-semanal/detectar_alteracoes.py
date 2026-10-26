@@ -96,4 +96,5 @@ def main():
         s = '\n'.join(out)
         open(p, 'w', encoding='utf-8').write(s)
     print(json.dumps({'baseline': base, 'normas': rel, 'novos_registros': [n for n, _ in itens_novos]}, ensure_ascii=False, indent=1))
-main()
+if __name__ == '__main__':
+    main()
