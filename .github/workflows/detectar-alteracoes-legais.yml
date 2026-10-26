@@ -20,10 +20,13 @@ jobs:
         with: { node-version: 20 }
       - name: Detectar alterações
         run: python3 .claude/skills/atualizacao-legal-semanal/detectar_alteracoes.py | tee relatorio.json
+      - name: Sincronizar texto consolidado (Normas.leg.br)
+        run: python3 .claude/skills/atualizacao-legal-semanal/sync_normas.py | tee relatorio-texto.json
       - name: Validar, abrir PR e mesclar
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
-          rm -f relatorio.json
+          rm -f relatorio.json relatorio-texto.json
+          for f in $(git diff --name-only | grep '\.js$'); do node --check "$f"; done
           git diff --quiet && { echo "Sem mudanças."; exit 0; }
           node --check js/atualizacoes-legais.js
           node .claude/skills/atualizacao-legal-semanal/verificar_cobertura.js "$(date +%Y-%m-%d)" || echo "(cobertura parcial: matérias sem fonte oficial seguem pela rotina de pesquisa)"
