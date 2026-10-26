@@ -404,6 +404,7 @@ function doutrinaDaQuestao(q){
   if(/^reg/i.test(String(q.materia||'')) && /mandado de seguran[çc]a/i.test(String(q.q||'')) && /Minist[ée]rio P[úu]blico|MP\b/.test(String(q.q||''))) return 'mpc';
   if(/primeiros socorros/i.test(String(q.materia||''))) return doutrinaPsDaQuestao(q);
   if(/PDPM|mulher|maria da penha/i.test(String(q.materia||''))){ const k = doutrinaPdpmDaQuestao(q); if(k) return k; }
+  if(/^constitucional/i.test(String(q.materia||'').trim())) return 'cst:geral';
   const tema = String(q.tema||'').trim();
   if(!/^adm(inistra[çc][ãa]o)? geral/i.test(String(q.materia||''))) return null;   // os códigos de assunto repetem entre matérias
   for(const tm of [tema, String(q.temaOriginal||'').trim()]) for(const [re,k] of DOUTRINA_TEMAS) if(re.test(tm)) return 'adm:'+k;
@@ -413,6 +414,7 @@ function doutrinaDaQuestao(q){
 }
 function doutrinaTitulo(chave){
   if(/^df:/.test(chave)) return DF_TITULOS[String(chave).slice(3)] || 'Conhecimentos do DF';
+  if(/^cst:/.test(chave)) return 'Constitucional: jurisprudência e doutrina';
   if(/^dadm:/.test(chave)) return DADM_TITULOS[String(chave).slice(5)] || 'Direito Administrativo';
   if(/^ps:/.test(chave)){ const T = ['Segurança da cena e avaliação','RCP e DEA','Engasgo','Hemorragias e choque','Queimaduras e choque elétrico','Fraturas, entorse e luxação','Convulsão, desmaio e hipoglicemia','Intoxicações e peçonhentos','Calor e afogamento']; return T[+String(chave).slice(3)] || 'Primeiros socorros'; }
   if(/^pdpm:/.test(chave)){ const T = { consulta:'Consulta pública do II PDPM', acoes:'Ações e projetos do II PDPM', diversidade:'Misoginia e saúde (II PDPM)', principios:'Laicidade e ação afirmativa', penal:'Crimes contra a mulher e súmulas' }; return T[String(chave).split(':')[1].split('@')[0]] || 'Doutrina'; }
@@ -463,6 +465,17 @@ function doutrinaDadmCarregar(){
   });
   return doutrinaDadmPromessa;
 }
+let doutrinaCstPromessa = null;
+function doutrinaCstCarregar(){
+  if(typeof DOUTRINA_CST!=='undefined') return Promise.resolve();
+  if(doutrinaCstPromessa) return doutrinaCstPromessa;
+  doutrinaCstPromessa = new Promise((ok,falha)=>{
+    const sc = document.createElement('script'); sc.src = 'js/doutrina-cst.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
+    sc.onload = ok; sc.onerror = ()=>{ doutrinaCstPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
+    document.head.appendChild(sc);
+  });
+  return doutrinaCstPromessa;
+}
 let doutrinaAdmPromessa = null;
 function doutrinaAdmCarregar(){
   if(typeof DOUTRINA_ADM!=='undefined') return Promise.resolve();
@@ -489,6 +502,10 @@ async function doutrinaAbrir(chave, uid){
     document.getElementById('lei-corpo').textContent = 'Carregando…';
     try{ await doutrinaDadmCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
     d = DOUTRINA_DADM[String(chave).slice(5)]; if(d) ini = doutrinaDfSecao(d, BY_UID[uid]||{});
+  } else if(!d && /^cst:/.test(chave)){
+    document.getElementById('lei-corpo').textContent = 'Carregando…';
+    try{ await doutrinaCstCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
+    d = DOUTRINA_CST[String(chave).slice(4)]; if(d) ini = doutrinaDfSecao(d, BY_UID[uid]||{});
   } else if(!d && /^pdpm:/.test(chave)){
     document.getElementById('lei-corpo').textContent = 'Carregando…';
     try{ await doutrinaPdpmCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
