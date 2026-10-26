@@ -396,7 +396,8 @@ function explicacaoPlana(q){
 }
 function justificativaSobEnunciado(q, emEdicao){
   if(emEdicao || !(STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[q.uid])) return '';
-  const ex = explicacaoPlana(q); return ex ? `<div class="arm-justificativa"><em>Justificativa:</em> ${esc(ex)}</div>` : '';
+  let ex = explicacaoPlana(q); if(!ex && typeof alteracaoComTrecho==='function'){ const al = alteracaoComTrecho(q); if(al) ex = al.justificativa || ''; }
+  return ex ? `<div class="arm-justificativa"><em>Justificativa:</em> ${esc(ex)}</div>` : '';
 }
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
@@ -409,6 +410,7 @@ function blocoEnunciadoEditavel(q){
     const a = armEfetiva(q);
     if(a && a.classificada && a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid, String(q.r||'').split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'').split(' · '), a.correcao ? { literal:true, correcao:a.correcao } : undefined);
     else if(a && a.classificada && !a.errado && a.trecho) conteudo = armDestacarTrecho(conteudo, a.trecho, uid, null, { literal:true, classe:'arm-chave' });   // item certo: só as palavras-chave que levam à resposta
+    else if(!custom && typeof alteracaoComTrecho==='function' && alteracaoComTrecho(q)){ const al = alteracaoComTrecho(q); conteudo = armDestacarTrecho(conteudo, al.trecho, uid, null, { literal:true, correcao:al.correcao }); }   // norma alterada: trecho defasado riscado + correção
     else conteudo = destacarChavesNoEnunciado(conteudo, q, 'enun');   // múltipla escolha e itens sem trecho: as palavras-chave (🔑) da justificativa
   }
   return `
