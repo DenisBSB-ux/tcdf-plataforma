@@ -401,12 +401,8 @@ function textoResolucaoAtualizado(q){
 function explicacaoPlana(q){
   try{ const a = armEfetiva(q); if(!a || !a.errado || !a.expl) return ''; return String(a.expl).replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim(); }catch(_){ return ''; }
 }
-function justificativaSobEnunciado(q, emEdicao){
-  if(emEdicao || !(STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[q.uid])) return '';
-  let ex = explicacaoPlana(q); if(!ex && typeof alteracaoComTrecho==='function'){ const al = alteracaoComTrecho(q); if(al) ex = al.justificativa || ''; }
-  const alj = typeof alteracaoComTrecho==='function' ? alteracaoComTrecho(q) : null;
-  return ex ? `<div class="arm-justificativa"><em>Justificativa:</em> ${alj ? marcarAlteracao(ex, alj, 'html') : esc(ex)}</div>` : '';
-}
+// removida a caixa "Justificativa:" sob o enunciado (repetia o 📌 da resolução) — pedido do usuário
+function justificativaSobEnunciado(q, emEdicao){ return ''; }
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
   const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
