@@ -390,6 +390,14 @@ function destacarChavesNoEnunciado(html, q, onde){
   });
   return out;
 }
+// item Errado respondido: logo abaixo do enunciado corrigido (trecho riscado + correção) aparece só a "Explicação da armadilha", sob a etiqueta "Justificativa:"
+function explicacaoPlana(q){
+  try{ const a = armEfetiva(q); if(!a || !a.errado || !a.expl) return ''; return String(a.expl).replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim(); }catch(_){ return ''; }
+}
+function justificativaSobEnunciado(q, emEdicao){
+  if(emEdicao || !(STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[q.uid])) return '';
+  const ex = explicacaoPlana(q); return ex ? `<div class="arm-justificativa"><em>Justificativa:</em> ${esc(ex)}</div>` : '';
+}
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
   const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid]['q']));
@@ -411,6 +419,7 @@ function blocoEnunciadoEditavel(q){
     </div>
     ${emEdicao ? editorToolbarHtml(uid) : ''}
     <div class="campo-editavel-conteudo" ${emEdicao ? 'contenteditable="true"' : ''} id="conteudo-q-${esc(uid)}">${conteudo}</div>
+    ${justificativaSobEnunciado(q, emEdicao)}
   `;
 }
 // bloco de resolução/resumo flash: sem rótulo nem botão próprios — só entra
@@ -452,7 +461,7 @@ function renderResolucao(q, resposta, quiz){
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   <div class="resolucao-box ${tintClass} resolucao-unica">
     ${armPainelHtml(q)}
-    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(String(limparResolucao(q.r)||'').split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).join('\n'), palavrasChave, q))}
+    ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(String(limparResolucao(q.r)||'').split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).filter(l=>{ if(edicaoAtual===q.uid) return true; const ex = explicacaoPlana(q); if(!ex || !/^\s*📌/u.test(l)) return true; const pl = l.replace(/^\s*📌\s*/u,'').replace(/==|\*\*|~~/g,'').replace(/\s+/g,' ').trim(); return pl!==ex; }).join('\n'), palavrasChave, q))}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
     : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}
