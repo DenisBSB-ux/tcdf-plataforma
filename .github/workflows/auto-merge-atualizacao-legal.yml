@@ -1,0 +1,45 @@
+# Mescla sozinho (squash) o PR da rotina semanal de atualização legal, desde que:
+#  - a branch comece por claude/atualizacao-legal-;
+#  - o PR mexa SÓ em arquivos permitidos (selo/alterações, textos de lei, index.html para a versão, skill da rotina);
+#  - os .js alterados passem em `node --check` e o index.html continue com versão única.
+# Qualquer outra coisa (listas, gabaritos, js do app) NÃO é mesclada: fica aberta para o usuário.
+name: auto-merge-atualizacao-legal
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  mesclar:
+    if: startsWith(github.head_ref, 'claude/atualizacao-legal-')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ github.event.pull_request.head.sha }}" }
+      - name: Conferir arquivos alterados
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}", PR: "${{ github.event.pull_request.number }}" }
+        run: |
+          gh api "repos/${{ github.repository }}/pulls/$PR/files" --paginate --jq '.[].filename' > arquivos.txt
+          cat arquivos.txt
+          while read -r f; do
+            case "$f" in
+              js/atualizacoes-legais.js|index.html|js/*-texto.js|.claude/skills/atualizacao-legal-semanal/*) ;;
+              *) echo "Arquivo fora da lista permitida: $f"; exit 1 ;;
+            esac
+          done < arquivos.txt
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Validar JS e versão
+        run: |
+          for f in $(grep '\.js$' arquivos.txt); do node --check "$f"; done
+          node -e "
+          const t=require('fs').readFileSync('index.html','utf8');
+          const v=[...new Set((t.match(/v\d{3}/g)||[]))];
+          if(v.length!==1){console.error('versões diferentes no index.html:',v);process.exit(1)}
+          global.window=global;global.document={addEventListener(){}};global.esc=String;
+          (0,eval)(require('fs').readFileSync('js/atualizacoes-legais.js','utf8')+';if(!Array.isArray(ALTERACOES_LEGAIS)||!ATUALIZACOES_LEGAIS.length) throw new Error(\"estrutura inválida\")');
+          console.log('ok',v[0]);"
+      - name: Mesclar (squash)
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}", PR: "${{ github.event.pull_request.number }}" }
+        run: gh pr merge "$PR" --squash --delete-branch --repo "${{ github.repository }}"
