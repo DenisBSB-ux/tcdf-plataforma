@@ -1,0 +1,37 @@
+# Toda segunda-feira (ou manualmente): consulta a base OFICIAL do Senado (dados abertos) e registra alterações em normas carregadas na plataforma.
+# Se houver novidade: atualiza js/atualizacoes-legais.js (alterações + selo), sobe a versão, abre PR e mescla sozinho. Sem novidade, só atualiza a data do selo.
+# Nunca altera gabarito, lista nem texto de lei.
+name: detectar-alteracoes-legais
+on:
+  schedule:
+    - cron: '17 8 * * 1'     # segunda 05:17 (Brasília)
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  detectar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Detectar alterações
+        run: python3 .claude/skills/atualizacao-legal-semanal/detectar_alteracoes.py | tee relatorio.json
+      - name: Validar, abrir PR e mesclar
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+        run: |
+          rm -f relatorio.json
+          git diff --quiet && { echo "Sem mudanças."; exit 0; }
+          node --check js/atualizacoes-legais.js
+          node .claude/skills/atualizacao-legal-semanal/verificar_cobertura.js "$(date +%Y-%m-%d)" || echo "(cobertura parcial: matérias sem fonte oficial seguem pela rotina de pesquisa)"
+          V=$(grep -o 'v[0-9]\{3\}' index.html | head -1); N=$((10#${V#v}+1)); NV="v$N"
+          sed -i "s/$V/$NV/g" index.html
+          B="claude/atualizacao-legal-$(date +%Y-%m-%d)-senado"
+          git config user.name "github-actions"; git config user.email "actions@github.com"
+          git checkout -b "$B"; git add -A; git commit -m "Alterações legais detectadas na base oficial do Senado ($NV)"
+          git push origin "$B"
+          gh pr create --base main --head "$B" --title "Alterações legais (base oficial do Senado) $NV" --body "Detecção automática: normas posteriores que alteram dispositivos das leis carregadas, com marcação das questões que citam os artigos. Gabaritos e listas não foram tocados."
+          gh pr merge "$B" --squash --delete-branch
