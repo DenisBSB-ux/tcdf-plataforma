@@ -105,7 +105,16 @@ function salvarGabaritosAlterados(){
 }
 function gabaritoEfetivo(q){
   const alt = GABARITOS_ALTERADOS[q.uid];
-  return alt ? alt.novo : q.g;
+  if(alt) return alt.novo;
+  const al = q.t==='CE' ? gabaritoPorNormaAlterada(q) : null;   // norma alterada confirmada: o item com a redação antiga vira Errado
+  return al ? al.gabaritoNovo : q.g;
+}
+const _GAB_NORMA_CACHE = {};
+function gabaritoPorNormaAlterada(q){
+  if(typeof alteracaoComTrecho!=='function') return null;
+  const k = q.uid+'|'+q.g; if(k in _GAB_NORMA_CACHE) return _GAB_NORMA_CACHE[k];
+  let r = null; try{ const a = alteracaoComTrecho(q); if(a && a.gabaritoNovo && a.gabaritoNovo!==q.g) r = a; }catch(_){}
+  return (_GAB_NORMA_CACHE[k] = r);
 }
 function alterarGabarito(uid){
   const q = BY_UID[uid];
