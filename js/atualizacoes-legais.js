@@ -14,7 +14,7 @@ const ATUALIZACOES_LEGAIS = [
   { re: 'tribut|ICMS|ISS|IBS|CBS|reforma|9\\.?430|lucro', data: '2026-10-20', resumo: 'Lista conferida: nenhuma emenda constitucional de 2026 alterou a CF/ADCT sobre o tema; ADI contra a EC 103/2019 (art. 149 §§ 1º-A a 1º-C) sem resultado final localizado; SV 57 mantida. Lei 9.430: LC 225/2026 (art. 83, §§ 5º e 7º, devedor contumaz) e LC 227/2026 (art. 81, VIII) já constam do texto da plataforma. LC 214/2025 e suas regulamentações de 2026: texto oficial não conferido.' },
   { re: 'previd|109', data: '2026-10-20', resumo: 'LC 109/2001: última alteração detectada em 15/6/2026 (dispositivo não identificado). STJ: art. 69 §1º afasta exigência de plano para todos os empregados (Lei 8.212, art. 28 §9º, "p").' },
   { re: 'LGPD|LAI|13\\.?709|12\\.?527|acesso [àa] informa|dados pessoais', data: '2026-10-20', resumo: 'LAI (Lei 12.527): texto oficial conferido (Planalto, compilado de 2021); nenhuma alteração em 2025/2026 localizada; art. 12 com redação ligada à Lei 14.129/2021. LGPD: art. 5º VIII/XIX (Lei 15.352/2026) e art. 55-A (MP 1.317/2025; Lei 15.452/2026) trocaram "Autoridade" por "Agência" Nacional de Proteção de Dados; texto transcrito de dossiê de terceiros (não oficial) e só dos artigos transcritos; conferir no Planalto.' },
-  { re: 'constitucional|CF|direitos fundamentais', data: '2026-10-20', resumo: 'Emendas constitucionais de 2026 não localizadas em fonte confiável; conferir no Planalto.' },
+  { re: 'constitucional|CF|direitos fundamentais', data: '2026-10-26', resumo: 'CF carregada na plataforma traz a EC 141/2026 (art. 7º, XIII: 40 horas semanais). EC 139/2026 (Tribunais de Contas) e EC 140/2026 (agentes comunitários) vieram só de fontes secundárias: conferir no Planalto. Ver as alterações registradas e as questões marcadas.' },
 ];
 function atualizacaoLegalDaMateria(m){
   const e = ATUALIZACOES_LEGAIS.find(x => new RegExp(x.re, 'i').test(m || ''));
@@ -26,13 +26,66 @@ function atualizacaoLegalBadge(m){
   const [y, mo, d] = a.data.split('-');
   const dias = Math.floor((Date.now() - new Date(a.data + 'T12:00:00').getTime()) / 86400000);
   const velha = dias > 30;
-  return `<span class="badge-atualizacao-legal${velha ? ' velha' : ''}" title="${esc('Atualizada em ' + d + '/' + mo + '/' + y + '. ' + (a.resumo || 'Última conferência de mudanças em leis, decretos e jurisprudência.'))}">⚖️ ${d}/${mo}/${y}</span>`;
+  const alts = (typeof alteracoesDaMateria==='function') ? alteracoesDaMateria(m) : [];
+  return `<span class="badge-atualizacao-legal${velha ? ' velha' : ''}${alts.length ? ' com-alteracoes' : ''}" data-materia="${esc(m)}" title="${esc('Atualizada em ' + d + '/' + mo + '/' + y + '. ' + (a.resumo || 'Última conferência de mudanças em leis, decretos e jurisprudência.') + ' (clique para ver as alterações registradas)')}">⚖️ ${d}/${mo}/${y}${alts.length ? ` · 🔔 ${alts.length}` : ''}</span>`;
 }
 
+/* ---------- Alterações legais registradas (rotina semanal ou conferência manual) ----------
+   Cada item descreve UMA mudança em norma/jurisprudência e aparece (a) no painel da matéria (clique no selo "⚖️ data"),
+   (b) como etiqueta nas questões que citam o dispositivo (norma + artigo do campo Artigo, e, se houver, `termo` casando no enunciado)
+   e (c) no filtro "Só questões atualizadas". Sem `dispositivos`, o item vale só para a matéria (painel).
+   Campos: id · mat (regex do nome da matéria) · titulo · resumo · fonte · registrada (AAAA-MM-DD em que a plataforma anotou) ·
+   status ('confirmada' = texto oficial carregado na plataforma / 'a-conferir' = só fonte secundária) ·
+   dispositivos [{norma:'CF', n:7}] · termo (regex, opcional) · gabarito ('' | texto da decisão pendente ou tomada). */
+const ALTERACOES_LEGAIS = [
+  { id:'ec141-2026', mat:'constitucional|CF|direitos fundamentais|previd', titulo:'EC 141/2026 · jornada de 40 horas semanais (art. 7º, XIII)', resumo:'O texto da CF carregado na plataforma traz o art. 7º, XIII com 8 horas diárias e 40 semanais (antes, 44). Questões que ainda falam em 44 horas ficam desatualizadas; a Q "44 horas semanais" de Constitucional teve o gabarito ajustado.', fonte:'Texto da CF carregado (Planalto, via Drive do usuário); notícias do Congresso (secundárias)', registrada:'2026-10-26', status:'confirmada', dispositivos:[{norma:'CF', n:7}], termo:'jornada|horas semanais|44 horas|40 horas|redução da jornada', gabarito:'Gabarito ajustado em 26/10/2026 (art. 7º, XIII).' },
+  { id:'ec139-2026', mat:'constitucional|CF|controle|TCDF|regimento|org[âa]nica', titulo:'EC 139/2026 · Tribunais de Contas (arts. 31 e 75)', resumo:'Emenda de 5/5/2026 teria alterado o art. 31, § 1º e o art. 75 da CF (Tribunais de Contas como órgãos permanentes e essenciais ao controle externo). Fonte secundária: conferir o texto no Planalto antes de mudar gabarito.', fonte:'Notícias do Congresso (secundárias); rotina de 26/10/2026', registrada:'2026-10-26', status:'a-conferir', dispositivos:[{norma:'CF', n:31},{norma:'CF', n:75}], termo:'Tribunal de Contas|Tribunais de Contas|controle externo', gabarito:'' },
+  { id:'ec140-2026', mat:'constitucional|CF|previd', titulo:'EC 140/2026 · aposentadoria de agentes comunitários de saúde e de combate às endemias', resumo:'Promulgação marcada para 16/10/2026 segundo a agenda do Congresso; não confirmada. Conferir no Planalto e, se vigente, revisar questões de aposentadoria especial.', fonte:'Agenda do Congresso (secundária)', registrada:'2026-10-26', status:'a-conferir', gabarito:'' },
+  { id:'lc227-2026', mat:'tribut|ICMS|ISS|IBS|CBS|reforma', titulo:'LC 227/2026 · altera a LC 214/2025 (IBS/CBS)', resumo:'Sancionada em 14/1/2026 (PLP 108/2024): Comitê Gestor do IBS, crédito sobre vale-transporte/refeição/alimentação e medicamentos com alíquota zero. Regulamentos IBS/CBS (2ª versão) previstos para novembro. Texto oficial não conferido.', fonte:'Cescon Barrieu e Lefosse (secundárias)', registrada:'2026-10-26', status:'a-conferir', gabarito:'' },
+  { id:'anpd-cp3-2026', mat:'LGPD|LAI|13\\.?709|dados pessoais', titulo:'ANPD · Consulta Pública 3/2026 (dosimetria)', resumo:'Minuta que altera o Regulamento de Dosimetria (Res. CD/ANPD 4/2023); contribuições até 30/11/2026. É proposta, não norma em vigor.', fonte:'Atlas Público (secundária)', registrada:'2026-10-26', status:'a-conferir', gabarito:'' },
+  { id:'adi7156-7236', mat:'8\\.?429|9\\.?784|2\\.?834|improbidade', titulo:'STF · ADIs 7156 e 7236 (Lei 14.230/2021 — improbidade)', resumo:'Julgamento divulgado em 3/8/2026 e publicado no DOU em 5/8/2026 (fontes divergem nas datas). Acórdão oficial não conferido; questões sobre dolo, prescrição e legitimidade ativa podem ser afetadas.', fonte:'Mattos Filho e Atlas Público (secundárias)', registrada:'2026-10-26', status:'a-conferir', gabarito:'' },
+];
+function alteracoesDaMateria(m){ return ALTERACOES_LEGAIS.filter(a => new RegExp(a.mat, 'i').test(m || '')); }
+function alteracoesDaQuestao(q){
+  if(!q) return [];
+  let refs = []; try{ refs = refsArtigosDaQuestao(q); }catch(_){}
+  const txt = String(q.q||'') + ' ' + String(q.r||'').split(/\n/).filter(l=>/^\s*[⚖📌]/u.test(l)).join(' ');
+  return alteracoesDaMateria(q.materia).filter(a => (a.dispositivos||[]).some(d => refs.some(r => (!r.norma || r.norma===d.norma) && +r.n===+d.n)) && (!a.termo || new RegExp(a.termo,'i').test(txt)));
+}
+function _dataBr(iso){ const [y,m,d] = String(iso).split('-'); return d+'/'+m+'/'+y; }
 /* Questão cuja resolução traz o selo "Atualização verificada em DD/MM/AAAA: ..." com mudança real
    (selos de "sem alteração localizada / mantido" não geram aviso). */
 function questaoAtualizadaAviso(q){
+  const tags = [];
   const m = String((q && q.r) || '').match(/Atualiza[çc][ãa]o verificada em (\d{2}\/\d{2}\/\d{4}):\s*([^\n]*)/i);
-  if(!m || /n[ãa]o localizei|sem altera|sem mudan|mantid[oa]s?\b(?!.*(ADI|inconstitucion))/i.test(m[2]) && !/ADI 7236|invalidaram|declarou inconstitucional|dispensaram/i.test(m[2])) return '';
-  return `<span class="tag tag-cobranca tag-cobranca-A" title="${esc(m[2])}">⚠️ Atenção: Questão atualizada em ${m[1].slice(0,5)}</span>`;
+  if(m && !(/n[ãa]o localizei|sem altera|sem mudan|mantid[oa]s?\b(?!.*(ADI|inconstitucion))/i.test(m[2]) && !/ADI 7236|invalidaram|declarou inconstitucional|dispensaram/i.test(m[2])))
+    tags.push(`<span class="tag tag-cobranca tag-cobranca-A" title="${esc(m[2])}">⚠️ Atenção: Questão atualizada em ${m[1].slice(0,5)}</span>`);
+  const g = String((q && q.r) || '').match(/Gabarito ajustado ao texto d[^.\n]*\.(?:\s*Constava\s+([^.\n]+)\.?)?/i);
+  if(g) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="${esc(g[0])}">🔄 Gabarito revisado</span>`);
+  else if(/Conferir o gabarito/i.test(String((q && q.r) || ''))) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-conf" title="Esta questão tem o gabarito marcado para conferência (a lei carregada ou a jurisprudência pode divergir do gabarito do arquivo).">❓ Gabarito a conferir</span>`);
+  alteracoesDaQuestao(q).forEach(a => tags.push(`<span class="tag tag-cobranca tag-cobranca-A${a.status==='a-conferir' ? ' tag-alt-conf' : ''}" title="${esc(a.titulo + ' — ' + (a.status==='confirmada' ? 'confirmada no texto carregado' : 'a conferir no texto oficial') + '. ' + a.resumo)}">🔔 Norma alterada (${_dataBr(a.registrada).slice(0,5)})</span>`));
+  return tags.join('');
 }
+
+/* painel das alterações legais da matéria (clique no selo da matéria) */
+function abrirAlteracoesLegais(materia){
+  const a = atualizacaoLegalDaMateria(materia), alts = alteracoesDaMateria(materia);
+  const antigo = document.getElementById('alt-legais-modal'); if(antigo) antigo.remove();
+  const b = document.createElement('div'); b.id = 'alt-legais-modal'; b.className = 'alt-legais-fundo';
+  b.innerHTML = `<div class="alt-legais-caixa" role="dialog" aria-label="Alterações legais">
+    <button type="button" class="alt-legais-fechar" aria-label="Fechar">✕</button>
+    <h3>⚖️ ${esc(materia)}</h3>
+    <p class="alt-legais-sub">${a.data ? 'Última conferência: ' + _dataBr(a.data) : 'Sem conferência registrada.'}</p>
+    ${a.resumo ? `<p class="alt-legais-resumo">${esc(a.resumo)}</p>` : ''}
+    <h4>Alterações registradas (${alts.length})</h4>
+    ${alts.length ? alts.map(x => `<div class="alt-legais-item ${x.status==='a-conferir' ? 'conf' : 'ok'}"><b>${esc(x.titulo)}</b><span class="alt-legais-st">${x.status==='confirmada' ? 'confirmada no texto carregado' : 'a conferir no texto oficial'} · registrada em ${_dataBr(x.registrada)}</span><p>${esc(x.resumo)}</p>${x.gabarito ? `<p><b>Gabarito:</b> ${esc(x.gabarito)}</p>` : ''}<small>Fonte: ${esc(x.fonte)}${(x.dispositivos||[]).length ? ' · questões que citam: ' + x.dispositivos.map(d=>esc(d.norma+' art. '+d.n)).join(', ') : ' · vale para a matéria (sem dispositivo específico)'}</small></div>`).join('') : '<p class="alt-legais-vazio">Nenhuma alteração legal registrada para esta matéria desde a última conferência.</p>'}
+    <p class="alt-legais-dica">As questões afetadas ganham a etiqueta 🔔, 🔄 ou ❓ e entram no filtro "Só questões atualizadas".</p></div>`;
+  b.addEventListener('click', e => { if(e.target===b || e.target.closest('.alt-legais-fechar')) b.remove(); });
+  document.body.appendChild(b);
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('.badge-atualizacao-legal[data-materia]');
+  if(!t) return;
+  e.stopPropagation(); e.preventDefault(); abrirAlteracoesLegais(t.dataset.materia);
+}, true);
+document.addEventListener('keydown', e => { if(e.key==='Escape'){ const m = document.getElementById('alt-legais-modal'); if(m) m.remove(); } });

@@ -1,19 +1,28 @@
 ---
 name: atualizacao-legal-semanal
-description: Rotina semanal do TCDF Plataforma que confere mudanças em leis, decretos, súmulas e jurisprudência das matérias e atualiza o selo "Atualizada em" (js/atualizacoes-legais.js). Use na rotina agendada ou quando o usuário pedir para conferir atualizações legais.
+description: Rotina semanal do TCDF Plataforma que confere mudanças em leis, decretos, súmulas e jurisprudência de TODAS as matérias, registra as alterações em js/atualizacoes-legais.js (selo + ALTERACOES_LEGAIS) para a plataforma sinalizar matérias e questões afetadas, e abre PR. Use na rotina agendada ou quando o usuário pedir para conferir atualizações legais.
 ---
 
-# Atualização legal semanal
+# Atualização legal semanal (versão 26/10/2026)
 
-Objetivo: manter o selo `⚖️ Atualizada em DD/MM/AAAA` de cada matéria (arquivo `js/atualizacoes-legais.js`) fiel à última conferência de mudanças em leis, decretos, súmulas e jurisprudência.
+Objetivo: manter fiel o selo `⚖️ DD/MM/AAAA` de cada matéria e registrar cada mudança em `ALTERACOES_LEGAIS` (`js/atualizacoes-legais.js`), que a plataforma usa para: (a) contar alterações no selo da matéria (clique abre o painel), (b) etiquetar as questões que citam o dispositivo (🔔 norma alterada), (c) alimentar o filtro "Só questões atualizadas". Também aparecem sozinhas as etiquetas 🔄 (gabarito revisado, linha ⚠️ "Gabarito ajustado…") e ❓ (gabarito a conferir).
 
-## Passos
-1. Ler `js/atualizacoes-legais.js` e a lista de normas em `LEI_FONTES` (`js/teoria.js`). Cada entrada do selo corresponde a uma matéria (regex `re`).
-2. Para cada matéria/norma, pesquisar na web (WebSearch, ≥2 fontes; Drive de normas oficiais primeiro quando houver) mudanças recentes: nova lei/decreto/IN alterando a norma, revogações, súmulas novas ou canceladas, julgamentos do STF/STJ/TCU/TCDF sobre os temas cobrados. Sites oficiais (Planalto, STF etc.) costumam estar bloqueados: use o que a busca devolver e diga que o acórdão/texto oficial não foi conferido.
-3. Sem mudança: só atualizar `data` (AAAA-MM-DD de hoje) e, se útil, o `resumo`.
-4. Com mudança: atualizar `data` e `resumo` (uma frase com a mudança e a fonte); NÃO alterar gabaritos nem textos de lei sozinho. Listar no PR as questões/dispositivos afetados e o que o usuário precisa decidir (regras em `formatar-resolucoes`: lei prevalece sobre gabarito divergente, avisar antes de alterar; riscar trecho vencido no pop-up com `~~...~~`).
-5. Subir a versão (`vNNN` e data/hora em `index.html`), commit com os trailers, push na branch de trabalho e abrir PR. Não fazer merge: o usuário revisa. Corpo do PR: tabela matéria | conferido | mudou? | fonte | pendência.
-6. Nunca inventar artigo, valor ou julgamento; sem fonte, escrever "não localizei".
+## 0. Acesso ao repositório (obrigatório, foi o que falhou em 26/10/2026)
+A sessão da rotina pode iniciar SEM o repositório. Antes de qualquer coisa:
+1. `ToolSearch` com `select:mcp__claude-code-remote__add_repo,mcp__claude-code-remote__check_repo_access` e chame `add_repo` (owner `denisbsb-ux`, repo `tcdf-plataforma`, access `push`); depois clone/`register_repo_root` conforme a resposta.
+2. Se mesmo assim o repositório não vier ou o push der 403: NÃO encerre em silêncio. Entregue o conteúdo pronto (diff do `js/atualizacoes-legais.js`) no resumo e em arquivo, notifique o usuário dizendo "push negado" e peça para autorizar o repositório na rotina. Nunca declare sucesso sem PR aberto.
 
-## Critérios de análise (valem aqui e em toda lista nova)
-Os critérios completos estão em `.claude/skills/formatar-resolucoes/SKILL.md`, seção "Checklist único de análise de toda lista". Na rotina semanal: o selo do painel (`js/atualizacoes-legais.js`) só muda de data depois de pesquisa real; quando algo mudou, descrever a mudança no `resumo` e listar no PR as matérias e os dispositivos cujas questões precisam de selo/badge ou de gabarito revisto (as listas ficam com o usuário, não no repositório). Nunca registrar "conferido" sem fonte.
+## 1. Escopo: todas as matérias
+Matérias do app (chave em `js/edital.js`): Constitucional, Administrativo (geral), Adm Geral & Pub, Adm (Lei 8.429/9.784/2.834), Adm (LGPD + LAI), Lei 14.133, Contratos, Decreto 44.330, IN nº 5, AFO, D.Tributário, Previdenciário, Direito Civil, Lei Orgânica do TCDF, Regimento Interno, RJU LC840, LODF, Conhec. DF, PDPM Mulheres, Primeiros Socorros, Analise Dados IA. Garanta que TODAS tenham entrada em `ATUALIZACOES_LEGAIS` (hoje faltam: Administrativo (geral), Conhec. DF, Direito Civil, Adm Geral & Pub, RJU LC840, LODF, Analise Dados IA — crie a entrada com `re` que case o nome). Não pule matéria: se não pesquisou, mantenha a data e diga "não conferida" no PR.
+
+## 2. Pesquisa (por matéria/norma)
+Use `LEI_FONTES` (`js/teoria.js`) e o `resumo` atual como ponto de partida. WebSearch com ≥2 fontes (Drive de normas oficiais primeiro, se houver; depois Planalto/STF/STJ/TCU/TCDF/DODF e Estratégia, Gran, QConcursos, EC Concursos, Conjur, Migalhas, Dizer o Direito). Procure: lei/decreto/EC/IN novos ou revogações, alterações de artigos cobrados, súmulas/temas novos ou cancelados, julgamentos de ADI/RE. Sites oficiais costumam estar bloqueados: registre "texto oficial não conferido". Nunca invente número, artigo ou data; sem fonte, escreva "não localizei".
+
+## 3. Registro (arquivo `js/atualizacoes-legais.js`)
+- Sem mudança: atualize só `data` (hoje) e, se útil, acrescente "Reconferido em DD/MM/AAAA: nada novo localizado (fontes)".
+- Com mudança: atualize `data`/`resumo` e acrescente item em `ALTERACOES_LEGAIS` com: `id` (kebab, ex. `ec141-2026`), `mat` (regex do nome da matéria), `titulo`, `resumo` (1–3 frases, com o que mudou e o que pode afetar), `fonte`, `registrada` (AAAA-MM-DD de hoje), `status` (`confirmada` só se o texto oficial já estiver carregado em `js/*-texto.js`; senão `a-conferir`), `dispositivos` (`[{norma:'CF', n:7}]`; norma exatamente como no campo Artigo da lista — `CF`, `Lei 14.133` etc.), `termo` (regex opcional que restringe às questões do assunto), `gabarito` (decisão tomada ou '' se pendente). Sem `dispositivos` o item vale só para a matéria.
+- Item resolvido (usuário decidiu / texto oficial carregado): mude `status` para `confirmada` e preencha `gabarito`; não apague (histórico). Itens com mais de 90 dias e resolvidos podem ser removidos.
+- NÃO altere gabaritos, listas nem textos de lei sozinho. Quando uma mudança contradiz gabarito, liste no PR: nº/ID da questão (ou dispositivo), gabarito atual, o que a norma passa a dizer, fonte, e a decisão pendente.
+
+## 4. Versão, commit e PR
+Suba `vNNN` em todas as ocorrências do `index.html` (e a data/hora de build) — o `CLAUDE.md` do repositório manda. Commit com os trailers pedidos, push na branch de trabalho, abra PR (sem merge; o usuário revisa). Corpo do PR: tabela `matéria | conferido? | mudou? | fonte | pendência` + seção "Gabaritos/questões afetadas (decisão do usuário)". Teste antes: `node --check js/atualizacoes-legais.js` e carregar `index.html` sem erro.
