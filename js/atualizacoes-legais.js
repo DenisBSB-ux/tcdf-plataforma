@@ -103,6 +103,32 @@ function marcarAlteracao(txt, al, fmt){
     return out + esc(seg.slice(ult));
   }).join('');
 }
+/* mesma marcação sobre HTML já pronto (resolução editada pelo usuário): só nós de texto fora de del/mark/s já marcados */
+function marcarAlteracaoDom(html, al){
+  const box = document.createElement('div'); box.innerHTML = html;
+  const termos = [...(al.antigos||[al.trecho]).map(t=>[t,'a']), ...(al.novos||[al.correcao]).filter(Boolean).map(t=>[t,'n'])];
+  const re = _reTermos(termos.map(t=>t[0])); const reg = new RegExp(re.source, 'gi');
+  const nos = []; const w = document.createTreeWalker(box, NodeFilter.SHOW_TEXT); let n; while((n = w.nextNode())) nos.push(n);
+  nos.forEach(no=>{
+    if(no.parentElement && no.parentElement.closest('del,mark,s,strike,.arm-trecho,.arm-correcao')) return;
+    const txt = no.nodeValue; reg.lastIndex = 0; if(!reg.test(txt)) return; reg.lastIndex = 0;
+    const frag = document.createDocumentFragment(); let ult = 0, m;
+    while((m = reg.exec(txt))){
+      frag.appendChild(document.createTextNode(txt.slice(ult, m.index)));
+      const t = termos.find(x=>x[0].toLowerCase()===m[0].toLowerCase()); const el = document.createElement(t && t[1]==='a' ? 'del' : 'mark');
+      el.className = t && t[1]==='a' ? 'arm-trecho' : 'arm-correcao'; el.textContent = m[0]; frag.appendChild(el); ult = m.index + m[0].length;
+    }
+    frag.appendChild(document.createTextNode(txt.slice(ult))); no.replaceWith(frag);
+  });
+  return box.innerHTML;
+}
+/* gabarito ainda sem confirmação do moderador: virado pela norma, já ajustado no arquivo, ou proposto */
+function gabaritoAguardaConfirmacao(q){
+  if(!q || q.t!=='CE') return null;
+  const g = typeof GABARITOS_ALTERADOS!=='undefined' ? GABARITOS_ALTERADOS[q.uid] : null; if(g && g.homologado) return null;
+  const a = alteracaoComTrecho(q); if(a && a.gabaritoNovo) return a;
+  return propostaPorNormaNova(q);
+}
 function alteracoesDoArtigo(norma, n){
   const num = parseInt(String(n), 10); if(!(num>=0)) return [];
   return ALTERACOES_LEGAIS.filter(a => (a.dispositivos||[]).some(d => d.norma===norma && +d.n===num));
