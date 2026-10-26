@@ -2373,3 +2373,5 @@ body:not(.theme-light) mark.arm-chave{ background:#fde68a; color:#78350f !import
 .arm-justificativa em{ font-weight:700; font-style:italic; }
 .btn-treinar-tema{margin-left:6px;border:0;background:var(--gold,#b8860b);color:#fff;border-radius:4px;cursor:pointer;font-size:.75rem;padding:1px 6px}.composicao-art:hover{filter:brightness(.97)}
 .btn-revisado{background:#15803d;color:#fff;border:0;border-radius:999px;padding:4px 12px;font-weight:700;cursor:pointer}
+del.arm-trecho{background:#fecaca;color:inherit;text-decoration:line-through;padding:0 2px;border-radius:3px}
+mark.arm-correcao{background:#bbf7d0;color:inherit;font-weight:700;padding:0 2px;border-radius:3px}
