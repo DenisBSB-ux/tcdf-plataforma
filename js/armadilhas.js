@@ -182,6 +182,7 @@ function armPainelHtml(q){
   const editando = STATE.armEditUid === uid;
   const lapis = ''; // edição unificada: o botão único "Editar" fica junto de "Corrigir gabarito"
   if(editando) return armEditorHtml(q, a);
+  return '';   // painel "Armadilha da banca" removido da tela a pedido do usuário (26/10/2026); o editor continua no modo Editar
   const origemTxt = a.origem==='manual' ? 'manual' : (a.origem==='gemini' ? 'Gemini' : 'IA');
   if(!a.classificada){
     return `<div class="arm-box arm-box-vazia"><span class="arm-rot">Armadilha da banca</span> <span class="arm-nc">não classificada</span> ${lapis}</div>`;
