@@ -1585,7 +1585,7 @@ function linhasArtigosHtml(ag, comResultado){
     return cab + arts.map(n=>{
       const a = ag.grupos[nm][n];
       const res = comResultado && (a.ac+a.er) ? ` <span class="composicao-art-res" title="Última resposta de cada questão">✔${a.ac} ✖${a.er}</span>` : '';
-      return `<div class="bar-row composicao-art${a.er?' composicao-art-erro':''}"${a.er?` title="${a.er} ${a.er===1?'questão errada':'questões erradas'} neste artigo"`:''}><div class="name">Art. ${n}${a.fora?' <span class="composicao-art-fora" title="Artigo fora da faixa deste assunto: a questão pode estar em outro assunto">⚠</span>':''}</div>${barraArtigoHtml(a, max)}<div class="pct">${a.n}${res}</div></div>`;
+      return `<div class="bar-row composicao-art${a.er?' composicao-art-erro':''}" data-art-n="${n}" data-art-norma="${esc(nm)}" style="cursor:pointer"${a.er?` title="${a.er} ${a.er===1?'questão errada':'questões erradas'} neste artigo"`:''}><div class="name">Art. ${n}${a.fora?' <span class="composicao-art-fora" title="Artigo fora da faixa deste assunto: a questão pode estar em outro assunto">⚠</span>':''}</div>${barraArtigoHtml(a, max)}<div class="pct">${a.n}${res}</div></div>`;
     }).join('');
   }).join('');
 }
@@ -1604,7 +1604,7 @@ function distribuicaoAssuntosMateriaHtml(m){
   return temas.map(t=>{
     const k = 'ass:'+m+'||'+t;
     return `<details class="composicao-det" data-comp-tema="${esc(k)}" ${COMPOSICAO_ABERTOS.has(k)?'open':''}>
-      <summary class="bar-row composicao-linha" title="${esc(t)}"><div class="name">${esc(t)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(4, Math.round(cont[t]*100/max))}%;"></div></div><div class="pct">${cont[t]}</div></summary>
+      <summary class="bar-row composicao-linha" title="${esc(t)}"><div class="name">${esc(t)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(4, Math.round(cont[t]*100/max))}%;"></div></div><div class="pct">${cont[t]} <button type="button" class="btn-treinar-tema" data-treinar-tema="1" title="Estudar só as questões deste assunto">▶</button></div></summary>
       <div class="composicao-arts">${COMPOSICAO_ABERTOS.has(k)?detalharArtigosDoAssunto(m,t):''}</div>
     </details>`;
   }).join('');
@@ -1952,3 +1952,18 @@ function startQuiz(nums, opcoes){
   render();
 }
 
+
+/* clique na barra de assunto (▶) ou na linha de artigo das estatísticas: estuda só as questões daquele tema/artigo */
+document.addEventListener('click', ev=>{
+  const bt = ev.target.closest && ev.target.closest('[data-treinar-tema]'), lin = !bt && ev.target.closest && ev.target.closest('.composicao-art[data-art-n]');
+  if(!bt && !lin) return;
+  const det = ev.target.closest('[data-comp-tema]'); if(!det) return;
+  const [m, t] = String(det.dataset.compTema).replace(/^ass:/,'').split('||'); if(!m) return;
+  let qs = questoesDaMateria(m).filter(q=>(q.tema||'Geral')===t);
+  if(lin){ const n = +lin.dataset.artN, nm = lin.dataset.artNorma || ''; qs = qs.filter(q=>refsArtigosDaQuestao(q).some(r=>+r.n===n && (!nm || !r.norma || r.norma===nm))); }
+  if(bt){ ev.preventDefault(); ev.stopPropagation(); }
+  if(!qs.length) return;
+  STATE.materia = m; setLocalTab(m, 'simulado');
+  STATE.quiz = { queue: shuffle(qs.map(q=>q.uid)), idx:0, respostas:{}, finished:false, materia:m, tema:t, origemErros:true };
+  salvarQuizEmAndamento(); render();
+});
