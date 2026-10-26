@@ -398,13 +398,40 @@ function simbolosComDica(html){
 function marcadoresParaHtml(h){
   return String(h).replace(/\u0001/g,'<strong>').replace(/\u0002/g,'</strong>').replace(/\u0003/g,'<em>').replace(/\u0004/g,'</em>').replace(/\u0005/g,'<mark class="res-marca">').replace(/\u0006/g,'</mark>').replace(/~~(.+?)~~/g,'<del class="res-riscado">$1</del>');   // ~~termo errado~~ aparece riscado
 }
-function formatarTextoComDestaque(texto, palavrasExtras){
+// ERROS: negrito no termo da alternativa que a linha comenta (maior trecho em comum com o texto da alternativa) e nas palavras-chave (🔑) da questão; ~~x~~ continua riscado
+const _STOP_ERR = new Set(['de','da','do','das','dos','o','a','os','as','e','em','que','para','por','com','nao','ou','se','um','uma','ao','aos','na','no','nas','nos','ser','sao','foi','sua','seu','sem','mais','como','pelo','pela']);
+function _nErr(w){ return String(w).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function negritoNoErro(item, q){
+  const m = String(item).match(/^(Letra\s+([A-E])\s*:\s*(?:Errada|Certa)\s*;\s*)(.*)$/s);
+  if(!m || !q) return item;
+  let corpo = m[3]; if(/[\u0001\u0002]/.test(corpo)) return item;
+  const spans = [];
+  const palavras = t => { const r = []; String(t).replace(/[\p{L}\p{N}]+/gu, (w, i) => { r.push({ n:_nErr(w), i, f:i+w.length }); return w; }); return r; };
+  const pc = palavras(corpo);
+  const alt = (q.alt||[]).find(a => String(a.letra).toUpperCase()===m[2]);
+  if(alt){
+    const pa = palavras(alt.texto); let melhor = null;
+    for(let i=0;i<pa.length;i++) for(let L=Math.min(6,pa.length-i);L>=1;L--){
+      const seq = pa.slice(i,i+L).map(x=>x.n); if(melhor && L<=melhor.L) break;
+      if(L===1 ? seq[0].length<8 : !seq.some(w=>w.length>=5 && !_STOP_ERR.has(w))) continue; if(_STOP_ERR.has(seq[0]) || _STOP_ERR.has(seq[L-1])) continue;
+      for(let j=0;j+L<=pc.length;j++) if(pc.slice(j,j+L).every((x,k)=>x.n===seq[k])){ melhor = { L, a:pc[j].i, b:pc[j+L-1].f }; break; }
+    }
+    if(melhor) spans.push([melhor.a, melhor.b]);
+  }
+  try{ (kwsDestaqueDaQuestao(q)||[]).forEach(k=>{ const pk = palavras(k); if(!pk.length) return; const seq = pk.map(x=>x.n);
+    for(let j=0;j+seq.length<=pc.length;j++) if(pc.slice(j,j+seq.length).every((x,t)=>x.n===seq[t])){ spans.push([pc[j].i, pc[j+seq.length-1].f]); break; } }); }catch(_){}
+  spans.sort((x,y)=>x[0]-y[0]); const ok = [];
+  spans.forEach(sp=>{ if(ok.length && sp[0] < ok[ok.length-1][1]) return; if(ok.length<3) ok.push(sp); });
+  for(let k=ok.length-1;k>=0;k--) corpo = corpo.slice(0,ok[k][0]) + '\u0001' + corpo.slice(ok[k][0],ok[k][1]) + '\u0002' + corpo.slice(ok[k][1]);
+  return m[1] + corpo;
+}
+function formatarTextoComDestaque(texto, palavrasExtras, qErros){
   if(!texto) return '';
   const comQuebras = quebrarItensAlfabeticos(texto);
   // cada linha que abre com um símbolo da legenda (🏷️ ⚖️ 📌 🔑 ⚠️ 🪤 💡) é UM parágrafo, mesmo com mais de uma frase;
   // linhas "- ..." em sequência (bloco "⚠️ ERROS": por que cada alternativa errada está errada) viram uma lista
   let html = '', lista = [];
-  const fechaLista = () => { if(lista.length){ html += '<ul class="res-erros">' + lista.map(i => `<li>${marcadoresParaHtml(destacarPalavrasChave(i, palavrasExtras))}</li>`).join('') + '</ul>'; lista = []; } };
+  const fechaLista = () => { if(lista.length){ html += '<ul class="res-erros">' + lista.map(i => `<li>${marcadoresParaHtml(destacarPalavrasChave(negritoNoErro(i, qErros), palavrasExtras))}</li>`).join('') + '</ul>'; lista = []; } };
   comQuebras.split(/\n+/).forEach(l => {
     if(/^\s*[-•]\s+/.test(l)){ lista.push(l.replace(/^\s*[-•]\s+/, '')); return; }
     fechaLista();
