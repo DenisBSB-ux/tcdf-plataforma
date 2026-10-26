@@ -43,7 +43,7 @@ function atualizacaoLegalBadge(m){
    status ('confirmada' = texto oficial carregado na plataforma / 'a-conferir' = só fonte secundária) ·
    dispositivos [{norma:'CF', n:7}] · termo (regex, opcional) · gabarito ('' | texto da decisão pendente ou tomada). */
 const ALTERACOES_LEGAIS = [
-  { id:'ec141-2026', mat:'constitucional|CF|direitos fundamentais|previd', titulo:'EC 141/2026 · jornada de 40 horas semanais (art. 7º, XIII)', resumo:'O texto da CF carregado na plataforma traz o art. 7º, XIII com 8 horas diárias e 40 semanais (antes, 44). Questões que ainda falam em 44 horas ficam desatualizadas; a Q "44 horas semanais" de Constitucional teve o gabarito ajustado.', fonte:'Texto da CF carregado (Planalto, via Drive do usuário); notícias do Congresso (secundárias)', registrada:'2026-10-26', status:'confirmada', dispositivos:[{norma:'CF', n:7}], termo:'jornada|horas semanais|44 horas|40 horas|redução da jornada', gabarito:'Gabarito ajustado em 26/10/2026 (art. 7º, XIII).', trecho:'44 horas semanais', antigos:['44 horas semanais','44 horas'], novos:['40 horas semanais','40 semanais'], gabaritoNovo:'Errado', correcao:'40 horas semanais', justificativa:'Norma alterada: a EC 141/2026 (outubro de 2026) reduziu a jornada do art. 7º, XIII para 8 horas diárias e 40 semanais; o item cita a redação anterior (44 horas), por isso o gabarito passou a Errado.' },
+  { id:'ec141-2026', mat:'constitucional|CF|direitos fundamentais|previd', titulo:'EC 141/2026 · jornada de 40 horas semanais (art. 7º, XIII)', resumo:'O texto da CF carregado na plataforma traz o art. 7º, XIII com 8 horas diárias e 40 semanais (antes, 44). Questões que ainda falam em 44 horas ficam desatualizadas; a Q "44 horas semanais" de Constitucional teve o gabarito ajustado.', fonte:'Texto da CF carregado (Planalto, via Drive do usuário); notícias do Congresso (secundárias)', registrada:'2026-10-26', status:'confirmada', dispositivos:[{norma:'CF', n:7}], termo:'jornada|horas semanais|44 horas|40 horas|redução da jornada', gabarito:'Gabarito ajustado em 26/10/2026 (art. 7º, XIII).', trecho:'44 horas semanais', antigos:['44 horas semanais','44 horas','44 semanais','44h','quarenta e quatro horas'], novos:['40 horas semanais','40 semanais'], gabaritoNovo:'Errado', correcao:'40 horas semanais', justificativa:'Norma alterada: a EC 141/2026 (outubro de 2026) reduziu a jornada do art. 7º, XIII para 8 horas diárias e 40 semanais; o item cita a redação anterior (44 horas), por isso o gabarito passou a Errado.' },
   { id:'ec139-2026', mat:'constitucional|CF|controle|TCDF|regimento|org[âa]nica', titulo:'EC 139/2026 · Tribunais de Contas (arts. 31 e 75)', resumo:'EC 139, de 5/5/2026 (DOU 6/5/2026) alterou o art. 31, § 1º e o art. 75 da CF: Tribunais de Contas são instituições permanentes e essenciais ao controle externo; normas da Seção aplicam-se aos TCs estaduais, distritais e municipais no que couber; veda extinção, criação ou instalação. Conteúdo conferido no texto oficial do Planalto (emc139, lido em 26/10/2026), mas o texto ainda não está carregado em js/cf-texto.js: conferir antes de mudar gabarito.', fonte:'Planalto (emc139.htm); rotina de 26/10/2026; confirmada na base oficial do Senado (alteração permanente declarada em 16/10/2026 / 05/05/2026)', registrada:'2026-10-26', status:'confirmada', dispositivos:[{norma:'CF', n:31},{norma:'CF', n:75}], termo:'Tribunal de Contas|Tribunais de Contas|controle externo', gabarito:'' },
   { id:'ec140-2026', mat:'constitucional|CF|previd', titulo:'EC 140/2026 · aposentadoria de agentes comunitários de saúde e de combate às endemias', resumo:'EC 140, de 16/10/2026 (altera CF arts. 40, 198 e 201; vigência na publicação; conferida no Planalto, emc140): aposentadoria especial de ACS/ACE com 57 (M) e 60 (H) anos de idade e 25 de contribuição/exercício, transição a partir de 50/52 anos até 2030, RPPS e RGPS. Contratação temporária/terceirizada de ACS/ACE vedada (salvo emergência); efetivação até 31/12/2028. Texto não carregado em js/cf-texto.js; revisar questões de aposentadoria especial/Previdenciário.', fonte:'Planalto (emc140.htm); rotina de 26/10/2026; confirmada na base oficial do Senado (alteração permanente declarada em 16/10/2026 / 05/05/2026)', dispositivos:[{norma:'CF', n:40},{norma:'CF', n:198},{norma:'CF', n:201}], termo:'agente[s]? comunit|endemias', registrada:'2026-10-26', status:'confirmada', gabarito:'' },
   { id:'lc227-2026', mat:'tribut|ICMS|ISS|IBS|CBS|reforma', titulo:'LC 227/2026 · altera a LC 214/2025 (IBS/CBS)', resumo:'Sancionada em 14/1/2026 (PLP 108/2024): Comitê Gestor do IBS, crédito sobre vale-transporte/refeição/alimentação e medicamentos com alíquota zero. Regulamentos IBS/CBS (2ª versão) previstos para novembro. Texto oficial não conferido.', fonte:'Cescon Barrieu e Lefosse (secundárias)', registrada:'2026-10-26', status:'a-conferir', gabarito:'' },
@@ -66,9 +66,25 @@ function alteracoesDaQuestao(q){
   return alteracoesDaMateria(q.materia).filter(a => (a.dispositivos||[]).some(d => refs.some(r => (!r.norma || r.norma===d.norma) && +r.n===+d.n)) && (!a.termo || new RegExp(a.termo,'i').test(txt)));
 }
 /* alteração que traz trecho/correção/justificativa prontos e cujo trecho consta no enunciado (item defasado: rachura + correção + Justificativa) */
+function _reTermos(lista){ return new RegExp((lista||[]).slice().sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'), 'i'); }
 function alteracaoComTrecho(q){
   if(!q || !q.q) return null;
-  return alteracoesDaQuestao(q).find(a => a.trecho && a.status==='confirmada' && String(q.q).includes(a.trecho)) || null;
+  for(const a of alteracoesDaQuestao(q)){
+    if(!a.trecho || a.status!=='confirmada') continue;
+    const m = String(q.q).match(_reTermos(a.antigos || [a.trecho]));
+    if(m) return Object.assign({}, a, { trecho: m[0] });
+  }
+  return null;
+}
+/* proposta (não aplicada sozinha): item Errado no arquivo que já traz só a redação NOVA passa a ser proposto como Certo; o moderador confirma em "Revisado" */
+function propostaPorNormaNova(q){
+  if(!q || !q.q || q.t!=='CE' || q.g!=='Errado' || alteracaoComTrecho(q)) return null;
+  for(const a of alteracoesDaQuestao(q)){
+    if(!a.novos || a.status!=='confirmada') continue;
+    const m = String(q.q).match(_reTermos(a.novos));
+    if(m) return Object.assign({}, a, { gabaritoNovo:'Certo', trecho:m[0], proposta:true });
+  }
+  return null;
 }
 /* em qualquer texto da questão (resolução, 🔑, Justificativa): termo antigo igual ou semelhante → riscado; termo novo → destacado.
    fmt 'md' devolve ~~ ~~ / == ==, fmt 'html' devolve <del>/<mark> (texto escapado). Trechos já marcados (~~, ==, **) ficam como estão. */

@@ -118,7 +118,7 @@ function gabaritoPorNormaAlterada(q){
 }
 /* botão "Revisado": o moderador confirma a virada automática; vira gabarito definitivo (homologado) */
 function homologarGabarito(uid){
-  const q = BY_UID[uid]; const al = q && gabaritoPorNormaAlterada(q); if(!al) return;
+  const q = BY_UID[uid]; const al = q && (gabaritoPorNormaAlterada(q) || (typeof propostaPorNormaNova==='function' && propostaPorNormaNova(q))); if(!al) return;
   if(!window.confirm(`Confirmar o gabarito definitivo desta questão como ${al.gabaritoNovo.toUpperCase()}?\n\n${al.titulo}`)) return;
   GABARITOS_ALTERADOS[uid] = { novo: al.gabaritoNovo, motivo: 'Norma alterada: '+al.titulo, original: q.g, ts: Date.now(), homologado:true };
   salvarGabaritosAlterados(); render();
