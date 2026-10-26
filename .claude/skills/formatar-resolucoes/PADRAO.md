@@ -53,3 +53,8 @@ Painel "Armadilha da banca" **sem** "classificação: …"; resolução exibida 
 
 ## 9. Checklist de saída (tudo verde antes de entregar)
 `verificar_modelo.py` OK (sem artigo nas justificativas) · `verificar_resolucoes.py` OK · `verificar_importador.js` (enunciadosIguais true, gabaritosDivergentes [], resolucoesMalFormatadas []) · `contar_distintas.js` (distintas = total) · `auditar_lista.js` (semPopup 0, popupSemTexto 0) · 0 itens sem classificação · 0 resíduos proibidos. `finalizar_lista.sh` roda tudo e imprime esse resumo.
+
+## Diretriz de interface (26/10/2026)
+- **Item Errado (classificação):** Principal = `JUS - Justificativa falsa` quando o erro é conceitual/fundamento inválido; **Trecho** = fragmento original exato (letra por letra) que torna o item errado; **Explicação da armadilha** = justificativa técnica curta, direta e objetiva (campo `**Explicação:**`).
+- **Na tela:** enunciado intacto; só o trecho errado vem `~~riscado~~` seguido da correção em `**negrito**`; abaixo, apenas a Explicação sob a etiqueta `Justificativa:` (sem saudação/prefácio/fecho).
+- **Janela da lei:** sem botões Anterior/Próximo artigo e sem bloco "Na apostila"; cabeçalho = nome da lei + campo do artigo + ✕; texto oficial; card final "⚠️ Pegadinha provável" ligado ao artigo.

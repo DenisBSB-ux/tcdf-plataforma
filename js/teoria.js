@@ -666,17 +666,19 @@ function apostilaSecoesDoArtigo(q, norma, n){
   const mx = sec.length ? pontos(sec[0]) : 0;
   return mx>0 ? sec.filter(x=> pontos(x)===mx) : sec;   // só o trecho que a questão cita (se houver)
 }
+/* card inferior "Pegadinha provável": pegadinha da apostila para o artigo (se houver) e a explicação da armadilha da questão; sem referências a páginas de apostila */
 async function leiApostilaAnexar(n){
-  const q = LEI.q && BY_UID[LEI.q]; if(!q || !teoriaPaginaDaQuestao(q) || (LEI.norma!=='CF' && LEI.norma!=='CTN')) return;
-  const norma = LEI.norma, chave = String(n);
-  try{ await apostilaCarregar(); }catch(_){ return; }
-  if(!LEI.aberta || LEI.norma!==norma || String(LEI.n)!==chave) return;
-  const secs = apostilaSecoesDoArtigo(q, norma, n); if(!secs.length) return;
-  const corpo = document.getElementById('lei-corpo'); if(!corpo || corpo.querySelector('.lei-apostila')) return;
-  corpo.insertAdjacentHTML('beforeend', `<div class="lei-apostila"><div class="lei-apostila-tit">📖 Na apostila</div>` + secs.map(x=>
-    `<div class="lei-apostila-sec"><strong>${esc(x.titulo)}</strong> <span class="lei-nota">pág. ${x.pagina}</span>`
-    + (x.peg ? `<div class="lei-peg"><strong>⚠️ Pegadinha provável.</strong> ${esc(x.peg)}</div>` : '')
-    + `<button type="button" class="btn-ui lei-pdf" data-lei-pdf="${x.pagina}">Abrir o PDF nesta página</button></div>`).join('') + `</div>`);
+  const q = LEI.q && BY_UID[LEI.q]; if(!q) return;
+  const norma = LEI.norma, chave = String(n); const pegs = [];
+  if((norma==='CF' || norma==='CTN') && teoriaPaginaDaQuestao(q)){
+    try{ await apostilaCarregar(); }catch(_){}
+    if(!LEI.aberta || LEI.norma!==norma || String(LEI.n)!==chave) return;
+    try{ apostilaSecoesDoArtigo(q, norma, n).forEach(x=>{ if(x.peg) pegs.push(x.peg); }); }catch(_){}
+  }
+  try{ const a = typeof armEfetiva==='function' ? armEfetiva(q) : null; if(a && a.errado && a.expl){ const t = String(a.expl).replace(/<[^>]+>/g,'').trim(); if(t && !pegs.includes(t)) pegs.push(t); } }catch(_){}
+  if(!pegs.length) return;
+  const corpo = document.getElementById('lei-corpo'); if(!corpo || corpo.querySelector('.lei-peg-card')) return;
+  corpo.insertAdjacentHTML('beforeend', `<div class="lei-peg lei-peg-card"><strong>⚠️ Pegadinha provável.</strong> ${pegs.map(esc).join(' ')}</div>`);
 }
 async function leiAbrir(ref, uid){
   const [norma, n] = String(ref).split(':'); if(!LEI_FONTES[norma]) return;
@@ -701,8 +703,8 @@ document.addEventListener('keydown', (ev)=>{
   if(ev.target && ev.target.tagName==='INPUT'){ ev.stopImmediatePropagation(); return; }
   ev.stopImmediatePropagation();
   if(ev.key==='Escape') leiFechar();
-  else if(ev.key==='ArrowLeft'){ ev.preventDefault(); document.querySelector('[data-lei=prev]').click(); }
-  else if(ev.key==='ArrowRight'){ ev.preventDefault(); document.querySelector('[data-lei=next]').click(); }
+  else if(ev.key==='ArrowLeft' && LEI.modo==='apostila'){ ev.preventDefault(); document.querySelector('[data-lei=prev]').click(); }
+  else if(ev.key==='ArrowRight' && LEI.modo==='apostila'){ ev.preventDefault(); document.querySelector('[data-lei=next]').click(); }
 }, true);
 
 
