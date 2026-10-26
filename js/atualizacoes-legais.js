@@ -86,6 +86,7 @@ function questaoAtualizadaAviso(q){
   if(g) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="${esc(g[0])}">🔄 Gabarito revisado</span>`);
   else if(/Conferir o gabarito/i.test(String((q && q.r) || ''))) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-conf" title="Esta questão tem o gabarito marcado para conferência (a lei carregada ou a jurisprudência pode divergir do gabarito do arquivo).">❓ Gabarito a conferir</span>`);
   if(typeof gabaritoPorNormaAlterada==='function' && gabaritoPorNormaAlterada(q)) tags.push('<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="Gabarito virado automaticamente pela norma alterada (redação antiga no enunciado)">🔄 Gabarito revisado</span>');
+  if(typeof alteracaoComTrecho==='function' && alteracaoComTrecho(q)) tags.push('<span class="tag tag-cobranca tag-cobranca-A tag-norma-alterada" title="Esta questão passou por revisão de atualização jurídica">⚠️ Norma alterada</span>');
   alteracoesDaQuestao(q).forEach(a => tags.push(`<span class="tag tag-cobranca tag-cobranca-A${a.status==='a-conferir' ? ' tag-alt-conf' : ''}" title="${esc(a.titulo + ' — ' + (a.status==='confirmada' ? 'confirmada no texto carregado' : 'a conferir no texto oficial') + '. ' + a.resumo)}">🔔 Norma alterada (${_dataBr(a.registrada).slice(0,5)})</span>`));
   return tags.join('');
 }
@@ -102,7 +103,7 @@ function abrirAlteracoesLegais(materia){
     ${a.resumo ? `<p class="alt-legais-resumo">${esc(a.resumo)}</p>` : ''}
     <h4>Alterações registradas (${alts.length})</h4>
     ${alts.length ? alts.map(x => `<div class="alt-legais-item ${x.status==='a-conferir' ? 'conf' : 'ok'}"><b>${esc(x.titulo)}</b><span class="alt-legais-st">${x.status==='confirmada' ? 'confirmada no texto carregado' : 'a conferir no texto oficial'} · registrada em ${_dataBr(x.registrada)}</span><p>${esc(x.resumo)}</p>${x.gabarito ? `<p><b>Gabarito:</b> ${esc(x.gabarito)}</p>` : ''}<small>Fonte: ${esc(x.fonte)}${(x.dispositivos||[]).length ? ' · questões que citam: ' + x.dispositivos.map(d=>esc(d.norma+' art. '+d.n)).join(', ') : ' · vale para a matéria (sem dispositivo específico)'}</small></div>`).join('') : '<p class="alt-legais-vazio">Nenhuma alteração legal registrada para esta matéria desde a última conferência.</p>'}
-    <p class="alt-legais-dica">As questões afetadas ganham a etiqueta 🔔, 🔄 ou ❓ e entram no filtro "Só questões atualizadas".</p></div>`;
+    <p class="alt-legais-dica">As questões afetadas ganham a etiqueta 🔔, 🔄 ou ❓.</p></div>`;
   b.addEventListener('click', e => { if(e.target===b || e.target.closest('.alt-legais-fechar')) b.remove(); });
   document.body.appendChild(b);
 }

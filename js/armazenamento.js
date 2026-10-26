@@ -116,6 +116,13 @@ function gabaritoPorNormaAlterada(q){
   let r = null; try{ const a = alteracaoComTrecho(q); if(a && a.gabaritoNovo && a.gabaritoNovo!==q.g) r = a; }catch(_){}
   return (_GAB_NORMA_CACHE[k] = r);
 }
+/* botão "Revisado": o moderador confirma a virada automática; vira gabarito definitivo (homologado) */
+function homologarGabarito(uid){
+  const q = BY_UID[uid]; const al = q && gabaritoPorNormaAlterada(q); if(!al) return;
+  if(!window.confirm(`Confirmar o gabarito definitivo desta questão como ${al.gabaritoNovo.toUpperCase()}?\n\n${al.titulo}`)) return;
+  GABARITOS_ALTERADOS[uid] = { novo: al.gabaritoNovo, motivo: 'Norma alterada: '+al.titulo, original: q.g, ts: Date.now(), homologado:true };
+  salvarGabaritosAlterados(); render();
+}
 function alterarGabarito(uid){
   const q = BY_UID[uid];
   if(!q) return;
