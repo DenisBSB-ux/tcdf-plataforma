@@ -462,9 +462,10 @@ function renderResolucao(q, resposta, quiz){
   const gAlterado = GABARITOS_ALTERADOS[q.uid];
   return `
   <div class="answer-feedback ${feedbackClass}">
+    ${(!gAlterado && typeof propostaPorNormaNova==='function' && propostaPorNormaNova(q)) ? `<div class="arm-justificativa"><em>Gabarito proposto:</em> <b>Certo</b> — o item traz a redação atual (${esc(propostaPorNormaNova(q).trecho)}) e o arquivo marca Errado. Confirme em ✔ Revisado.</div>` : ''}
     <span class="acoes-questao">
       ${edicaoAtual===q.uid ? '' : botaoEditarTudo(q.uid)}
-      ${(!gAlterado && typeof gabaritoPorNormaAlterada==='function' && gabaritoPorNormaAlterada(q)) ? `<button class="btn-revisado btn-ui" data-homologar-gabarito="${esc(q.uid)}" title="Confirmar o gabarito definitivo alterado pela norma">✔ Revisado</button>` : ''}
+      ${(!gAlterado && typeof gabaritoPorNormaAlterada==='function' && (gabaritoPorNormaAlterada(q) || propostaPorNormaNova(q))) ? `<button class="btn-revisado btn-ui" data-homologar-gabarito="${esc(q.uid)}" title="Confirmar o gabarito definitivo alterado pela norma">✔ Revisado</button>` : ''}
       <button class="btn-corrigir-gabarito btn-ui" data-alterar-gabarito="${esc(q.uid)}" title="Corrigir o gabarito desta questão (com justificativa) — não muda tentativas já registradas" >✏️ Corrigir gabarito</button>
       ${typeof teoriaBotaoHtml==='function' ? teoriaBotaoHtml(q) : ''}
     </span>
