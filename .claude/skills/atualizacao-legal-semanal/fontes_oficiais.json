@@ -1,16 +1,63 @@
 {
   "_aviso": "norma (chave de LEI_FONTES em js/teoria.js) -> URL oficial do texto compilado e regex da matéria que a usa. Só entram URLs do Planalto (estrutura estável). Normas distritais/TCDF (SINJ, DODF) e súmulas ficam fora: conferir pela pesquisa e pelo Drive. Adicione aqui toda norma nova que ganhar js/*-texto.js.",
-  "CF": {"url": "https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm", "mat": "constitucional|CF|direitos fundamentais|previd|controle"},
-  "CTN": {"url": "https://www.planalto.gov.br/ccivil_03/leis/l5172compilado.htm", "mat": "tribut|ICMS|ISS|9\\.?430|lucro"},
-  "Lei 14.133": {"url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm", "mat": "14\\.?133|licita|contrat"},
-  "Lei 8.429": {"url": "https://www.planalto.gov.br/ccivil_03/leis/l8429.htm", "mat": "8\\.?429|9\\.?784|2\\.?834|improbidade"},
-  "Lei 9.784": {"url": "https://www.planalto.gov.br/ccivil_03/leis/l9784.htm", "mat": "8\\.?429|9\\.?784|2\\.?834|improbidade"},
-  "Lei 12.527": {"url": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2011/lei/l12527.htm", "mat": "LGPD|LAI|13\\.?709|12\\.?527|acesso [àa] informa"},
-  "Lei 13.709": {"url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm", "mat": "LGPD|LAI|13\\.?709|12\\.?527|dados pessoais"},
-  "Lei 4.320": {"url": "https://www.planalto.gov.br/ccivil_03/leis/l4320.htm", "mat": "AFO|or[çc]ament|administra[çc][ãa]o financeira|4\\.?320|responsabilidade fiscal"},
-  "LC 101": {"url": "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp101.htm", "mat": "AFO|or[çc]ament|administra[çc][ãa]o financeira|4\\.?320|responsabilidade fiscal"},
-  "Lei 10.180": {"url": "https://www.planalto.gov.br/ccivil_03/leis/leis_2001/l10180.htm", "mat": "AFO|or[çc]ament|administra[çc][ãa]o financeira|4\\.?320|responsabilidade fiscal"},
-  "Lei 11.340": {"url": "https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11340.htm", "mat": "PDPM|mulher|Maria da Penha|11\\.?340"},
-  "LC 116": {"url": "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp116.htm", "mat": "tribut|ICMS|ISS|IBS|CBS|reforma"},
-  "Decreto-lei 4.657": {"url": "https://www.planalto.gov.br/ccivil_03/decreto-lei/del4657compilado.htm", "mat": "administrativo|Adm"}
+  "CF": {
+    "url": "https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm",
+    "mat": "constitucional|CF|direitos fundamentais|previd|controle",
+    "corte": "ATO DAS DISPOSI[ÇC][ÕO]ES CONSTITUCIONAIS TRANSIT[ÓO]RIAS"
+  },
+  "CTN": {
+    "url": "https://www.planalto.gov.br/ccivil_03/leis/l5172compilado.htm",
+    "mat": "tribut|ICMS|ISS|9\\.?430|lucro"
+  },
+  "Lei 14.133": {
+    "url": "https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm",
+    "mat": "14\\.?133|licita|contrat"
+  },
+  "Lei 8.429": {
+    "url": "https://www.planalto.gov.br/ccivil_03/leis/l8429.htm",
+    "mat": "8\\.?429|9\\.?784|2\\.?834|improbidade"
+  },
+  "Lei 9.784": {
+    "url": "https://www.planalto.gov.br/ccivil_03/leis/l9784.htm",
+    "mat": "8\\.?429|9\\.?784|2\\.?834|improbidade"
+  },
+  "Lei 12.527": {
+    "url": "https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2011/lei/l12527.htm",
+    "mat": "LGPD|LAI|13\\.?709|12\\.?527|acesso [àa] informa"
+  },
+  "Lei 13.709": {
+    "url": "https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm",
+    "mat": "LGPD|LAI|13\\.?709|12\\.?527|dados pessoais"
+  },
+  "Lei 4.320": {
+    "url": "https://www.planalto.gov.br/ccivil_03/leis/l4320.htm",
+    "mat": "AFO|or[çc]ament|administra[çc][ãa]o financeira|4\\.?320|responsabilidade fiscal"
+  },
+  "LC 101": {
+    "url": "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp101.htm",
+    "mat": "AFO|or[çc]ament|administra[çc][ãa]o financeira|4\\.?320|responsabilidade fiscal"
+  },
+  "Lei 10.180": {
+    "url": "https://www.planalto.gov.br/ccivil_03/leis/leis_2001/l10180.htm",
+    "mat": "AFO|or[çc]ament|administra[çc][ãa]o financeira|4\\.?320|responsabilidade fiscal"
+  },
+  "Lei 11.340": {
+    "url": "https://www.planalto.gov.br/ccivil_03/_ato2004-2006/2006/lei/l11340.htm",
+    "mat": "PDPM|mulher|Maria da Penha|11\\.?340"
+  },
+  "LC 116": {
+    "url": "https://www.planalto.gov.br/ccivil_03/leis/lcp/lcp116.htm",
+    "mat": "tribut|ICMS|ISS|IBS|CBS|reforma"
+  },
+  "Decreto-lei 4.657": {
+    "url": "https://www.planalto.gov.br/ccivil_03/decreto-lei/del4657compilado.htm",
+    "mat": "administrativo|Adm"
+  },
+  "_materias_extras": [
+    "Administrativo (geral)",
+    "AFO",
+    "Regimento Interno",
+    "Constitucional",
+    "Direito Civil"
+  ]
 }

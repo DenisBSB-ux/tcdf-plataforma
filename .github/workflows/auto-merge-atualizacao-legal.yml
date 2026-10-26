@@ -40,6 +40,8 @@ jobs:
           global.window=global;global.document={addEventListener(){}};global.esc=String;
           (0,eval)(require('fs').readFileSync('js/atualizacoes-legais.js','utf8')+';if(!Array.isArray(ALTERACOES_LEGAIS)||!ATUALIZACOES_LEGAIS.length) throw new Error(\"estrutura inválida\")');
           console.log('ok',v[0]);"
+      - name: Cobertura das matérias (todas conferidas)
+        run: node .claude/skills/atualizacao-legal-semanal/verificar_cobertura.js
       - name: Mesclar (squash)
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}", PR: "${{ github.event.pull_request.number }}" }
         run: gh pr merge "$PR" --squash --delete-branch --repo "${{ github.repository }}"

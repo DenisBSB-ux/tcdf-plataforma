@@ -24,6 +24,7 @@ class T(HTMLParser):
     def handle_data(s, d):
         if not s.skip: s.o.append(d)
 def html_para_texto(b):
+    b = re.sub(r'(?i)<sup>\s*o\s*</sup>', 'º', b); b = re.sub(r'(?i)<sup>\s*a\s*</sup>', 'ª', b)
     # <strike>/<s>/<del> = texto revogado/antigo (Planalto risca): descarta antes de converter
     b = re.sub(r'(?is)<(strike|s|del)\b[^>]*>.*?</\1>', '', b)
     p = T(); p.feed(b); return H.unescape(''.join(p.o)).replace('\xa0', ' ')
@@ -36,7 +37,12 @@ def baixa(url):
 def carrega_js(arq, glob):
     t = open(arq, encoding='utf-8').read(); i = t.index('{', t.index(glob)); j = t.rindex('}')
     return t, json.loads(t[i:j + 1])
-def norm(ps): return re.sub(r'\s+', ' ', ' '.join(ps)).strip()
+def norm(ps):
+    # compara só o conteúdo: sem notas entre parênteses ((Redação dada…), (Incluído…), (Vide…), (Revogado…)), acentos, º/o/°, pontuação e espaços
+    import unicodedata
+    t = ' '.join(ps); t = re.sub(r'\([^)]*\)', ' ', t)
+    t = unicodedata.normalize('NFD', t); t = ''.join(c for c in t if not unicodedata.combining(c))
+    return re.sub(r'[^a-z0-9]+', '', t.lower())
 def main():
     a = sys.argv; so_rel = '--so-relatorio' in a
     sel = a[a.index('--norma') + 1] if '--norma' in a else None
@@ -51,7 +57,11 @@ def main():
         arq, glob = os.path.join(RAIZ, m.group(1)), m.group(2)
         try:
             bruto = open(arq_local, encoding='utf-8').read() if arq_local else baixa(f['url'])
-            novo = G.parse(G.limpa(html_para_texto(bruto)))
+            texto = G.limpa(html_para_texto(bruto))
+            if f.get('corte'):
+                mc = re.search(f['corte'], texto)
+                if mc: texto = texto[:mc.start()]        # ex.: CF: descarta o ADCT, que reinicia a numeração dos artigos
+            novo = G.parse(texto)
             txt_js, atual = carrega_js(arq, glob)
         except Exception as e:
             rel.append({'norma': norma, 'status': 'erro', 'erro': str(e)[:200]}); continue
@@ -59,6 +69,8 @@ def main():
             rel.append({'norma': norma, 'status': 'extração suspeita (artigos %d de %d): nada alterado' % (len(novo), len(atual))}); continue
         alt = sorted([k for k in novo if k in atual and norm(novo[k]) != norm(atual[k])], key=lambda x: (len(x), x))
         add = sorted([k for k in novo if k not in atual], key=lambda x: (len(x), x))
+        if len(alt) > max(5, 0.2 * len(atual)):
+            rel.append({'norma': norma, 'status': 'diferença suspeita (%d artigos de %d): nada alterado, conferir o parser' % (len(alt), len(atual)), 'amostra': alt[:10]}); continue
         r = {'norma': norma, 'status': 'sem mudança' if not (alt or add) else 'mudou', 'artigos_alterados': alt, 'artigos_novos': add}
         rel.append(r)
         if (alt or add) and not so_rel:
