@@ -38,7 +38,7 @@ function atualizacaoLegalBadge(m){
 /* ---------- Alterações legais registradas (rotina semanal ou conferência manual) ----------
    Cada item descreve UMA mudança em norma/jurisprudência e aparece (a) no painel da matéria (clique no selo "⚖️ data"),
    (b) como etiqueta nas questões que citam o dispositivo (norma + artigo do campo Artigo, e, se houver, `termo` casando no enunciado)
-   e (c) no filtro "Só questões atualizadas". Sem `dispositivos`, o item vale só para a matéria (painel).
+  . Sem `dispositivos`, o item vale só para a matéria (painel).
    Campos: id · mat (regex do nome da matéria) · titulo · resumo · fonte · registrada (AAAA-MM-DD em que a plataforma anotou) ·
    status ('confirmada' = texto oficial carregado na plataforma / 'a-conferir' = só fonte secundária) ·
    dispositivos [{norma:'CF', n:7}] · termo (regex, opcional) · gabarito ('' | texto da decisão pendente ou tomada). */

@@ -1945,7 +1945,7 @@ function startQuiz(nums, opcoes){
 
 /* clique na barra de assunto (▶) ou na linha de artigo das estatísticas: estuda só as questões daquele tema/artigo */
 document.addEventListener('click', ev=>{
-  const bt = ev.target.closest && ev.target.closest('[data-treinar-tema]'), lin = !bt && ev.target.closest && ev.target.closest('.composicao-art[data-art-n]');
+  const bt = ev.target.closest && ev.target.closest('[data-treinar-tema], .composicao-linha .bar-track'), lin = !bt && ev.target.closest && ev.target.closest('.composicao-art[data-art-n]');
   if(!bt && !lin) return;
   const det = ev.target.closest('[data-comp-tema]'); if(!det) return;
   const [m, t] = String(det.dataset.compTema).replace(/^ass:/,'').split('||'); if(!m) return;
