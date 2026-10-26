@@ -396,7 +396,7 @@ function textoResolucaoAtualizado(q){
   const base = String(limparResolucao(q.r)||'');
   if(edicaoAtual===q.uid || typeof alteracaoComTrecho!=='function') return base;
   const al = alteracaoComTrecho(q); if(!al || !al.justificativa) return base;
-  return '📌 ' + al.justificativa + '\n' + base;
+  return marcarAlteracao('📌 ' + al.justificativa + '\n' + base, al, 'md');
 }
 function explicacaoPlana(q){
   try{ const a = armEfetiva(q); if(!a || !a.errado || !a.expl) return ''; return String(a.expl).replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim(); }catch(_){ return ''; }
@@ -404,7 +404,8 @@ function explicacaoPlana(q){
 function justificativaSobEnunciado(q, emEdicao){
   if(emEdicao || !(STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[q.uid])) return '';
   let ex = explicacaoPlana(q); if(!ex && typeof alteracaoComTrecho==='function'){ const al = alteracaoComTrecho(q); if(al) ex = al.justificativa || ''; }
-  return ex ? `<div class="arm-justificativa"><em>Justificativa:</em> ${esc(ex)}</div>` : '';
+  const alj = typeof alteracaoComTrecho==='function' ? alteracaoComTrecho(q) : null;
+  return ex ? `<div class="arm-justificativa"><em>Justificativa:</em> ${alj ? marcarAlteracao(ex, alj, 'html') : esc(ex)}</div>` : '';
 }
 function blocoEnunciadoEditavel(q){
   const uid = q.uid;
