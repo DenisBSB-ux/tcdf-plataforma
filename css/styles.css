@@ -2377,3 +2377,18 @@ del.arm-trecho{background:#fecaca;color:inherit;text-decoration:line-through;pad
 mark.arm-correcao{background:#bbf7d0;color:inherit;font-weight:700;padding:0 2px;border-radius:3px}
 mark.arm-correcao{color:#14532d !important}
 del.arm-trecho{color:#7f1d1d !important}
+
+/* editor de classificação enxuto (pares texto errado → texto correto) */
+.arm-box-edit .arm-linha{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.btn-ui-mini{font-size:11px !important;padding:2px 8px !important}
+.arm-pares{display:flex;flex-direction:column;gap:6px;margin:8px 0 4px}
+.arm-par{display:flex;align-items:center;gap:6px}
+.arm-par input{flex:1;min-width:0;font-family:var(--font-body);font-size:1rem;padding:6px 8px;border:1px solid var(--paper-line);border-radius:6px;background:#fff;color:#1d1f22}
+.arm-par .arm-par-e{border-left:4px solid var(--stamp-red,#b3402a)}
+.arm-par .arm-par-c{border-left:4px solid var(--stamp-green,#2f7a46)}
+.arm-par-seta{font-weight:700;color:var(--ink-soft)}
+.arm-par-x{border:0;background:transparent;color:var(--stamp-red,#b3402a);cursor:pointer;font-size:14px}
+.arm-pares-barra{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px}
+.arm-pares-barra .btn-ui{font-size:12px;padding:3px 10px}
+.arm-edit-rot{display:block;font-size:.85rem;font-weight:600;margin-bottom:2px}
+.arm-rich-curta{min-height:2.6em !important}

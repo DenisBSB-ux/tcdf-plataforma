@@ -206,22 +206,41 @@ function armPainelHtml(q){
     ${a.sinal==='ABS-L' ? `<div class="arm-macete">⚠ Contra-armadilha: a palavra absoluta aqui vem da própria lei — não marque Errado só por vê-la.</div>` : ''}
   </div>`;
 }
+function armParesHtml(a){
+  const tr = String(a.trecho||'').split(' | '), co = String(a.correcao||'').split(' | ');
+  const n = Math.max(1, tr.length);
+  return Array.from({length:n}, (_,k)=> armParLinha(tr[k]||'', co[k]||'', a.errado)).join('');
+}
+function armParLinha(e, c, errado){
+  return `<div class="arm-par"><input type="text" class="arm-par-e" value="${esc(e)}" placeholder="${errado?'Texto errado (como está na questão)':'Palavra-chave (como está na questão)'}">${errado?`<span class="arm-par-seta">→</span><input type="text" class="arm-par-c" value="${esc(c)}" placeholder="Texto correto">`:''}<button type="button" class="arm-par-x" data-arm-par="x" title="Remover">✕</button></div>`;
+}
+function armParesSincronizar(){
+  const box = document.getElementById('arm-pares'); if(!box) return;
+  const errado = box.dataset.errado==='1', e = [], c = [];
+  box.querySelectorAll('.arm-par').forEach(l=>{ const t = l.querySelector('.arm-par-e').value.replace(/\s+/g,' ').trim(); if(!t) return; e.push(t); if(errado) c.push((l.querySelector('.arm-par-c').value||'').replace(/\s+/g,' ').trim()); });
+  const tr = document.getElementById('arm-txt-tr'), co = document.getElementById('arm-txt-co');
+  if(tr) tr.value = e.join(' | '); while(c.length && !c[c.length-1]) c.pop();
+  if(co) co.value = errado ? c.join(' | ') : '';
+}
+document.addEventListener('input', ev=>{ if(ev.target.closest && ev.target.closest('#arm-pares')) armParesSincronizar(); });
 function armEditorHtml(q, a){
   const uid = q.uid;
   const opts = (sel, vazio) => `<option value="">${vazio}</option>` + ARM_ORDEM.map(c=>`<option value="${c}" ${sel===c?'selected':''}>${c} — ${esc(ARM_TIPOS[c].nome)}</option>`).join('');
   const sinais = `<option value="">— nenhum —</option>` + ARM_SINAIS_ORDEM.map(c=>`<option value="${c}" ${a.sinal===c?'selected':''}>${c} — ${esc(ARM_SINAIS[c].nome)}</option>`).join('');
   return `<div class="arm-box arm-box-edit">
-    <div class="arm-linha"><span class="arm-rot">Corrigir classificação</span> <button type="button" class="btn-ui" data-arm-criterios="1" title="Alterar, remover ou adicionar critérios de classificação">⚙ Gerenciar critérios</button></div>
+    <div class="arm-linha"><span class="arm-rot">Corrigir classificação</span> <button type="button" class="btn-ui btn-ui-mini" data-arm-criterios="1" title="Alterar, remover ou adicionar critérios de classificação">⚙ Critérios</button></div>
     ${a.errado ? `<div class="arm-edit-grid">
         <label>Principal <select id="arm-sel-p">${opts(a.p,'— escolha —')}</select></label>
         <label>Secundária <select id="arm-sel-s">${opts(a.s,'— nenhuma —')}</select></label>
       </div>` : `<div class="arm-edit-grid"><label>Sinal de item certo <select id="arm-sel-sinal">${sinais}</select></label></div>`}
-    ${true ? `<label class="arm-edit-txt">Texto errado (trecho do item — copie exatamente como está na questão) <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Preenche o campo com o texto completo do item">↧ Usar texto completo do item</button>
-      <button type="button" class="btn-ui" data-arm-selecao="troca" title="Selecione palavras no enunciado (acima) e clique para usá-las como trecho">🎯 Marcar seleção como trecho</button>
-      <button type="button" class="btn-ui" data-arm-selecao="soma" title="Selecione outras palavras no enunciado e adicione como mais um trecho">＋ Adicionar seleção</button>
-      <small class="arm-dica-sel">Selecione as palavras no enunciado acima e clique em um dos botões.</small><textarea id="arm-txt-tr" class="arm-autosize" rows="2">${esc(a.trecho||'')}</textarea></label>
-    <label class="arm-edit-txt">Texto correto (aparece em negrito logo depois do trecho riscado; vários trechos separados por " | ")<textarea id="arm-txt-co" class="arm-autosize" rows="2">${esc(a.correcao||'')}</textarea></label>
-    <label class="arm-edit-txt">Explicação da armadilha (use a barra de formatação acima: negrito, alinhamento etc.)<div id="arm-txt-ex" class="arm-rich campo-editavel-conteudo" contenteditable="true">${armExplHtml(a.expl)}</div></label>` : ''}
+    <div class="arm-pares" id="arm-pares" data-errado="${a.errado?1:0}">${armParesHtml(a)}</div>
+    <div class="arm-pares-barra">
+      <button type="button" class="btn-ui" data-arm-selecao="soma" title="Selecione palavras no enunciado (acima) e clique: vão para ${a.errado?'um novo par':'uma nova palavra-chave'}">🎯 Usar seleção do enunciado</button>
+      <button type="button" class="btn-ui" data-arm-par="novo">＋ ${a.errado?'Par':'Palavra-chave'}</button>
+      <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Usa o item inteiro como trecho">↧ Item inteiro</button>
+    </div>
+    <textarea id="arm-txt-tr" hidden>${esc(a.trecho||'')}</textarea><textarea id="arm-txt-co" hidden>${esc(a.correcao||'')}</textarea>
+    <div class="arm-edit-txt"><span class="arm-edit-rot">${a.errado?'Justificativa (explicação da armadilha)':'Explicação'}</span><div id="arm-txt-ex" class="arm-rich arm-rich-curta campo-editavel-conteudo" contenteditable="true">${armExplHtml(a.expl)}</div></div>
     <div class="arm-edit-acoes">
       ${(typeof edicaoAtual!=='undefined' && edicaoAtual===uid) ? `<button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar edição</button>
       <button class="btn-ui btn-cancelar-edicao" data-editar-acao="cancelar">✕ Cancelar</button>` : `<button class="btn-ui btn-ui-salvar" data-arm-save="${esc(uid)}">💾 Salvar (origem: manual)</button>
@@ -260,20 +279,30 @@ new MutationObserver(()=>{ if(document.querySelector('textarea.arm-autosize')) a
 // o clique no botão não pode tirar a seleção feita no enunciado
 document.addEventListener('mousedown', (ev)=>{ if(ev.target.closest && ev.target.closest('[data-arm-selecao]')) ev.preventDefault(); });
 document.addEventListener('click', (ev)=>{
+  const bp = ev.target.closest && ev.target.closest('[data-arm-par]');
+  if(bp){
+    const box = document.getElementById('arm-pares'); if(!box) return;
+    if(bp.dataset.armPar==='x'){ const l = bp.closest('.arm-par'); if(box.querySelectorAll('.arm-par').length>1) l.remove(); else l.querySelectorAll('input').forEach(i=>i.value=''); }
+    else { box.insertAdjacentHTML('beforeend', armParLinha('', '', box.dataset.errado==='1')); const ins = box.querySelectorAll('.arm-par-e'); ins[ins.length-1].focus(); }
+    armParesSincronizar(); return;
+  }
   const b = ev.target.closest && ev.target.closest('[data-arm-selecao]');
   if(!b) return;
-  const ta = document.getElementById('arm-txt-tr'); if(!ta) return;
+  const box = document.getElementById('arm-pares'); if(!box) return;
   const sel = window.getSelection();
   const txt = sel ? sel.toString().replace(/\s+/g,' ').trim() : '';
   const dentroEditor = sel && sel.anchorNode && (sel.anchorNode.nodeType===1?sel.anchorNode:sel.anchorNode.parentElement).closest('.arm-box-edit');
   if(!txt || dentroEditor){ alert('Selecione, no enunciado acima, as palavras que formam o trecho.'); return; }
-  ta.value = (b.dataset.armSelecao==='soma' && ta.value.trim()) ? ta.value.trim().replace(/\s*\|\s*$/,'') + ' | ' + txt : txt;
-  armAutosize();
+  // vai para o primeiro campo "errado" vazio; se não houver, cria um par novo
+  let alvo = Array.from(box.querySelectorAll('.arm-par-e')).find(i=>!i.value.trim());
+  if(!alvo){ box.insertAdjacentHTML('beforeend', armParLinha('', '', box.dataset.errado==='1')); const ins = box.querySelectorAll('.arm-par-e'); alvo = ins[ins.length-1]; }
+  alvo.value = txt; armParesSincronizar();
+  const c = alvo.parentElement.querySelector('.arm-par-c'); if(c) c.focus();
 });
 document.addEventListener('click', (ev)=>{
   const f = ev.target.closest && ev.target.closest('[data-arm-fulltxt]');
   if(f){ const q = BY_UID[f.dataset.armFulltxt]; const ta = document.getElementById('arm-txt-tr');
-    if(q && ta){ const d=document.createElement('div'); d.innerHTML=(EDICOES_USUARIO[q.uid]&&EDICOES_USUARIO[q.uid].q)||esc(limparEnunciado(q.q,q.t)); ta.value=(d.textContent||'').replace(/\s+/g,' ').trim(); armAutosize(); }
+    if(q && ta){ const d=document.createElement('div'); d.innerHTML=(EDICOES_USUARIO[q.uid]&&EDICOES_USUARIO[q.uid].q)||esc(limparEnunciado(q.q,q.t)); const box = document.getElementById('arm-pares'); const e1 = box && box.querySelector('.arm-par-e'); if(e1){ e1.value=(d.textContent||'').replace(/\s+/g,' ').trim(); armParesSincronizar(); } }
     return; }
   const t = ev.target.closest && ev.target.closest('[data-arm-edit],[data-arm-save],[data-arm-cancel],[data-arm-reset]');
   if(!t) return;
