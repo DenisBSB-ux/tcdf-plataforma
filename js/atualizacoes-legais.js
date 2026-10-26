@@ -125,7 +125,6 @@ function questaoAtualizadaAviso(q){
   if(g) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="${esc(g[0])}">🔄 Gabarito revisado</span>`);
   else if(/Conferir o gabarito/i.test(String((q && q.r) || ''))) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-conf" title="Esta questão tem o gabarito marcado para conferência (a lei carregada ou a jurisprudência pode divergir do gabarito do arquivo).">❓ Gabarito a conferir</span>`);
   if(typeof gabaritoPorNormaAlterada==='function' && gabaritoPorNormaAlterada(q)) tags.push('<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="Gabarito virado automaticamente pela norma alterada (redação antiga no enunciado)">🔄 Gabarito revisado</span>');
-  if(typeof alteracaoComTrecho==='function' && alteracaoComTrecho(q)) tags.push('<span class="tag tag-cobranca tag-cobranca-A tag-norma-alterada" title="Esta questão passou por revisão de atualização jurídica">⚠️ Norma alterada</span>');
   alteracoesDaQuestao(q).forEach(a => tags.push(`<span class="tag tag-cobranca tag-cobranca-A${a.status==='a-conferir' ? ' tag-alt-conf' : ''}" title="${esc(a.titulo + ' — ' + (a.status==='confirmada' ? 'confirmada no texto carregado' : 'a conferir no texto oficial') + '. ' + a.resumo)}">🔔 Norma alterada (${_dataBr(a.registrada).slice(0,5)})</span>`));
   return tags.join('');
 }
