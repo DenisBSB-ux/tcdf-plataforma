@@ -74,16 +74,17 @@ function armEfetiva(q){
   const edq = EDICOES_USUARIO[q.uid] || {};
   const exEd = typeof edq.arm_ex === 'string' ? edq.arm_ex : undefined;
   const trEd = typeof edq.arm_tr === 'string' ? edq.arm_tr : undefined;
+  const coEd = typeof edq.arm_co === 'string' ? edq.arm_co : undefined;
   const errado = gabaritoEfetivo(q)==='Errado';
   const norma = !man && !q.ap && typeof alteracaoComTrecho==='function' ? alteracaoComTrecho(q) : null;   // norma alterada: classificação automática
   if(norma && ARM_TIPOS.NORMA && errado) return { p:'NORMA', s:'', sinal:'', trecho:norma.trecho, expl:norma.justificativa||'', correcao:norma.correcao||'', origem:'ia', errado:true, classificada:true };
   if(man){
     return { p: errado ? man.p : '', s: errado ? man.s : '', sinal: errado ? '' : man.sinal,
-             trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), correcao: q.co||'', origem:'manual', errado, classificada: !!(errado ? man.p : true) };
+             trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), correcao: coEd!==undefined ? coEd : (q.co||''), origem:'manual', errado, classificada: !!(errado ? man.p : true) };
   }
   const p = (q.ap||'').toUpperCase(), s = (q.as||'').toUpperCase(), sinal = (q.sc||'').toUpperCase();
   const classificada = errado ? !!p : !!(p||sinal||q.ao);
-  return { p, s, sinal, trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), correcao: q.co||'', origem: (exEd!==undefined||trEd!==undefined) ? 'manual' : (q.ao||'ia'), errado, classificada };
+  return { p, s, sinal, trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), correcao: coEd!==undefined ? coEd : (q.co||''), origem: (exEd!==undefined||trEd!==undefined||coEd!==undefined) ? 'manual' : (q.ao||'ia'), errado, classificada };
 }
 function armCodigos(a){ return a ? [a.p, a.s].filter(c=>c && ARM_TIPOS[c]) : []; }
 function armTemClassificacao(q){ const a = armEfetiva(q); return !!(a && a.classificada); }
@@ -215,10 +216,11 @@ function armEditorHtml(q, a){
         <label>Principal <select id="arm-sel-p">${opts(a.p,'— escolha —')}</select></label>
         <label>Secundária <select id="arm-sel-s">${opts(a.s,'— nenhuma —')}</select></label>
       </div>` : `<div class="arm-edit-grid"><label>Sinal de item certo <select id="arm-sel-sinal">${sinais}</select></label></div>`}
-    ${true ? `<label class="arm-edit-txt">Trecho do item (copie exatamente como está no texto da questão) <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Preenche o campo com o texto completo do item">↧ Usar texto completo do item</button>
+    ${true ? `<label class="arm-edit-txt">Texto errado (trecho do item — copie exatamente como está na questão) <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Preenche o campo com o texto completo do item">↧ Usar texto completo do item</button>
       <button type="button" class="btn-ui" data-arm-selecao="troca" title="Selecione palavras no enunciado (acima) e clique para usá-las como trecho">🎯 Marcar seleção como trecho</button>
       <button type="button" class="btn-ui" data-arm-selecao="soma" title="Selecione outras palavras no enunciado e adicione como mais um trecho">＋ Adicionar seleção</button>
       <small class="arm-dica-sel">Selecione as palavras no enunciado acima e clique em um dos botões.</small><textarea id="arm-txt-tr" class="arm-autosize" rows="2">${esc(a.trecho||'')}</textarea></label>
+    <label class="arm-edit-txt">Texto correto (aparece em negrito logo depois do trecho riscado; vários trechos separados por " | ")<textarea id="arm-txt-co" class="arm-autosize" rows="2">${esc(a.correcao||'')}</textarea></label>
     <label class="arm-edit-txt">Explicação da armadilha (use a barra de formatação acima: negrito, alinhamento etc.)<div id="arm-txt-ex" class="arm-rich campo-editavel-conteudo" contenteditable="true">${armExplHtml(a.expl)}</div></label>` : ''}
     <div class="arm-edit-acoes">
       ${(typeof edicaoAtual!=='undefined' && edicaoAtual===uid) ? `<button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar edição</button>
@@ -245,6 +247,8 @@ function armAplicarEdicao(q){
     const exDiv = document.getElementById('arm-txt-ex');
     let ex = '';
     if(exDiv){ prepararEditorParaSalvar(exDiv); ex = limparHtmlEditado(exDiv.innerHTML).trim(); if(ex === esc(orig.ex)) ex = orig.ex; }
+    const co = (g('arm-txt-co')||'').trim();
+    if(co !== (q.co||'')) EDICOES_USUARIO[uid].arm_co = co; else delete EDICOES_USUARIO[uid].arm_co;
     if(tr !== orig.tr) EDICOES_USUARIO[uid].arm_tr = tr; else delete EDICOES_USUARIO[uid].arm_tr;
     if(ex !== orig.ex) EDICOES_USUARIO[uid].arm_ex = ex; else delete EDICOES_USUARIO[uid].arm_ex;
   }
@@ -278,7 +282,7 @@ document.addEventListener('click', (ev)=>{
   const uid = t.dataset.armSave || t.dataset.armReset;
   const q = BY_UID[uid]; if(!q) return;
   if(t.dataset.armReset){
-    if(EDICOES_USUARIO[uid]){ delete EDICOES_USUARIO[uid].arm; delete EDICOES_USUARIO[uid].arm_ex; delete EDICOES_USUARIO[uid].arm_tr; if(!Object.keys(EDICOES_USUARIO[uid]).length) delete EDICOES_USUARIO[uid]; }
+    if(EDICOES_USUARIO[uid]){ delete EDICOES_USUARIO[uid].arm; delete EDICOES_USUARIO[uid].arm_ex; delete EDICOES_USUARIO[uid].arm_tr; delete EDICOES_USUARIO[uid].arm_co; if(!Object.keys(EDICOES_USUARIO[uid]).length) delete EDICOES_USUARIO[uid]; }
   } else {
     if(!armAplicarEdicao(q)) return;
   }
