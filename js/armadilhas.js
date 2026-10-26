@@ -20,9 +20,10 @@ const ARM_TIPOS = {
   INV: { nome:'Inversão', def:'Troca a ordem, a causa ou quem depende de quem', sinais:'(sem palavra fixa)', ex:'"O controle social ocorre independentemente da transparência"', cor:'#1d4ed8', bg:'#dbeafe', macete:'Quem depende de quem? Confira a ordem e a causa.' },
   TRO: { nome:'Troca de conceitos', def:'Usa o nome de um conceito para descrever outro', sinais:'termos vizinhos: eficácia/eficiência, nominal/efetiva', ex:'"Eficiência mede o alcance das metas"', cor:'#6d28d9', bg:'#ede9fe', macete:'Termo vizinho? Confira o conceito, o órgão, o prazo e o número.' },
   RES: { nome:'Restrição indevida', def:'Diz que vale só para um caso, mas a regra é mais ampla', sinais:'apenas, somente, restrito a, exclusivamente', ex:'"Accountability se aplica apenas ao setor público"', cor:'#be185d', bg:'#fce7f3', macete:'"Apenas/somente": a lei não alcança mais gente ou mais casos?' },
+  NORMA: { nome:'Norma alterada', def:'O item repete a redação anterior de uma norma já alterada', sinais:'redação antiga da lei', ex:'"44 horas semanais" (antes da EC 141/2026)', cor:'#b45309', bg:'#fef3c7', macete:'Confira se a regra ainda é a vigente.' },
   EXT: { nome:'Extrapolação', def:'Acrescenta algo que a lei não diz', sinais:'detalhe extra, geralmente no fim do item', ex:'"...sob pena de demissão imediata"', cor:'#b91c1c', bg:'#fee2e2', macete:'Olhe o final do item: o detalhe extra está na lei?' },
 };
-const ARM_ORDEM = ['GEN','SUF','DIS','JUS','INV','TRO','RES','EXT'];
+const ARM_ORDEM = ['GEN','SUF','DIS','JUS','INV','TRO','RES','EXT','NORMA'];
 const ARM_SINAIS = {
   'REL':   { nome:'Relativização', por:'"pode", "em regra", "geralmente", "tende a" tornam o item defensável' },
   'LIT':   { nome:'Literalidade', por:'Texto copiado da lei ou da doutrina' },
@@ -74,6 +75,8 @@ function armEfetiva(q){
   const exEd = typeof edq.arm_ex === 'string' ? edq.arm_ex : undefined;
   const trEd = typeof edq.arm_tr === 'string' ? edq.arm_tr : undefined;
   const errado = gabaritoEfetivo(q)==='Errado';
+  const norma = !man && !q.ap && typeof alteracaoComTrecho==='function' ? alteracaoComTrecho(q) : null;   // norma alterada: classificação automática
+  if(norma && ARM_TIPOS.NORMA && errado) return { p:'NORMA', s:'', sinal:'', trecho:norma.trecho, expl:norma.justificativa||'', correcao:norma.correcao||'', origem:'ia', errado:true, classificada:true };
   if(man){
     return { p: errado ? man.p : '', s: errado ? man.s : '', sinal: errado ? '' : man.sinal,
              trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), correcao: q.co||'', origem:'manual', errado, classificada: !!(errado ? man.p : true) };
