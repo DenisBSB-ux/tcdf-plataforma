@@ -1914,7 +1914,7 @@ function reordenarQuizEmAndamento(quiz, modo){
 // andamento da matéria, se houver
 function mudarOrdemSimulado(modo){
   STATE.ordemSimulado = modo;
-  try{ window.localStorage.setItem(ORDEM_SIMULADO_KEY, modo); }catch(e){ /* só preferência */ }
+  try{ window.localStorage.setItem(ORDEM_SIMULADO_KEY, modo); }catch(e){ /* só preferência */ } if(typeof sincronizarPrefs==='function') sincronizarPrefs();
   const quiz = STATE.quiz || STATE.quizzesEmAndamento[STATE.materia];
   const aplicou = reordenarQuizEmAndamento(quiz, modo);
   STATE.avisoOrdem = aplicou ? { ts: Date.now(), modo } : null;

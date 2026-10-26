@@ -437,7 +437,7 @@ function attachHandlers(){
       const col = el.dataset.ordemCol, o = STATE.ordemMaterias;
       const padraoDesc = col!=='nome';   // números e datas: maior primeiro; nome: A–Z
       STATE.ordemMaterias = o.col===col ? { col, dir:o.dir==='asc'?'desc':'asc' } : { col, dir: padraoDesc?'desc':'asc' };
-      try{ window.localStorage.setItem(ORDEM_MATERIAS_KEY, JSON.stringify(STATE.ordemMaterias)); }catch(e){ /* só preferência */ }
+      try{ window.localStorage.setItem(ORDEM_MATERIAS_KEY, JSON.stringify(STATE.ordemMaterias)); }catch(e){ /* só preferência */ } if(typeof sincronizarPrefs==='function') sincronizarPrefs();
       render();
     });
   });

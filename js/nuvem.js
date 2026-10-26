@@ -420,6 +420,49 @@ function marcarUltimoSyncOk(){
   storageSet(LAST_SYNC_KEY, String(ts)).catch(()=>{});
 }
 
+/* PREFERÊNCIAS (tema, cor, zoom, ordens, critérios de armadilha, estatísticas da dica de chute): um documento por código de sincronização;
+   o navegador guarda só uma cópia, a nuvem é a fonte. Vence o mais recente (updatedAt). */
+const PREFS_TS_KEY = 'tcdf-prefs-ts';
+function _lsGet(k){ try{ return window.localStorage.getItem(k); }catch(_){ return null; } }
+function _lsSet(k, v){ try{ if(v===null||v===undefined) window.localStorage.removeItem(k); else window.localStorage.setItem(k, v); }catch(_){} }
+function coletarPrefs(ts){
+  return { theme: STATE.theme, cor: STATE.corTema, zoom: STATE.zoomLevel,
+    ordemMaterias: _lsGet(ORDEM_MATERIAS_KEY), ordemSimulado: _lsGet(ORDEM_SIMULADO_KEY), armCrit: _lsGet(ARM_CRIT_KEY),
+    heur: (typeof HEUR_STATS!=='undefined') ? HEUR_STATS : null, ts };
+}
+let sincPrefsTimer = null;
+function sincronizarPrefs(){
+  if(typeof sincronizacaoAtiva!=='function' || !sincronizacaoAtiva()) return;
+  clearTimeout(sincPrefsTimer);
+  sincPrefsTimer = setTimeout(async ()=>{
+    try{
+      const ts = Date.now();
+      await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__prefs`).set(sanitizarParaFirestore(comDono({ prefs: JSON.stringify(coletarPrefs(ts)), updatedAt: ts }))), 15000, 'tempo esgotado ao salvar preferências');
+      _lsSet(PREFS_TS_KEY, String(ts));
+    }catch(e){ console.warn('Falha ao salvar preferências na nuvem', e); }
+  }, 1500);
+}
+// estatísticas mudam a cada resposta: só sobem a cada 10 min (poupa a cota diária de escrita do Firestore)
+let _prefsUltimoEnvio = 0;
+function sincronizarPrefsLento(){ if(Date.now()-_prefsUltimoEnvio < 600000) return; _prefsUltimoEnvio = Date.now(); sincronizarPrefs(); }
+async function puxarPrefs(){
+  try{
+    const doc = await fbDb.collection('progresso').doc(`${STATE.syncCode}__prefs`).get();
+    const local = parseInt(_lsGet(PREFS_TS_KEY)||'0', 10) || 0;
+    if(!doc.exists){ sincronizarPrefs(); return; }          // primeira vez: sobe as preferências deste aparelho
+    const d = doc.data(); if(!(d.updatedAt > local)) return;
+    const p = JSON.parse(d.prefs);
+    if(p.theme==='light'||p.theme==='dark'){ STATE.theme = p.theme; storageSet(THEME_KEY, p.theme).catch(()=>{}); aplicarTema(); }
+    if(p.cor && PALETAS_CORES[p.cor]){ STATE.corTema = p.cor; storageSet(CORTEMA_KEY, p.cor).catch(()=>{}); aplicarCorTema(); }
+    if(typeof p.zoom==='number' && p.zoom>=0.8 && p.zoom<=1.6){ STATE.zoomLevel = p.zoom; storageSet(ZOOM_KEY, String(p.zoom)).catch(()=>{}); }
+    _lsSet(ORDEM_MATERIAS_KEY, p.ordemMaterias); _lsSet(ORDEM_SIMULADO_KEY, p.ordemSimulado); _lsSet(ARM_CRIT_KEY, p.armCrit);
+    try{ if(p.armCrit) armCritAplicar(JSON.parse(p.armCrit)); else armCritAplicar(null); }catch(_){}
+    if(p.heur && typeof HEUR_STATS!=='undefined'){ HEUR_STATS = p.heur; storageSet(HEUR_STATS_KEY, JSON.stringify(HEUR_STATS)).catch(()=>{}); }
+    _lsSet(PREFS_TS_KEY, String(d.updatedAt));
+    try{ render(); }catch(_){}
+  }catch(e){ console.warn('Falha ao buscar preferências na nuvem', e); }
+}
+
 async function pullFromCloud({silent} = {}){
   if(!sincronizacaoAtiva()) return null;
   if(!silent) setSyncStatusDOM('pending', 'sincronizando…');
@@ -452,6 +495,7 @@ async function pullFromCloud({silent} = {}){
       }
       if(algumaEdicaoNova) salvarEdicoesUsuario();
       if(algumGabaritoNovo) salvarGabaritosAlterados();
+      await puxarPrefs();
       // matérias/questões em si não vêm mais daqui — elas já chegam via
       // carregarMateriasPublicas() (coleção publico/{materia}), evitando duplicar
       // o banco inteiro de questões dentro do documento pessoal de progresso

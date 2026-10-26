@@ -229,6 +229,7 @@ function salvarHeurStats(){
   clearTimeout(salvarHeurStatsTimer);
   salvarHeurStatsTimer = setTimeout(()=>{
     storageSet(HEUR_STATS_KEY, JSON.stringify(HEUR_STATS)).catch(e=>console.error('Falha ao salvar estatísticas da dica de chute', e));
+    if(typeof sincronizarPrefsLento==='function') sincronizarPrefsLento();
   }, 300);
 }
 async function carregarHeurStats(){

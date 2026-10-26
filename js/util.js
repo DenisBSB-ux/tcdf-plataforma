@@ -44,13 +44,13 @@ function escolherCorTema(nome){
   STATE.corTema = nome;
   STATE.corPickerAberto = false;
   aplicarCorTema();
-  storageSet(CORTEMA_KEY, nome).catch(()=>{});
+  storageSet(CORTEMA_KEY, nome).catch(()=>{}); if(typeof sincronizarPrefs==='function') sincronizarPrefs();
   render();
 }
 function alternarTema(){
   STATE.theme = STATE.theme==='light' ? 'dark' : 'light';
   aplicarTema();
-  storageSet(THEME_KEY, STATE.theme).catch(()=>{});
+  storageSet(THEME_KEY, STATE.theme).catch(()=>{}); if(typeof sincronizarPrefs==='function') sincronizarPrefs();
   render();
 }
 
@@ -66,7 +66,7 @@ function ajustarZoom(direcao){
   let z = STATE.zoomLevel;
   z = direcao==='in' ? Math.min(1.6, +(z+0.1).toFixed(2)) : Math.max(0.8, +(z-0.1).toFixed(2));
   STATE.zoomLevel = z;
-  storageSet(ZOOM_KEY, String(z)).catch(()=>{});
+  storageSet(ZOOM_KEY, String(z)).catch(()=>{}); if(typeof sincronizarPrefs==='function') sincronizarPrefs();
   render();
 }
 // HTML das edições manuais (enunciado/resolução/resumo flash) vai pra tela como
