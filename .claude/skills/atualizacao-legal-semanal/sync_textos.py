@@ -29,7 +29,7 @@ def html_para_texto(b):
     b = re.sub(r'(?is)<(strike|s|del)\b[^>]*>.*?</\1>', '', b)
     p = T(); p.feed(b); return H.unescape(''.join(p.o)).replace('\xa0', ' ')
 def baixa(url):
-    rq = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (TCDF-Plataforma sync)'})
+    rq = urllib.request.Request(url, headers={'User-Agent': 'TCDF-Plataforma-sync/1.0 (estudo pessoal; leitura de textos oficiais)'})
     raw = urllib.request.urlopen(rq, timeout=60).read()
     for enc in ('utf-8', 'windows-1252', 'latin-1'):
         try: return raw.decode(enc)
