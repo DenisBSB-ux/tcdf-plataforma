@@ -96,7 +96,11 @@ function salvarEdicoesUsuario(){
 const GABARITOS_ALTERADOS_KEY = 'tcdf-gabaritos-alterados-v1';
 let GABARITOS_ALTERADOS = {};
 let salvarGabaritosAlteradosTimer = null;
-function salvarGabaritosAlterados(){
+// entrada removida vira "lápide" ({removido:true, ts}) para a remoção também sincronizar com a nuvem
+function gabAtivo(uid){ const g = GABARITOS_ALTERADOS[uid]; return g && !g.removido ? g : null; }
+function salvarGabaritosAlterados(uid){
+  // sincroniza com o Firebase (a cópia do navegador é só cache): marca a matéria da questão e envia
+  try{ const q = uid && BY_UID[uid]; if(q && typeof marcarProgressoSujo==='function'){ marcarProgressoSujo(q.materia); if(typeof pushToCloud==='function') pushToCloud(); } }catch(_){}
   clearTimeout(salvarGabaritosAlteradosTimer);
   salvarGabaritosAlteradosTimer = setTimeout(async ()=>{
     try{ await storageSet(GABARITOS_ALTERADOS_KEY, JSON.stringify(GABARITOS_ALTERADOS)); }
@@ -104,7 +108,7 @@ function salvarGabaritosAlterados(){
   }, 300);
 }
 function gabaritoEfetivo(q){
-  const alt = GABARITOS_ALTERADOS[q.uid];
+  const alt = gabAtivo(q.uid);
   if(alt) return alt.novo;
   const al = q.t==='CE' ? gabaritoPorNormaAlterada(q) : null;   // norma alterada confirmada: o item com a redação antiga vira Errado
   return al ? al.gabaritoNovo : q.g;
@@ -121,7 +125,7 @@ function homologarGabarito(uid){
   const q = BY_UID[uid]; const al = q && gabaritoAguardaConfirmacao(q); if(!al) return;
   if(!window.confirm(`Confirmar o gabarito definitivo desta questão como ${al.gabaritoNovo.toUpperCase()}?\n\n${al.titulo}`)) return;
   GABARITOS_ALTERADOS[uid] = { novo: al.gabaritoNovo, motivo: 'Norma alterada: '+al.titulo, original: q.g, ts: Date.now(), homologado:true };
-  salvarGabaritosAlterados(); render();
+  salvarGabaritosAlterados(uid); render();
 }
 function alterarGabarito(uid){
   const q = BY_UID[uid];
@@ -136,13 +140,13 @@ function alterarGabarito(uid){
     return;
   }
   if(novoLimpo===q.g){
-    delete GABARITOS_ALTERADOS[uid];
+    GABARITOS_ALTERADOS[uid] = { removido:true, ts: Date.now() };
   } else {
-    const motivo = window.prompt('Justificativa da mudança (ex.: "Gabarito definitivo da banca divergiu do preliminar", "Erro de extração do PDF"):', (GABARITOS_ALTERADOS[uid]&&GABARITOS_ALTERADOS[uid].motivo)||'');
+    const motivo = window.prompt('Justificativa da mudança (ex.: "Gabarito definitivo da banca divergiu do preliminar", "Erro de extração do PDF"):', (gabAtivo(uid)&&GABARITOS_ALTERADOS[uid].motivo)||'');
     if(motivo===null) return;
     GABARITOS_ALTERADOS[uid] = { novo: novoLimpo, motivo: motivo.trim(), original: q.g, ts: Date.now() };
   }
-  salvarGabaritosAlterados();
+  salvarGabaritosAlterados(uid);
   render();
 }
 const CUSTOM_KEY = 'sim-questoes-importadas-v3';

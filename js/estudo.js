@@ -460,7 +460,7 @@ function renderResolucao(q, resposta, quiz){
   const proximaNaoRespondidaIdx = (!temProxima && Object.keys(quiz.respostas).length < quiz.queue.length)
     ? quiz.queue.findIndex(uid => !quiz.respostas[uid]) : -1;
   const palavrasChave = palavrasChaveDaRespostaCorreta(q);
-  const gAlterado = GABARITOS_ALTERADOS[q.uid];
+  const gAlterado = gabAtivo(q.uid);
   return `
   <div class="answer-feedback ${feedbackClass}">
     ${(!gAlterado && typeof propostaPorNormaNova==='function' && propostaPorNormaNova(q)) ? `<div class="arm-justificativa"><em>Gabarito proposto:</em> <b>Certo</b> — o item traz a redação atual (${esc(propostaPorNormaNova(q).trecho)}) e o arquivo marca Errado. Confirme em ✔ Revisado.</div>` : ''}

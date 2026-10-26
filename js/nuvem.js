@@ -326,6 +326,15 @@ function mergeRemoteProgressoNaMemoria(remoteProgress){
 // já feita neste dispositivo nunca é sobrescrita por uma versão remota, já que
 // não guardamos timestamp por edição pra decidir qual é mais recente. Retorna
 // true se alguma edição nova foi de fato incorporada (pra saber se precisa salvar).
+// gabaritos alterados/homologados vindos da nuvem: vence a entrada mais recente (ts) de cada questão, inclusive remoções (lápides)
+function mergeRemoteGabaritosNaMemoria(remoto){
+  let mudou = false;
+  Object.entries(remoto||{}).forEach(([uid, g])=>{
+    const loc = GABARITOS_ALTERADOS[uid];
+    if(g && (!loc || (g.ts||0) > (loc.ts||0))){ GABARITOS_ALTERADOS[uid] = g; mudou = true; }
+  });
+  return mudou;
+}
 function mergeRemoteEdicoesNaMemoria(remoteEdicoes){
   let mudou = false;
   Object.entries(remoteEdicoes||{}).forEach(([uid, campos])=>{
@@ -426,12 +435,15 @@ async function pullFromCloud({silent} = {}){
         mergeRemoteProgressoNaMemoria(progressoAntigo);
       }
       const materiasComProgresso = Array.isArray(data.materiasComProgresso) ? data.materiasComProgresso : [];
-      let algumaEdicaoNova = false;
+      let algumaEdicaoNova = false, algumGabaritoNovo = false;
       for(const materiaNome of materiasComProgresso){
         try{
           const docMateria = await fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugify(materiaNome)}`).get();
           if(docMateria.exists && docMateria.data().progress){
             mergeRemoteProgressoNaMemoria({ [materiaNome]: JSON.parse(docMateria.data().progress) });
+          }
+          if(docMateria.exists && docMateria.data().gabaritos){
+            try{ if(mergeRemoteGabaritosNaMemoria(JSON.parse(docMateria.data().gabaritos))) algumGabaritoNovo = true; }catch(_){}
           }
           if(docMateria.exists && docMateria.data().edicoes){
             if(mergeRemoteEdicoesNaMemoria(JSON.parse(docMateria.data().edicoes))) algumaEdicaoNova = true;
@@ -439,6 +451,7 @@ async function pullFromCloud({silent} = {}){
         }catch(e){ console.warn('Falha ao buscar o progresso da matéria "'+materiaNome+'" na nuvem', e); }
       }
       if(algumaEdicaoNova) salvarEdicoesUsuario();
+      if(algumGabaritoNovo) salvarGabaritosAlterados();
       // matérias/questões em si não vêm mais daqui — elas já chegam via
       // carregarMateriasPublicas() (coleção publico/{materia}), evitando duplicar
       // o banco inteiro de questões dentro do documento pessoal de progresso
@@ -742,6 +755,7 @@ async function pushToCloud(){
           materia: materiaNome,
           progress: JSON.stringify(PROGRESS[materiaNome]),
           edicoes: JSON.stringify(edicoesDestaMateria),
+          gabaritos: JSON.stringify(Object.fromEntries(Object.entries(GABARITOS_ALTERADOS).filter(([uid]) => BY_UID[uid] && BY_UID[uid].materia===materiaNome))),
           updatedAt: Date.now(),
         }))), 15000, 'tempo esgotado ao salvar progresso da matéria "'+materiaNome+'"');
         MATERIAS_PROGRESSO_SUJAS.delete(materiaNome);
