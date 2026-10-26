@@ -438,7 +438,8 @@ function campoEditavelSimples(q, campo, htmlAuto){
   const uid = q.uid;
   const custom = EDICOES_USUARIO[uid] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uid][campo]));
   const emEdicao = edicaoAtual === uid;
-  const conteudo = custom ? ((campo==='r' || campo==='rf') ? simbolosComDica(custom) : custom) : htmlAuto;
+  let conteudo = custom ? ((campo==='r' || campo==='rf') ? simbolosComDica(custom) : custom) : htmlAuto;
+  if(custom && campo==='r' && !emEdicao && typeof alteracaoComTrecho==='function'){ const al = alteracaoComTrecho(q); if(al) conteudo = marcarAlteracaoDom(conteudo, al); }
   const btnEditar = '';
   const btnRest = (!emEdicao && custom) ? `<button class="btn-restaurar-campo btn-ui" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button>` : '';
   const barraSalvar = (emEdicao && campo==='r') ? `<div class="campo-editavel-acoes campo-salvar-barra"><button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar</button><button class="btn-ui btn-cancelar-edicao" data-editar-acao="cancelar">✕ Cancelar</button></div>` : '';
@@ -465,7 +466,7 @@ function renderResolucao(q, resposta, quiz){
     ${(!gAlterado && typeof propostaPorNormaNova==='function' && propostaPorNormaNova(q)) ? `<div class="arm-justificativa"><em>Gabarito proposto:</em> <b>Certo</b> — o item traz a redação atual (${esc(propostaPorNormaNova(q).trecho)}) e o arquivo marca Errado. Confirme em ✔ Revisado.</div>` : ''}
     <span class="acoes-questao">
       ${edicaoAtual===q.uid ? '' : botaoEditarTudo(q.uid)}
-      ${(!gAlterado && typeof gabaritoPorNormaAlterada==='function' && (gabaritoPorNormaAlterada(q) || propostaPorNormaNova(q))) ? `<button class="btn-revisado btn-ui" data-homologar-gabarito="${esc(q.uid)}" title="Confirmar o gabarito definitivo alterado pela norma">✔ Revisado</button>` : ''}
+      ${(typeof gabaritoAguardaConfirmacao==='function' && gabaritoAguardaConfirmacao(q)) ? `<button class="btn-revisado btn-ui" data-homologar-gabarito="${esc(q.uid)}" title="Confirmar o gabarito definitivo alterado pela norma">✔ Revisado</button>` : ''}
       <button class="btn-corrigir-gabarito btn-ui" data-alterar-gabarito="${esc(q.uid)}" title="Corrigir o gabarito desta questão (com justificativa) — não muda tentativas já registradas" >✏️ Corrigir gabarito</button>
       ${typeof teoriaBotaoHtml==='function' ? teoriaBotaoHtml(q) : ''}
     </span>

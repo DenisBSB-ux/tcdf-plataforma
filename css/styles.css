@@ -2375,3 +2375,5 @@ body:not(.theme-light) mark.arm-chave{ background:#fde68a; color:#78350f !import
 .btn-revisado{background:#15803d;color:#fff;border:0;border-radius:999px;padding:4px 12px;font-weight:700;cursor:pointer}
 del.arm-trecho{background:#fecaca;color:inherit;text-decoration:line-through;padding:0 2px;border-radius:3px}
 mark.arm-correcao{background:#bbf7d0;color:inherit;font-weight:700;padding:0 2px;border-radius:3px}
+mark.arm-correcao{color:#14532d !important}
+del.arm-trecho{color:#7f1d1d !important}
