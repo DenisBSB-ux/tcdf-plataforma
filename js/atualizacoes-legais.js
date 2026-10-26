@@ -107,6 +107,12 @@ function alteracoesDoArtigo(norma, n){
   const num = parseInt(String(n), 10); if(!(num>=0)) return [];
   return ALTERACOES_LEGAIS.filter(a => (a.dispositivos||[]).some(d => d.norma===norma && +d.n===num));
 }
+/* atualizada e ainda não confirmada: o filtro "Só questões atualizadas" some da questão quando o gabarito é homologado (botão Revisado) */
+function questaoAtualizadaPendente(q){
+  if(!questaoAtualizadaAviso(q)) return false;
+  const g = typeof GABARITOS_ALTERADOS!=='undefined' ? GABARITOS_ALTERADOS[q.uid] : null;
+  return !(g && g.homologado);
+}
 function _dataBr(iso){ const [y,m,d] = String(iso).split('-'); return d+'/'+m+'/'+y; }
 /* Questão cuja resolução traz o selo "Atualização verificada em DD/MM/AAAA: ..." com mudança real
    (selos de "sem alteração localizada / mantido" não geram aviso). */

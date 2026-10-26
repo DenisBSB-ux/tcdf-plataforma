@@ -1373,6 +1373,15 @@ function camposFiltroPartes(){
       </div>
     </div>`; })() : ''}
 `;
+  P.cob += (()=>{
+    const n = scoreableFiltradas().filter(q => questaoAtualizadaPendente(q)).length;
+    if(!n && !setup.soAtualizadas) return '';
+    return `<div class="setup-mini-field">
+      <label title="Questões atualizadas ainda sem confirmação do gabarito (some quando você confirma em ✔ Revisado)">Atualização</label>
+      <div class="chip-row" id="chip-atualizadas">
+        <span class="chip ${setup.soAtualizadas?'selected':''}" data-so-atualizadas="1">⚠️ Só questões atualizadas (${n})</span>
+      </div>
+    </div>`; })();
   P.arm = `
     ${armChipsFiltroHtml(scoreableFiltradas(), setup)}
 `;
@@ -1739,6 +1748,7 @@ function pool(){
     !setup.cargosExcluidos.has(cargoCurto(q.bc)) &&
     !setup.tendenciasExcluidas.has(tendenciaCurta(q.td)) &&
     (setup.incluirIneditas || !isInedita(q)) &&
+    (!setup.soAtualizadas || questaoAtualizadaPendente(q)) &&
     (!setup.cobrancaExcluida || !setup.cobrancaExcluida.size || !setup.cobrancaExcluida.has(grupoCobranca(q) || 'sem')) &&
     armPassaFiltro(q, setup)
   );

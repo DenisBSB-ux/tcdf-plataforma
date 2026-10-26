@@ -165,6 +165,13 @@ function attachHandlers(){
       render();
     });
   });
+  root.querySelectorAll('[data-so-atualizadas]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const setup = getSetup(STATE.materia);
+      setup.soAtualizadas = !setup.soAtualizadas;
+      render();
+    });
+  });
   root.querySelectorAll('[data-homologar-gabarito]').forEach(el=>{ el.addEventListener('click', ()=>homologarGabarito(el.dataset.homologarGabarito)); });
   root.querySelectorAll('[data-toggle-ineditas]').forEach(el=>{
     el.addEventListener('click', ()=>{
