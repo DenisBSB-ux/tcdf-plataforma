@@ -4,7 +4,7 @@ Todas as matérias saem **iguais**. Este arquivo reúne tudo o que o usuário de
 
 ## 1. Cabeçalho de cada questão
 Campos e ordem: `Banca/Cargo` · `Nível | Tendência` · `Assunto` · `Cobrança` · `Artigo` · `Sinal` (item Certo) **ou** `Armadilha` (item Errado) · `Trecho` · `Correção` (só Errado) · `Origem da classificação: ia|manual`.
-- **Sem** `ID`, **sem** `Explicação`, **sem** `Ano` quando o Banca/Cargo já traz o ano, **sem** `⚠️ Fonte:`, **sem** `Atualização verificada…`, **sem** "texto não carregado", **sem** `### Resumo Flash`.
+- **Item Errado leva `Explicação`** (justificativa curta, sem artigo; a plataforma a mostra sob `Justificativa:`), inserida entre `Correção` e `Origem` (feito após `finalizar_lista.sh`, a partir de `X = {n: '...'}` dos subagentes). **Sem** `ID`, **sem** `Ano` quando o Banca/Cargo já traz o ano, **sem** `⚠️ Fonte:`, **sem** `Atualização verificada…`, **sem** "texto não carregado", **sem** `### Resumo Flash`.
 - `Artigo` é derivado da linha ⚖️ (`Lei 14.133: 75`, `LC 94: 5`…). Nunca altere `Gabarito`, `Banca/Cargo`, `Nível`, `Tendência`, `Assunto`, `Cobrança` e **nunca o texto do enunciado** (a plataforma reconhece a questão pelo enunciado; mudar uma vírgula perde progresso/edições/flashcards).
 - **Trecho/Correção (Errado):** `Trecho` = trecho **literal e único** do enunciado que torna o item errado; `Correção` = a palavra/expressão que o torna certo. Mais de uma parte: separar por ` | ` (mesmo número de partes nos dois). Na tela: o trecho errado fica riscado (vermelho) e a correção ao lado (verde).
 - **Trecho (Certo):** só as palavras-chave que levam à resposta certa (amarelo).
