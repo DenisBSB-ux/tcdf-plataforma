@@ -97,7 +97,7 @@ const GABARITOS_ALTERADOS_KEY = 'tcdf-gabaritos-alterados-v1';
 let GABARITOS_ALTERADOS = {};
 let salvarGabaritosAlteradosTimer = null;
 // entrada removida vira "lápide" ({removido:true, ts}) para a remoção também sincronizar com a nuvem
-function gabAtivo(uid){ const g = GABARITOS_ALTERADOS[uid]; return g && !g.removido ? g : null; }
+function gabAtivo(uid){ const g = GABARITOS_ALTERADOS[uid]; return g && !g.removido && !(g.confirmado && g.novo===g.original) ? g : null; }
 function salvarGabaritosAlterados(uid){
   // sincroniza com o Firebase (a cópia do navegador é só cache): marca a matéria da questão e envia
   try{ const q = uid && BY_UID[uid]; if(q && typeof marcarProgressoSujo==='function'){ marcarProgressoSujo(q.materia); if(typeof pushToCloud==='function') pushToCloud(); } }catch(_){}
@@ -127,6 +127,12 @@ function homologarGabarito(uid){
   GABARITOS_ALTERADOS[uid] = { novo: al.gabaritoNovo, motivo: 'Norma alterada: '+al.titulo, original: q.g, ts: Date.now(), homologado:true };
   salvarGabaritosAlterados(uid); render();
 }
+/* confirma o gabarito atual (sem alterá-lo) como definitivo; sincroniza com a nuvem */
+function confirmarGabarito(uid){
+  const q = BY_UID[uid]; if(!q) return;
+  GABARITOS_ALTERADOS[uid] = { novo: gabaritoEfetivo(q), motivo: 'Gabarito confirmado pelo usuário', original: q.g, ts: Date.now(), homologado:true, confirmado:true };
+  salvarGabaritosAlterados(uid); render();
+}
 function alterarGabarito(uid){
   const q = BY_UID[uid];
   if(!q) return;
@@ -140,11 +146,11 @@ function alterarGabarito(uid){
     return;
   }
   if(novoLimpo===q.g){
-    GABARITOS_ALTERADOS[uid] = { removido:true, ts: Date.now() };
+    GABARITOS_ALTERADOS[uid] = { novo: q.g, motivo: 'Gabarito confirmado pelo usuário', original: q.g, ts: Date.now(), homologado:true, confirmado:true };
   } else {
     const motivo = window.prompt('Justificativa da mudança (ex.: "Gabarito definitivo da banca divergiu do preliminar", "Erro de extração do PDF"):', (gabAtivo(uid)&&GABARITOS_ALTERADOS[uid].motivo)||'');
     if(motivo===null) return;
-    GABARITOS_ALTERADOS[uid] = { novo: novoLimpo, motivo: motivo.trim(), original: q.g, ts: Date.now() };
+    GABARITOS_ALTERADOS[uid] = { novo: novoLimpo, motivo: motivo.trim(), original: q.g, ts: Date.now(), homologado:true };
   }
   salvarGabaritosAlterados(uid);
   render();

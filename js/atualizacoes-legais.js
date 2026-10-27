@@ -149,7 +149,11 @@ function questaoAtualizadaAviso(q){
     tags.push(`<span class="tag tag-cobranca tag-cobranca-A" title="${esc(m[2])}">⚠️ Atenção: Questão atualizada em ${m[1].slice(0,5)}</span>`);
   const g = String((q && q.r) || '').match(/Gabarito ajustado ao texto d[^.\n]*\.(?:\s*Constava\s+([^.\n]+)\.?)?/i);
   if(g) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="${esc(g[0])}">🔄 Gabarito revisado</span>`);
-  else if(/Conferir o gabarito/i.test(String((q && q.r) || ''))) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-conf" title="Esta questão tem o gabarito marcado para conferência (a lei carregada ou a jurisprudência pode divergir do gabarito do arquivo).">❓ Gabarito a conferir</span>`);
+  else if(/Conferir o gabarito/i.test(String((q && q.r) || ''))){
+    const gc = typeof GABARITOS_ALTERADOS!=='undefined' ? GABARITOS_ALTERADOS[q.uid] : null;
+    if(gc && gc.homologado && !gc.removido) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-ok tag-gab-clic" data-gab-acao="${esc(q.uid)}" role="button" tabindex="0" title="Gabarito confirmado — clique para alterar">✔ Gabarito confirmado</span>`);
+    else tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-conf tag-gab-clic" data-gab-acao="${esc(q.uid)}" role="button" tabindex="0" title="Clique para confirmar ou alterar o gabarito (a lei carregada ou a jurisprudência pode divergir do gabarito do arquivo).">❓ Gabarito a conferir</span>`);
+  }
   if(typeof gabaritoPorNormaAlterada==='function' && gabaritoPorNormaAlterada(q)) tags.push('<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="Gabarito virado automaticamente pela norma alterada (redação antiga no enunciado)">🔄 Gabarito revisado</span>');
   alteracoesDaQuestao(q).forEach(a => tags.push(`<span class="tag tag-cobranca tag-cobranca-A${a.status==='a-conferir' ? ' tag-alt-conf' : ''}" title="${esc(a.titulo + ' — ' + (a.status==='confirmada' ? 'confirmada no texto carregado' : 'a conferir no texto oficial') + '. ' + a.resumo)}">🔔 Norma alterada (${_dataBr(a.registrada).slice(0,5)})</span>`));
   return tags.join('');
@@ -177,3 +181,24 @@ document.addEventListener('click', e => {
   e.stopPropagation(); e.preventDefault(); abrirAlteracoesLegais(t.dataset.materia);
 }, true);
 document.addEventListener('keydown', e => { if(e.key==='Escape'){ const m = document.getElementById('alt-legais-modal'); if(m) m.remove(); } });
+
+/* badge de gabarito (a conferir / confirmado): clicável → confirmar o gabarito atual ou alterá-lo */
+function abrirAcaoGabarito(uid){
+  const q = BY_UID[uid]; if(!q) return;
+  const atual = gabaritoEfetivo(q);
+  const antigo = document.getElementById('gab-acao-modal'); if(antigo) antigo.remove();
+  const b = document.createElement('div'); b.id = 'gab-acao-modal'; b.className = 'alt-legais-fundo';
+  b.innerHTML = `<div class="alt-legais-caixa" role="dialog" aria-label="Gabarito da questão" style="max-width:420px">
+    <button type="button" class="alt-legais-fechar" aria-label="Fechar">✕</button>
+    <h3>Gabarito: ${esc(atual)}</h3>
+    <p class="alt-legais-sub">Confirme o gabarito atual como definitivo ou altere-o.</p>
+    <div class="gab-acao-botoes"><button type="button" class="btn-ui btn-revisado" data-gab-confirmar="1">✔ Confirmar ${esc(atual)}</button> <button type="button" class="btn-ui" data-gab-alterar="1">✏️ Alterar gabarito</button></div></div>`;
+  b.addEventListener('click', e => {
+    if(e.target===b || e.target.closest('.alt-legais-fechar')){ b.remove(); return; }
+    if(e.target.closest('[data-gab-confirmar]')){ b.remove(); confirmarGabarito(uid); }
+    else if(e.target.closest('[data-gab-alterar]')){ b.remove(); alterarGabarito(uid); }
+  });
+  document.body.appendChild(b);
+}
+document.addEventListener('click', e => { const t = e.target.closest && e.target.closest('[data-gab-acao]'); if(t){ e.preventDefault(); e.stopPropagation(); abrirAcaoGabarito(t.dataset.gabAcao); } }, true);
+document.addEventListener('keydown', e => { if((e.key==='Enter' || e.key===' ') && e.target.dataset && e.target.dataset.gabAcao){ e.preventDefault(); abrirAcaoGabarito(e.target.dataset.gabAcao); } });

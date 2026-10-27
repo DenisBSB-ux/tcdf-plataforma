@@ -2392,3 +2392,4 @@ del.arm-trecho{color:#7f1d1d !important}
 .arm-pares-barra .btn-ui{font-size:12px;padding:3px 10px}
 .arm-edit-rot{display:block;font-size:.85rem;font-weight:600;margin-bottom:2px}
 .arm-rich-curta{min-height:2.6em !important}
+.tag-gab-clic{cursor:pointer}.tag-gab-clic:hover{filter:brightness(1.15)}.tag-gab-ok{background:#15803d !important;color:#fff !important}.gab-acao-botoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
