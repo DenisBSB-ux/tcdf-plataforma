@@ -554,7 +554,7 @@ function renderAuditoriaPage(){
   const linhasTabela = materias.map(m=>{
     const s = rel.porMateria[m];
     const temProblema = (s.divergenciaAno+s.cargoSuspeito+s.bancaAusente+s.semGabarito) > 0;
-    return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${temProblema?'#fbeeec':'#eef6f0'};border-left:4px solid ${temProblema?'var(--stamp-red)':'var(--stamp-green)'};border-radius:4px;padding:8px 10px 8px 12px;margin-bottom:6px;">
+    return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${STATE.theme==='light' ? (temProblema?'#fbeeec':'#eef6f0') : (temProblema?'#3a1d1b':'#16301f')};border-left:4px solid ${temProblema?'var(--stamp-red)':'var(--stamp-green)'};border-radius:4px;padding:8px 10px 8px 12px;margin-bottom:6px;">
       <div style="flex:1;min-width:120px;font-weight:600;font-size:13px;">${esc(m)}</div>
       <div style="width:76px;text-align:right;font-size:11.5px;" title="Questões reais auditadas">${s.total} quest.</div>
       <div style="width:70px;text-align:right;font-size:11.5px;" title="Ano salvo divergente do ano escrito na linha Banca/Cargo">📅 ${s.divergenciaAno}</div>
@@ -589,7 +589,7 @@ function renderAuditoriaPage(){
         <div style="font-size:11px;color:var(--ink-soft);">Questões reais auditadas</div>
         <div style="font-size:16px;font-weight:700;">${totalQ}</div>
       </div>
-      <div class="stat-chip" style="background:${totalProblemas>0?'#fbeeec':'#eef6f0'};border-radius:8px;padding:8px 12px;">
+      <div class="stat-chip" style="background:${STATE.theme==='light' ? (totalProblemas>0?'#fbeeec':'#eef6f0') : (totalProblemas>0?'#3a1d1b':'#16301f')};border-radius:8px;padding:8px 12px;">
         <div style="font-size:11px;color:var(--ink-soft);">Ocorrências encontradas</div>
         <div style="font-size:16px;font-weight:700;color:${totalProblemas>0?'var(--stamp-red)':'var(--stamp-green)'};">${totalProblemas}</div>
       </div>
@@ -643,7 +643,11 @@ function analisarTemasDaMateriaCached(materiaKey){
 
 // faixa de cor (clara) pelo % de acerto: 95-100 azul, 90-94 verde, 80-89
 // amarelo, 1-79 vermelho; 0% (ou nada respondido) preto
-function faixaCorPct(pct, respondidas){
+// modo escuro: as faixas pastel viram fundos escuros com letras claras
+const COR_ESCURA = { '#f1f5f9':{ bg:'#23272e', fg:'#9aa3b2', fgForte:'#c4cbd6' }, '#dbeafe':{ bg:'#16304f', fg:'#9cc4f5', fgForte:'#cfe2fb' }, '#dcfce7':{ bg:'#143a25', fg:'#86e0a8', fgForte:'#c5f3d6' }, '#fef3c7':{ bg:'#3d3112', fg:'#f1cf7a', fgForte:'#fbe6ae' }, '#fee2e2':{ bg:'#431b1b', fg:'#f19a94', fgForte:'#fcc9c5' } };
+function corDoTema(c){ return (typeof STATE!=='undefined' && STATE.theme!=='light' && COR_ESCURA[c.bg]) || c; }
+function faixaCorPct(pct, respondidas){ return corDoTema(faixaCorPctBase(pct, respondidas)); }
+function faixaCorPctBase(pct, respondidas){
   if(!respondidas) return { bg:'#f1f5f9', fg:'#64748b', fgForte:'#475569' }; // cinza claro: ainda não respondida
   if(pct<=0) return { bg:'#1f1f1f', fg:'#d4d4d4', fgForte:'#f5f5f5' }; // preto: respondeu e errou tudo
   if(pct>=100) return { bg:'#dbeafe', fg:'#1e4f8f', fgForte:'#173e72' }; // azul: 100%
@@ -771,7 +775,7 @@ function renderTabelaEstatisticas(linhas, estiloCelula){
     ${linhas.map((l,i)=>{
       // matéria concluída (100% respondida) = azul, independentemente do % de acerto
       const concluida = l.total>0 && l.respondidas>=l.total;
-      const cor = concluida ? { bg:'#dbeafe', fg:'#1e4f8f', fgForte:'#173e72' } : faixaCorPct(l.pct, l.respondidas);
+      const cor = concluida ? corDoTema({ bg:'#dbeafe', fg:'#1e4f8f', fgForte:'#173e72' }) : faixaCorPct(l.pct, l.respondidas);
       // marcador lateral (faixa de acerto) em vez do preenchimento em
       // gradiente na linha inteira — mais legível, o texto nunca fica em
       // cima de um fundo colorido variável

@@ -2401,3 +2401,18 @@ mark.lei-chave{ background:#ffd24d; color:#1d1d1f; font-weight:700; padding:0 2p
 .lei-barra{ cursor:move; user-select:none; }
 .lei-barra input, .lei-barra button, .lei-barra a{ cursor:auto; }
 .lei-alvo-sugerido .lei-alvo{ border-left-style:dashed; }
+
+/* modo escuro: pop-up de teoria com fundo escuro e letras claras */
+body:not(.theme-light) .lei-caixa{ background:#1b1f27; color:#e6e8ec; box-shadow:0 10px 40px rgba(0,0,0,.7); }
+body:not(.theme-light) .lei-barra{ background:#12304f; }
+body:not(.theme-light) .lei-corpo{ color:#e6e8ec; }
+body:not(.theme-light) .lei-corpo p{ color:#e6e8ec; }
+body:not(.theme-light) .lei-com-alvo p:not(.lei-alvo){ opacity:.5; }
+body:not(.theme-light) .lei-alvo{ background:#4a3d0e; border-left-color:#e0a800; color:#fff7d6; }
+body:not(.theme-light) mark.lei-chave{ background:#c98f00; color:#1b1300; }
+body:not(.theme-light) .lei-nota{ color:#9aa3b2; }
+body:not(.theme-light) .lei-vencido{ color:#f19a94; }
+body:not(.theme-light) .lei-peg{ background:#3a1f1f; color:#f6d3cf; border-left-color:#e26a5c; }
+body:not(.theme-light) .lei-alt-aviso{ background:#3a2f12; color:#f1dc9c; border-color:#7a5c00; }
+body:not(.theme-light) .lei-peg-card strong{ color:#ffb4aa; }
+body:not(.theme-light) .lei-caixa mark, body:not(.theme-light) .lei-corpo .arm-trecho{ color:#fff; }
