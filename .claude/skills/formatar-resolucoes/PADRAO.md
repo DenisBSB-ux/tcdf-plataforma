@@ -39,6 +39,8 @@ Cada bloco é uma linha que **começa pelo símbolo**; ordem fixa; omita o que n
 - Texto de lei novo: copiar **literal** de fonte confiável (Drive do usuário: Planalto/PDF); sem acesso à internet, pedir ao usuário. Citação aproximada é pior que pop-up ausente.
 - **Edital** oficial (PDF no Drive, 22/11/2026) manda no que está "dentro do edital" (ex.: Conhecimentos do DF = realidade étnica, social, histórica, geográfica, cultural, política e econômica do DF + RIDE); `js/edital.js` reflete isso.
 
+- **PORTÃO (27/10/2026): nenhuma lista sai com questão sem pop-up.** `fechar_lista_completa.sh` roda o auditor e falha com `semPopup`/`popupSemTexto` ≠ vazio. Como resolver: `sugerir_popup.py` (candidatos) + `lei.js` (conferir) + `definir_base.py` (aplicar). Súmula carregada: `**Súmula N** · TCU` (ou STF); anexo: `**Anexo VIII-A** ▸ **3** · IN 5/2017`; "Decreto-lei N" é reconhecido pelo site. Dispositivo de contexto é aceito quando o texto confirma o assunto; o ⚠️ "Conferir o gabarito" permanece se o gabarito depende de jurisprudência/doutrina.
+
 ## 6. Tamanho da lista (quando o usuário pede "reduza para NQ")
 - Manter as mais recentes e a proporção por assunto; tirar primeiro as repetidas. **Conferir com `contar_distintas.js`**: a plataforma une questões com mesmo início+fim de enunciado (`mesmaQuestao`); a lista deve ter exatamente N **distintas** (senão a importação "perde" questões).
 - Verifique contra um original também reduzido (`montar_resolucoes.py reduzir`).
