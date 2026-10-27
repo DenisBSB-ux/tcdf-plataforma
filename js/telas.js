@@ -1502,7 +1502,7 @@ function faixaArtigosDoTema(tema){
 function normalizarNorma(s){
   s = String(s||'').replace(/\s+/g,' ').trim(); if(!s) return '';
   if(/^(CF|CF\/88|Constitui[çc][ãa]o( Federal)?)$/i.test(s)) return 'CF';
-  const m = s.match(/^(Lei Complementar|LC|Lei|Decreto-Lei|Decreto|MP|EC)?\s*(?:n[ºo°.]*\s*)?(\d[\d.]*)(?:\s*\/\s*\d{2,4})?\s*$/i);
+  const m = s.match(/^(Lei Complementar|LC|Lei|Decreto-Lei|Decreto|MP|EC|Portaria)?\s*(?:n[ºo°.]*\s*)?(\d[\d.]*)(?:\s*\/\s*\d{2,4})?\s*$/i);
   if(!m) return s;
   const tipoBruto = (m[1]||'').toLowerCase();
   const tipo = !tipoBruto ? '' : tipoBruto==='lei complementar' ? 'LC' : tipoBruto==='lc'||tipoBruto==='mp'||tipoBruto==='ec' ? tipoBruto.toUpperCase() : tipoBruto.replace(/^./, c=>c.toUpperCase());
@@ -1532,7 +1532,7 @@ function refsArtigosDaQuestao(q){
   if(Array.isArray(q.artn) && q.artn.length) return q.artn.map(parArtn).map(([norma,n])=>({norma:normalizarNorma(norma),n:+n,exato:true}));
   if(Array.isArray(q.art) && q.art.length) return q.art.map(n=>({norma:'',n:+n,exato:true}));
   const txt = (q.q||'')+' \n '+(q.r||''), out = [], vistos = new Set();
-  const re = /\bart(?:igos?|s?)\.?\s*(\d+)\s*[ºo°]?(?:[^.;\n]{0,40}?\b(CF(?:\/88)?|Constitui[çc][ãa]o Federal|Decreto-?\s*[Ll]ei\s*(?:n[ºo°.]*\s*)?\d[\d.\/]*|Lei\s*(?:Complementar\s*)?(?:n[ºo°.]*\s*)?\d[\d.\/]*|Decreto\s*(?:n[ºo°.]*\s*)?\d[\d.\/]*))?/gi;
+  const re = /\bart(?:igos?|s?)\.?\s*(\d+)\s*[ºo°]?(?:[^.;\n]{0,40}?\b(CF(?:\/88)?|Constitui[çc][ãa]o Federal|Decreto-?\s*[Ll]ei\s*(?:n[ºo°.]*\s*)?\d[\d.\/]*|Portaria\s*(?:n[ºo°.]*\s*)?\d[\d.\/]*|Lei\s*(?:Complementar\s*)?(?:n[ºo°.]*\s*)?\d[\d.\/]*|Decreto\s*(?:n[ºo°.]*\s*)?\d[\d.\/]*))?/gi;
   let m;
   while((m = re.exec(txt))){
     const norma = normalizarNorma(m[2]||'');
