@@ -18,6 +18,16 @@ import sys,json; s=sys.stdin.read(); d=json.loads(s[s.index('{'):]); sp=d.get('s
 print('semPopup:',sp,'| popupSemTexto:',pt)
 open('$D/.sem_popup','w').write(','.join(str(x) for x in sp))
 print('PORTÃO: ' + ('OK' if not sp and not pt else 'FALHOU — rode: python3 $SK/sugerir_popup.py $D/entrega.md '+','.join(str(x) for x in sp)+'  e corrija a linha ⚖️ (norma carregada) ou crie a ficha 📖; depois repita'))"
+echo "--- PORTÃO DO DESTAQUE (o pop-up abre no trecho específico do assunto)"
+MATERIA="$M" timeout 280 node $SK/auditar_destaque.js $D/entrega.md 2>&1 | python3 -c "
+import sys,json; s=sys.stdin.read()
+try:
+    d=json.loads(s[s.index('{'):])
+    print('pop-ups de lei:',d['comBotaoLei'],'| dispositivo exato:',d['exato'],'| sugerido pelo assunto (⚖️ só com o artigo):',d['sugerido'],'| SEM destaque:',d['semAlvo'],'| fichas:',d['fichas'],'sem linha destacada:',d['fichaSemLinha'])
+    if d['listaSugerido']: print('  refinar a ⚖️ para §/inciso/alínea exato nas questões:',d['listaSugerido'][:40])
+    if d['listaFichaSemLinha']: print('  ficha sem linha destacada (ampliar 🔑 ou a ficha):',d['listaFichaSemLinha'][:40])
+    print('DESTAQUE: ' + ('OK' if not d['semAlvo'] else 'FALHOU — questões sem destaque: '+str(d['listaSemAlvo'][:40])+' (ajuste a linha ⚖️ para o dispositivo exato e repita)'))
+except Exception as e: print('auditoria de destaque indisponível:', s[:150].replace(chr(10),' '))"
 echo "--- gabarito a conferir / sem ⚖️"
 python3 - <<PY
 import re
