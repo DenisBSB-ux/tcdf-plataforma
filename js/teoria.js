@@ -383,11 +383,29 @@ function doutrinaDfDaQuestao(q){
   const f = DF_TEMAS.find(([re])=>re.test(t));
   return f ? 'df:'+f[1] : null;
 }
+function doutrinaNorm(x){ return String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); }
+function doutrinaTermosQ(q){
+  const kw = (q && typeof q.r==='string' ? q.r.split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=~]/g,'').split(/\s*[·|]\s*/).map(k=>k.trim()).filter(k=>k.length>=4) : []);
+  const stem = w=> w.length>=7 ? w.slice(0,6) : w;   // 'contingencial' ≈ 'contingencia'
+  const palavras = new Set((doutrinaNorm([q&&q.q, (q&&q.alt||[]).map(a=>a.texto).join(' '), q&&q.tr, q&&q.co].join(' ')).match(/[a-z]{5,}/g)||[]).map(stem));
+  return { kw, palavras, stem, tema: doutrinaNorm(String(q&&q.tema||'').replace(/^[\d.]+\s*/,'')) };
+}
+// pontuação de um texto da ficha para a questão: termo 🔑 inteiro vale 4; palavra comum do enunciado vale 1
+function doutrinaPontos(texto, tq){
+  const nt = doutrinaNorm(texto); let n = 0;
+  tq.kw.forEach(k=>{ if(nt.includes(doutrinaNorm(k))) n += 4; });
+  new Set((nt.match(/[a-z]{5,}/g)||[]).map(tq.stem)).forEach(w=>{ if(tq.palavras.has(w)) n += 1; });
+  return n;
+}
 function doutrinaDfSecao(d, q){
   const txt = String(q.q||'') + ' ' + (q.alt||[]).map(a=>a.texto).join(' ');
-  let melhor = 0, pontos = 0;
+  let melhor = -1, pontos = 0;
   d.secs.forEach((sc,i)=>{ let n = 0; (sc.chaves||[]).forEach(r=>{ try{ if(new RegExp(r,'iu').test(txt)) n++; }catch(_){} }); if(n>pontos){ pontos = n; melhor = i; } });
-  return melhor;
+  if(melhor>=0) return melhor;
+  // seções sem "chaves" (ou nenhuma bateu): a que mais se parece com a questão (🔑 + palavras do enunciado); empate fica na primeira
+  const tq = doutrinaTermosQ(q); let mi = 0, mp = 0;
+  d.secs.forEach((sc,i)=>{ let pt = doutrinaPontos([sc.titulo].concat(sc.lei||[], sc.peg||[]).join(' '), tq); const nti = doutrinaNorm(sc.titulo).replace(/\s*\(.*$/,''); if(nti.length>=6 && tq.tema && (tq.tema.includes(nti) || nti.includes(tq.tema))) pt += 12; if(pt>mp){ mp = pt; mi = i; } });
+  return mi;
 }
 const DADM_TEMAS = [ [/estado, governo/i,'estado-governo'], [/ato administrativo/i,'ato-administrativo'], [/agentes p[úu]blicos/i,'agentes-publicos'], [/poderes da/i,'poderes'], [/regime jur[íi]dico/i,'regime-juridico'], [/responsabilidade civil/i,'responsabilidade-civil'], [/servi[çc]os p[úu]blicos/i,'servicos-publicos'], [/organiza[çc][ãa]o administrativa/i,'organizacao-administrativa'], [/controle da/i,'controle'] ];
 const DADM_TITULOS = { 'estado-governo':'Estado, governo e administração', 'ato-administrativo':'Ato administrativo', 'agentes-publicos':'Agentes públicos', 'poderes':'Poderes da administração', 'regime-juridico':'Regime jurídico-administrativo', 'responsabilidade-civil':'Responsabilidade civil do Estado', 'servicos-publicos':'Serviços públicos', 'organizacao-administrativa':'Organização administrativa', 'controle':'Controle da administração' };
@@ -513,7 +531,7 @@ async function doutrinaAbrir(chave, uid){
   } else if(!d){
     document.getElementById('lei-corpo').textContent = 'Carregando…';
     try{ await doutrinaAdmCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
-    d = DOUTRINA_ADM[String(chave).replace(/^adm:/,'')];
+    d = DOUTRINA_ADM[String(chave).replace(/^adm:/,'')]; if(d) ini = doutrinaDfSecao(d, BY_UID[uid]||{});
   }
   if(!d){ leiFechar(); return; }
   LEI.secs = d.secs.map(x=> Object.assign({ doutrina:d }, x)); LEI.i = Math.min(ini, d.secs.length-1); apostilaDesenhar();
@@ -638,6 +656,7 @@ function leiTermosDaQuestao(q){
   return Array.from(out).sort((x,y)=>y.length-x.length);
 }
 function leiDestacarTermos(txt, termos){
+  termos = termos.slice().sort((x,y)=>y.length-x.length);
   const re = new RegExp(termos.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'), 'gi');
   let out = '', ult = 0, m; re.lastIndex = 0;
   while((m = re.exec(txt))){ if(!m[0]) { re.lastIndex++; continue; } out += esc(txt.slice(ult, m.index)) + '<mark class="lei-chave">' + esc(m[0]) + '</mark>'; ult = m.index + m[0].length; }
@@ -787,12 +806,16 @@ function apostilaDesenhar(){
     // termos 🔑 da justificativa também marcam as linhas da ficha que tratam do foco da questão
     const kwQ = (q && typeof q.r==='string' ? q.r.split(/\n+/).filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'').split(/\s*[·|]\s*/).map(k=>k.trim()).filter(k=>k.length>=4) : []);
     const reKw = kwQ.length ? new RegExp(kwQ.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/\s+/g,'\\s+')).join('|'),'iu') : null;
-    const ehAlvo = p => ativos.some(re=>re.test(p)) || (reKw && reKw.test(p));
-    if(x.lei.some(ehAlvo)) c.classList.add('lei-com-alvo');
-    c.innerHTML = x.lei.map((p,i)=>`<p class="${i===0 ? 'lei-art' : 'lei-inc'}${ehAlvo(p) ? ' lei-alvo' : ''}">${esc(p)}</p>`).join('')
+    let ehAlvo = p => ativos.some(re=>re.test(p)) || (reKw && reKw.test(p));
+    if(!x.lei.some(ehAlvo) && q){   // nada bateu por 🔑/chaves: destaca a(s) linha(s) mais parecida(s) com a questão
+      const tq = doutrinaTermosQ(q); const sc = x.lei.map((p,i)=> i===0 && x.lei.length>1 ? 0 : doutrinaPontos(p, tq)); const mx = Math.max(0, ...sc);
+      if(mx>=2){ const lim = Math.max(2, Math.ceil(mx*0.7)); const ok = new Set(); sc.forEach((v,i)=>{ if(v>=lim) ok.add(i); }); ehAlvo = (p,i)=> ok.has(i); }
+    }
+    if(x.lei.some((p,i)=>ehAlvo(p,i))) c.classList.add('lei-com-alvo');
+    c.innerHTML = x.lei.map((p,i)=>`<p class="${i===0 ? 'lei-art' : 'lei-inc'}${ehAlvo(p,i) ? ' lei-alvo' : ''}">${ehAlvo(p,i) && kwQ.length ? leiDestacarTermos(p, kwQ) : esc(p)}</p>`).join('')
       + (x.peg ? `<div class="lei-peg"><strong>⚠️ Pegadinha provável.</strong> ${esc(x.peg)}</div>` : '')
       + `<p class="lei-nota">${esc(x.doutrina.titulo)}. Síntese própria; fontes: ` + x.doutrina.fontes.map(f=> f[1] ? `<a href="${esc(f[1])}" target="_blank" rel="noopener">${esc(f[0])}</a>` : esc(f[0])).join(' · ') + `.</p>`;
-    c.scrollTop = 0; return;
+    c.scrollTop = 0; const centrar = ()=>{ const al = c.querySelector('.lei-alvo'); if(al) c.scrollTop += al.getBoundingClientRect().top - c.getBoundingClientRect().top - 60; }; centrar(); requestAnimationFrame(centrar); return;
   }
   document.getElementById('lei-titulo').textContent = `Apostila · ${x.titulo}`;
   document.getElementById('lei-n').value = `${LEI.i+1}/${LEI.secs.length}`;
