@@ -17,4 +17,6 @@ os.makedirs(os.path.join(d, 'q'), exist_ok=True)
 open(os.path.join(d, 'q', 'respostas.py'), 'w', encoding='utf-8').write('E = %r\nC = %r\nM = %r\n' % (E, C, M))
 open(os.path.join(d, 'q', 'erros.py'), 'w', encoding='utf-8').write('E = %r\n' % (EE,))
 open(os.path.join(d, 'X.py'), 'w', encoding='utf-8').write('X = %r\n' % (X,))
+import json
+open(os.path.join(d, 'gab.json'), 'w', encoding='utf-8').write(json.dumps({str(k): list(v) for k, v in G.items()}, ensure_ascii=False))
 print('E:', len(E), '| X:', len(X), '| ERROS (múltipla escolha):', len(EE), '| propostas de gabarito:', G or 'nenhuma')
