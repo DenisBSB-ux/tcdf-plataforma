@@ -610,6 +610,17 @@ function leiEl(){
       <button type="button" class="btn-ui" data-lei="fechar" title="Fechar (Esc)">✕</button></div>
     <div class="lei-corpo" id="lei-corpo"></div></div>`;
   el.addEventListener('mousedown', ev=>{ if(ev.target===el) leiFechar(); });
+  // arrastar pela barra de título (posição fica enquanto a janela estiver aberta); o redimensionamento é pelo canto inferior direito
+  const cx = el.querySelector('.lei-caixa'), barra = el.querySelector('.lei-barra');
+  barra.addEventListener('pointerdown', ev=>{
+    if(ev.target.closest('button,input,a')) return;
+    const r = cx.getBoundingClientRect(); const dx = ev.clientX - r.left, dy = ev.clientY - r.top;
+    cx.style.position = 'fixed'; cx.style.margin = '0'; cx.style.left = r.left+'px'; cx.style.top = r.top+'px'; cx.style.width = r.width+'px'; cx.style.maxHeight = 'none'; if(!cx.style.height) cx.style.height = r.height+'px';
+    barra.setPointerCapture(ev.pointerId);
+    const mv = e=>{ cx.style.left = Math.max(0, Math.min(innerWidth-80, e.clientX-dx))+'px'; cx.style.top = Math.max(0, Math.min(innerHeight-40, e.clientY-dy))+'px'; };
+    const up = ()=>{ barra.removeEventListener('pointermove', mv); barra.removeEventListener('pointerup', up); };
+    barra.addEventListener('pointermove', mv); barra.addEventListener('pointerup', up);
+  });
   document.body.appendChild(el); return el;
 }
 function leiFechar(){ const el = document.getElementById('lei-modal'); if(el) el.hidden = true; LEI.aberta = false; }
@@ -617,6 +628,20 @@ function leiPasso(delta){
   const ord = leiOrdem(LEI.norma); let i = ord.indexOf(LEI.n);
   if(i<0){ i = ord.findIndex(k=> parseInt(k,10) >= parseInt(LEI.n,10)); if(i<0) i = ord.length-1; if(delta>0) delta = 0; }
   const novo = ord[Math.max(0, Math.min(ord.length-1, i+delta))]; if(novo!==LEI.n) LEI.q = null; LEI.n = novo; leiDesenhar();
+}
+/* termos da questão (🔑, trecho e correção) que aparecem no dispositivo-alvo ficam destacados dentro dele */
+function leiTermosDaQuestao(q){
+  if(!q) return [];
+  const out = new Set(), add = t=>{ t = String(t||'').replace(/[*=~]/g,'').replace(/\s+/g,' ').trim(); if(t.length>=4 && t.length<=80) out.add(t); };
+  String(q.r||'').split('\n').filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').split(' · ').forEach(add);
+  try{ const a = typeof armEfetiva==='function' ? armEfetiva(q) : null; if(a){ String(a.trecho||'').split(' | ').forEach(add); String(a.correcao||'').split(' | ').forEach(add); } }catch(_){}
+  return Array.from(out).sort((x,y)=>y.length-x.length);
+}
+function leiDestacarTermos(txt, termos){
+  const re = new RegExp(termos.map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'), 'gi');
+  let out = '', ult = 0, m; re.lastIndex = 0;
+  while((m = re.exec(txt))){ if(!m[0]) { re.lastIndex++; continue; } out += esc(txt.slice(ult, m.index)) + '<mark class="lei-chave">' + esc(m[0]) + '</mark>'; ult = m.index + m[0].length; }
+  return out + esc(txt.slice(ult));
 }
 function leiDesenhar(){
   const f = LEI_FONTES[LEI.norma], d = eval(f.global), n = LEI.n;
@@ -644,15 +669,17 @@ function leiDesenhar(){
     if(!marca2.size) marca2 = null; }
   }
   corpo.classList.toggle('lei-com-alvo', !!marca2);
+  const termosQ = (marca2 && LEI.q) ? leiTermosDaQuestao(BY_UID[LEI.q]) : [];
   corpo.innerHTML = ps ? ps.map((p,i)=>{
     const m = p.match(/^(.*?)(\s*\((?:Reda[çc][ãa]o|Inclu[ií]d|Revogad|Vide|Vig[êe]ncia|Produ[çc][ãa]o|Regulament|Promulga|Vetad|Execu[çc]).*)$/i);
     const txt = m && i>0 ? m[1] : p; const nota = m && i>0 ? m[2] : '';
     const cls = i===0 ? 'lei-art' : /^(§|Parágrafo único)/.test(p) ? 'lei-par' : 'lei-inc';
-    return `<p class="${cls}${marca2 && marca2.has(i) ? ' lei-alvo' : ''}">${esc(txt).replace(/~~(.+?)~~/g,'<del class="lei-vencido">$1</del>')}${nota ? ` <span class="lei-nota">${esc(nota.trim())}</span>` : ''}</p>`;
+    return `<p class="${cls}${marca2 && marca2.has(i) ? ' lei-alvo' : ''}">${(marca2 && marca2.has(i) && termosQ.length ? leiDestacarTermos(txt, termosQ) : esc(txt)).replace(/~~(.+?)~~/g,'<del class="lei-vencido">$1</del>')}${nota ? ` <span class="lei-nota">${esc(nota.trim())}</span>` : ''}</p>`;
   }).join('') : `<p class="lei-nota">O artigo ${esc(n)} foi revogado ou não consta do texto da plataforma. Consulte a fonte oficial.</p>`;
   try{ const alts = typeof alteracoesDoArtigo==='function' ? alteracoesDoArtigo(LEI.norma, n) : []; if(alts.length && ps) corpo.insertAdjacentHTML('afterbegin', `<div class="lei-alt-aviso">🔔 <b>Dispositivo alterado por norma posterior</b> — o texto abaixo pode estar desatualizado. ${alts.map(a=>esc(a.titulo)+(a.status==='confirmada' ? ' (confirmado na base oficial)' : ' (a conferir)')).join(' · ')}</div>`); }catch(_){}
   corpo.scrollTop = 0;
-  const al = corpo.querySelector('.lei-alvo'); if(al) corpo.scrollTop = Math.max(0, al.offsetTop - 70);
+  const centrar = ()=>{ const al = corpo.querySelector('.lei-alvo'); if(al) corpo.scrollTop += al.getBoundingClientRect().top - corpo.getBoundingClientRect().top - 60; };
+  centrar(); requestAnimationFrame(centrar);   // de novo no quadro seguinte (a caixa pode ainda estar sendo medida)
   leiApostilaAnexar(n);
 }
 /* teoria da apostila do mesmo artigo, no fim do pop-up da lei */

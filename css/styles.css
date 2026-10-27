@@ -2393,3 +2393,10 @@ del.arm-trecho{color:#7f1d1d !important}
 .arm-edit-rot{display:block;font-size:.85rem;font-weight:600;margin-bottom:2px}
 .arm-rich-curta{min-height:2.6em !important}
 .tag-gab-clic{cursor:pointer}.tag-gab-clic:hover{filter:brightness(1.15)}.tag-gab-ok{background:#15803d !important;color:#fff !important}.gab-acao-botoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+/* pop-up de teoria: termos da questão destacados dentro do dispositivo; janela móvel e redimensionável */
+mark.lei-chave{ background:#ffd24d; color:#1d1d1f; font-weight:700; padding:0 2px; border-radius:3px; }
+.lei-caixa{ resize:both; overflow:hidden; min-width:320px; min-height:200px; max-width:96vw; }
+.lei-corpo{ flex:1 1 auto; min-height:0; }
+.lei-barra{ cursor:move; user-select:none; }
+.lei-barra input, .lei-barra button, .lei-barra a{ cursor:auto; }
