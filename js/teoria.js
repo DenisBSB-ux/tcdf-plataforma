@@ -668,7 +668,22 @@ function leiDesenhar(){
     }
     if(!marca2.size) marca2 = null; }
   }
+  // anexo da IN 5: o item citado na linha ⚖️ ("▸ 3.3", "▸ d.3.2", "▸ item 12") é o parágrafo que começa com esse número
+  if(ps && !marca2 && LEI.q && LEI.norma==='IN 5' && /^ANEXO/.test(n)){
+    const lm1 = String((BY_UID[LEI.q]||{}).r||'').match(/⚖️\s*([^\n]*)/); const mi = lm1 && lm1[1].replace(/\*+/g,'').match(/▸\s*(?:item\s*)?([a-z]\.)?(\d+(?:\.\d+)*)/i);
+    if(mi){ const num = mi[2].replace(/\./g,'\\.'); const re1 = new RegExp('^(?:'+(mi[1]?mi[1].replace('.','\\.'):'')+')?'+num+'\\.?\\s'); const m = new Set(); ps.forEach((x,i)=>{ if(re1.test(String(x).trim())) m.add(i); }); if(m.size){ marca2 = m; } }
+  }
+  // ⚖️ só com o artigo (ou dispositivo não localizado): destaca o parágrafo/inciso do artigo mais próximo do assunto da questão
+  let sugerido = false;
+  if(ps && ps.length<=2 && LEI.q && LEI.modo!=='apostila' && !marca2){ marca2 = new Set(ps.map((_,i)=>i)); sugerido = true; }   // texto curto (súmula, artigo de um parágrafo): ele inteiro é o alvo
+  else if(ps && ps.length>2 && LEI.q && LEI.modo!=='apostila' && (!/^ANEXO/.test(n) || LEI.norma!=='Decreto 42.590') && (!marca2 || (marca2.size===1 && marca2.has(0)))){
+    const q0 = BY_UID[LEI.q]; const nz = x=> new Set(String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').match(/[a-z]{5,}/g)||[]);
+    const qw = nz([q0.q, leiTermosDaQuestao(q0).join(' ')].join(' ')); const sc = ps.map((x,i)=>{ if(i===0 && ps.length>1) return 0; let c = 0; nz(x).forEach(w=>{ if(qw.has(w)) c++; }); return c; });
+    const mx = Math.max(...sc);
+    if(mx>=2){ const lim = Math.max(2, Math.ceil(mx*0.7)); const m = new Set(); sc.forEach((c,i)=>{ if(c>=lim) m.add(i); }); if(m.size && m.size<=3){ marca2 = m; sugerido = true; } }
+  }
   corpo.classList.toggle('lei-com-alvo', !!marca2);
+  corpo.classList.toggle('lei-alvo-sugerido', sugerido);
   const termosQ = (marca2 && LEI.q) ? leiTermosDaQuestao(BY_UID[LEI.q]) : [];
   corpo.innerHTML = ps ? ps.map((p,i)=>{
     const m = p.match(/^(.*?)(\s*\((?:Reda[çc][ãa]o|Inclu[ií]d|Revogad|Vide|Vig[êe]ncia|Produ[çc][ãa]o|Regulament|Promulga|Vetad|Execu[çc]).*)$/i);

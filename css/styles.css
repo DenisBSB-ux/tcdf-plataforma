@@ -2400,3 +2400,4 @@ mark.lei-chave{ background:#ffd24d; color:#1d1d1f; font-weight:700; padding:0 2p
 .lei-corpo{ flex:1 1 auto; min-height:0; }
 .lei-barra{ cursor:move; user-select:none; }
 .lei-barra input, .lei-barra button, .lei-barra a{ cursor:auto; }
+.lei-alvo-sugerido .lei-alvo{ border-left-style:dashed; }
