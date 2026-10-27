@@ -1532,7 +1532,7 @@ function refsArtigosDaQuestao(q){
   if(Array.isArray(q.artn) && q.artn.length) return q.artn.map(parArtn).map(([norma,n])=>({norma:normalizarNorma(norma),n:+n,exato:true}));
   if(Array.isArray(q.art) && q.art.length) return q.art.map(n=>({norma:'',n:+n,exato:true}));
   const txt = (q.q||'')+' \n '+(q.r||''), out = [], vistos = new Set();
-  const re = /\bart(?:igos?|s?)\.?\s*(\d+)\s*[ºo°]?(?:[^.;\n]{0,40}?\b(CF(?:\/88)?|Constitui[çc][ãa]o Federal|Lei\s*(?:Complementar\s*)?(?:n[ºo°.]*\s*)?\d[\d.\/]*|Decreto\s*(?:n[ºo°.]*\s*)?\d[\d.\/]*))?/gi;
+  const re = /\bart(?:igos?|s?)\.?\s*(\d+)\s*[ºo°]?(?:[^.;\n]{0,40}?\b(CF(?:\/88)?|Constitui[çc][ãa]o Federal|Decreto-?\s*[Ll]ei\s*(?:n[ºo°.]*\s*)?\d[\d.\/]*|Lei\s*(?:Complementar\s*)?(?:n[ºo°.]*\s*)?\d[\d.\/]*|Decreto\s*(?:n[ºo°.]*\s*)?\d[\d.\/]*))?/gi;
   let m;
   while((m = re.exec(txt))){
     const norma = normalizarNorma(m[2]||'');
