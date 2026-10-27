@@ -3,10 +3,13 @@
 # Uso: bash fechar_lista_completa.sh <pasta> "<Matéria>"      (pasta tem original.md; resultado: pasta/entrega.md)
 # Passos: build (resoluções) → preparar → montar_respostas → finalizar_lista.sh → inserir Explicação → verificações → PORTÃO DO POP-UP.
 cd /home/user/tcdf-plataforma; SK=.claude/skills/formatar-resolucoes; D=$1; M=$2
-python3 $SK/montar_resolucoes.py build $D/original.md $D/lotes $D/built.md | tail -2
-python3 $SK/preparar_lista.py $D/built.md $D/q | tail -1 | cut -c1-120
 python3 $SK/montar_respostas.py $D
-bash $SK/finalizar_lista.sh $D/q $D/original.md "$M" 2>&1 | tail -18
+python3 $SK/montar_resolucoes.py build $D/original.md $D/lotes $D/built.md | tail -2
+python3 $SK/aplicar_gab.py $D
+GAB_ALT=$(cat $D/.gab_alt 2>/dev/null)
+python3 $SK/preparar_lista.py $D/built.md $D/q | tail -1 | cut -c1-120
+python3 $SK/montar_respostas.py $D >/dev/null
+GAB_ALT="$GAB_ALT" bash $SK/finalizar_lista.sh $D/q $D/original.md "$M" 2>&1 | tail -18
 python3 $SK/inserir_explicacao.py $D/q/final.md $D/X.py $D/entrega.md
 echo "--- verificações finais"
 python3 $SK/verificar_modelo.py $D/entrega.md | tail -1
