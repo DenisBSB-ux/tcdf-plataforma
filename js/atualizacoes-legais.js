@@ -148,13 +148,14 @@ function questaoAtualizadaAviso(q){
   if(m && !(/n[ãa]o localizei|sem altera|sem mudan|mantid[oa]s?\b(?!.*(ADI|inconstitucion))/i.test(m[2]) && !/ADI 7236|invalidaram|declarou inconstitucional|dispensaram/i.test(m[2])))
     tags.push(`<span class="tag tag-cobranca tag-cobranca-A" title="${esc(m[2])}">⚠️ Atenção: Questão atualizada em ${m[1].slice(0,5)}</span>`);
   const g = String((q && q.r) || '').match(/Gabarito ajustado ao texto d[^.\n]*\.(?:\s*Constava\s+([^.\n]+)\.?)?/i);
-  if(g) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="${esc(g[0])}">🔄 Gabarito revisado</span>`);
+  const _gh = typeof GABARITOS_ALTERADOS!=='undefined' ? GABARITOS_ALTERADOS[q && q.uid] : null, homologado = !!(_gh && _gh.homologado && !_gh.removido);   // gabarito já confirmado: badges de gabarito somem
+  if(g){ if(!homologado) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="${esc(g[0])}">🔄 Gabarito revisado</span>`); }
   else if(/Conferir o gabarito/i.test(String((q && q.r) || ''))){
     const gc = typeof GABARITOS_ALTERADOS!=='undefined' ? GABARITOS_ALTERADOS[q.uid] : null;
-    if(gc && gc.homologado && !gc.removido) tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-ok tag-gab-clic" data-gab-acao="${esc(q.uid)}" role="button" tabindex="0" title="Gabarito confirmado — clique para alterar">✔ Gabarito confirmado</span>`);
+    if(gc && gc.homologado && !gc.removido){ /* gabarito confirmado: badge oculta (para alterar, use "Corrigir gabarito") */ }
     else tags.push(`<span class="tag tag-cobranca tag-cobranca-A tag-gab-conf tag-gab-clic" data-gab-acao="${esc(q.uid)}" role="button" tabindex="0" title="Clique para confirmar ou alterar o gabarito (a lei carregada ou a jurisprudência pode divergir do gabarito do arquivo).">❓ Gabarito a conferir</span>`);
   }
-  if(typeof gabaritoPorNormaAlterada==='function' && gabaritoPorNormaAlterada(q)) tags.push('<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="Gabarito virado automaticamente pela norma alterada (redação antiga no enunciado)">🔄 Gabarito revisado</span>');
+  if(!homologado && typeof gabaritoPorNormaAlterada==='function' && gabaritoPorNormaAlterada(q)) tags.push('<span class="tag tag-cobranca tag-cobranca-A tag-gab-rev" title="Gabarito virado automaticamente pela norma alterada (redação antiga no enunciado)">🔄 Gabarito revisado</span>');
   alteracoesDaQuestao(q).forEach(a => tags.push(`<span class="tag tag-cobranca tag-cobranca-A${a.status==='a-conferir' ? ' tag-alt-conf' : ''}" title="${esc(a.titulo + ' — ' + (a.status==='confirmada' ? 'confirmada no texto carregado' : 'a conferir no texto oficial') + '. ' + a.resumo)}">🔔 Norma alterada (${_dataBr(a.registrada).slice(0,5)})</span>`));
   return tags.join('');
 }
