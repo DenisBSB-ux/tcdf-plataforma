@@ -696,10 +696,10 @@ function leiDesenhar(){
   let sugerido = false;
   if(ps && ps.length<=2 && LEI.q && LEI.modo!=='apostila' && !marca2){ marca2 = new Set(ps.map((_,i)=>i)); sugerido = true; }   // texto curto (súmula, artigo de um parágrafo): ele inteiro é o alvo
   else if(ps && ps.length>2 && LEI.q && LEI.modo!=='apostila' && (!/^ANEXO/.test(n) || LEI.norma!=='Decreto 42.590') && (!marca2 || (marca2.size===1 && marca2.has(0)))){
-    const q0 = BY_UID[LEI.q]; const nz = x=> new Set(String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').match(/[a-z]{5,}/g)||[]);
-    const qw = nz([q0.q, leiTermosDaQuestao(q0).join(' ')].join(' ')); const sc = ps.map((x,i)=>{ if(i===0 && ps.length>1) return 0; let c = 0; nz(x).forEach(w=>{ if(qw.has(w)) c++; }); return c; });
-    const mx = Math.max(...sc);
-    if(mx>=2){ const lim = Math.max(2, Math.ceil(mx*0.7)); const m = new Set(); sc.forEach((c,i)=>{ if(c>=lim) m.add(i); }); if(m.size && m.size<=3){ marca2 = m; sugerido = true; } }
+    const q0 = BY_UID[LEI.q]; const tq = doutrinaTermosQ(q0);
+    const sc = ps.map((x,i)=> doutrinaPontos(x, tq)); const mx = Math.max(...sc);
+    // o caput (ou o dispositivo citado) prevalece: só troca por outro parágrafo se ele tiver termo 🔑 que o caput não tem
+    if(mx>=4 && sc.indexOf(mx)>0 && mx >= sc[0] + 4){ const lim = Math.max(4, Math.ceil(mx*0.8)); const m = new Set(); sc.forEach((c,i)=>{ if(i>0 && c>=lim) m.add(i); }); if(m.size && m.size<=2){ marca2 = m; sugerido = true; } }
   }
   corpo.classList.toggle('lei-com-alvo', !!marca2);
   corpo.classList.toggle('lei-alvo-sugerido', sugerido);
