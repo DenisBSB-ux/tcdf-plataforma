@@ -34,3 +34,6 @@ Arquivo `.md` completo (SendUserFile) + 1 linha por: gabaritos alterados, itens 
 
 ## Scripts (resumo)
 `preparar_lista.py` · `montar_resolucoes.py` (dump/build/faltantes/reduzir/repetidas/limpar) · `aplicar_padrao.py` (Trecho/Correção/ERROS inicial) · `preencher_artigo.py` (⚖️ em negrito + campo Artigo) · `reduzir_redundancia.py` · `classificar_auto.py` · `aplicar_erros.py` · `motivar_erros.py` · `dedup_erros.py` · `verificar_resolucoes.py` · `verificar_importador.js` · `contar_distintas.js` · `auditar_lista.js` · `finalizar_lista.sh`.
+
+## 8. Ficha de doutrina incompleta (ex.: Conhecimentos do DF) — ampliar com pesquisa
+Quando muitas questões trazem ⚠️ "a ficha/apostila não traz o fato": (1) `faltas.json` = questões com esse aviso (n, assunto, aviso, enunciado); (2) agentes de pesquisa seguem `PROMPT_PESQUISA_FICHA.md` (apostila no Drive primeiro, depois fontes externas com URL e passagem) e gravam `pesq_out_K.json`; (3) `node integrar_pesquisa.js <pasta> --aplicar` acrescenta linhas, seções, chaves e fontes em `js/doutrina-df.js` (subir `vNNN`); (4) na lista, o ⚠️ "Conferir o gabarito" some quando a pesquisa confirma; permanece (texto refinado) onde contraria ou é inconclusiva; correções de fato na resolução quando a pesquisa mostrar erro. Nunca mudar gabarito de fato/doutrina sem decisão do usuário.
