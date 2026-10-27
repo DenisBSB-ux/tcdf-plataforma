@@ -5,7 +5,7 @@ description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF
 
 # Formatar resoluções de uma matéria
 
-> **PADRÃO ÚNICO: leia `PADRAO.md` (todas as decisões do usuário, consolidadas) e execute com `ATUALIZAR_LISTA.md` + `finalizar_lista.sh`. Em caso de divergência com o texto abaixo, vale o `PADRAO.md` (mais recente).**
+> **PADRÃO ÚNICO: leia `PADRAO.md` (todas as decisões do usuário, consolidadas) e execute com `ATUALIZAR_LISTA.md` (§0 ROTEIRO RÁPIDO: `PROMPT_LOTE.md` + subagentes + `fechar_lista_completa.sh`, com PORTÃO DO POP-UP) + `finalizar_lista.sh`. Em caso de divergência com o texto abaixo, vale o `PADRAO.md` (mais recente).**
 
 **Este é o modelo fechado** (Lei 14.133 e Análise de Dados e IA já seguem). Aplique-o igual a toda matéria nova, sem perguntar de novo o que já está decidido aqui. Exemplos reais aprovados: `exemplos.md` (nesta pasta).
 

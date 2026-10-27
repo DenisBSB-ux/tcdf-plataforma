@@ -2,6 +2,13 @@
 
 Uma lista por vez. Ferramentas desta pasta; arquivos de trabalho numa pasta de rascunho (scratchpad). **Leia `PADRAO.md` antes.**
 
+## 0. ROTEIRO RÁPIDO (padrão de 27/10/2026 — usado em Constitucional, Dir. Adm., Regimento Interno, Contratos, IN 5, Adm 8.429/9.784/2.834 e Adm Geral)
+1. Pasta de rascunho `<P>` com `original.md` (arquivo do usuário) e `lotes/`, `resp/`. Copie `PROMPT_LOTE.md` para `<P>/PROMPT.md` (troque `<PASTA>` e `<MATÉRIA E NORMAS>`).
+2. 1 subagente por lote de 50 questões (`INI..FIM`, 0-based): cada um escreve `lotes/bNN.py` (R: 📌/🔑/⚖️/⚠️/🪤/💡) e `resp/rNN.py` (E trecho→correção, X explicação, GAB propostas) e, se houver múltipla escolha, `resp/eNN.py` (EE: uma linha por letra). Texto de lei só pelo `lei.js`.
+3. `bash fechar_lista_completa.sh <P> "<Matéria>"` → `<P>/entrega.md`: build → preparar → `montar_respostas.py` → `finalizar_lista.sh` → `inserir_explicacao.py` (Explicação nos Errados) → verificadores → **PORTÃO DO POP-UP**.
+4. **Portão do pop-up (obrigatório):** `semPopup` e `popupSemTexto` têm de ser vazios. Se falhar: `python3 sugerir_popup.py <P>/entrega.md n,n,... "Sigla1,Sigla2"` (candidatos por sobreposição de palavras), confira o artigo com `lei.js` e aplique com `python3 definir_base.py entrega.md entrega2.md "n=**Art. 59** ▸ **IV** · Lei 14.133/2021" ...`; rode o portão de novo (`MATERIA="<Matéria>" node auditar_lista.js original.md entrega2.md`). Matéria doutrinária usa ficha 📖 (MATERIA correto no auditor).
+5. Entrega (SendUserFile) + relatório curto: gabaritos propostos (a lei carregada prevalece, PADRAO §4; doutrina nunca muda), "Conferir o gabarito", sem ⚖️, divergências.
+
 ## 1. Preparar
 `python3 preparar_lista.py lista.md pasta/` → `pasta/base.md` (limpa: sem ID, Explicação, Ano redundante, Fonte, selo, "texto não carregado"), `pasta/tarefas.md` (itens E, C, M), `pasta/modelo_respostas.py`.
 - Lista **crua** (resolução em texto livre, com Resumo Flash — ex.: lista nova do usuário): antes, escrever as resoluções no formato (⚖️ 📌 🔑 ⚠️ 🪤 💡) em lotes `bNN.py` (`R = {idx: (ess, [chaves], base, atencao, armadilha, macete)}`, lendo `montar_resolucoes.py dump`), `montar_resolucoes.py build lista.md lotes/ saida.md`, e só então `preparar_lista.py saida.md pasta/`.
