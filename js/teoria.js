@@ -713,6 +713,7 @@ function leiDesenhar(){
     return `<p class="${cls}${marca2 && marca2.has(i) ? ' lei-alvo' : ''}">${(marca2 && marca2.has(i) && termosQ.length ? leiDestacarTermos(txt, termosQ) : esc(txt)).replace(/~~(.+?)~~/g,'<del class="lei-vencido">$1</del>')}${nota ? ` <span class="lei-nota">${esc(nota.trim())}</span>` : ''}</p>`;
   }).join('') : `<p class="lei-nota">O artigo ${esc(n)} foi revogado ou não consta do texto da plataforma. Consulte a fonte oficial.</p>`;
   try{ const alts = typeof alteracoesDoArtigo==='function' ? alteracoesDoArtigo(LEI.norma, n) : []; if(alts.length && ps) corpo.insertAdjacentHTML('afterbegin', `<div class="lei-alt-aviso">🔔 <b>Dispositivo alterado por norma posterior</b> — o texto abaixo pode estar desatualizado. ${alts.map(a=>esc(a.titulo)+(a.status==='confirmada' ? ' (confirmado na base oficial)' : ' (a conferir)')).join(' · ')}</div>`); }catch(_){}
+  try{ if(ps && typeof quadroNumerosArtigo==='function' && cartoesAtivos()) corpo.insertAdjacentHTML('beforeend', quadroNumerosArtigo(ps)); }catch(_){}
   corpo.scrollTop = 0;
   const centrar = ()=>{ const al = corpo.querySelector('.lei-alvo'); if(al) corpo.scrollTop += al.getBoundingClientRect().top - corpo.getBoundingClientRect().top - 60; };
   centrar(); requestAnimationFrame(centrar);   // de novo no quadro seguinte (a caixa pode ainda estar sendo medida)

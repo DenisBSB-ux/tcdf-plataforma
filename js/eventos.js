@@ -422,6 +422,9 @@ function attachHandlers(){
 
   const btnThemeToggle = document.getElementById('btn-theme-toggle');
   if(btnThemeToggle) btnThemeToggle.addEventListener('click', alternarTema);
+  const btnCartoes = document.getElementById('btn-cartoes');
+  if(btnCartoes) btnCartoes.addEventListener('click', alternarCartoes);
+  root.querySelectorAll('[data-cartoes-toggle]').forEach(el=> el.addEventListener('click', alternarCartoes));
   const btnColorPicker = document.getElementById('btn-color-picker');
   if(btnColorPicker) btnColorPicker.addEventListener('click', alternarCorPicker);
   root.querySelectorAll('[data-cor-tema]').forEach(el=>{
