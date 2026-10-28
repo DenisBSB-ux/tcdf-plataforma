@@ -2416,3 +2416,32 @@ body:not(.theme-light) .lei-peg{ background:#3a1f1f; color:#f6d3cf; border-left-
 body:not(.theme-light) .lei-alt-aviso{ background:#3a2f12; color:#f1dc9c; border-color:#7a5c00; }
 body:not(.theme-light) .lei-peg-card strong{ color:#ffb4aa; }
 body:not(.theme-light) .lei-caixa mark, body:not(.theme-light) .lei-corpo .arm-trecho{ color:#fff; }
+
+/* v357 — cartão comparativo (No item × Correto / Antes × Agora), desenhado em HTML/CSS */
+.cartao-comp{ margin:12px 0 4px; padding:12px 12px 8px; border-radius:14px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.12); max-width:560px; }
+.cc-topo{ font-size:.72rem; letter-spacing:.07em; text-transform:uppercase; color:#9aa0a6; margin-bottom:8px; }
+.cc-topo b{ color:#e8e9eb; }
+.cc-par{ display:grid; grid-template-columns:1fr 30px 1fr; align-items:stretch; }
+.cc-lado{ position:relative; border-radius:12px; padding:12px 8px 10px; text-align:center; }
+.cc-antes{ background:#3a2020; border:1.5px solid #d9534f; }
+.cc-agora{ background:#16352a; border:1.5px solid #3fb27f; }
+.cc-rot{ font-size:.68rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+.cc-antes .cc-rot{ color:#f08a86; } .cc-agora .cc-rot{ color:#6fd6a6; }
+.cc-num{ font-size:2.9rem; font-weight:800; line-height:1.05; margin-top:4px; }
+.cc-num-txt{ font-size:1.25rem; line-height:1.25; padding:12px 0 6px; font-weight:700; }
+.cc-antes .cc-num{ color:#f08a86; text-decoration:line-through; text-decoration-thickness:3px; text-decoration-color:rgba(217,83,79,.7); }
+.cc-agora .cc-num{ color:#6fd6a6; }
+.cc-un{ font-size:.82rem; color:#9aa0a6; }
+.cc-ref{ font-size:.8rem; font-weight:600; margin-top:4px; }
+.cc-seta{ display:flex; align-items:center; justify-content:center; font-size:1.3rem; color:#9aa0a6; }
+.cc-selo{ position:absolute; top:6px; right:6px; width:20px; height:20px; border-radius:50%; display:grid; place-items:center; font-size:.75rem; font-weight:800; color:#fff; }
+.cc-antes .cc-selo{ background:#d9534f; } .cc-agora .cc-selo{ background:#3fb27f; }
+.cc-rod{ margin-top:8px; font-size:.75rem; color:#9aa0a6; }
+.cc-rod mark{ background:#f3c95b; color:#222; border-radius:4px; padding:0 5px; }
+body.theme-light .cartao-comp{ background:#fff; border-color:#d6d0c0; }
+body.theme-light .cc-topo, body.theme-light .cc-un, body.theme-light .cc-seta, body.theme-light .cc-rod{ color:#585c63; }
+body.theme-light .cc-topo b{ color:#1d1f22; }
+body.theme-light .cc-antes{ background:#fdeceb; } body.theme-light .cc-agora{ background:#e7f6ee; }
+body.theme-light .cc-antes .cc-rot, body.theme-light .cc-antes .cc-num{ color:#b3302b; }
+body.theme-light .cc-agora .cc-rot, body.theme-light .cc-agora .cc-num{ color:#1f7a52; }
+@media (max-width:420px){ .cc-num{ font-size:2.2rem; } }
