@@ -270,6 +270,7 @@ const LEI_FONTES = {
   'Decreto-lei 4.657':{ arquivo:'js/lindb-texto.js', global:'LINDB_TEXTO', titulo:'LINDB · Decreto-Lei 4.657/1942 (Lei de Introdução às normas do Direito Brasileiro)', max:30 },
   LODF:{ arquivo:'js/lodf-texto.js', global:'LODF_TEXTO', titulo:'Lei Orgânica do Distrito Federal', max:365 },
   'LC 1':{ arquivo:'js/lc1-texto.js', global:'LC1_TEXTO', titulo:'Lei Orgânica do TCDF · Lei Complementar 1/1994', max:101 },
+  'LC 840':{ arquivo:'js/lc840-texto.js', global:'LC840_TEXTO', titulo:'LC 840/2011 · Regime Jurídico dos Servidores Civis do DF (texto consolidado do Drive, com alterações até a LC 1.034/2024 e a Lei 7.586/2024; arts. 12, 13 e 141 revogados; conferir o texto oficial no SINJ-DF)', max:295 },
   'LC 116':{ arquivo:'js/lc116-texto.js', global:'LC116_TEXTO', titulo:'Lei Complementar 116/2003 · ISS', max:10 },
   'LC 87':{ arquivo:'js/lc87-texto.js', global:'LC87_TEXTO', titulo:'Lei Complementar 87/1996 · Lei Kandir (ICMS)', max:36 },
   'Lei 9.430':{ arquivo:'js/l9430-texto.js', global:'L9430_TEXTO', titulo:'Lei 9.430/1996', max:88 },
