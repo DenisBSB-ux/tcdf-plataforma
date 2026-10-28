@@ -471,6 +471,7 @@ function renderResolucao(q, resposta, quiz){
   <div class="resolucao-box ${tintClass} resolucao-unica">
     ${armPainelHtml(q)}
     ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(textoResolucaoAtualizado(q).split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).filter(l=>{ if(edicaoAtual===q.uid) return true; const ex = explicacaoPlana(q); if(!ex || !/^\s*📌/u.test(l)) return true; const pl = l.replace(/^\s*📌\s*/u,'').replace(/==|\*\*|~~/g,'').replace(/\s+/g,' ').trim(); return pl!==ex; }).join('\n'), palavrasChave, q))}
+    ${(edicaoAtual===q.uid || typeof cartaoComparativoHtml!=='function') ? '' : cartaoComparativoHtml(q)}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
     : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}
