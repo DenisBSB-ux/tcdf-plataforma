@@ -2445,3 +2445,12 @@ body.theme-light .cc-antes{ background:#fdeceb; } body.theme-light .cc-agora{ ba
 body.theme-light .cc-antes .cc-rot, body.theme-light .cc-antes .cc-num{ color:#b3302b; }
 body.theme-light .cc-agora .cc-rot, body.theme-light .cc-agora .cc-num{ color:#1f7a52; }
 @media (max-width:420px){ .cc-num{ font-size:2.2rem; } }
+
+/* v358 — cartão de troca de termos (diff por palavras) */
+.cc-troca{ max-width:640px; }
+.cc-frase{ font-size:.98rem; line-height:1.5; text-align:left; padding:8px 4px 4px; }
+.cc-troca .cc-par{ grid-template-columns:1fr 26px 1fr; }
+.cc-del{ text-decoration:line-through; text-decoration-thickness:2px; text-decoration-color:#d9534f; color:#f08a86; font-weight:700; background:none; }
+.cc-ins{ text-decoration:none; color:#6fd6a6; font-weight:800; background:rgba(63,178,127,.18); border-radius:4px; padding:0 3px; }
+body.theme-light .cc-del{ color:#b3302b; } body.theme-light .cc-ins{ color:#1f7a52; }
+@media (max-width:520px){ .cc-troca .cc-par{ grid-template-columns:1fr; } .cc-troca .cc-seta{ transform:rotate(90deg); padding:4px 0; } }
