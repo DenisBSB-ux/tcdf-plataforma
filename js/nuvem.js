@@ -1,6 +1,7 @@
 /* ================= sincronização em nuvem (Firebase Firestore) ================= */
 const SYNC_CODE_KEY = 'sim-sync-code';
 const ZOOM_KEY = 'sim-zoom-level';
+const CARTOES_KEY = 'tcdf-cartoes';
 const THEME_KEY = 'sim-theme';
 const LAST_SYNC_KEY = 'sim-ultimo-sync';
 
@@ -426,7 +427,7 @@ const PREFS_TS_KEY = 'tcdf-prefs-ts';
 function _lsGet(k){ try{ return window.localStorage.getItem(k); }catch(_){ return null; } }
 function _lsSet(k, v){ try{ if(v===null||v===undefined) window.localStorage.removeItem(k); else window.localStorage.setItem(k, v); }catch(_){} }
 function coletarPrefs(ts){
-  return { theme: STATE.theme, cor: STATE.corTema, zoom: STATE.zoomLevel,
+  return { theme: STATE.theme, cor: STATE.corTema, zoom: STATE.zoomLevel, cartoes: STATE.cartoes!==false,
     ordemMaterias: _lsGet(ORDEM_MATERIAS_KEY), ordemSimulado: _lsGet(ORDEM_SIMULADO_KEY), armCrit: _lsGet(ARM_CRIT_KEY),
     heur: (typeof HEUR_STATS!=='undefined') ? HEUR_STATS : null, ts };
 }
@@ -454,6 +455,7 @@ async function puxarPrefs(){
     const p = JSON.parse(d.prefs);
     if(p.theme==='light'||p.theme==='dark'){ STATE.theme = p.theme; storageSet(THEME_KEY, p.theme).catch(()=>{}); aplicarTema(); }
     if(p.cor && PALETAS_CORES[p.cor]){ STATE.corTema = p.cor; storageSet(CORTEMA_KEY, p.cor).catch(()=>{}); aplicarCorTema(); }
+    if(typeof p.cartoes==='boolean'){ STATE.cartoes = p.cartoes; storageSet(CARTOES_KEY, p.cartoes ? '1' : '0').catch(()=>{}); }
     if(typeof p.zoom==='number' && p.zoom>=0.8 && p.zoom<=1.6){ STATE.zoomLevel = p.zoom; storageSet(ZOOM_KEY, String(p.zoom)).catch(()=>{}); }
     _lsSet(ORDEM_MATERIAS_KEY, p.ordemMaterias); _lsSet(ORDEM_SIMULADO_KEY, p.ordemSimulado); _lsSet(ARM_CRIT_KEY, p.armCrit);
     try{ if(p.armCrit) armCritAplicar(JSON.parse(p.armCrit)); else armCritAplicar(null); }catch(_){}
@@ -914,6 +916,11 @@ async function loadProgress(){
       if(!isNaN(z) && z>=0.8 && z<=1.6) STATE.zoomLevel = z;
     }
   }catch(e){ /* usa o padrão de 100% */ }
+
+  try{
+    const resC = await storageGet(CARTOES_KEY);
+    if(resC && resC.value) STATE.cartoes = resC.value !== '0';
+  }catch(e){ /* cartões ligados por padrão */ }
 
   try{
     const res5 = await storageGet(THEME_KEY);
