@@ -278,7 +278,8 @@ const LEI_FONTES = {
   ADCT:{ arquivo:'js/adct-texto.js', global:'ADCT_TEXTO', titulo:'ADCT · Ato das Disposições Constitucionais Transitórias', max:138 },
   'EC 132':{ arquivo:'js/ec132-texto.js', global:'EC132_TEXTO', titulo:'Emenda Constitucional 132/2023 · Reforma Tributária', max:23 },
   SUM:{ arquivo:'js/sumulas-texto.js', global:'SUMULAS_TEXTO', titulo:'Súmulas do STF', max:0 },
-  'LC 109':{ arquivo:'js/lc109-texto.js', global:'LC109_TEXTO', titulo:'Lei Complementar 109/2001 · Previdência Complementar', max:79 }
+  'LC 109':{ arquivo:'js/lc109-texto.js', global:'LC109_TEXTO', titulo:'Lei Complementar 109/2001 · Previdência Complementar', max:79 },
+  'Lei 10.406':{ arquivo:'js/cc-texto.js', global:'CC_TEXTO', titulo:'Código Civil · Lei 10.406/2002 (texto consolidado: Normas.leg.br; conferir o oficial)', max:2046 }
 };
 function teoriaLeisDaQuestao(q){
   if(!q) return [];
