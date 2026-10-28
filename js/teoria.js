@@ -243,7 +243,7 @@ function teoriaLeiDaQuestao(q){
 const LEI_FONTES = {
   CTN:{ arquivo:'js/ctn-texto.js', global:'CTN_TEXTO', titulo:'Código Tributário Nacional · Lei 5.172/1966', max:218 },
   CF:{ arquivo:'js/cf-texto.js', global:'CF_TEXTO', titulo:'Constituição Federal de 1988', max:250 },
-  'RI TCDF':{ arquivo:'js/ri-texto.js', global:'RITCDF_TEXTO', titulo:'Regimento Interno do TCDF · Res. 296/2016 (arts. 119 em diante: texto de 2016, sem emendas)', max:306 },
+  'RI TCDF':{ arquivo:'js/ri-texto.js', global:'RITCDF_TEXTO', titulo:'Regimento Interno do TCDF · Res. 296/2016 compilada (SINJ-DF), com Emendas Regimentais até a ER 15/2026', max:306 },
   'IN 5':{ arquivo:'js/in5-texto.js', global:'IN5_TEXTO', titulo:'Instrução Normativa SEGES/MP 5/2017 (atualizada) · arts. 1º a 75 e anexos', max:75 },
   'Lei 14.133':{ arquivo:'js/l14133-texto.js', global:'L14133_TEXTO', titulo:'Lei 14.133/2021 · Licitações e Contratos Administrativos', max:194 },
   'Lei 10.180':{ arquivo:'js/l10180-texto.js', global:'L10180_TEXTO', titulo:'Lei 10.180/2001 · Sistemas de Planejamento e Orçamento, Administração Financeira, Contabilidade e Controle Interno (compilado do Planalto, via terceiros; conferir o texto oficial)', max:41 },
