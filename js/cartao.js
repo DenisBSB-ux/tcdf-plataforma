@@ -119,31 +119,6 @@ function cartoesBotaoHtml(){
   const on = cartoesAtivos();
   return `<button type="button" class="cartoes-switch${on ? ' on' : ''}" id="btn-cartoes" aria-pressed="${on}" title="Cartões comparativos: ${on ? 'ligados (clique para ocultar)' : 'desligados (clique para mostrar)'}">📊</button>`;
 }
-/* quadro de números do artigo (pop-up da lei): todo prazo, percentual e quórum do texto, com o dispositivo de origem */
-const _CC_RE_QTD_G = new RegExp(_CC_RE_QTD.source, 'gi'), _CC_RE_QUO_G = new RegExp(_CC_RE_QUO.source, 'gi');
-function _ccRotuloDisp(p, i){
-  p = String(p).trim();
-  if(i===0) return 'caput';
-  let m; if((m = p.match(/^§\s*(\d+)/))) return '§ '+m[1]+'º';
-  if(/^Parágrafo único/i.test(p)) return 'par. único';
-  if((m = p.match(/^([IVXLC]+)\s*[–-]/))) return 'inc. '+m[1];
-  if((m = p.match(/^([a-z])\)/))) return 'al. '+m[1];
-  return '';
-}
-function quadroNumerosArtigo(ps){
-  if(!Array.isArray(ps) || ps.length<1) return '';
-  const itens = [], vistos = new Set();
-  ps.forEach((p,i)=>{
-    const txt = String(p).replace(/\((?:Reda[çc][ãa]o|Inclu[ií]d|Revogad|Alterad|Acrescid|Vide|Vig[êe]ncia|Produ[çc][ãa]o|Regulament|Promulga|Vetad|Execu[çc]|Parágrafo [A-Za-z]+|Inciso [A-Za-z]+|Artigo [A-Za-z]+)[^)]*\)/gi,'');
-    const rot = _ccRotuloDisp(p, i);
-    const achados = [];
-    let m; _CC_RE_QTD_G.lastIndex = 0; while((m = _CC_RE_QTD_G.exec(txt))){ const v = cartaoValor(m[0]); if(v) achados.push({ idx:m.index, v }); }
-    _CC_RE_QUO_G.lastIndex = 0; while((m = _CC_RE_QUO_G.exec(txt))){ const v = cartaoValor(m[0]); if(v) achados.push({ idx:m.index, v }); }
-    achados.sort((a,b)=>a.idx-b.idx).forEach(a=>{ const k = rot+'|'+a.v.big+'|'+a.v.un; if(vistos.has(k)) return; vistos.add(k); itens.push({ rot, v:a.v }); });
-  });
-  if(itens.length < 2) return '';
-  return `<details class="lei-quadro" open><summary>📊 Prazos e números deste artigo <span class="qn-qtd">${itens.length}</span></summary><div class="qn-grade">${itens.slice(0,16).map(x=>`<span class="qn-chip"><b>${esc(x.v.big)}${x.v.un ? ' '+esc(x.v.un) : ''}</b>${x.rot ? `<em>${esc(x.rot)}</em>` : ''}</span>`).join('')}</div></details>`;
-}
 function _ccFrase(lista, cls){
   const w = _ccJanela(lista);
   const tag = cls==='antes' ? 'del' : 'ins';
@@ -152,11 +127,44 @@ function _ccFrase(lista, cls){
 function _ccLadoTxt(lista, cls, rot){
   return `<div class="cc-lado cc-${cls}"><span class="cc-selo" aria-hidden="true">${cls==='antes' ? '✕' : '✓'}</span><div class="cc-rot">${esc(rot)}</div><div class="cc-frase">${_ccFrase(lista, cls)}</div></div>`;
 }
+/* item CERTO: mostra o prazo/percentual/quórum que a resolução destaca e que o item traz (✓ certo no item) */
+function cartaoValoresDe(txt){
+  txt = String(txt||''); const achados = [];
+  const g1 = new RegExp(_CC_RE_QTD.source, 'gi'), g2 = new RegExp(_CC_RE_QUO.source, 'gi'); let m;
+  while((m = g1.exec(txt))){ const v = cartaoValor(m[0]); if(v) achados.push({ v, idx:m.index, len:m[0].length }); }
+  while((m = g2.exec(txt))){ const v = cartaoValor(m[0]); if(v) achados.push({ v, idx:m.index, len:m[0].length }); }
+  return achados.sort((a,b)=>a.idx-b.idx);
+}
+function _ccCtx(txt, a){
+  const antes = txt.slice(0, a.idx).split(/\s+/).filter(Boolean).slice(-6).join(' '), dep = txt.slice(a.idx + a.len).split(/\s+/).filter(Boolean).slice(0, 5).join(' ');
+  return `${antes ? '… '+esc(antes)+' ' : ''}<mark>${esc(txt.slice(a.idx, a.idx + a.len))}</mark>${dep ? ' '+esc(dep)+' …' : ''}`;
+}
+function cartaoRegra(q){
+  if(!q || q.t!=='CE' || typeof gabaritoEfetivo!=='function' || gabaritoEfetivo(q)!=='Certo') return null;
+  const pin = String(q.r||'').split(/\n/).filter(l=>/^\s*📌/u.test(l)).join(' ');
+  const noPin = new Set(cartaoValoresDe(pin).map(a=>a.v.big+'|'+a.v.un));
+  if(!noPin.size) return null;
+  const txt = String(q.q||''), vistos = new Set(), out = [];
+  cartaoValoresDe(txt).forEach(a=>{ const k = a.v.big+'|'+a.v.un; if(noPin.has(k) && !vistos.has(k)){ vistos.add(k); out.push(a); } });
+  return out.length ? { itens: out.slice(0,3).map(a=>({ v:a.v, ctx:_ccCtx(txt, a) })) } : null;
+}
+function _ccTopo(q){
+  const m = String((q && q.r) || '').match(/⚖️\s*([^\n]*)/);
+  if(m){ const l = m[1].replace(/\*+/g,'').trim(); if(l) return `⚖️ ${esc(l)}`; }
+  try{ const r = (refsArtigosDaQuestao(q)||[])[0]; if(r && r.n) return `⚖️ <b>Art. ${esc(String(r.n))}</b>${r.norma ? ' · '+esc(String(r.norma)) : ''}`; }catch(_){}
+  return '';
+}
 function cartaoComparativoHtml(q, picked){
-  let pares = []; try{ pares = q && q.t==='MC' ? [cartaoMc(q, picked)].filter(Boolean) : cartaoPares(q); }catch(_){ return ''; }
-  if(!pares.length) return '';
-  if(!cartoesAtivos()) return `<button type="button" class="cc-toggle cc-mostrar" data-cartoes-toggle title="Mostrar os cartões comparativos">📊 Mostrar cartões (${pares.length})</button>`;
-  let topo = ''; try{ const r = (refsArtigosDaQuestao(q)||[])[0]; if(r && r.n) topo = `⚖️ <b>Art. ${esc(String(r.n))}</b>${r.norma ? " · "+esc(String(r.norma)) : ""}`; }catch(_){}
+  let pares = [], regra = null; try{ pares = q && q.t==='MC' ? [cartaoMc(q, picked)].filter(Boolean) : cartaoPares(q); if(!pares.length) regra = cartaoRegra(q); }catch(_){ return ''; }
+  if(!pares.length && !regra) return '';
+  if(!cartoesAtivos()) return `<button type="button" class="cc-toggle cc-mostrar" data-cartoes-toggle title="Mostrar os cartões comparativos">📊 Mostrar cartões (${pares.length || 1})</button>`;
+  const topo = _ccTopo(q);
+  if(regra) return `<div class="cartao-comp cc-regra" role="group" aria-label="Regra confirmada no item">
+    ${topo ? `<div class="cc-topo">${topo}</div>` : ''}
+    <div class="cc-lado cc-agora cc-regra-corpo"><span class="cc-selo" aria-hidden="true">✓</span><div class="cc-rot">No item · certo</div>
+      <div class="cc-regra-grade">${regra.itens.map(it=>`<div class="cc-regra-val"><div class="cc-num${(it.v.texto || String(it.v.big).length > 5) ? ' cc-num-txt' : ''}">${esc(it.v.big)}</div>${it.v.un ? `<div class="cc-un">${esc(it.v.un)}</div>` : ''}<div class="cc-ctx">${it.ctx}</div></div>`).join('')}</div>
+    </div>
+  </div><button type="button" class="cc-toggle cc-ocultar" data-cartoes-toggle title="Ocultar os cartões comparativos">📊 Ocultar cartões</button>`;
   return pares.map((p, ip)=>{
     const rotA = p.rotA || (p.norma ? 'Antes · revogado' : 'No item · errado'), rotB = p.rotB || (p.norma ? 'Agora · vigente' : 'Correto');
     if(p.diff) return `<div class="cartao-comp cc-troca" role="group" aria-label="Troca de termos">

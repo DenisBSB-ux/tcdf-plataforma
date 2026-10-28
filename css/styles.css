@@ -2465,12 +2465,12 @@ body.theme-light .cc-del{ color:#b3302b; } body.theme-light .cc-ins{ color:#1f7a
 .flashcard-back .cc-num{ font-size:2rem; }
 .flashcard-back .cc-frase{ font-size:.85rem; }
 .flashcard-back .cc-toggle{ display:none; }
-.lei-quadro{ margin:14px 0 4px; padding:8px 10px; border:1px solid rgba(255,255,255,.14); border-radius:10px; background:rgba(255,255,255,.04); }
-.lei-quadro summary{ cursor:pointer; font-size:.82rem; font-weight:700; letter-spacing:.03em; }
-.qn-qtd{ display:inline-block; min-width:18px; text-align:center; padding:0 6px; border-radius:999px; background:rgba(74,140,214,.3); font-size:.72rem; margin-left:4px; }
-.qn-grade{ display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
-.qn-chip{ display:inline-flex; flex-direction:column; align-items:center; padding:5px 10px; border-radius:10px; background:rgba(111,214,166,.12); border:1px solid rgba(111,214,166,.45); line-height:1.2; }
-.qn-chip b{ font-size:.95rem; color:#6fd6a6; }
-.qn-chip em{ font-style:normal; font-size:.68rem; color:#9aa0a6; }
-body.theme-light .cartoes-switch{ border-color:#c9c3b2; } body.theme-light .cc-toggle, body.theme-light .qn-chip em{ color:#585c63; } body.theme-light .cc-toggle{ border-color:#c9c3b2; background:#fff; }
-body.theme-light .lei-quadro{ background:#f7f4ec; border-color:#d6d0c0; } body.theme-light .qn-chip{ background:#e7f6ee; } body.theme-light .qn-chip b{ color:#1f7a52; }
+body.theme-light .cartoes-switch{ border-color:#c9c3b2; } body.theme-light .cc-toggle{ color:#585c63; } body.theme-light .cc-toggle{ border-color:#c9c3b2; background:#fff; }
+
+/* v361 — cartão de regra (item certo) */
+.cc-regra-corpo{ text-align:center; padding:12px 10px 10px; }
+.cc-regra-grade{ display:flex; flex-wrap:wrap; gap:14px; justify-content:center; margin-top:4px; }
+.cc-regra-val{ flex:1 1 180px; max-width:300px; }
+.cc-ctx{ margin-top:6px; font-size:.82rem; line-height:1.35; color:#c9ccd1; }
+.cc-ctx mark{ background:#f3c95b; color:#222; border-radius:4px; padding:0 4px; }
+body.theme-light .cc-ctx{ color:#3b3f45; }
