@@ -48,6 +48,30 @@ function _ccJanela(lista){
   const i0 = Math.max(0, idx[0]-6), i1 = Math.min(lista.length, idx[idx.length-1]+7);
   return { itens: lista.slice(i0, i1), ini: i0>0, fim: i1<lista.length };
 }
+/* mesma justificativa, cartões repetidos: o item que só troca dois termos de lugar (A→B e B→A), ou dois cartões com as
+   mesmas palavras trocadas, vira um cartão só. Compara o conjunto de palavras que mudaram (em qualquer dos lados). */
+function _ccPalavrasMuda(p){
+  const n = w=> String(w).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9%\/]/g,'');
+  const out = new Set();
+  if(p.erro){ [p.erro, p.certo].forEach(v=>{ out.add(n(v.big)); if(v.un) out.add(n(v.un)); }); }
+  else { p.diff.a.filter(x=>x.d).forEach(x=>out.add(n(x.w))); p.diff.b.filter(x=>x.d).forEach(x=>out.add(n(x.w))); }
+  out.delete(''); return out;
+}
+function _ccSemRepetidos(lista){
+  const mantidos = [], chaves = [];
+  lista.forEach(p=>{
+    const k = _ccPalavrasMuda(p); let rep = false;
+    chaves.forEach((k2, i)=>{
+      let c = 0; k.forEach(w=>{ if(k2.has(w)) c++; });
+      const uni = k.size + k2.size - c, jac = uni ? c/uni : 0;
+      const contido = c === Math.min(k.size, k2.size) && Math.min(k.size, k2.size) > 0;   // um conjunto dentro do outro
+      const tr = String(p.trecho||'').toLowerCase().trim(), t2 = String(mantidos[i].trecho||'').toLowerCase().trim();
+      if(jac >= 0.7 || contido || (tr && t2 && (tr.includes(t2) || t2.includes(tr)))) rep = true;
+    });
+    if(!rep){ mantidos.push(p); chaves.push(k); }
+  });
+  return mantidos;
+}
 function cartaoPares(q){
   if(!q || q.t!=='CE' || typeof armEfetiva!=='function') return [];
   const a = armEfetiva(q);
@@ -59,7 +83,7 @@ function cartaoPares(q){
     if(vt && vc && (vt.big!==vc.big || vt.un!==vc.un) && !out.some(o=>o.erro && o.erro.big===vt.big && o.erro.un===vt.un)) out.push({ erro: vt, certo: vc, trecho: t, correcao: c, norma: a.p==='NORMA' });
     else if(!(vt && vc)){ const df = cartaoDiff(t, c); if(df) out.push({ diff: df, trecho: t, correcao: c, norma: a.p==='NORMA' }); }
   });
-  return out.sort((x,y)=> (x.erro?0:1)-(y.erro?0:1)).slice(0,2);
+  return _ccSemRepetidos(out.sort((x,y)=> (x.erro?0:1)-(y.erro?0:1))).slice(0,2);
 }
 function _ccLado(v, cls, rot, ref){
   const grande = v.texto || String(v.big).length > 5;
@@ -129,19 +153,19 @@ function _ccLadoTxt(lista, cls, rot){
   return `<div class="cc-lado cc-${cls}"><span class="cc-selo" aria-hidden="true">${cls==='antes' ? '✕' : '✓'}</span><div class="cc-rot">${esc(rot)}</div><div class="cc-frase">${_ccFrase(lista, cls)}</div></div>`;
 }
 function cartaoComparativoHtml(q, picked){
-  if(!cartoesAtivos()) return '';
   let pares = []; try{ pares = q && q.t==='MC' ? [cartaoMc(q, picked)].filter(Boolean) : cartaoPares(q); }catch(_){ return ''; }
   if(!pares.length) return '';
+  if(!cartoesAtivos()) return `<button type="button" class="cc-toggle cc-mostrar" data-cartoes-toggle title="Mostrar os cartões comparativos">📊 Mostrar cartões (${pares.length})</button>`;
   let topo = ''; try{ const r = (refsArtigosDaQuestao(q)||[])[0]; if(r && r.n) topo = `⚖️ <b>Art. ${esc(String(r.n))}</b>${r.norma ? " · "+esc(String(r.norma)) : ""}`; }catch(_){}
-  return pares.map(p=>{
+  return pares.map((p, ip)=>{
     const rotA = p.rotA || (p.norma ? 'Antes · revogado' : 'No item · errado'), rotB = p.rotB || (p.norma ? 'Agora · vigente' : 'Correto');
     if(p.diff) return `<div class="cartao-comp cc-troca" role="group" aria-label="Troca de termos">
-    ${topo ? `<div class="cc-topo">${topo}</div>` : ''}
+    ${topo && ip===0 ? `<div class="cc-topo">${topo}</div>` : ''}
     <div class="cc-par">${_ccLadoTxt(p.diff.a,'antes',rotA)}<div class="cc-seta" aria-hidden="true">➜</div>${_ccLadoTxt(p.diff.b,'agora',rotB)}</div>
   </div>`;
     return `<div class="cartao-comp" role="group" aria-label="Comparativo: ${esc(p.erro.big+' '+p.erro.un)} e ${esc(p.certo.big+' '+p.certo.un)}">
-    ${topo ? `<div class="cc-topo">${topo}</div>` : ''}
+    ${topo && ip===0 ? `<div class="cc-topo">${topo}</div>` : ''}
     <div class="cc-par">${_ccLado(p.erro,'antes', rotA)}<div class="cc-seta" aria-hidden="true">➜</div>${_ccLado(p.certo,'agora', rotB)}</div>
     <div class="cc-rod">Trecho do item: <mark>${esc(p.trecho)}</mark></div>
-  </div>`; }).join('') + `<button type="button" class="cc-ocultar" data-cartoes-toggle title="Ocultar os cartões comparativos (religue no botão 📊 do topo)">ocultar cartões</button>`;
+  </div>`; }).join('') + `<button type="button" class="cc-toggle cc-ocultar" data-cartoes-toggle title="Ocultar os cartões comparativos">📊 Ocultar cartões</button>`;
 }
