@@ -284,6 +284,13 @@ const LEI_FONTES = {
   'Lei 8.213':{ arquivo:'js/l8213-texto.js', global:'L8213_TEXTO', titulo:'Lei 8.213/1991 · Planos de Benefícios da Previdência Social (compilação da Câmara dos Deputados, via Normas.leg.br; conferir alterações recentes)', max:156 },
   'Lei 8.212':{ arquivo:'js/l8212-texto.js', global:'L8212_TEXTO', titulo:'Lei 8.212/1991 · Organização da Seguridade Social e Plano de Custeio (compilação da Câmara dos Deputados, via Normas.leg.br; conferir alterações recentes)', max:105 },
   'Lei 9.717':{ arquivo:'js/l9717-texto.js', global:'L9717_TEXTO', titulo:'Lei 9.717/1998 · Regras gerais dos regimes próprios de previdência social (compilação da Câmara dos Deputados, via Normas.leg.br)', max:11 },
+  'EC 103':{ arquivo:'js/ec103-texto.js', global:'EC103_TEXTO', titulo:'Emenda Constitucional 103/2019 · Reforma da Previdência (publicação original; conferir alterações posteriores)', max:36 },
+  'LC 142':{ arquivo:'js/lc142-texto.js', global:'LC142_TEXTO', titulo:'Lei Complementar 142/2013 · Aposentadoria da pessoa com deficiência no RGPS (publicação original)', max:11 },
+  'Lei 13.954':{ arquivo:'js/l13954-texto.js', global:'L13954_TEXTO', titulo:'Lei 13.954/2019 · Reestruturação da carreira militar e proteção social dos militares (publicação original)', max:29 },
+  'Lei 7.998':{ arquivo:'js/l7998-texto.js', global:'L7998_TEXTO', titulo:'Lei 7.998/1990 · Seguro-Desemprego, Abono Salarial e FAT (compilação da Câmara dos Deputados, via Normas.leg.br)', max:32 },
+  'Lei 8.742':{ arquivo:'js/l8742-texto.js', global:'L8742_TEXTO', titulo:'Lei 8.742/1993 · LOAS, Benefício de Prestação Continuada (compilação da Câmara dos Deputados, via Normas.leg.br)', max:42 },
+  'Lei 10.666':{ arquivo:'js/l10666-texto.js', global:'L10666_TEXTO', titulo:'Lei 10.666/2003 · Aposentadoria especial, FAP e outras regras do RGPS (compilação da Câmara dos Deputados, via Normas.leg.br)', max:15 },
+  'Lei 10.887':{ arquivo:'js/l10887-texto.js', global:'L10887_TEXTO', titulo:'Lei 10.887/2004 · Regime próprio: contribuições e cálculo de proventos (compilação da Câmara dos Deputados, via Normas.leg.br)', max:18 },
 };
 function teoriaLeisDaQuestao(q){
   if(!q) return [];
