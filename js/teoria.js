@@ -18,10 +18,6 @@ function teoriaLinkDaMateria(materia){
   const url = chave && TEORIA_INDICE[chave].drive;
   return url ? { url, nome:'Apostila (Drive)', id: teoriaIdDrive(url), padrao:true } : null;
 }
-function teoriaFormatarTamanho(b){
-  if(b >= 1048576) return (b/1048576).toFixed(1).replace('.',',') + ' MB';
-  return Math.max(1, Math.round(b/1024)) + ' KB';
-}
 function teoriaIdDrive(url){
   const u = String(url||'').trim();
   let m = u.match(/drive\.google\.com\/file\/d\/([\w-]{10,})/) || u.match(/drive\.google\.com\/(?:open|uc)\?[^#]*\bid=([\w-]{10,})/);
@@ -798,18 +794,6 @@ function apostilaCarregar(){
   });
   return apostilaPromessa;
 }
-function apostilaSecoes(q){
-  const t = teoriaPaginaDaQuestao(q); if(!t || typeof TEORIA_TEXTO==='undefined') return [];
-  const lista = TEORIA_TEXTO[t.chave] || []; const [nm, n] = t.rotulo.replace(' art. ',':').split(':');
-  let sec = lista.filter(x=> x.norma===nm && x.artigos.includes(+n));
-  const m = String(q.r||'').match(/⚖️\s*([^\n]*)/); const linha = m ? m[1].replace(/\*+/g,'') : '';
-  const rom = (linha.match(/▸\s*([IVXL]+)\b/)||[])[1]; const par = (linha.match(/§\s*(\d+)/)||[])[1];
-  const pontos = x=>{ const ti = x.titulo; let p = 0;
-    if(rom && new RegExp('(^|[^A-Z])'+rom+'([^A-Z]|$)').test(ti)) p += 2;
-    if(par && new RegExp('§\\s*'+par).test(ti)) p += 2;
-    if(!rom && !par && /caput/i.test(ti)) p += 1; return p; };
-  return sec.sort((a,b)=> pontos(b)-pontos(a));
-}
 function apostilaDesenhar(){
   const q = BY_UID[LEI.q]; const x = LEI.secs[LEI.i]; if(!x) return;
   if(x.doutrina){
@@ -843,57 +827,7 @@ function apostilaDesenhar(){
     + `<p class="lei-nota">Apostila de ${esc(q.materia)} · página ${x.pagina}. <button type="button" class="btn-ui lei-pdf" data-lei-pdf="${x.pagina}">Abrir o PDF nesta página</button></p>`;
   corpo.scrollTop = 0;
 }
-async function apostilaAbrir(uid){
-  const q = BY_UID[uid]; if(!q) return;
-  const el = leiEl(); LEI.modo = 'apostila'; LEI.q = uid; LEI.aberta = true; el.hidden = false; el.classList.add('modo-apostila');
-  document.getElementById('lei-corpo').textContent = 'Carregando…';
-  try{ await apostilaCarregar(); }catch(e){ document.getElementById('lei-corpo').textContent = e.message; return; }
-  LEI.secs = apostilaSecoes(q); LEI.i = 0;
-  if(!LEI.secs.length){ leiFechar(); teoriaVerDaQuestao(uid); return; }
-  apostilaDesenhar();
-}
-function teoriaVerDaQuestao(uid){
-  const q = BY_UID[uid]; const t = teoriaPaginaDaQuestao(q); if(!t) return;
-  teoriaAbrirMateria(q.materia, t.pagina, `Apostila · ${t.rotulo}`);
-}
 
-function renderTeoria(){
-  const materia = STATE.materia; const k = teoriaSlug(materia);
-  if(!TEORIA.carregado && !TEORIA.carregando) setTimeout(teoriaCarregarTudo, 0);
-  if(TEORIA.locais[k]===undefined) teoriaLocal(materia).then(()=>render());
-  const link = teoriaLinkDaMateria(materia); const local = TEORIA.locais[k];
-  const msg = TEORIA.msg ? `<div class="teoria-msg ${TEORIA.msg.tipo}">${esc(TEORIA.msg.txt)}</div>` : '';
-  const linhaLink = link ? `
-    <div class="teoria-linha"><span class="teoria-ico">☁️</span>
-      <button type="button" class="teoria-nome" data-teoria-ler="1" title="Abrir na plataforma">${esc(link.nome)}</button>
-      <span class="teoria-meta">Google Drive</span>
-      <a class="btn-ui" href="${esc(link.url)}" target="_blank" rel="noopener">Abrir no Drive ↗</a>
-      ${link.padrao ? '' : '<button type="button" class="btn-ui teoria-rem" data-teoria-rem-link="1">Remover</button>'}</div>` : '';
-  const linhaLocal = (local && local.nome) ? `
-    <div class="teoria-linha"><span class="teoria-ico">📄</span>
-      <button type="button" class="teoria-nome" data-teoria-ler="1" title="Abrir no leitor da plataforma">${esc(local.nome)}</button>
-      <span class="teoria-meta">${teoriaFormatarTamanho(local.bytes)} · neste aparelho</span>
-      <button type="button" class="btn-ui teoria-rem" data-teoria-rem-local="1">Remover</button></div>` : '';
-  return `<div class="teoria-wrap">
-    <div class="section-eyebrow">${esc(materia||'')}</div>
-    <h2 class="section-title">Teoria (PDF)</h2>
-    <p class="teoria-sub">Cadastre a apostila desta matéria e leia dentro da plataforma. Sem custo: o arquivo fica no seu Google Drive e/ou neste aparelho.</p>
-    ${msg}
-    <div class="teoria-bloco"><div class="teoria-tit">☁️ Link do Google Drive</div>
-      <div class="teoria-form">
-        <input type="url" id="teoria-url" class="teoria-input" placeholder="https://drive.google.com/file/d/…/view" value="${link && !link.padrao ? esc(link.url) : ''}">
-        <input type="text" id="teoria-nome" class="teoria-input teoria-input-nome" placeholder="Nome (opcional)" value="${link && !link.padrao ? esc(link.nome) : ''}">
-        <button type="button" class="btn btn-gold btn-sm" data-teoria-salvar-link="1">Salvar link</button>
-      </div>
-      <div class="teoria-dica">No Drive: botão direito no PDF → Compartilhar → "Qualquer pessoa com o link" (leitor) → Copiar link. A pré-visualização não pula para a página sozinha; o botão da questão mostra o número da página.</div>
-    </div>
-    <div class="teoria-bloco"><div class="teoria-tit">📄 PDF neste aparelho <span class="teoria-tag">abre direto na página da questão</span></div>
-      <div class="teoria-acoes"><label class="btn btn-sm teoria-up">⬆ Escolher PDF<input type="file" id="teoria-arquivo" accept="application/pdf,.pdf" hidden></label>
-        <span class="teoria-dica">Fica só neste navegador (não sincroniza). Até ${TEORIA_MAX_MB} MB.</span></div>
-    </div>
-    ${linhaLink}${linhaLocal}${(!link && !(local&&local.nome)) ? '<div class="teoria-vazio">Nenhuma apostila cadastrada para esta matéria ainda.</div>' : ''}
-  </div>`;
-}
 
 document.addEventListener('click', (ev)=>{
   const t = ev.target.closest && ev.target.closest.bind(ev.target);

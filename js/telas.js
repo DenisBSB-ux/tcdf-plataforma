@@ -341,41 +341,7 @@ function computeSnapshotMateria(materiaKey){
   return { taxa: pct(ac, ac+erradas), ac, erradas, totalPontuavel, ultimaRespostaTs };
 }
 
-function trendTag(td){
-  if(!td) return '';
-  let cls = 'tag-estavel';
-  if(td.indexOf('↑')!==-1) cls='tag-crescente';
-  else if(td.indexOf('↓')!==-1) cls='tag-decrescente';
-  return `<span class="tag ${cls}" title="Tendência histórica na banca">${esc(td)}</span>`;
-}
-function trendBadge(td){
-  if(!td) return '';
-  let cls = 'estavel';
-  if(td.indexOf('↑')!==-1) cls='crescente';
-  else if(td.indexOf('↓')!==-1) cls='decrescente';
-  return `<span class="trend-badge ${cls}" title="Tendência histórica na banca">${esc(td)}</span>`;
-}
-const NIVEL_SETA = { baixa:'↓', media:'→', alta:'↑' };
-function nivelBadge(nv){
-  const seta = NIVEL_SETA[nv];
-  if(!seta) return '';
-  return `<span class="nivel-badge ${nv}" title="Nível de incidência: ${esc(NIVEL_LABEL[nv]||'')}">${seta} ${esc(NIVEL_LABEL[nv]||'')}</span>`;
-}
-function freqBadge(fr){
-  return ''; // removido a pedido: selo "N concursos distintos (M nos últimos 5 anos)" não é mais exibido
-  if(!fr) return '';
-  return `<span class="freq-badge" title="Frequência histórica por banca e ano">📊 ${esc(fr)}</span>`;
-}
-function probabilidadeBadge(pp){
-  if(!pp) return '';
-  return `<span class="prob-badge" title="Probabilidade preditiva de recorrência">🎯 ${esc(pp)}</span>`;
-}
 
-function freqHistLine(fr){
-  return ''; // removido (ver freqBadge)
-  if(!fr) return '';
-  return `<div class="freq-hist"><span class="lbl-inline">Frequência por ano:</span> ${esc(fr)}</div>`;
-}
 // cada parte (Banca / Cargo / Ano) agora vira sua própria linha — layout
 // pedido: uma linha por metadado, em vez do antigo "Banca: X · Cargo: Y · Ano: Z"
 function bancaCargoAnoLine(q){
@@ -412,16 +378,6 @@ function bancaCargoAnoLine(q){
 // padrão banca-cargo-ano-incidência: a incidência histórica entra aqui em forma
 // compacta de símbolo (📊 total ×, 🕐 recentes nos últimos 5 anos), em vez do
 // texto completo — que continua disponível por extenso no badge/tooltip
-function incidenciaSimbolo(q){
-  return ''; // removido (ver freqBadge)
-  if(!q.fr || isInedita(q)) return '';
-  const mTotal = q.fr.match(/(\d+)\s*concursos?\s*distint/i);
-  if(!mTotal) return '';
-  const mRecentes = q.fr.match(/\((\d+)\s*nos? [úu]ltimos\s*5\s*anos\)/i);
-  const total = mTotal[1];
-  const recentes = mRecentes ? mRecentes[1] : null;
-  return ` &nbsp;·&nbsp; <span class="lbl-inline" title="${esc(q.fr)}">📊 ${total}×${recentes!==null ? `&nbsp;<span style="opacity:.7;">(🕐${recentes} recentes)</span>` : ''}</span>`;
-}
 
 // ano mais recente entre todas as questões da matéria atual, usado como referência
 // para decidir o que conta como "últimos dois anos" nos dados daquela matéria
@@ -439,10 +395,6 @@ function tendenciaQuente(q){
   if(!q.td || q.td.indexOf('↑')===-1 || !anoQ) return false;
   const maxAno = anoMaisRecente(q.materia);
   return maxAno>0 && anoQ >= maxAno-1;
-}
-function alertaTendenciaTag(q){
-  if(!tendenciaQuente(q)) return '';
-  return `<span class="tag tag-alerta" title="Essa questão apareceu em prova nos últimos anos com tendência de alta — atenção redobrada">⚠ alta recente</span>`;
 }
 
 // detecta questão inédita (gerada por IA, não pertence a nenhuma banca real) pelo
@@ -546,84 +498,11 @@ function downloadRelatorioAuditoria(){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
-function renderAuditoriaPage(){
-  const rel = auditarDados();
-  const materias = Object.keys(rel.porMateria).sort((a,b)=>a.localeCompare(b,'pt-BR'));
-  const totalQ = materias.reduce((s,m)=>s+rel.porMateria[m].total,0);
-  const totalProblemas = rel.divergenciasAno.length + rel.cargosSuspeitos.length + rel.bancasAusentes.length + rel.semGabarito.length;
-
-  const linhasTabela = materias.map(m=>{
-    const s = rel.porMateria[m];
-    const temProblema = (s.divergenciaAno+s.cargoSuspeito+s.bancaAusente+s.semGabarito) > 0;
-    return `<div class="bar-row" style="flex-wrap:wrap;align-items:center;background:${STATE.theme==='light' ? (temProblema?'#fbeeec':'#eef6f0') : (temProblema?'#3a1d1b':'#16301f')};border-left:4px solid ${temProblema?'var(--stamp-red)':'var(--stamp-green)'};border-radius:4px;padding:8px 10px 8px 12px;margin-bottom:6px;">
-      <div style="flex:1;min-width:120px;font-weight:600;font-size:13px;">${esc(m)}</div>
-      <div style="width:76px;text-align:right;font-size:11.5px;" title="Questões reais auditadas">${s.total} quest.</div>
-      <div style="width:70px;text-align:right;font-size:11.5px;" title="Ano salvo divergente do ano escrito na linha Banca/Cargo">📅 ${s.divergenciaAno}</div>
-      <div style="width:70px;text-align:right;font-size:11.5px;" title="Cargo extraído parece ser só a área/matéria, sem cargo/órgão">🧑‍💼 ${s.cargoSuspeito}</div>
-      <div style="width:60px;text-align:right;font-size:11.5px;" title="Banca não identificada">🏢 ${s.bancaAusente}</div>
-      <div style="width:60px;text-align:right;font-size:11.5px;" title="Sem gabarito identificado">❓ ${s.semGabarito}</div>
-    </div>`;
-  }).join('');
-
-  function listaDetalhe(titulo, itens, icone){
-    if(itens.length===0) return '';
-    return `<details style="margin-top:14px;">
-      <summary style="cursor:pointer;font-weight:600;font-size:13px;">${icone} ${esc(titulo)} (${itens.length})</summary>
-      <div style="margin-top:8px;max-height:320px;overflow:auto;font-family:var(--font-mono);font-size:11.5px;border:1px solid var(--paper-line);border-radius:6px;">
-        ${itens.slice(0,300).map(it=>`<div style="padding:5px 8px;border-bottom:1px solid var(--paper-line);">
-          <b>${esc(it.materia)}</b> · Q${it.n} · <span style="opacity:.75;">${esc(it.bc||'')}</span>
-          ${it.arSalvo!==undefined ? ` — ano da lista (prevalece): <b>${it.anoEmbutido}</b> · campo salvo desatualizado: <b>${it.arSalvo}</b>` : ''}
-          ${it.cargoExtraido!==undefined ? ` — cargo extraído: <b>${esc(it.cargoExtraido)}</b>` : ''}
-        </div>`).join('')}
-        ${itens.length>300 ? `<div style="padding:6px 8px;opacity:.7;">… e mais ${itens.length-300} (baixe o relatório completo).</div>` : ''}
-      </div>
-    </details>`;
-  }
-
-  return `
-  <div class="section-eyebrow">Diagnóstico</div>
-  <h2 class="section-title">🔍 Auditoria de dados</h2>
-  <p class="section-desc">Verifica, em TODAS as matérias já importadas neste aparelho/conta, o mesmo tipo de inconsistência de banca/cargo/ano já visto antes (v131/v132). Não resolve nada sozinha — ano divergente em especial não tem como ser decidido sem o edital/fonte oficial em mãos. Só aponta, pra você decidir caso a caso.</p>
-  <div class="card-block" style="margin-top:16px;">
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;">
-      <div class="stat-chip" style="background:var(--paper-soft,#f7f3e8);border-radius:8px;padding:8px 12px;">
-        <div style="font-size:11px;color:var(--ink-soft);">Questões reais auditadas</div>
-        <div style="font-size:16px;font-weight:700;">${totalQ}</div>
-      </div>
-      <div class="stat-chip" style="background:${STATE.theme==='light' ? (totalProblemas>0?'#fbeeec':'#eef6f0') : (totalProblemas>0?'#3a1d1b':'#16301f')};border-radius:8px;padding:8px 12px;">
-        <div style="font-size:11px;color:var(--ink-soft);">Ocorrências encontradas</div>
-        <div style="font-size:16px;font-weight:700;color:${totalProblemas>0?'var(--stamp-red)':'var(--stamp-green)'};">${totalProblemas}</div>
-      </div>
-    </div>
-    ${linhasTabela || '<p style="font-size:12.5px;color:var(--ink-soft);">Nenhuma questão real encontrada ainda — importe alguma matéria primeiro.</p>'}
-    ${listaDetalhe('Ano salvo ≠ ano escrito na linha Banca/Cargo', rel.divergenciasAno, '📅')}
-    ${listaDetalhe('Cargo extraído parece ser só a área/matéria (sem cargo/órgão reais)', rel.cargosSuspeitos, '🧑‍💼')}
-    ${listaDetalhe('Banca não identificada', rel.bancasAusentes, '🏢')}
-    ${listaDetalhe('Sem gabarito identificado', rel.semGabarito, '❓')}
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px;">
-      <button class="btn btn-ghost btn-sm" id="btn-baixar-auditoria">⬇ Baixar relatório completo (.md)</button>
-      <button class="btn btn-ghost btn-sm" id="btn-voltar-materia">← Voltar</button>
-    </div>
-  </div>
-  `;
-}
 
 // extrai referências legais citadas num texto (artigos, súmulas, leis), pra
 // identificar quais são os "temas centrais" mais recorrentes de cada assunto —
 // item 2 do dashboard analítico. Normaliza pequenas variações de escrita
 // ("art." / "artigo", "nº" / "n°") pra não contar a mesma referência 2x.
-function extrairReferenciasLegais(texto){
-  if(!texto) return [];
-  const refs = [];
-  let m;
-  const reArt = /\bart(?:igo)?\.?\s*(\d+)[ºo°]?/gi;
-  while((m = reArt.exec(texto))) refs.push('Art. ' + m[1]);
-  const reSumula = /\bs[uú]mula\s*n?[ºo°]?\.?\s*(\d+)/gi;
-  while((m = reSumula.exec(texto))) refs.push('Súmula ' + m[1]);
-  const reLei = /\blei\s+(?:complementar\s+)?n[ºo°]?\.?\s*([\d./]+)/gi;
-  while((m = reLei.exec(texto))) refs.push('Lei ' + m[1]);
-  return refs;
-}
 
 // cache simples por matéria — o quadro de frequência (previsao.js) chama
 // isso por QUESTÃO renderizada, e recalcular analisarTemasDaMateria (que
@@ -658,27 +537,6 @@ function faixaCorPctBase(pct, respondidas){
 }
 // anel compacto de acerto geral (certas x erradas), no canto superior direito
 // do card
-function renderAnelAcertoGeral(totalAcertos, totalErros){
-  const total = totalAcertos + totalErros;
-  const pctGeral = total>0 ? pct(totalAcertos, total) : 0;
-  const r = 30, cx = 40, cy = 40, circ = 2*Math.PI*r;
-  const fatiaCertas = total>0 ? (totalAcertos/total)*circ : 0;
-  return `
-    <div style="display:flex;align-items:center;gap:10px;">
-      <svg viewBox="0 0 80 80" width="64" height="64">
-        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#fce6e4" stroke-width="10" />
-        <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#a7d8b8" stroke-width="10"
-          stroke-dasharray="${fatiaCertas.toFixed(1)} ${(circ-fatiaCertas).toFixed(1)}"
-          stroke-dashoffset="${(circ*0.25).toFixed(1)}" stroke-linecap="butt" />
-        <text x="${cx}" y="${cy-1}" text-anchor="middle" font-size="15" font-weight="800" fill="currentColor">${total?pctGeral+'%':'—'}</text>
-        <text x="${cx}" y="${cy+11}" text-anchor="middle" font-size="7" fill="currentColor" opacity=".6">acerto</text>
-      </svg>
-      <div style="font-size:11px;line-height:1.5;">
-        <div style="color:#166534;font-weight:700;">${totalAcertos} certas</div>
-        <div style="color:#8f2a22;font-weight:700;">${totalErros} erradas</div>
-      </div>
-    </div>`;
-}
 
 function renderEstatisticasPorMateria(){
   const materias = materiasDisponiveis();
@@ -756,10 +614,6 @@ function thOrd(col, rotulo){
   return `<button type="button" class="th-ord${ativa?' ativa':''}" data-ordem-col="${col}" title="Ordenar por ${esc(rotulo)}">${esc(rotulo)}<span class="th-seta">${ativa ? (o.dir==='asc'?'▲':'▼') : ''}</span></button>`;
 }
 // Continuar + engrenagem da matéria selecionada (só aparecem com matéria selecionada)
-function botoesSimuladoMateriaHtml(){
-  if(!STATE.materia) return '';
-  return `<div class="botoes-sim"><button class="btn btn-gold btn-sm js-continuar" title="Continuar o simulado salvo ou começar pelas questões ainda não respondidas">▶ Continuar</button><button class="btn btn-primary btn-sm btn-engrenagem js-config" title="Configurar simulado: quantidade, ordem e filtros" aria-label="Configurar simulado">⚙</button></div>`;
-}
 function renderTabelaEstatisticas(linhas, estiloCelula){
   const cabecalhoTabela = `
     <div class="est-cab" style="display:flex;gap:10px;${estiloCelula}color:var(--ink-soft);padding:0 8px 6px;border-bottom:1px solid var(--line-soft, #e4dfd2);margin-bottom:2px;">
@@ -848,21 +702,6 @@ function renderDashboardAnalitico(){
   `;
 }
 
-function orgaoCargoDaMateria(){
-  if(!STATE.materia) return null;
-  const contagem = {};
-  ALL_QUESTIONS.filter(q=>q.materia===STATE.materia).forEach(q=>{
-    const cargo = cargoCurto(q.bc);
-    if(cargo){
-      const orgaoMatch = cargo.match(/\(([^)]+)\)\s*$/);
-      const orgao = orgaoMatch ? orgaoMatch[1] : null;
-      const chave = orgao || cargo;
-      contagem[chave] = (contagem[chave]||0) + 1;
-    }
-  });
-  const entradas = Object.entries(contagem).sort((a,b)=>b[1]-a[1]);
-  return entradas.length ? entradas[0][0] : null;
-}
 
 function renderLetterhead(){
   const s = computeSnapshot();
@@ -919,31 +758,6 @@ function renderLetterhead(){
 }
 
 /* ================= MATÉRIA, PROGRESSO E SINCRONIZAÇÃO (barra lateral) ================= */
-function renderMateriaTopStrip(){
-  const materias = materiasDisponiveis();
-  const aberto = STATE.materiaMenuAberto;
-  const labelAtual = STATE.materia || 'Selecione uma matéria';
-  return `<div class="sidebar-block"><div class="sb-pad">
-    <button type="button" class="assunto-toggle" id="btn-toggle-materia-menu">
-      <span class="sidebar-label" style="margin-bottom:0;">Matéria</span>
-      <span class="assunto-atual">${aberto?'▴':'▾'}</span>
-    </button>
-    <div class="assunto-atual-label">${esc(labelAtual)}</div>
-    ${aberto ? `<div class="subject-tabs" style="margin-top:10px;">
-      ${materias.map(m=>{
-        const n = ALL_QUESTIONS.filter(q=>q.materia===m && !q.duplicataOculta).length;
-        const ativo = STATE.materia===m;
-        const s = computeSnapshotMateria(m);
-        const concluidaM = s.totalPontuavel>0 && (s.ac+s.erradas)>=s.totalPontuavel;
-        const statsTxt = (s.ac+s.erradas)>0 ? `${s.taxa}% · ${s.ac} certas · ${s.erradas} erradas · ${s.totalPontuavel} total` : `${s.totalPontuavel} pontuáveis · ainda sem tentativas`;
-        return `<button class="subject-tab materia-tab-btn ${ativo?'active':''} ${concluidaM?'materia-concluida':''}" data-macro-materia="${esc(m)}">
-          <span class="materia-tab-row1"><span class="materia-tab-nome"><span>${esc(m)}</span> ${atualizacaoLegalBadge(m)}</span><span class="cnt">${n}</span></span>
-          <span class="materia-tab-stats">${statsTxt}</span>
-        </button>`;
-      }).join('')}
-    </div>` : ''}
-  </div></div>`;
-}
 
 // cartão do usuário: iniciais num círculo, nome e e-mail
 function syncUsuarioHtml(){
@@ -1150,24 +964,6 @@ function renderLocalTabs(){
     </button>`).join('')}</div>`;
 }
 
-function renderTemaTabs(){
-  if(!STATE.materia) return '';
-  const temas = temasDisponiveis(STATE.materia);
-  const countFor = (t) => t ? ALL_QUESTIONS.filter(q=>q.materia===STATE.materia && q.tema===t).length : ALL_QUESTIONS.filter(q=>q.materia===STATE.materia).length;
-  const aberto = STATE.assuntoAberto;
-  const labelAtual = STATE.tema==='todos' ? 'Todos os assuntos' : STATE.tema;
-  return `<div class="sidebar-block"><div class="sb-pad">
-    <button class="assunto-toggle" id="btn-toggle-assunto">
-      <span class="sidebar-label" style="margin-bottom:0;">Assunto</span>
-      <span class="assunto-atual">${aberto?'▴':'▾'}</span>
-    </button>
-    <div class="assunto-atual-label">${esc(labelAtual)}</div>
-    ${aberto ? `<div class="subject-tabs" style="margin-top:10px;">
-      <button class="subject-tab ${STATE.tema==='todos'?'active':''}" data-tema="todos">Todos os assuntos <span class="cnt">${countFor(null)}</span></button>
-      ${temas.map(t=>`<button class="subject-tab ${STATE.tema===t?'active':''}" data-tema="${esc(t)}">${esc(t)} <span class="cnt">${countFor(t)}</span></button>`).join('')}
-    </div>` : ''}
-  </div></div>`;
-}
 
 function renderMainPanel(tabAtual){
   if(tabAtual==='simulado'){
@@ -1233,43 +1029,8 @@ function ajustarQuantidadeSimulado(n){
   STATE.avisoQtdAndamento = { ts: Date.now(), msg: aviso || `Simulado ajustado para ${fila.length} questões — as respondidas foram mantidas.` };
   return aviso;
 }
-function renderAjusteSimuladoAndamento(){
-  const quiz = quizAndamentoAtual();
-  if(!quiz) return '';
-  const feitas = quiz.queue.filter(u=>quiz.respostas && quiz.respostas[u]).length;
-  const total = quiz.queue.length;
-  const pct = total ? Math.round(feitas*100/total) : 0;
-  const max = pool().length;
-  const presets = [10,20,30,50,100].filter(n=>n>feitas);
-  return `<div class="ajuste-andamento">
-    <div class="ajuste-cab"><b>Simulado em andamento:</b> ${feitas} de ${total} respondidas
-      <div class="bar-track" style="margin-top:6px;"><div class="bar-fill" style="width:${pct}%;background:#4c7a5c;"></div></div>
-    </div>
-    <label for="input-qtd-and">Alterar o total de questões (as ${feitas} respondidas são mantidas)</label>
-    <div class="chip-row">${presets.map(n=>`<span class="chip ${n===total?'selected':''}" data-qtd-and="${n}">${n}</span>`).join('')}</div>
-    <div class="qtd-custom">
-      <label for="input-qtd-and" class="qtd-custom-rot">Total</label>
-      <input type="number" id="input-qtd-and" min="${Math.max(1,feitas)}" max="${Math.max(total,max)}" step="1" inputmode="numeric" placeholder="${total}">
-      <button type="button" class="btn-ui" id="btn-aplicar-qtd-and">Aplicar</button>
-    </div>
-    ${STATE.avisoQtdAndamento && Date.now()-STATE.avisoQtdAndamento.ts<10000 ? `<div class="setup-dica ajuste-ok">✓ ${esc(STATE.avisoQtdAndamento.msg)}</div>` : ''}
-  </div>`;
-}
 // página principal: gráfico de barras com a composição do próximo simulado
 // (acompanha a quantidade e os filtros definidos em "Configurar simulado")
-function renderBlocoProximoSimulado(){
-  if(!STATE.materia) return '';
-  const setup = getSetup(STATE.materia);
-  const fila = filaSimuladoPrevia();
-  if(!fila.length) return '';
-  const disp = pool().length;
-  const ef = qtdEfetiva(setup, disp);
-  return `<div class="card-block bloco-prox-sim">
-    <div class="bloco-prox-cab">
-      <button class="btn-ui" id="btn-abrir-config-2" title="Alterar quantidade, ordem e filtros">⚙ Quantidade: ${ef}${ef<disp?` de ${disp}`:' (todas)'}</button>
-    </div>
-  </div>`;
-}
 function renderLanding(){
   const s = computeSnapshot();
   const bucket = STATE.materia ? getBucket(STATE.materia) : { sessoes:[], perguntas:{} };
@@ -1411,10 +1172,6 @@ function camposFiltroPartes(){
     </div>` : ''}
 `;
   return P;
-}
-function renderCamposFiltro(idPrefix){
-  const P = camposFiltroPartes();
-  return [P.ordem,P.nivel,P.tend,P.ano,P.banca,P.cob,P.arm,P.orig,P.cargo].join('');
 }
 // ---- quantidade de questões do simulado (0 = todas as do filtro) ----
 const QTD_PRESETS = [10, 20, 30, 50, 100];
@@ -1644,16 +1401,6 @@ function detalharArtigosDoTema(queue, tema){
   return (linhas || '<div class="composicao-art-vazio">Nenhum artigo identificado no texto das questões deste assunto.</div>') + notaArtigosHtml(ag);
 }
 // Estatísticas por matéria: artigos mais cobrados, com acertos/erros
-function detalharArtigosDaMateria(materia){
-  const qs = questoesDaMateria(materia);
-  const temas = [...new Set(qs.map(q=>q.tema||'Geral'))];
-  const blocos = temas.map(t=>{
-    const ag = agruparArtigos(qs.filter(q=>(q.tema||'Geral')===t), t, materia, qs);
-    const h = linhasArtigosHtml(ag, true);
-    return h ? `<div class="composicao-norma composicao-tema">${esc(t)}</div>${h}` : '';
-  }).filter(Boolean).join('');
-  return blocos || '<div class="composicao-art-vazio">Nenhum artigo identificado nas questões desta matéria.</div>';
-}
 // Grupos por norma: cada norma reúne as matérias que a usam (ex.: Lei 14.133 em Licitações, Decreto 44.330, Contratos…)
 function agruparPorNorma(){
   const out = {}; // norma -> { materias: {mat: {q:Set, arts:{n:{n,ac,er}}}} }
@@ -1678,27 +1425,6 @@ function agruparPorNorma(){
   return out;
 }
 function getMateriasComQuestoes(){ return [...new Set(ALL_QUESTIONS.map(q=>q.materia))].filter(Boolean); }
-function resumoNormas(){
-  const g = agruparPorNorma();
-  return Object.keys(g).map(nm=>{
-    const mats = Object.keys(g[nm].materias);
-    const nq = new Set(); mats.forEach(m=>g[nm].materias[m].q.forEach(u=>nq.add(u)));
-    return { norma:nm, materias:mats.length, questoes:nq.size };
-  }).sort((a,b)=> b.questoes-a.questoes || a.norma.localeCompare(b.norma,'pt-BR'));
-}
-function detalharNorma(nome){
-  const g = agruparPorNorma()[nome]; if(!g) return '<div class="composicao-art-vazio">Sem dados.</div>';
-  const tot = {};
-  Object.values(g.materias).forEach(mm=>Object.entries(mm.arts).forEach(([n,a])=>{ const t = tot[n] = tot[n] || {n:0,ac:0,er:0}; t.n+=a.n; t.ac+=a.ac; t.er+=a.er; }));
-  const linhas = (obj, max)=> Object.keys(obj).map(Number).sort((a,b)=>a-b).map(n=>{ const a = obj[n]; const res = (a.ac+a.er) ? ` <span class="composicao-art-res">✔${a.ac} ✖${a.er}</span>` : '';
-    return `<div class="bar-row composicao-art${a.er?' composicao-art-erro':''}"><div class="name">Art. ${n}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.max(6, Math.round(a.n*100/max))}%;"></div></div><div class="pct">${a.n}${res}</div></div>`; }).join('');
-  const maxTot = Math.max(1, ...Object.values(tot).map(a=>a.n));
-  const porMat = Object.keys(g.materias).sort((a,b)=>g.materias[b].q.size-g.materias[a].q.size || a.localeCompare(b,'pt-BR')).map(m=>{
-    const mm = g.materias[m], mx = Math.max(1, ...Object.values(mm.arts).map(a=>a.n));
-    return `<div class="composicao-norma composicao-tema">${esc(m)} <span class="composicao-art-res">${mm.q.size} ${mm.q.size===1?'questão':'questões'}</span></div>${linhas(mm.arts, mx)}`;
-  }).join('');
-  return `<div class="composicao-norma">Todas as matérias somadas</div>${linhas(tot, maxTot)}${porMat}<div class="composicao-art-nota">Contagem exata, pelo campo Artigo. Artigos em vermelho têm questões erradas.</div>`;
-}
 function renderBotoesAcaoSetup(){
   const erroCount = getCadernoErros().length;
   const candidatos = pool();
