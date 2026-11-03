@@ -29,13 +29,6 @@ function btnChuteHtml(materiaKey, uid, revelado){
   const marcado = chuteMarcado(materiaKey, uid);
   return `<button type="button" class="icon-btn ${marcado?'btn-chute-ativo btn-em-uso':''}" id="btn-chute" data-uid="${esc(uid)}" aria-pressed="${marcado?'true':'false'}" aria-label="${marcado?'Desmarcar chute':'Marcar como chute'}" title="${marcado?'Desmarcar &quot;chutei essa&quot;':'Marcar que você chutou esta resposta (não afeta estatísticas de acerto)'}">${icoSvg('dado')}<span class="btn-txt">Chute${marcado?' ✓':''}</span></button>`;
 }
-function renderProgressoMateriaToolbar(materiaKey){
-  if(!materiaKey) return '';
-  const s = computeSnapshotMateria(materiaKey);
-  return `<span class="progresso-materia-toolbar" title="Progresso em ${esc(materiaKey)} (${s.totalPontuavel} questões): resultado atual de cada questão respondida">
-    Total Respondidas: ${s.ac + s.erradas} · <span class="pm-certas">✓ ${s.ac}</span> · <span class="pm-erradas">✗ ${s.erradas}</span> · ${s.taxa}%
-  </span>`;
-}
 function renderQuiz(){
   try{ if(STATE.quiz && typeof reconciliarProgressoComQuiz==='function') reconciliarProgressoComQuiz(STATE.quiz); }catch(_){}
   const quiz = STATE.quiz;
@@ -374,7 +367,6 @@ function botaoEditarTudo(uid){
   return `<button class="btn-editar-campo btn-ui" data-uid="${esc(uid)}" title="Editar todos os campos desta questão: enunciado, armadilha, justificativa e resumo flash">✏️ Editar</button>`;
 }
 // ---- destaque das palavras-chave: dentro de cada campo (enunciado, alternativa correta) cada palavra é destacada uma vez só ----
-function _normDest(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
 // base do destaque: palavras-chave (🔑) + termos em negrito/marca-texto da essência (📌)
 function kwsDestaqueDaQuestao(q){
   // destaque só das palavras MAIS relevantes: o termo decisivo do 📌 (==amarelo==); sem ele, o termo em negrito do 📌; sem ele, a 1ª palavra-chave 🔑. No máximo 2.
@@ -384,10 +376,6 @@ function kwsDestaqueDaQuestao(q){
   linhas.filter(l=>/^\s*📌/u.test(l)).forEach(l=>{ l.replace(/\*\*(.+?)\*\*|==(.+?)==/g,(m,a,b)=>{ if(b) dec.push(b); else neg.push(a); return m; }); });
   const lista = (dec.length ? dec : neg.length ? neg : chaves.slice(0,1)).map(k=>k.trim()).filter(k=>k.length>=4);
   return lista.slice(0,2);
-}
-function _alternativaCorreta(q){
-  if(q.t!=='MC' || !q.alt) return '';
-  const g = String(gabaritoEfetivo(q)||'').toUpperCase(); const a = q.alt.find(x=>x.letra.toUpperCase()===g); return a ? a.texto : '';
 }
 // destaca (HTML já escapado) só a 1ª ocorrência de cada palavra-chave NO CAMPO, só no texto entre tags
 // (o mesmo termo pode aparecer destacado em campos diferentes: enunciado, alternativa e justificativa)
@@ -564,11 +552,6 @@ function acharIdxUltimaRespondida(quiz){
   let last = -1;
   quiz.queue.forEach((uid,i)=>{ if(quiz.respostas[uid]) last = i; });
   return last;
-}
-function irParaUltimaRespondida(){
-  const quiz = STATE.quiz;
-  const last = acharIdxUltimaRespondida(quiz);
-  if(last>=0 && last!==quiz.idx) goToQuestion(last);
 }
 // acha o índice da primeira questão, a partir da posição atual, cujo assunto
 // é diferente do assunto da questão atual (i.e. o começo do próximo assunto)
@@ -752,74 +735,9 @@ function renderResults(){
 }
 
 /* ================= ESTATÍSTICAS ================= */
-function renderStats(){
-  const s = computeSnapshot();
-  if(s.tent===0){
-    return emptyState('📋','Nenhum dado ainda',`Responda seu primeiro simulado em "${esc(STATE.materia||'')}" para começar a acompanhar acertos, cobertura e evolução por nível de incidência.`) + renderDangerZone();
-  }
-
-  const bucket = getBucket(STATE.materia);
-  const niveis = { alta:[0,0], media:[0,0], baixa:[0,0] };
-  const byTema = {};
-  // cada questão conta uma vez, pelo resultado mais recente — mesma definição
-  // do "Acerto geral" do topo
-  Object.entries(bucket.perguntas).forEach(([uid,p])=>{
-    const q = BY_UID[uid]; if(!q || q.materia!==STATE.materia) return;
-    if(STATE.tema!=='todos' && q.tema!==STATE.tema) return;
-    if(p.ultimoResultado!==true && p.ultimoResultado!==false) return;
-    const acertou = p.ultimoResultado===true ? 1 : 0;
-    if(niveis[q.nv]){ niveis[q.nv][0]+=acertou; niveis[q.nv][1]+=1; }
-    if(!byTema[q.tema]) byTema[q.tema]=[0,0];
-    byTema[q.tema][0]+=acertou; byTema[q.tema][1]+=1;
-  });
-
-  const ultimaSessoes = bucket.sessoes.slice(-8).reverse();
-  const temas = temasDisponiveis(STATE.materia);
-
-  return `
-  <div class="section-eyebrow">${esc(STATE.materia)}</div>
-  <h2 class="section-title">Estatísticas de desempenho</h2>
-  <p class="section-desc">Acompanhamento consolidado desta matéria${STATE.tema!=='todos'?`, assunto <b>${esc(STATE.tema)}</b>`:''}.</p>
-
-  <div class="stat-grid">
-    <div class="stat-card"><div class="num">${s.taxa}%</div><div class="lbl">Acerto geral</div></div>
-    <div class="stat-card"><div class="num"><span class="n-certa">${s.ac}</span><span style="opacity:.45;">/</span><span class="n-errada">${s.tent-s.ac}</span><span style="opacity:.45;">/</span><span class="n-total">${s.totalPontuavel}</span></div><div class="lbl">Certas / erradas / total</div></div>
-    <div class="stat-card"><div class="num">${s.erros}</div><div class="lbl">No caderno de erros</div></div>
-  </div>
-
-  <div class="card-block">
-    <h3>Desempenho por nível de incidência</h3>
-    ${['alta','media','baixa'].map(k=>barRow(NIVEL_STARS[k]+' '+NIVEL_LABEL[k], niveis[k][0], niveis[k][1])).join('')}
-  </div>
-
-  ${temas.length>1 ? `<div class="card-block">
-    <h3>Desempenho por assunto</h3>
-    ${temas.map(t=>barRow(t, (byTema[t]||[0,0])[0], (byTema[t]||[0,0])[1])).join('')}
-  </div>` : ''}
-
-  ${ultimaSessoes.length ? `<div class="card-block">
-    <h3>Últimos simulados</h3>
-    ${ultimaSessoes.map(se=>{
-      const d = new Date(se.ts);
-      const dt = d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}) + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-      return barRow(dt + (se.tema && se.tema!=='todos' ? ` · ${se.tema}` : ''), se.acertos, se.total);
-    }).join('')}
-  </div>` : ''}
-
-  `;
-}
 
 function renderDangerZone(){ return ''; } // zona de risco removida da interface
 
-function barRow(name, a, t){
-  const p = pct(a,t);
-  const color = p>=70 ? 'var(--stamp-green)' : p>=40 ? 'var(--gold)' : 'var(--stamp-red)';
-  return `<div class="bar-row">
-    <div class="name">${esc(name)}</div>
-    <div class="bar-track"><div class="bar-fill" style="width:${t? p:0}%;background:${color};"></div></div>
-    <div class="pct">${t? `${p}% (${a}/${t})` : '—'}</div>
-  </div>`;
-}
 
 /* ================= CADERNO DE ERROS ================= */
 function getCadernoErros(){

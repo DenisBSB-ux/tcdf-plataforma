@@ -192,18 +192,6 @@ function dicaChuteQuestao(q){
 }
 
 // painel HTML mostrado quando o usuário abre a dica (antes de responder)
-function dicaChutePanelHtml(q){
-  const d = dicaChuteQuestao(q);
-  if(!d) return '';
-  const corpo = d.tipo === 'ce'
-    ? `<div class="dica-chute-texto">${d.texto}</div><div class="checklist-lista">${d.checklistHtml}</div>`
-    : `<div class="dica-chute-texto">${d.texto}</div>`;
-  return `<div class="dica-chute-panel">
-    <div class="dica-chute-titulo">🎯 Lista de verificação — dica de chute <span class="dica-chute-aviso">— busca mecânica de palavras-chave (regex), não é IA e não entende o conteúdo jurídico do enunciado</span></div>
-    ${corpo}
-    ${heurStatsResumoHtml(d.tipo)}
-  </div>`;
-}
 
 /* ================= AUTOAVALIAÇÃO (a dica "se mede" com o seu uso real) =================
    Os pesos dos marcadores acima (ABSOLUTO, DUPLA_NEGATIVA, ATENUAÇÃO) são
@@ -284,24 +272,3 @@ function registrarResultadoHeuristica(q){
 
 // resumo mostrado no rodapé do painel — só com volume mínimo de 5 respostas
 // pra não mostrar um "100%" ou "0%" enganoso logo na primeira resposta
-function heurStatsResumoHtml(tipo){
-  if(tipo==='ce'){
-    const s = HEUR_STATS.ce;
-    const total = s.sugestaoCerta + s.sugestaoErrada;
-    if(total < 5){
-      return `<div class="heur-stats-resumo">📊 Ainda sem dados suficientes das SUAS respostas (${total} questão${total===1?'':'ões'} com sugestão até agora) — a taxa real medida com o seu uso aparece aqui a partir de 5 respostas.</div>`;
-    }
-    const pctNum = (s.sugestaoCerta/total)*100;
-    return `<div class="heur-stats-resumo">📊 Nas SUAS respostas até agora: a sugestão bateu com o gabarito em <b>${s.sugestaoCerta} de ${total}</b> (${pctNum.toFixed(1)}%)${s.semSugestao?` · +${s.semSugestao} sem sugestão (sinais se cancelaram)`:''}.</div>`;
-  }
-  if(tipo==='mc'){
-    const s = HEUR_STATS.mc;
-    const total = s.sugestaoCerta + s.sugestaoErrada;
-    if(total < 5){
-      return `<div class="heur-stats-resumo">📊 Ainda sem dados suficientes das SUAS respostas (${total} até agora) — a taxa real aparece aqui a partir de 5 respostas.</div>`;
-    }
-    const pctNum = (s.sugestaoCerta/total)*100;
-    return `<div class="heur-stats-resumo">📊 Nas SUAS respostas até agora: a alternativa sugerida bateu em <b>${s.sugestaoCerta} de ${total}</b> (${pctNum.toFixed(1)}%).</div>`;
-  }
-  return '';
-}

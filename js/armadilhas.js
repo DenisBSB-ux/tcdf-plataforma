@@ -87,19 +87,11 @@ function armEfetiva(q){
   return { p, s, sinal, trecho: trEd!==undefined ? trEd : (q.tr||''), expl: exEd!==undefined ? exEd : (q.ex||''), correcao: coEd!==undefined ? coEd : (q.co||''), origem: (exEd!==undefined||trEd!==undefined||coEd!==undefined) ? 'manual' : (q.ao||'ia'), errado, classificada };
 }
 function armCodigos(a){ return a ? [a.p, a.s].filter(c=>c && ARM_TIPOS[c]) : []; }
-function armTemClassificacao(q){ const a = armEfetiva(q); return !!(a && a.classificada); }
-function materiaTemArmadilhas(materia){
-  return ALL_QUESTIONS.some(q => { if(q.materia!==materia || q.duplicataOculta) return false; armHidratar(q); return q.ap || (EDICOES_USUARIO[q.uid] && EDICOES_USUARIO[q.uid].arm); });
-}
 
 /* ---------- etiquetas ---------- */
 function armChip(cod, grande){
   const t = ARM_TIPOS[cod]; if(!t) return '';
   return `<span class="arm-chip${grande?' arm-chip-g':''}" style="background:${t.bg};color:${t.cor};border-color:${t.cor};" title="${esc(t.nome)} — ${esc(t.def)}">${cod}</span>`;
-}
-function armChipSinal(cod){
-  const t = ARM_SINAIS[cod]; if(!t) return '';
-  return `<span class="arm-chip arm-chip-sinal" title="${esc(t.nome)} — ${esc(t.por)}">${cod}</span>`;
 }
 
 /* ---------- destaque do trecho-chave dentro do HTML do enunciado ---------- */
@@ -339,148 +331,9 @@ function armCorTaxa(pct){
   if(pct >= 20) return { bg:'#fef3c7', fg:'#6f4b0a', barra:'#d97706', nome:'amarelo' };
   return { bg:'#dcfce7', fg:'#166534', barra:'#16a34a', nome:'verde' };
 }
-function armSemana(ts){
-  const d = new Date(ts); d.setHours(0,0,0,0);
-  d.setDate(d.getDate() - ((d.getDay()+6)%7)); // segunda-feira
-  return d.getTime();
-}
 // escopo: nome da matéria, ou null para todas
-function armCalcular(escopo){
-  const tipos = {}; ARM_ORDEM.forEach(c => tipos[c] = { cod:c, itens:0, resp:0, quedas:0, tempos:[] });
-  const semanas = {};   // { cod: { semana: {n, q} } }
-  const mapa = {};      // { cod: { assunto: {n, q} } }
-  const assuntoN = {};
-  const desc = { resp:0, quedas:0 };
-  let totalCE = 0, classificadas = 0;
-  ALL_QUESTIONS.forEach(q=>{
-    if(q.duplicataOculta || q.t!=='CE') return;
-    if(escopo && q.materia!==escopo) return;
-    totalCE++;
-    const a = armEfetiva(q);
-    if(!a || !a.classificada) return;
-    classificadas++;
-    const bucket = PROGRESS[q.materia];
-    const p = bucket && bucket.perguntas && bucket.perguntas[q.uid];
-    const respondida = !!(p && p.tentativas>0);
-    const caiu = respondida && p.ultimoResultado===false;
-    if(a.errado){
-      armCodigos(a).forEach(c=>{
-        const T = tipos[c]; T.itens++;
-        if(respondida){ T.resp++; if(caiu) T.quedas++; }
-        (p && p.historico || []).forEach(h=>{
-          if(h && typeof h.t==='number') T.tempos.push(h.t);
-          if(h && h.ts){
-            const sm = armSemana(h.ts);
-            semanas[c] = semanas[c] || {};
-            const w = semanas[c][sm] = semanas[c][sm] || { n:0, q:0 };
-            w.n++; if(h.c===false) w.q++;
-          }
-        });
-        if(respondida){
-          const as = q.tema || 'Geral';
-          mapa[c] = mapa[c] || {};
-          const cel = mapa[c][as] = mapa[c][as] || { n:0, q:0 };
-          cel.n++; if(caiu) cel.q++;
-          assuntoN[as] = (assuntoN[as]||0)+1;
-        }
-      });
-    } else if((a.sinal==='ABS-L' || a.sinal==='REL') && respondida){
-      desc.resp++; if(caiu) desc.quedas++;
-    }
-  });
-  const lista = ARM_ORDEM.map(c=>{
-    const T = tipos[c];
-    const taxa = T.resp ? (T.quedas*100/T.resp) : null;
-    const tempo = T.tempos.length ? T.tempos.reduce((s,x)=>s+x,0)/T.tempos.length : null;
-    return { ...T, taxa, tempo };
-  });
-  const elegiveis = lista.filter(x=>x.resp>=5).sort((a,b)=>b.taxa-a.taxa);
-  return { lista, perigosa: elegiveis[0]||null, desc, totalCE, classificadas, semanas, mapa, assuntoN };
-}
 
 /* ================= TELAS ================= */
-function armBarra(pct, cor){ return `<div class="arm-barra"><div style="width:${Math.max(2,Math.min(100,pct))}%;background:${cor};"></div></div>`; }
-function armLinhasEvolucao(S){
-  const todas = new Set(); ARM_ORDEM.forEach(c=>Object.keys(S.semanas[c]||{}).forEach(k=>todas.add(+k)));
-  const sem = Array.from(todas).sort((a,b)=>a-b);
-  if(sem.length<2) return `<div class="arm-vazio">A evolução aparece quando houver respostas em pelo menos 2 semanas diferentes.</div>`;
-  const W=640,H=200,pl=34,pb=22,pt=10,pr=10;
-  const x = i => pl + (sem.length===1?0:(i*(W-pl-pr)/(sem.length-1)));
-  const y = v => pt + (100-v)*(H-pt-pb)/100;
-  let svg = `<svg viewBox="0 0 ${W} ${H}" class="arm-svg" role="img" aria-label="Evolução da taxa de queda por armadilha">`;
-  [0,20,40,60,80,100].forEach(v=>{ svg += `<line x1="${pl}" x2="${W-pr}" y1="${y(v)}" y2="${y(v)}" stroke="currentColor" opacity=".12"/><text x="${pl-4}" y="${y(v)+3}" font-size="9" text-anchor="end" fill="currentColor" opacity=".6">${v}%</text>`; });
-  sem.forEach((s,i)=>{ if(sem.length<=8 || i%Math.ceil(sem.length/8)===0) svg += `<text x="${x(i)}" y="${H-6}" font-size="9" text-anchor="middle" fill="currentColor" opacity=".6">${new Date(s).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'})}</text>`; });
-  ARM_ORDEM.forEach(c=>{
-    const pts = sem.map((s,i)=>{ const w=(S.semanas[c]||{})[s]; return w && w.n ? [x(i), y(w.q*100/w.n)] : null; }).filter(Boolean);
-    if(!pts.length) return;
-    const cor = ARM_TIPOS[c].cor;
-    svg += `<polyline fill="none" stroke="${cor}" stroke-width="2" points="${pts.map(p=>p.join(',')).join(' ')}"/>` + pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="3" fill="${cor}"/>`).join('');
-  });
-  svg += `</svg><div class="arm-legenda">${ARM_ORDEM.map(c=>`<span><i style="background:${ARM_TIPOS[c].cor}"></i>${c}</span>`).join('')}</div>`;
-  return svg;
-}
-function armMapaCalor(S){
-  const assuntos = Object.keys(S.assuntoN).sort((a,b)=>S.assuntoN[b]-S.assuntoN[a]).slice(0,12);
-  const cods = ARM_ORDEM.filter(c=>S.mapa[c]);
-  if(!assuntos.length || !cods.length) return `<div class="arm-vazio">O mapa aparece depois que você responder itens classificados.</div>`;
-  return `<div class="arm-mapa-wrap"><table class="arm-mapa"><thead><tr><th></th>${assuntos.map(a=>`<th title="${esc(a)}">${esc(a.length>22?a.slice(0,21)+'…':a)}</th>`).join('')}</tr></thead><tbody>
-    ${cods.map(c=>`<tr><th>${armChip(c)}</th>${assuntos.map(a=>{
-      const cel = (S.mapa[c]||{})[a];
-      if(!cel) return '<td class="arm-cel-vazia">·</td>';
-      const pct = Math.round(cel.q*100/cel.n), cor = armCorTaxa(pct);
-      return `<td style="background:${cor.bg};color:${cor.fg};" title="${cel.q} erros em ${cel.n} respondidos">${pct}%<small>${cel.n}</small></td>`;
-    }).join('')}</tr>`).join('')}
-  </tbody></table></div>`;
-}
-function renderArmadilhas(){
-  const escopoTodas = !!STATE.armEscopoTodas;
-  const escopo = escopoTodas ? null : STATE.materia;
-  const S = armCalcular(escopo);
-  const cob = S.totalCE ? Math.round(S.classificadas*100/S.totalCE) : 0;
-  const per = S.perigosa;
-  const corPer = per ? armCorTaxa(per.taxa) : null;
-  const dpct = S.desc.resp ? Math.round(S.desc.quedas*100/S.desc.resp) : null;
-  const corDesc = dpct!==null ? armCorTaxa(dpct) : null;
-  const linhaBarra = (x)=>{
-    if(x.resp<5){
-      return `<div class="arm-row arm-row-fraca"><div class="arm-row-cod">${armChip(x.cod)}<span>${esc(ARM_TIPOS[x.cod].nome)}</span></div>
-        <div class="arm-row-info">${x.itens ? `amostra insuficiente: ${x.resp} de 5 itens respondidos (${x.itens} no banco)` : 'sem itens deste tipo no banco'}</div></div>`;
-    }
-    const cor = armCorTaxa(x.taxa);
-    return `<div class="arm-row"><div class="arm-row-cod">${armChip(x.cod)}<span>${esc(ARM_TIPOS[x.cod].nome)}</span></div>
-      <div class="arm-row-taxa">${armBarra(x.taxa, cor.barra)}<b style="color:${cor.fg};background:${cor.bg};">${Math.round(x.taxa)}%</b><small>${x.quedas}/${x.resp}</small></div>
-      <div class="arm-row-tempo">${x.tempo!==null ? armBarra(Math.min(100, x.tempo*100/120), '#64748b')+`<small>${Math.round(x.tempo)}s</small>` : '<small>sem tempo</small>'}</div></div>`;
-  };
-  const ordenadas = S.lista.filter(x=>x.resp>=5).sort((a,b)=>b.taxa-a.taxa).concat(S.lista.filter(x=>x.resp<5));
-  const barrasOrd = ordenadas.map(linhaBarra).join('');
-  return `<div class="arm-tela">
-    <div class="arm-cab">
-      <div><h3>🎯 Análise de armadilhas da banca</h3>
-      <div class="arm-sub">${S.classificadas} de ${S.totalCE} itens Certo/Errado classificados (${cob}%) · ${escopoTodas ? 'todas as matérias' : esc(STATE.materia||'')}</div></div>
-      <div class="arm-escopo"><button class="tab-btn ${!escopoTodas?'active':''}" data-arm-escopo="mat">Esta matéria</button><button class="tab-btn ${escopoTodas?'active':''}" data-arm-escopo="todas">Todas</button></div>
-    </div>
-    ${!S.classificadas ? `<div class="arm-vazio">Nenhum item classificado neste escopo. Importe o arquivo com os campos <b>Armadilha / Trecho / Explicação</b> (ver "Guia de armadilhas"). Questões antigas continuam funcionando e aparecem como "não classificada".</div>` : `
-    <div class="arm-cards">
-      <div class="arm-card" style="${per?`background:${corPer.bg};color:${corPer.fg};`:''}">
-        <div class="arm-card-rot">Armadilha mais perigosa</div>
-        ${per ? `<div class="arm-card-val">${armChip(per.cod,true)} ${Math.round(per.taxa)}%</div><div class="arm-card-sub">${esc(ARM_TIPOS[per.cod].nome)} · caiu em ${per.quedas} de ${per.resp} itens</div>
-          <button class="btn btn-gold btn-sm" id="btn-treino-arm" data-arm-treino="${per.cod}">🏋 Treinar ${per.cod} agora</button>`
-        : `<div class="arm-card-sub">Precisa de pelo menos 5 itens respondidos do mesmo tipo.</div>`}
-      </div>
-      <div class="arm-card" style="${corDesc?`background:${corDesc.bg};color:${corDesc.fg};`:''}">
-        <div class="arm-card-rot">Excesso de desconfiança</div>
-        ${dpct!==null ? `<div class="arm-card-val">${dpct}%</div><div class="arm-card-sub">${S.desc.quedas} de ${S.desc.resp} itens CERTOS com sinal ABS-L ou REL que você marcou Errado${S.desc.resp<5?' (amostra pequena)':''}</div>`
-        : `<div class="arm-card-sub">Sem itens certos com ABS-L/REL respondidos ainda.</div>`}
-      </div>
-    </div>
-    <div class="arm-bloco"><h4>Taxa de queda por armadilha <small>· quantos itens errados daquele tipo você marcou como certos (mín. 5 itens) · à direita: tempo médio</small></h4>
-      <div class="arm-leg-cores"><span style="background:#fee2e2;color:#8f2a22;">acima de 40%</span><span style="background:#fef3c7;color:#6f4b0a;">20% a 40%</span><span style="background:#dcfce7;color:#166534;">abaixo de 20%</span></div>
-      ${barrasOrd}
-    </div>
-    <div class="arm-bloco"><h4>Evolução por semana</h4>${armLinhasEvolucao(S)}</div>
-    <div class="arm-bloco"><h4>Armadilha × assunto <small>· taxa de queda (número pequeno = itens respondidos)</small></h4>${armMapaCalor(S)}</div>`}
-  </div>`;
-}
 document.addEventListener('click', (ev)=>{
   const e = ev.target.closest && ev.target.closest('[data-arm-escopo]');
   if(e){ STATE.armEscopoTodas = e.dataset.armEscopo==='todas'; render(); return; }
@@ -570,13 +423,6 @@ function armGuiaDados(escopo){
     }
   });
   return D;
-}
-function armGuiaDesempenho(c, D){
-  const T = D.tipos[c];
-  if(T.resp<5) return `<div class="guia-desemp guia-desemp-fraca">Seu desempenho: amostra pequena (${T.resp} de 5 itens respondidos)</div>`;
-  const taxa = T.quedas*100/T.resp, cor = armCorTaxa(taxa);
-  const ac = T.seguros+T.chutes;
-  return `<div class="guia-desemp"><span style="background:${cor.bg};color:${cor.fg};" class="guia-desemp-pct">${Math.round(taxa)}% de queda</span> caiu em ${T.quedas} de ${T.resp}${ac ? ` · acertos: ${T.seguros} seguros, ${T.chutes} por chute 🎲` : ''}</div>`;
 }
 function armBlocoBanca(D){
   const bancas = Object.keys(D.bancas).filter(b=>D.bancas[b].n>=3).sort((a,b)=>D.bancas[b].n-D.bancas[a].n).slice(0,8);

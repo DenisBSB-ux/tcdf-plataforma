@@ -168,7 +168,6 @@ function analisarTemasDaMateria(materiaKey){
   }).filter(Boolean).sort((a,b)=> b.estimativa-a.estimativa || b.total-a.total);
 }
 
-function _pct(x){ return Math.round(x*100) + '%'; }
 
 // quadro da questão: frequência do assunto nas provas desta base (selo com barra e faixa)
 function narrativaBancaBanner(q){

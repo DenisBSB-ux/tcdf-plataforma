@@ -227,86 +227,16 @@ function palavrasChaveDaRespostaCorreta(q){
 // ou absolutas que costumam ser o ponto de virada de uma assertiva Certo/Errado.
 // Estilo visual PRÓPRIO (sublinhado + cor), diferente do negrito de gabarito,
 // pra não confundir as duas fontes de destaque.
-const TERMOS_DECISIVOS = [
-  'exclusivamente','unicamente','tão somente','tão-somente','somente','apenas',
-  'sempre','nunca','jamais','todo','toda','todos','todas','nenhum','nenhuma',
-  'absolutamente','obrigatoriamente','necessariamente','impreterivelmente',
-  'incondicionalmente','indistintamente','invariavelmente','qualquer',
-  'em qualquer hipótese','sob nenhuma hipótese','de forma alguma','sim','não',
-];
 // recebe HTML JÁ ESCAPADO (esc(texto)) e injeta o sublinhado sem tocar o que
 // já é tag — mesmo cuidado usado em destacarPalavrasChave, pra combinar as duas
-function destacarTermosDecisivos(htmlEscapado){
-  if(!htmlEscapado) return '';
-  let html = htmlEscapado;
-  const ordenados = [...TERMOS_DECISIVOS].sort((a,b)=>b.length-a.length);
-  ordenados.forEach(termo=>{
-    const escapado = termo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g,'\\s+');
-    const re = new RegExp(`\\b(${escapado})\\b`, 'gi');
-    html = html.replace(re, (m, offset) => /<[^>]*$/.test(html.slice(0, offset)) ? m : `<u class="kw-decisivo">${m}</u>`);
-  });
-  return html;
-}
 // palavras-chave do texto da questão (antes e depois de responder): além dos
 // termos absolutos/restritivos (sublinhado vermelho), marca causa/consequência,
 // suficiência/dispensa, relativização e direção/quantidade — as palavras onde a
 // banca costuma esconder a armadilha. Recebe HTML já escapado.
-const TERMOS_CHAVE = [
-  'por si só','suficiente','suficientes','basta','bastando','independentemente','independe','independem',
-  'dispensa','dispensada','dispensado','dispensável','afasta','afastada','afastado','afastam','afastamento',
-  'exceto','salvo','ressalvado','ressalvada','não se aplica','não se aplicam',
-  'visto que','uma vez que','já que','porque','pois','por força de','de tal modo que','de modo que','em razão de','por causa de',
-  'ocasionando','ocasionado','ocasiona','causa','causando','decorre','decorrente','resulta','resultando','implica','acarreta','provoca','consequência','consequentemente',
-  'sobretudo','principalmente','inclusive','mesmo que','ainda que','embora','contudo','porém','entretanto','todavia','desde que','apesar de',
-  'pode','podem','poderá','poderão','em regra','geralmente','via de regra','normalmente','tende','tendem','costuma','frequentemente','eventualmente','em geral',
-  'aumento','redução','diminuição','queda','elevação','ampliação','restrição','majoração','maior','menor','máximo','mínimo',
-  'integral','integralmente','parcial','parcialmente','imediato','imediatamente','automático','automaticamente','prévio','prévia','posterior','anterior','antes','depois','após',
-  'vedado','vedada','proibido','proibida','permitido','permitida','obrigatório','obrigatória','facultativo','facultativa','privativa','privativo','compete',
-  'necessário','necessária','necessariamente','necessários','necessárias','exclusivo','exclusiva','exclusivamente','somente','apenas','unicamente','só',
-  'sempre','nunca','jamais','todo','toda','todos','todas','qualquer','nenhum','nenhuma','nem','não','sem','tampouco','tal como','assim como','bem como',
-  'deve','devem','deverá','deverão','dever','tem de','precisa','precisam','vinculado','vinculada','vinculação','vincula','discricionário','discricionária','discricionariedade',
-  'competência','atribuição','prazo','mínimo','máxima','mínima','absoluto','absoluta','relativo','relativa','limite','limites','limitado','limitada','ilimitado','ilimitada',
-  'prevê','estabelece','determina','exige','admite','permite','autoriza','impede','veda','proíbe','garante','assegura','limita','submete','depende','dependem','constitui','constituem','configura','caracteriza','define','responde','respondem','responsabiliza','obriga','possui','possuem','cabe','caberá','abrange','alcança','pressupõe','condiciona','dispõe','impõe','faculta','reconhece','admitida','admitido','vinculante','aplicável','cabível','legítimo','legítima','legal','ilegal','nulo','nula','válido','válida','inválido','inválida','público','pública','privado','privada','geral','específico','específica','especial','principal','secundário','secundária','único','única','mesmo','mesma','próprio','própria','distintos',
-  'caracteriza-se','consiste','define-se','denomina-se','corresponde','equivale','equivalem','difere','diferente','distinto','distinta','ao passo que','enquanto',
-];
-let _reChave = null;
-function destacarPalavrasChaveQuestao(htmlEscapado){
-  let html = destacarTermosDecisivos(htmlEscapado);
-  if(!html) return '';
-  if(!_reChave){
-    const alt = [...TERMOS_CHAVE].sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+')).join('|');
-    // + advérbios em -mente e adjetivos em -ável/-ível
-    _reChave = new RegExp('(?<![\\p{L}\\p{N}])(?:' + alt + '|\\p{L}{4,}mente|\\p{L}{3,}[áí]vel|\\p{L}{3,}[áí]veis)(?![\\p{L}\\p{N}])', 'giu');
-  }
-  // só mexe no texto entre tags (nunca dentro de <u ...> etc.)
-  return html.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(_reChave, x => `<b class="kw-chave">${x}</b>`));
-}
 // Justificativa: fundo de cor por categoria (negrito + cor de fundo suave)
 //  hl-abs vermelho = absolutos/negação/exceção · hl-causa azul = causa/conexão ·
 //  hl-norma verde = dever/poder/competência · hl-qtd âmbar = quantidade/tempo/prazo ·
 //  hl-verbo roxo = verbos/adjetivos-chave · hl-adv laranja = advérbios em -mente
-const _CAT_ABS = new Set([...TERMOS_DECISIVOS,'exclusivo','exclusiva','nem','sem','tampouco','só','exceto','salvo','ressalvado','ressalvada','não se aplica','não se aplicam','absoluto','absoluta','independentemente','independe','independem','por si só','suficiente','suficientes','basta','bastando','dispensa','dispensada','dispensado','dispensável','afasta','afastada','afastado','afastam','afastamento','ilimitado','ilimitada','nulo','nula','ilegal','inválido','inválida']);
-const _CAT_CAUSA = new Set(['visto que','uma vez que','já que','porque','pois','por força de','de tal modo que','de modo que','em razão de','por causa de','ocasionando','ocasionado','ocasiona','causa','causando','decorre','decorrente','resulta','resultando','implica','acarreta','provoca','consequência','consequentemente','sobretudo','principalmente','inclusive','mesmo que','ainda que','embora','contudo','porém','entretanto','todavia','desde que','apesar de','ao passo que','enquanto','tal como','assim como','bem como','pressupõe','condiciona']);
-const _CAT_NORMA = new Set(['pode','podem','poderá','poderão','deve','devem','deverá','deverão','dever','tem de','precisa','precisam','vedado','vedada','proibido','proibida','permitido','permitida','obrigatório','obrigatória','facultativo','facultativa','privativa','privativo','compete','cabe','caberá','competência','atribuição','discricionário','discricionária','discricionariedade','vinculado','vinculada','vinculação','vincula','vinculante','obriga','veda','proíbe','permite','autoriza','impede','impõe','faculta','em regra','via de regra','geralmente','normalmente','tende','tendem','costuma','frequentemente','eventualmente','em geral','necessário','necessária','necessários','necessárias','necessariamente']);
-const _CAT_QTD = new Set(['aumento','redução','diminuição','queda','elevação','ampliação','restrição','majoração','maior','menor','máximo','mínimo','máxima','mínima','integral','integralmente','parcial','parcialmente','imediato','imediatamente','automático','automaticamente','prévio','prévia','posterior','anterior','antes','depois','após','prazo','limite','limites','limitado','limitada','limita']);
-let _reHL = null;
-function _classeHL(m){
-  const t = m.toLowerCase().replace(/\s+/g,' ');
-  if(_CAT_ABS.has(t)) return 'hl-abs';
-  if(_CAT_CAUSA.has(t)) return 'hl-causa';
-  if(_CAT_NORMA.has(t)) return 'hl-norma';
-  if(_CAT_QTD.has(t)) return 'hl-qtd';
-  if(/mente$/.test(t)) return 'hl-adv';
-  return 'hl-verbo';
-}
-function destacarJustificativa(htmlEscapado){
-  if(!htmlEscapado) return '';
-  if(!_reHL){
-    const alt = [...new Set([...TERMOS_CHAVE, ..._CAT_ABS, ..._CAT_CAUSA, ..._CAT_NORMA, ..._CAT_QTD])].sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+')).join('|');
-    _reHL = new RegExp('(?<![\\p{L}\\p{N}])(?:' + alt + '|\\p{L}{4,}mente)(?![\\p{L}\\p{N}])', 'giu');
-  }
-  return htmlEscapado.replace(/(<[^>]*>)|([^<]+)/g, (m, tag, txt) => tag ? tag : txt.replace(_reHL, x => `<span class="hl ${_classeHL(x)}">${x}</span>`));
-}
 function destacarPalavrasChave(texto, palavrasExtras){
   if(!texto) return '';
   let html = esc(texto); // sem destaques: justificativa em texto limpo
