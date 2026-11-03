@@ -272,9 +272,16 @@ if(typeof pdfjsLib !== 'undefined'){
 }
 
 function mergeBucket(local, remote){
-  local = local || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[] };
-  remote = remote || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[] };
-  const merged = { perguntas:{...local.perguntas}, flash:{...local.flash}, sessoes:[...(local.sessoes||[])], simuladosSalvos:[...(local.simuladosSalvos||[])] };
+  local = local || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
+  remote = remote || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
+  // parte do bucket local inteiro ({...local}) para não perder campos que o merge não conhece
+  const merged = { ...local, perguntas:{...local.perguntas}, flash:{...local.flash}, sessoes:[...(local.sessoes||[])], simuladosSalvos:[...(local.simuladosSalvos||[])], chutes:{...(local.chutes||{})} };
+
+  // chutes: união por uid; em conflito vale a marcação mais recente
+  Object.entries(remote.chutes||{}).forEach(([uid, rc])=>{
+    const lc = merged.chutes[uid];
+    if(!lc || ((rc&&rc.ts)||0) > ((lc&&lc.ts)||0)) merged.chutes[uid] = rc;
+  });
 
   Object.entries(remote.perguntas||{}).forEach(([uid, remoteP])=>{
     const localP = merged.perguntas[uid];
@@ -286,9 +293,13 @@ function mergeBucket(local, remote){
       const k = h.ts+'-'+h.c;
       if(!seen.has(k)){ seen.add(k); dedup.push(h); }
     });
+    // o histórico guarda só 20 itens: os contadores nunca podem encolher abaixo do que já havia de cada lado
+    const tentativas = Math.max(dedup.length, (localP&&localP.tentativas)||0, remoteP.tentativas||0);
+    const acertos = Math.min(tentativas, Math.max(dedup.filter(h=>h.c).length, (localP&&localP.acertos)||0, remoteP.acertos||0));
     merged.perguntas[uid] = {
-      tentativas: dedup.length,
-      acertos: dedup.filter(h=>h.c).length,
+      ...(localP||{}),
+      tentativas,
+      acertos,
       ultimoResultado: dedup[dedup.length-1].c,
       historico: dedup.slice(-20),
     };
@@ -480,7 +491,7 @@ async function pullFromCloud({silent} = {}){
         mergeRemoteProgressoNaMemoria(progressoAntigo);
       }
       const materiasComProgresso = Array.isArray(data.materiasComProgresso) ? data.materiasComProgresso : [];
-      let algumaEdicaoNova = false, algumGabaritoNovo = false;
+      let algumaEdicaoNova = false, algumGabaritoNovo = false, falhouMateria = false;
       for(const materiaNome of materiasComProgresso){
         try{
           const docMateria = await fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugify(materiaNome)}`).get();
@@ -493,7 +504,7 @@ async function pullFromCloud({silent} = {}){
           if(docMateria.exists && docMateria.data().edicoes){
             if(mergeRemoteEdicoesNaMemoria(JSON.parse(docMateria.data().edicoes))) algumaEdicaoNova = true;
           }
-        }catch(e){ console.warn('Falha ao buscar o progresso da matéria "'+materiaNome+'" na nuvem', e); }
+        }catch(e){ falhouMateria = true; console.warn('Falha ao buscar o progresso da matéria "'+materiaNome+'" na nuvem', e); }
       }
       if(algumaEdicaoNova) salvarEdicoesUsuario();
       if(algumGabaritoNovo) salvarGabaritosAlterados();
@@ -506,6 +517,11 @@ async function pullFromCloud({silent} = {}){
         mergeRemoteQuizzesEmAndamentoNaMemoria(quizzesRemotos);
       }
       saveProgress();
+      if(falhouMateria){
+        // pull incompleto: não conta como sincronizado (evita sobrescrever a nuvem sem ter lido tudo)
+        setSyncStatusDOM('err', 'sincronização incompleta — tentando de novo depois', 'Alguma matéria não pôde ser lida da nuvem.');
+        return null;
+      }
       marcarUltimoSyncOk();
       return true;
     }else{
@@ -797,14 +813,31 @@ async function pushToCloud(){
           const q = BY_UID[uid];
           if(q && q.materia===materiaNome) edicoesDestaMateria[uid] = EDICOES_USUARIO[uid];
         });
-        await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugM}`).set(sanitizarParaFirestore(comDono({
+        const refM = fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugM}`);
+        // lê o que outro aparelho possa ter gravado e mescla ANTES de sobrescrever
+        // (se a leitura falhar, não grava: melhor tentar de novo do que apagar o outro aparelho)
+        try{
+          const docRemoto = await comLimiteDeTempo(refM.get(), 15000, 'tempo esgotado ao ler o progresso da matéria "'+materiaNome+'"');
+          if(docRemoto.exists){
+            const d = docRemoto.data();
+            if(d.progress) PROGRESS[materiaNome] = mergeBucket(PROGRESS[materiaNome], JSON.parse(d.progress));
+            if(d.gabaritos){ try{ if(mergeRemoteGabaritosNaMemoria(JSON.parse(d.gabaritos))) salvarGabaritosAlterados(); }catch(_){} }
+            if(d.edicoes){ try{ if(mergeRemoteEdicoesNaMemoria(JSON.parse(d.edicoes))) salvarEdicoesUsuario(); }catch(_){} }
+          }
+        }catch(eLeitura){ throw eLeitura; }
+        // desmarca ANTES de enviar: respostas dadas durante o envio marcam de novo e vão no próximo ciclo
+        MATERIAS_PROGRESSO_SUJAS.delete(materiaNome);
+        const edicoesDestaMateria2 = {};
+        Object.keys(EDICOES_USUARIO).forEach(uid=>{ const q = BY_UID[uid]; if(q && q.materia===materiaNome) edicoesDestaMateria2[uid] = EDICOES_USUARIO[uid]; });
+        try{
+        await comLimiteDeTempo(refM.set(sanitizarParaFirestore(comDono({
           materia: materiaNome,
           progress: JSON.stringify(PROGRESS[materiaNome]),
-          edicoes: JSON.stringify(edicoesDestaMateria),
+          edicoes: JSON.stringify(edicoesDestaMateria2),
           gabaritos: JSON.stringify(Object.fromEntries(Object.entries(GABARITOS_ALTERADOS).filter(([uid]) => BY_UID[uid] && BY_UID[uid].materia===materiaNome))),
           updatedAt: Date.now(),
         }))), 15000, 'tempo esgotado ao salvar progresso da matéria "'+materiaNome+'"');
-        MATERIAS_PROGRESSO_SUJAS.delete(materiaNome);
+        }catch(eEnvio){ MATERIAS_PROGRESSO_SUJAS.add(materiaNome); throw eEnvio; }
       }catch(e){
         algumaFalhou = true;
         console.warn('Falha ao salvar progresso de uma matéria na nuvem — as demais continuam sendo tentadas', e);
@@ -1103,6 +1136,8 @@ function saveProgress(){
   saveTimer = setTimeout(()=>{ pushToCloud(); }, 800);
 }
 async function salvarProgressoLocal(){
+  // se a leitura inicial falhou e nada foi respondido ainda, não grava um estado vazio por cima do que está no aparelho
+  if(window.__LOAD_PROGRESS_FALHOU && Object.keys(PROGRESS||{}).length===0) return;
   try{
     await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS));
   }catch(e){

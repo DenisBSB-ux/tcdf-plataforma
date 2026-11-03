@@ -90,6 +90,19 @@ function renderQuiz(){
   // reordenar a fila ou retomar um simulado antigo
   if(curarRespostasDoHistorico(quiz)) salvarQuizEmAndamento();
 
+  // uids que não existem mais (matéria apagada/substituída) saem da fila; fila vazia encerra o quiz
+  if(quiz.queue.some(u=>!BY_UID[u])){
+    const uidAntes = quiz.queue[quiz.idx];
+    quiz.queue = quiz.queue.filter(u=>BY_UID[u]);
+    const ni = quiz.queue.indexOf(uidAntes);
+    quiz.idx = ni>=0 ? ni : Math.max(0, Math.min(quiz.idx, quiz.queue.length-1));
+    salvarQuizEmAndamento();
+  }
+  if(!quiz.queue.length){
+    try{ limparQuizSalvo(chaveEmAndamento(quiz)); }catch(_){}
+    STATE.quiz = null;
+    return render();
+  }
   const uid = quiz.queue[quiz.idx];
   const q = BY_UID[uid];
   const resposta = quiz.respostas[uid];
