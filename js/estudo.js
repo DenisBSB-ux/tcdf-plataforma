@@ -144,6 +144,7 @@ function renderQuiz(){
       const customAlt = EDICOES_USUARIO[uidAtual] && EDICOES_USUARIO[uidAtual]['alt'+idx] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uidAtual]['alt'+idx]));
       let textoHtml = customAlt || esc(a.texto);
       if(!emEdicaoAlt && !customAlt && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uidAtual] && String(gabaritoEfetivo(q)||'').toUpperCase()===letraUp) textoHtml = destacarChavesNoEnunciado(textoHtml, q, 'alt');   // alternativa correta: palavras-chave da justificativa
+      if(!emEdicaoAlt && !customAlt && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uidAtual] && typeof mcMarcasAlternativas==='function'){ const mm = mcMarcasAlternativas(q); if(mm && mm[letraUp]) textoHtml = mm[letraUp]; }   // errada: palavras que a separam da certa riscadas; certa: palavras que a distinguem destacadas
       if(emEdicaoAlt){
         return `<div class="answer-opt-edit">
           <span class="letter">${letraUp}</span>
