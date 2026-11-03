@@ -22,7 +22,7 @@ const ATUALIZACOES_LEGAIS = [
   { re: 'Analise Dados|an[áa]lise de dados|IA\\b', data: '2026-11-02', resumo: 'Conferido em 26/10/2026 por busca: PL 2338/2023 (marco da IA) segue na Câmara, sem lei; nenhuma resolução de 2026 sobre IA no TCDF/TCU localizada. Reconferido em 02/11/2026 por busca web: PL 2338/2023 segue na Câmara, sem lei sancionada localizada.' },
 ];
 function atualizacaoLegalDaMateria(m){
-  const e = ATUALIZACOES_LEGAIS.find(x => new RegExp(x.re, 'i').test(m || ''));
+  const e = ATUALIZACOES_LEGAIS.find(x => _reI(x.re).test(m || ''));
   return e ? { data: e.data || '', resumo: e.resumo || '' } : { data: '', resumo: '' };
 }
 function atualizacaoLegalBadge(m){
@@ -59,12 +59,15 @@ const ALTERACOES_LEGAIS = [
   { id:'dif-cf-2026-10-26', mat:'constitucional|CF|direitos fundamentais|previd|controle', titulo:'Redação diferente do texto consolidado oficial: CF (art. 219-B, art. 250)', resumo:'O texto do pop-up difere do texto consolidado oficial nestes artigos (pode ser forma/abreviação ou atualização pendente): art. 219-B, art. 250. Conferir.', fonte:'Normas.leg.br (Senado) · texto consolidado, comparação automática', registrada:'2026-10-26', status:'a-conferir', dispositivos:[{norma:'CF', n:219},{norma:'CF', n:250}], gabarito:'' },
   { id:'dif-cf-2026-11-02', mat:'constitucional|CF|direitos fundamentais|previd|controle', titulo:'Redação diferente do texto consolidado oficial: CF (art. 219-B, art. 250)', resumo:'O texto do pop-up difere do texto consolidado oficial nestes artigos (pode ser forma/abreviação ou atualização pendente): art. 219-B, art. 250. Conferir.', fonte:'Normas.leg.br (Senado) · texto consolidado, comparação automática', registrada:'2026-11-02', status:'a-conferir', dispositivos:[{norma:'CF', n:219},{norma:'CF', n:250}], gabarito:'' },
 ];
-function alteracoesDaMateria(m){ return ALTERACOES_LEGAIS.filter(a => new RegExp(a.mat, 'i').test(m || '')); }
+// expressões compiladas uma vez só (alteracoesDaQuestao roda por questão a cada desenho da tela)
+const _reCache = new Map();
+function _reI(src){ let r = _reCache.get(src); if(!r){ r = new RegExp(src, 'i'); _reCache.set(src, r); } return r; }
+function alteracoesDaMateria(m){ return ALTERACOES_LEGAIS.filter(a => _reI(a.mat).test(m || '')); }
 function alteracoesDaQuestao(q){
   if(!q) return [];
   let refs = []; try{ refs = refsArtigosDaQuestao(q); }catch(_){}
   const txt = String(q.q||'') + ' ' + String(q.r||'').split(/\n/).filter(l=>/^\s*[⚖📌]/u.test(l)).join(' ');
-  return alteracoesDaMateria(q.materia).filter(a => (a.dispositivos||[]).some(d => refs.some(r => (!r.norma || r.norma===d.norma) && +r.n===+d.n)) && (!a.termo || new RegExp(a.termo,'i').test(txt)));
+  return alteracoesDaMateria(q.materia).filter(a => (a.dispositivos||[]).some(d => refs.some(r => (!r.norma || r.norma===d.norma) && +r.n===+d.n)) && (!a.termo || _reI(a.termo).test(txt)));
 }
 /* alteração que traz trecho/correção/justificativa prontos e cujo trecho consta no enunciado (item defasado: rachura + correção + Justificativa) */
 function _reTermos(lista){ return new RegExp((lista||[]).slice().sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'), 'i'); }
