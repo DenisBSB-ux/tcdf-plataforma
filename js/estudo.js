@@ -364,10 +364,13 @@ function botaoEditarTudo(uid){
 function _normDest(s){ return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ').trim(); }
 // base do destaque: palavras-chave (🔑) + termos em negrito/marca-texto da essência (📌)
 function kwsDestaqueDaQuestao(q){
+  // destaque só das palavras MAIS relevantes: o termo decisivo do 📌 (==amarelo==); sem ele, o termo em negrito do 📌; sem ele, a 1ª palavra-chave 🔑. No máximo 2.
   const linhas = String(q.r||'').split(/\n+/);
-  const linha = linhas.filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'');
-  const ess = []; linhas.filter(l=>/^\s*📌/u.test(l)).forEach(l=>{ l.replace(/\*\*(.+?)\*\*|==(.+?)==/g,(m,a,b)=>{ ess.push(a||b); return m; }); });
-  return linha.split(/\s*[·|]\s*/).concat(ess).map(k=>k.trim()).filter(k=>k.length>=4);
+  const chaves = linhas.filter(l=>/^\s*🔑/u.test(l)).join(' ').replace(/^\s*🔑\s*/u,'').replace(/[*=]/g,'').split(/\s*[·|]\s*/).map(k=>k.trim()).filter(k=>k.length>=4);
+  const dec = [], neg = [];
+  linhas.filter(l=>/^\s*📌/u.test(l)).forEach(l=>{ l.replace(/\*\*(.+?)\*\*|==(.+?)==/g,(m,a,b)=>{ if(b) dec.push(b); else neg.push(a); return m; }); });
+  const lista = (dec.length ? dec : neg.length ? neg : chaves.slice(0,1)).map(k=>k.trim()).filter(k=>k.length>=4);
+  return lista.slice(0,2);
 }
 function _alternativaCorreta(q){
   if(q.t!=='MC' || !q.alt) return '';

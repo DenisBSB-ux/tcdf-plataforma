@@ -240,7 +240,6 @@ function armEditorHtml(q, a){
       <button type="button" class="btn-ui" data-arm-fulltxt="${esc(uid)}" title="Usa o item inteiro como trecho">↧ Item inteiro</button>
     </div>
     <textarea id="arm-txt-tr" hidden>${esc(a.trecho||'')}</textarea><textarea id="arm-txt-co" hidden>${esc(a.correcao||'')}</textarea>
-    <div class="arm-edit-txt"><span class="arm-edit-rot">${a.errado?'Justificativa (explicação da armadilha)':'Explicação'}</span><div id="arm-txt-ex" class="arm-rich arm-rich-curta campo-editavel-conteudo" contenteditable="true">${armExplHtml(a.expl)}</div></div>
     <div class="arm-edit-acoes">
       ${(typeof edicaoAtual!=='undefined' && edicaoAtual===uid) ? `<button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar edição</button>
       <button class="btn-ui btn-cancelar-edicao" data-editar-acao="cancelar">✕ Cancelar</button>` : `<button class="btn-ui btn-ui-salvar" data-arm-save="${esc(uid)}">💾 Salvar (origem: manual)</button>
@@ -264,7 +263,7 @@ function armAplicarEdicao(q){
     const orig = { tr: q.tr||'', ex: q.ex||'' };
     const tr = (g('arm-txt-tr')||'').trim();
     const exDiv = document.getElementById('arm-txt-ex');
-    let ex = '';
+    let ex = typeof EDICOES_USUARIO[uid].arm_ex === 'string' ? EDICOES_USUARIO[uid].arm_ex : orig.ex;   // campo "Justificativa (explicação da armadilha)" removido do editor: o texto existente fica como está
     if(exDiv){ prepararEditorParaSalvar(exDiv); ex = limparHtmlEditado(exDiv.innerHTML).trim(); if(ex === esc(orig.ex)) ex = orig.ex; }
     const co = (g('arm-txt-co')||'').trim();
     if(co !== (q.co||'')) EDICOES_USUARIO[uid].arm_co = co; else delete EDICOES_USUARIO[uid].arm_co;
