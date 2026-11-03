@@ -76,15 +76,20 @@ function enviarImagensPendentes(){
 }
 async function buscarImagemNuvem(id){
   if(_imgBuscando.has(id)) return;
+  if(typeof sincronizacaoAtiva!=='function' || !sincronizacaoAtiva()) return;   // sem sincronização: tenta de novo quando ela ativar
   _imgBuscando.add(id);
+  let ok = false;
   try{
-    if(typeof sincronizacaoAtiva!=='function' || !sincronizacaoAtiva()) return;
     const doc = await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__img__${id}`).get(), 15000, 'tempo esgotado ao buscar figura');
-    if(doc.exists && doc.data().dataUrl){
-      IMAGENS_USUARIO[id] = doc.data().dataUrl; IMAGENS_ENVIADAS.add(id); salvarImagensUsuario();
+    const d = doc.exists && doc.data().dataUrl;
+    if(typeof d==='string' && /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+\/=]+$/.test(d)){
+      ok = true;
+      IMAGENS_USUARIO[id] = d; IMAGENS_ENVIADAS.add(id); salvarImagensUsuario();
       if(typeof render==='function' && (STATE.quiz || STATE.flashDeck) && !edicaoAtual) render();
     }
   }catch(e){ console.warn('Figura ainda não disponível neste aparelho', e); }
+  // falha ou figura ausente: libera para nova tentativa depois de 1 min (evita buscar a cada render)
+  if(!ok) setTimeout(()=>_imgBuscando.delete(id), 60000);
 }
 
 /* ---------- exibição / salvamento ---------- */

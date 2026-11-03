@@ -364,11 +364,18 @@ function edicaoCorrespondeAQuestao(q, ed){
 }
 function descartarEdicoesOrfas(){
   try{
-    let n = 0;
+    let n = 0; const orfas = {};
     Object.keys(EDICOES_USUARIO).forEach(uid => {
       const q = BY_UID[uid];
-      if(q && !edicaoCorrespondeAQuestao(q, EDICOES_USUARIO[uid])){ delete EDICOES_USUARIO[uid]; n++; }
+      if(q && !edicaoCorrespondeAQuestao(q, EDICOES_USUARIO[uid])){ orfas[uid] = EDICOES_USUARIO[uid]; delete EDICOES_USUARIO[uid]; n++; }
     });
+    // nada é perdido de vez: as edições retiradas ficam numa cópia de segurança local (não sincronizada)
+    if(n && typeof storageGet === 'function' && typeof storageSet === 'function'){
+      storageGet('tcdf-edicoes-orfas').then(r=>{
+        let antigo = {}; try{ antigo = (r && r.value) ? JSON.parse(r.value) : {}; }catch(_){}
+        return storageSet('tcdf-edicoes-orfas', JSON.stringify({ ...antigo, ...orfas }));
+      }).catch(()=>{});
+    }
     if(n && typeof salvarEdicoesUsuario === 'function') salvarEdicoesUsuario();
     return n;
   }catch(_){ return 0; }

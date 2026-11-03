@@ -1,7 +1,11 @@
 /* ================= init ================= */
 (async function init(){
   root.innerHTML = `<div style="padding:60px;text-align:center;color:#a9b6cc;font-family:var(--font-mono);font-size:13px;">Carregando processo…</div>`;
-  await loadProgress();
+  try{ await loadProgress(); }catch(e){
+    console.error('Falha ao carregar o progresso — iniciando com estado vazio (nada foi apagado do armazenamento)', e);
+    try{ if(typeof PROGRESS==='undefined' || !PROGRESS) PROGRESS = {}; }catch(_){}
+    window.__LOAD_PROGRESS_FALHOU = true;
+  }
   ensureMateriaSelecionada();
   APP_INICIADO = true;
   render();
