@@ -41,7 +41,9 @@ service cloud.firestore {
       allow update: if logado()
                     && request.resource.data.dono == request.auth.uid
                     && (!('dono' in resource.data) || resource.data.dono == request.auth.uid);
-      allow delete: if administrador();
+      // o dono apaga o próprio documento (ex.: limpar dados); legados sem "dono" só o administrador apaga
+      allow delete: if administrador()
+                    || (logado() && resource != null && 'dono' in resource.data && resource.data.dono == request.auth.uid);
     }
   }
 }

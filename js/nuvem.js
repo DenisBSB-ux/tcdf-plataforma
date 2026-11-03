@@ -470,7 +470,8 @@ async function puxarPrefs(){
     if(typeof p.zoom==='number' && p.zoom>=0.8 && p.zoom<=1.6){ STATE.zoomLevel = p.zoom; storageSet(ZOOM_KEY, String(p.zoom)).catch(()=>{}); }
     _lsSet(ORDEM_MATERIAS_KEY, p.ordemMaterias); _lsSet(ORDEM_SIMULADO_KEY, p.ordemSimulado); _lsSet(ARM_CRIT_KEY, p.armCrit);
     try{ if(p.armCrit) armCritAplicar(JSON.parse(p.armCrit)); else armCritAplicar(null); }catch(_){}
-    if(p.heur && typeof HEUR_STATS!=='undefined'){ HEUR_STATS = p.heur; storageSet(HEUR_STATS_KEY, JSON.stringify(HEUR_STATS)).catch(()=>{}); }
+    const heurOk = (p.heur && typeof heurStatsSanear==='function') ? heurStatsSanear(p.heur) : null;
+    if(heurOk && typeof HEUR_STATS!=='undefined'){ HEUR_STATS = heurOk; storageSet(HEUR_STATS_KEY, JSON.stringify(HEUR_STATS)).catch(()=>{}); }
     _lsSet(PREFS_TS_KEY, String(d.updatedAt));
     try{ render(); }catch(_){}
   }catch(e){ console.warn('Falha ao buscar preferências na nuvem', e); }
