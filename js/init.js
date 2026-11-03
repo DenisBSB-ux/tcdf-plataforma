@@ -1,4 +1,31 @@
 /* ================= init ================= */
+// redesenho automático (timers) só quando não atrapalha: nada em edição e nenhum campo com o foco
+function podeRenderizarAgora(){
+  try{
+    if(typeof edicaoAtual!=='undefined' && edicaoAtual) return false;
+    const a = document.activeElement;
+    if(a && (a.isContentEditable || /^(input|textarea|select)$/i.test(a.tagName)) && a !== document.body) return false;
+  }catch(_){}
+  return true;
+}
+// acessibilidade: chips e linhas clicáveis (span/div) viram botões alcançáveis pelo teclado (Tab, Enter, Espaço)
+(function tornarClicaveisAcessiveis(){
+  const SEL = 'span.chip, [data-macro-materia]';
+  function marcar(){
+    try{ document.querySelectorAll(SEL).forEach(el=>{
+      if(el.tagName==='BUTTON' || el.tagName==='A' || el.hasAttribute('tabindex')) return;
+      el.setAttribute('tabindex','0'); if(!el.getAttribute('role')) el.setAttribute('role','button');
+    }); }catch(_){}
+  }
+  const orig = render;
+  render = function(){ const r = orig.apply(this, arguments); marcar(); return r; };
+  document.addEventListener('keydown', e=>{
+    if(e.key!=='Enter' && e.key!==' ') return;
+    const el = e.target && e.target.closest && e.target.closest(SEL);
+    if(!el || el!==e.target || el.tagName==='BUTTON') return;
+    e.preventDefault(); el.click();
+  });
+})();
 (async function init(){
   root.innerHTML = `<div style="padding:60px;text-align:center;color:#a9b6cc;font-family:var(--font-mono);font-size:13px;">Carregando processo…</div>`;
   try{ await loadProgress(); }catch(e){
@@ -49,14 +76,14 @@
         ts: Date.now(),
         motivo: !ok ? 'falha ao salvar localmente' : (!okNuvem ? ('falha ao publicar na nuvem: '+motivoNuvem) : null),
       };
-      render();
+      if(podeRenderizarAgora()) render();
     }).catch(()=>{});
   }, 5*60*1000);
   // busca periódica de matérias publicadas por outro dispositivo. Não roda
   // durante um simulado pra não re-renderizar no meio de uma resposta.
   setInterval(()=>{
-    if(STATE.quiz) return;
-    sincronizarMateriasPublicas().then(()=> render()).catch(()=>{});
+    if(STATE.quiz || document.visibilityState==='hidden') return;
+    sincronizarMateriasPublicas().then(()=>{ if(podeRenderizarAgora()) render(); }).catch(()=>{});
   }, 5*60*1000);
   // garante que o simulado em andamento chegue na nuvem mesmo se a aba for
   // fechada/minimizada antes do debounce de 250ms disparar sozinho — essencial

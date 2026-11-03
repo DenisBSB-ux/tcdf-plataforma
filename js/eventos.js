@@ -628,7 +628,9 @@ function attachHandlers(){
 /* ================= atalhos de teclado ================= */
 function isDigitandoEmCampo(e){
   const tag = (e.target && e.target.tagName || '').toLowerCase();
-  return tag==='input' || tag==='textarea';
+  if(tag==='input' || tag==='textarea' || tag==='select') return true;
+  const t = e.target;
+  return !!(t && (t.isContentEditable || (t.closest && t.closest('[contenteditable="true"]'))));
 }
 document.addEventListener('keydown', (e)=>{
   if(isDigitandoEmCampo(e)) return;

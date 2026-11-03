@@ -44,6 +44,22 @@ function armChave(txt){
   txt = String(txt||'').replace(/\n?\s*\(\s*\)\s*(Certo|Errado)?\s*$/gim,'').replace(/\s*(Certo\s+Errado|Errado\s+Certo)\s*$/i,'').replace(/^\s*\d+[.)]\s*/,'');
   const n = armNorm(txt); return n.length<=140 ? n : n.slice(0,100)+'~'+n.slice(-40); }
 let ARM_IDX = null;
+// a base pré-classificada (1,4 MB) carrega depois do primeiro desenho da tela, sem bloquear a abertura do app
+const _ARM_SRC_VER = (document.currentScript && /[?&]v=([^&]+)/.exec(document.currentScript.src || '') || [])[1] || '';
+let _armDadosEstado = 0;   // 0 = não pedido, 1 = carregando, 2 = pronto, 3 = falhou
+function armDadosCarregar(){
+  if(_armDadosEstado || typeof ARM_DADOS!=='undefined') return;
+  _armDadosEstado = 1;
+  const sc = document.createElement('script');
+  sc.src = 'js/armadilhas-dados.js' + (_ARM_SRC_VER ? '?v=' + _ARM_SRC_VER : '');
+  sc.onload = ()=>{
+    _armDadosEstado = 2; ARM_IDX = null;
+    ALL_QUESTIONS.forEach(q=>{ delete q._armH; });          // reclassifica o que foi visto antes dos dados chegarem
+    try{ if(typeof edicaoAtual==='undefined' || !edicaoAtual) render(); }catch(_){}
+  };
+  sc.onerror = ()=>{ _armDadosEstado = 3; console.warn('Não foi possível carregar a classificação de armadilhas.'); };
+  document.head.appendChild(sc);
+}
 function armIndice(){
   if(ARM_IDX) return ARM_IDX;
   ARM_IDX = { fp:new Map(), uid:new Map() };
@@ -56,7 +72,9 @@ function armIndice(){
 }
 // aplica (uma vez) a classificação pré-existente do banco à questão, se ela ainda não traz a sua
 function armHidratar(q){
-  if(q._armH) return; q._armH = true;
+  if(q._armH) return;
+  if(typeof ARM_DADOS==='undefined'){ armDadosCarregar(); return; }   // ainda sem a base: tenta de novo quando ela chegar
+  q._armH = true;
   if(q.ap || q.sc || q.ao) return;
   const ix = armIndice();
   let r = ix.fp.get(armChave(q.q));
