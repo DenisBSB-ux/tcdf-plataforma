@@ -271,7 +271,29 @@ if(typeof pdfjsLib !== 'undefined'){
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/legacy/build/pdf.worker.min.js';
 }
 
+// Troca de numeração (Substituir por matéria): o lado mais antigo tem uids que, na lista nova, apontam para OUTRAS questões.
+// Se o lado novo traz o mapa antigo->novo e ele parte exatamente da geração do lado antigo, migra; senão descarta os dados por uid.
+function _migrarBucketPorMapa(velho, novo){
+  const mig = novo && novo.migracao;
+  const ok = mig && mig.mapa && (mig.de||0) === (velho.geracao||0);
+  const out = { ...velho, perguntas:{}, flash:{}, chutes:{}, sessoes:(velho.sessoes||[]).map(x=>({ ...x, queue:null, respostas:null })), simuladosSalvos:[] };
+  if(!ok) return out;
+  const mapa = mig.mapa;
+  Object.entries(velho.perguntas||{}).forEach(([u,p])=>{
+    const n = mapa[u]; if(!n || !p) return;
+    out.perguntas[n] = out.perguntas[n] && typeof somarProgressoDaQuestao==='function' ? somarProgressoDaQuestao(out.perguntas[n], p) : p;
+  });
+  Object.entries(velho.flash||{}).forEach(([u,f])=>{ const n = mapa[u]; if(n && !out.flash[n]) out.flash[n] = f; });
+  Object.entries(velho.chutes||{}).forEach(([u,c])=>{ const n = mapa[u]; if(n && !out.chutes[n]) out.chutes[n] = c; });
+  return out;
+}
 function mergeBucket(local, remote){
+  const gl = (local && local.geracao) || 0, gr = (remote && remote.geracao) || 0;
+  if(gl !== gr){
+    // o lado de geração menor é migrado para a numeração do maior antes de mesclar
+    if(gr > gl){ local = _migrarBucketPorMapa(local || {}, remote); local.geracao = gr; local.migracao = remote.migracao; }
+    else { remote = _migrarBucketPorMapa(remote || {}, local); remote.geracao = gl; }
+  }
   local = local || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
   remote = remote || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
   // parte do bucket local inteiro ({...local}) para não perder campos que o merge não conhece
@@ -788,6 +810,36 @@ async function publicarQuestoesNoFirestore(nomesMaterias, force){
 }
 
 
+// Limite do Firestore: ~1 MiB por documento. O progresso local nunca é podado; só a CÓPIA enviada à nuvem,
+// em etapas, da menos para a mais valiosa, até caber (margem de segurança para os outros campos do documento).
+const LIMITE_DOC_NUVEM = 900000;
+function _bytesUtf8(str){ try{ return new TextEncoder().encode(str).length; }catch(_){ return str.length*2; } }
+function progressoParaNuvem(bucket, outrosBytes){
+  const cabe = txt => _bytesUtf8(txt) + outrosBytes <= LIMITE_DOC_NUVEM;
+  let txt = JSON.stringify(bucket);
+  if(cabe(txt)) return { json: txt, podado: 0 };
+  const c = JSON.parse(txt);
+  const etapas = [
+    // 1) fila/respostas das sessões antigas (mantém só totais); as 10 mais recentes ficam completas
+    () => (c.sessoes||[]).slice(0, -10).forEach(x=>{ x.queue = null; x.respostas = null; }),
+    // 2) histórico por questão limitado às 5 últimas tentativas (tentativas/acertos continuam inteiros)
+    () => Object.values(c.perguntas||{}).forEach(p=>{ if(p && Array.isArray(p.historico) && p.historico.length>5) p.historico = p.historico.slice(-5); }),
+    // 3) fila/respostas de todas as sessões
+    () => (c.sessoes||[]).forEach(x=>{ x.queue = null; x.respostas = null; }),
+    // 3b) só as 2 últimas tentativas por questão
+    () => Object.values(c.perguntas||{}).forEach(p=>{ if(p && Array.isArray(p.historico) && p.historico.length>2) p.historico = p.historico.slice(-2); }),
+    // 4) simulados salvos mais antigos, um a um, mantendo ao menos o mais recente
+    () => { while((c.simuladosSalvos||[]).length>1){ c.simuladosSalvos.shift(); if(cabe(JSON.stringify(c))) break; } },
+    // 5) sessões mais antigas, mantendo as 10 mais recentes
+    () => { if((c.sessoes||[]).length>10) c.sessoes = c.sessoes.slice(-10); },
+  ];
+  let n = 0;
+  for(const etapa of etapas){
+    etapa(); n++; txt = JSON.stringify(c);
+    if(cabe(txt)) return { json: txt, podado: n };
+  }
+  return null;   // não cabe nem podado: quem chama avisa em vez de tentar gravar (a gravação falharia)
+}
 async function pushToCloud(){
   if(!sincronizacaoAtiva()) return;
   enviarImagensPendentes(); // figuras novas das edições (coleção progresso, 1 doc por figura)
@@ -830,12 +882,17 @@ async function pushToCloud(){
         MATERIAS_PROGRESSO_SUJAS.delete(materiaNome);
         const edicoesDestaMateria2 = {};
         Object.keys(EDICOES_USUARIO).forEach(uid=>{ const q = BY_UID[uid]; if(q && q.materia===materiaNome) edicoesDestaMateria2[uid] = EDICOES_USUARIO[uid]; });
+        const edicoesJson = JSON.stringify(edicoesDestaMateria2);
+        const gabaritosJson = JSON.stringify(Object.fromEntries(Object.entries(GABARITOS_ALTERADOS).filter(([uid]) => BY_UID[uid] && BY_UID[uid].materia===materiaNome)));
+        const prog = progressoParaNuvem(PROGRESS[materiaNome], _bytesUtf8(edicoesJson) + _bytesUtf8(gabaritosJson) + 2000);
+        if(!prog){ MATERIAS_PROGRESSO_SUJAS.add(materiaNome); throw new Error('o progresso da matéria "'+materiaNome+'" é grande demais para a nuvem (limite de 1 MB por documento) — continua salvo neste dispositivo'); }
+        if(prog.podado) console.warn('Progresso da matéria "'+materiaNome+'" reduzido para caber na nuvem (etapa '+prog.podado+'); o completo permanece neste aparelho.');
         try{
         await comLimiteDeTempo(refM.set(sanitizarParaFirestore(comDono({
           materia: materiaNome,
-          progress: JSON.stringify(PROGRESS[materiaNome]),
-          edicoes: JSON.stringify(edicoesDestaMateria2),
-          gabaritos: JSON.stringify(Object.fromEntries(Object.entries(GABARITOS_ALTERADOS).filter(([uid]) => BY_UID[uid] && BY_UID[uid].materia===materiaNome))),
+          progress: prog.json,
+          edicoes: edicoesJson,
+          gabaritos: gabaritosJson,
           updatedAt: Date.now(),
         }))), 15000, 'tempo esgotado ao salvar progresso da matéria "'+materiaNome+'"');
         }catch(eEnvio){ MATERIAS_PROGRESSO_SUJAS.add(materiaNome); throw eEnvio; }

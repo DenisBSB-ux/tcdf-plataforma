@@ -668,6 +668,7 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   // junto pra questão equivalente (não pelo número, que muda entre arquivos).
   // Progresso de questão que não existe mais no arquivo é descartado.
   let progressoAnterior = null;
+  const mapaUid = {}, chutesOld = {};   // mapaUid: uid antigo -> uid novo (vai para a nuvem; ver mergeBucket)
   const edOld = {}, gabOld = {}, flashOld = {}; // edições/gabaritos/flashcards seguem a questão equivalente, não o uid
   const opSub = (modo === 'substituir' && STATE.substituirOpcoes) || {}; // escolhas do diálogo de "Substituir por matéria"
   if(modo === 'substituir') STATE.substituirOpcoes = null;
@@ -679,6 +680,7 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
       if(EDICOES_USUARIO[q.uid]){ edOld[q.uid] = EDICOES_USUARIO[q.uid]; delete EDICOES_USUARIO[q.uid]; }
       if(GABARITOS_ALTERADOS[q.uid]){ gabOld[q.uid] = GABARITOS_ALTERADOS[q.uid]; delete GABARITOS_ALTERADOS[q.uid]; }
       if(bucket.flash && bucket.flash[q.uid]) flashOld[q.uid] = bucket.flash[q.uid];
+      if(bucket.chutes && bucket.chutes[q.uid]){ chutesOld[q.uid] = bucket.chutes[q.uid]; delete bucket.chutes[q.uid]; }
       if(bucket.perguntas[q.uid]) progressoAnterior[q.uid] = bucket.perguntas[q.uid];
       delete bucket.perguntas[q.uid];
       if(bucket.flash) delete bucket.flash[q.uid];
@@ -711,6 +713,8 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
     if(progressoAnterior){
       let manteve = false;
       equivalentes.forEach(eq=>{
+        mapaUid[eq.uid] = uid;
+        if(chutesOld[eq.uid]){ bucket.chutes = bucket.chutes || {}; if(!bucket.chutes[uid]) bucket.chutes[uid] = chutesOld[eq.uid]; }
         if(edOld[eq.uid] && !EDICOES_USUARIO[uid]){
           const ed = { ...edOld[eq.uid] };
           if(opSub.descartarRes){ delete ed.r; delete ed.rf; } // usa a resolução (e o resumo flash) do arquivo
@@ -728,6 +732,8 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
     added++;
   });
   if(progressoAnterior){
+    // registra a "geração" do progresso: outro aparelho que ainda tenha uids antigos usa este mapa para migrá-los no merge
+    try{ const idGer = Date.now(); bucket.migracao = { de: bucket.geracao||0, id: idGer, mapa: mapaUid }; bucket.geracao = idGer; marcarProgressoSujo(materiaNome); }catch(_){}
     // 2) os uids são `${slug}-${número}` e o número muda entre arquivos: o simulado salvo (respostas por uid) passaria a apontar
     //    para outra questão. O progresso já acompanhou cada questão pelo enunciado; o simulado é descartado e recomeça dele.
     try{ limparQuizSalvo(materiaNome); if(STATE.quiz && STATE.quiz.materia===materiaNome) STATE.quiz = null; }catch(_){}
