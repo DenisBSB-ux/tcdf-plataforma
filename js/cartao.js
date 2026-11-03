@@ -167,3 +167,22 @@ function cartaoComparativoHtml(q, picked){
     <div class="cc-rod">Trecho do item: <mark>${esc(p.trecho)}</mark></div>
   </div>`; }).join('') + `<button type="button" class="cc-toggle cc-ocultar" data-cartoes-toggle title="Ocultar os cartões comparativos">📊 Ocultar cartões</button>`;
 }
+
+/* múltipla escolha, depois de responder: nas alternativas ERRADAS as palavras que as separam da certa ficam riscadas; na CERTA, as
+   palavras que a distinguem da errada mais parecida ficam destacadas (só quando a diferença é pontual; usa só o texto da questão) */
+function mcMarcasAlternativas(q){
+  if(!q || q.t!=='MC' || !Array.isArray(q.alt) || typeof gabaritoEfetivo!=='function') return null;
+  const g = String(gabaritoEfetivo(q)||'').toUpperCase();
+  const certa = q.alt.find(a=>String(a.letra).toUpperCase()===g); if(!certa) return null;
+  const marca = (lista, tag, cls)=> lista.map(x=> x.d ? `<${tag} class="${cls}">${esc(x.w)}</${tag}>` : esc(x.w)).join(' ');
+  const out = {}; let melhor = null;
+  q.alt.forEach(a=>{
+    if(a===certa) return;
+    const df = cartaoDiff(a.texto, certa.texto, { max:8, ratio:0.3, maxTokens:45 }); if(!df) return;
+    out[String(a.letra).toUpperCase()] = marca(df.a, 'del', 'arm-trecho');
+    const n = df.b.filter(x=>x.d).length; if(!melhor || n < melhor.n) melhor = { n, df };
+  });
+  if(!Object.keys(out).length) return null;
+  out[g] = marca(melhor.df.b, 'mark', 'arm-correcao');
+  return out;
+}
