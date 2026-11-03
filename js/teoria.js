@@ -157,7 +157,7 @@ async function leitorAbrirPdf(dados, pagina, rotulo){
   try{
     const lib = await pdfjsCarregar();
     if(LEITOR.pdf){ try{ LEITOR.pdf.destroy(); }catch(_){} }
-    LEITOR.pdf = await lib.getDocument({ data: new Uint8Array(dados.slice(0)) }).promise;
+    LEITOR.pdf = await lib.getDocument({ data: new Uint8Array(dados.slice(0)), isEvalSupported: false }).promise;
     LEITOR.total = LEITOR.pdf.numPages; LEITOR.zoom = null; LEITOR.pag = Math.min(Math.max(1, pagina||1), LEITOR.total);
     document.getElementById('leitor-total').textContent = '/ ' + LEITOR.total; document.getElementById('leitor-pag').max = LEITOR.total;
     leitorAvisar(''); await leitorDesenhar();
@@ -569,8 +569,13 @@ function teoriaBotaoHtml(q){
 /* ---- texto oficial dentro da plataforma (js/ctn-texto.js, js/cf-texto.js) ---- */
 const LEI = { aberta:false, norma:'CTN', n:'1', q:null, modo:'lei', secs:[], i:0 };
 const leiCarregando = {};
+// lê a constante global do texto da lei (declarada com const, fora do window); só aceita nomes no formato NOME_TEXTO
+function leiGlobal(nome){
+  if(!/^[A-Z][A-Z0-9_]*$/.test(String(nome))) throw new Error('nome de texto inválido');
+  return (0, eval)(nome);
+}
 function leiCarregar(norma){
-  const f = LEI_FONTES[norma]; let d = null; try{ d = eval(f.global); }catch(_){}
+  const f = LEI_FONTES[norma]; let d = null; try{ d = leiGlobal(f.global); }catch(_){}
   if(d) return Promise.resolve();
   if(leiCarregando[norma]) return leiCarregando[norma];
   leiCarregando[norma] = new Promise((ok,falha)=>{
@@ -582,7 +587,7 @@ function leiCarregar(norma){
 }
 function anexoRank(k){ const m = String(k).match(/^ANEXO ([IVXL]+)/); if(!m) return 0; const v = {I:1,V:5,X:10,L:50}; let n=0, p=0; m[1].split('').reverse().forEach(c=>{ const x=v[c]; n += x<p ? -x : x; p = x; }); return n; }
 function leiOrdem(norma){
-  const d = eval(LEI_FONTES[norma].global); if(d.__ordem) return d.__ordem;
+  const d = leiGlobal(LEI_FONTES[norma].global); if(d.__ordem) return d.__ordem;
   if(norma==='SUM'){ const k0 = Object.keys(d); Object.defineProperty(d,'__ordem',{ value:k0, enumerable:false }); return k0; }
   const k = Object.keys(d).sort((a,b)=>{ const x=a.split('-'), y=b.split('-'), nx=isNaN(+x[0])?1e9:+x[0], ny=isNaN(+y[0])?1e9:+y[0]; return (nx-ny) || (nx===1e9 ? (anexoRank(a)-anexoRank(b) || a.localeCompare(b)) : 0) || String(x[1]||'').localeCompare(String(y[1]||'')); });
   Object.defineProperty(d,'__ordem',{ value:k, enumerable:false }); return k;
@@ -675,7 +680,7 @@ function leiDestacarTermos(txt, termos){
   return out + esc(txt.slice(ult));
 }
 function leiDesenhar(){
-  const f = LEI_FONTES[LEI.norma], d = eval(f.global), n = LEI.n;
+  const f = LEI_FONTES[LEI.norma], d = leiGlobal(f.global), n = LEI.n;
   document.getElementById('lei-titulo').textContent = f.titulo;
   document.getElementById('lei-n').value = n;
   const ext = document.getElementById('lei-ext'); if(TEORIA_LEI_URL[LEI.norma]){ ext.href = `${TEORIA_LEI_URL[LEI.norma]}#art${String(n).replace(/-.*/,'')}`; ext.hidden = false; } else { ext.removeAttribute('href'); ext.hidden = true; }

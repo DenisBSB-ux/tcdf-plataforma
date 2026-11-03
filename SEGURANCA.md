@@ -23,8 +23,8 @@ sincronização dela.
    *Entrar com Google*. O UID aparece ao passar o mouse sobre o seu nome.
 
 4. **Publicar as regras**
-   Abrir `firestore.rules`, trocar `COLE_SEU_UID_AQUI` pelo UID do passo 3,
-   colar em *Firestore Database* → *Regras* → *Publicar*.
+   Abrir `firestore.rules`. O arquivo já traz o UID do administrador atual; se for outra conta,
+   troque o UID na função `administrador()` pelo do passo 3. Depois cole em *Firestore Database* → *Regras* → *Publicar*.
 
 5. **Entrar com Google em cada dispositivo**
    Depois do passo 4, gravar progresso e publicar matérias exige estar logado.

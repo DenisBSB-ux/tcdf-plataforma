@@ -687,8 +687,10 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   }
   const slug = slugify(materiaNome);
   if(modo === 'substituir'){   // sobras de edições (aparelho ou nuvem) com uid desta matéria caem em outra questão quando o número muda
-    Object.keys(EDICOES_USUARIO).filter(u => u.startsWith(slug+'-')).forEach(u => delete EDICOES_USUARIO[u]);
-    if(opSub.descartarGab) Object.keys(GABARITOS_ALTERADOS).filter(u => u.startsWith(slug+'-')).forEach(u => delete GABARITOS_ALTERADOS[u]);
+    // só uids deste slug seguidos de número (slug-12, slug-12-1): matéria de slug parecido (slug-extra-3) não é tocada
+    const uidDestaMateria = u => u.startsWith(slug+'-') && /^\d+(-\d+)?$/.test(u.slice(slug.length+1));
+    Object.keys(EDICOES_USUARIO).filter(uidDestaMateria).forEach(u => delete EDICOES_USUARIO[u]);
+    if(opSub.descartarGab) Object.keys(GABARITOS_ALTERADOS).filter(uidDestaMateria).forEach(u => delete GABARITOS_ALTERADOS[u]);
   }
   const existingUids = new Set(ALL_QUESTIONS.map(q=>q.uid));
   let added = 0, puladasPorJaExistir = 0, progressosMantidos = 0;
@@ -850,7 +852,7 @@ async function extrairTextoDePdf(file, sugestaoNome, modoForcado){
   render();
   try{
     const buffer = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+    const pdf = await pdfjsLib.getDocument({ data: buffer, isEvalSupported: false }).promise;
     let textoCompleto = '';
     for(let i=1; i<=pdf.numPages; i++){
       STATE.importLog = { pending: true, msg: `Lendo "${file.name}"… página ${i} de ${pdf.numPages}` };
@@ -1101,13 +1103,15 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
     saveProgress();
     render();
 
+    let pubMescladaOk = !FIREBASE_OK, pubMescladaMotivo = null;
     if(FIREBASE_OK){
-      try{ await publicarQuestoesNoFirestore([nomeDestino], true); }
-      catch(e){ console.error('Falha ao publicar matéria mesclada na nuvem', e); }
+      try{ const pubM = await publicarQuestoesNoFirestore([nomeDestino], true); pubMescladaOk = !!(pubM && pubM.ok); pubMescladaMotivo = pubM && pubM.motivo; }
+      catch(e){ console.error('Falha ao publicar matéria mesclada na nuvem', e); pubMescladaMotivo = e && e.message; }
+      if(!pubMescladaOk) console.warn('Mesclagem não publicada na nuvem — a matéria de origem NÃO foi removida de lá:', pubMescladaMotivo);
       const slugOrigem = slugify(nomeOrigem);
       // a origem temporária da importação nunca foi publicada; e se as duas
       // matérias têm o mesmo slug, o documento da origem é o do destino
-      const origemTemNuvemPropria = !nomeOrigem.startsWith('__mesclagem_temp__') && slugOrigem!==slugify(nomeDestino);
+      const origemTemNuvemPropria = pubMescladaOk && !nomeOrigem.startsWith('__mesclagem_temp__') && slugOrigem!==slugify(nomeDestino);
       if(origemTemNuvemPropria) try{
         const manifestDoc = await comLimiteDeTempo(fbDb.collection('publico').doc(slugOrigem).get(), 15000, 'tempo esgotado ao consultar a matéria de origem na nuvem');
         const numChunks = (manifestDoc.exists && manifestDoc.data().numChunks) || 0;
@@ -1119,7 +1123,7 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
       }catch(e){ console.error('Falha ao marcar matéria de origem como removida na nuvem — pode reaparecer em outro dispositivo', e); }
     }
 
-    return { ok:true, movidas, fundidas, duplicatasRemovidas };
+    return { ok:true, movidas, fundidas, duplicatasRemovidas, publicadoOk: pubMescladaOk, motivoPublicacao: pubMescladaOk ? null : pubMescladaMotivo };
   });
 }
 
@@ -1385,11 +1389,14 @@ async function renomearMateria(nomeAtual, nomeNovo){
   if(STATE.quizzesEmAndamento[nomeAtual]){
     STATE.quizzesEmAndamento[nomeNovo] = STATE.quizzesEmAndamento[nomeAtual];
     delete STATE.quizzesEmAndamento[nomeAtual];
+    if(STATE.quizzesEmAndamento[nomeNovo] && STATE.quizzesEmAndamento[nomeNovo].materia===nomeAtual) STATE.quizzesEmAndamento[nomeNovo].materia = nomeNovo;
   }
+  if(STATE.quiz && STATE.quiz.materia===nomeAtual) STATE.quiz.materia = nomeNovo;
   STATE.quizzesVerificados.delete(nomeNovo); // força reconferir o storage local sob o novo nome
   try{
     const quizSalvoLocal = await carregarQuizSalvo(nomeAtual);
     if(quizSalvoLocal){
+      if(quizSalvoLocal.materia===nomeAtual) quizSalvoLocal.materia = nomeNovo;
       await storageSet(quizStorageKey(nomeNovo), JSON.stringify(quizSalvoLocal));
       await storageSet(quizStorageKey(nomeAtual), '');
     }
@@ -1401,11 +1408,13 @@ async function renomearMateria(nomeAtual, nomeNovo){
   if(FIREBASE_OK){
     // publica sob o novo nome/slug, e marca o documento antigo como removido
     // (mesma trava de segurança usada em removerMateria — nunca .delete())
-    try{ await publicarQuestoesNoFirestore([nomeNovo], true); }
+    let pubRenomeadaOk = false;
+    try{ const pubR = await publicarQuestoesNoFirestore([nomeNovo], true); pubRenomeadaOk = !!(pubR && pubR.ok); if(!pubRenomeadaOk) console.warn('Matéria renomeada não publicada:', pubR && pubR.motivo); }
     catch(e){ console.error('Falha ao publicar matéria renomeada na nuvem', e); }
     // se o slug não mudou (ex.: só maiúsculas/acentos), o documento antigo É o
     // novo — marcá-lo como removido apagaria a matéria recém-renomeada
-    if(!mesmoDocumentoNaNuvem){
+    // só marca o nome antigo como removido se o novo foi publicado (senão a matéria some da nuvem)
+    if(!mesmoDocumentoNaNuvem && pubRenomeadaOk){
       try{ await comLimiteDeTempo(fbDb.collection('publico').doc(slugify(nomeAtual)).set({ materia: nomeAtual, questoes: [], removido: true, atualizadoEm: Date.now() }), 15000, 'tempo esgotado ao marcar nome antigo como removido'); }
       catch(e){ console.error('Falha ao marcar nome antigo como removido na nuvem', e); }
     }

@@ -301,7 +301,7 @@ document.addEventListener('click', (ev)=>{
 document.addEventListener('click', (ev)=>{
   const f = ev.target.closest && ev.target.closest('[data-arm-fulltxt]');
   if(f){ const q = BY_UID[f.dataset.armFulltxt]; const ta = document.getElementById('arm-txt-tr');
-    if(q && ta){ const d=document.createElement('div'); d.innerHTML=(EDICOES_USUARIO[q.uid]&&EDICOES_USUARIO[q.uid].q)||esc(limparEnunciado(q.q,q.t)); const box = document.getElementById('arm-pares'); const e1 = box && box.querySelector('.arm-par-e'); if(e1){ e1.value=(d.textContent||'').replace(/\s+/g,' ').trim(); armParesSincronizar(); } }
+    if(q && ta){ const d=document.createElement('div'); d.innerHTML=limparHtmlEditado((EDICOES_USUARIO[q.uid]&&EDICOES_USUARIO[q.uid].q)||esc(limparEnunciado(q.q,q.t))); const box = document.getElementById('arm-pares'); const e1 = box && box.querySelector('.arm-par-e'); if(e1){ e1.value=(d.textContent||'').replace(/\s+/g,' ').trim(); armParesSincronizar(); } }
     return; }
   const t = ev.target.closest && ev.target.closest('[data-arm-edit],[data-arm-save],[data-arm-cancel],[data-arm-reset]');
   if(!t) return;
@@ -747,7 +747,24 @@ function renderGuiaArmadilhas(){
 const ARM_CRIT_KEY = 'tcdf_arm_criterios';
 const ARM_TIPOS_PADRAO = JSON.parse(JSON.stringify(ARM_TIPOS));
 const ARM_ORDEM_PADRAO = ARM_ORDEM.slice();
+// critérios vindos do localStorage/nuvem: só campos de texto simples, cor em hexadecimal e códigos curtos alfanuméricos
+function armCritSanear(cfg){
+  if(!cfg || typeof cfg!=='object' || !Array.isArray(cfg.ordem) || !cfg.tipos || typeof cfg.tipos!=='object') return null;
+  const txt = v => (typeof v==='string' ? v : '').slice(0, 2000);
+  const tipos = {}, ordem = [];
+  cfg.ordem.forEach(c=>{
+    if(typeof c!=='string' || !/^[A-Za-z0-9]{1,4}$/.test(c) || tipos[c]) return;
+    const t = cfg.tipos[c]; if(!t || typeof t!=='object') return;
+    const limpo = {};
+    Object.keys(t).forEach(k=>{ if(typeof t[k]==='string' || typeof t[k]==='number' || typeof t[k]==='boolean') limpo[k] = typeof t[k]==='string' ? txt(t[k]) : t[k]; });
+    const hex = (v, pad) => (typeof v==='string' && /^#[0-9a-fA-F]{3,8}$/.test(v)) ? v : pad;
+    limpo.cor = hex(t.cor, '#475569'); limpo.bg = hex(t.bg, '#e2e8f0');
+    tipos[c] = limpo; ordem.push(c);
+  });
+  return ordem.length ? { ordem, tipos } : null;
+}
 function armCritAplicar(cfg){
+  if(cfg) cfg = armCritSanear(cfg);
   Object.keys(ARM_TIPOS).forEach(k=>delete ARM_TIPOS[k]);
   ARM_ORDEM.length = 0;
   if(!cfg){

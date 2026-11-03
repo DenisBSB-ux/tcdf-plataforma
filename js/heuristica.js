@@ -224,6 +224,19 @@ let HEUR_STATS = {
   ce: { sugestaoCerta: 0, sugestaoErrada: 0, semSugestao: 0, marcadores: {} }, // marcadores[id] = {certa,errada}
   mc: { sugestaoCerta: 0, sugestaoErrada: 0 },
 };
+// aceita estatísticas vindas do storage/nuvem só se tiverem a forma completa; números inválidos viram 0
+function heurStatsSanear(x){
+  const n = v => (typeof v==='number' && isFinite(v) && v>=0) ? Math.floor(v) : 0;
+  if(!x || typeof x!=='object' || !x.ce || !x.mc || typeof x.ce!=='object' || typeof x.mc!=='object') return null;
+  const marc = {};
+  if(x.ce.marcadores && typeof x.ce.marcadores==='object'){
+    Object.keys(x.ce.marcadores).forEach(k=>{ const m = x.ce.marcadores[k]; if(m && typeof m==='object') marc[k] = { certa:n(m.certa), errada:n(m.errada) }; });
+  }
+  return {
+    ce: { sugestaoCerta:n(x.ce.sugestaoCerta), sugestaoErrada:n(x.ce.sugestaoErrada), semSugestao:n(x.ce.semSugestao), marcadores:marc },
+    mc: { sugestaoCerta:n(x.mc.sugestaoCerta), sugestaoErrada:n(x.mc.sugestaoErrada) },
+  };
+}
 let salvarHeurStatsTimer = null;
 function salvarHeurStats(){
   clearTimeout(salvarHeurStatsTimer);
@@ -237,7 +250,8 @@ async function carregarHeurStats(){
     const res = await storageGet(HEUR_STATS_KEY);
     if(res && res.value){
       const parsed = JSON.parse(res.value);
-      if(parsed && parsed.ce && parsed.mc) HEUR_STATS = parsed;
+      const ok = heurStatsSanear(parsed);
+      if(ok) HEUR_STATS = ok;
     }
   }catch(e){ /* nenhuma estatística salva ainda neste aparelho */ }
 }
