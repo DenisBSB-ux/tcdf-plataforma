@@ -280,7 +280,10 @@ const LEI_FONTES = {
   'EC 132':{ arquivo:'js/ec132-texto.js', global:'EC132_TEXTO', titulo:'Emenda Constitucional 132/2023 · Reforma Tributária', max:23 },
   SUM:{ arquivo:'js/sumulas-texto.js', global:'SUMULAS_TEXTO', titulo:'Súmulas do STF', max:0 },
   'LC 109':{ arquivo:'js/lc109-texto.js', global:'LC109_TEXTO', titulo:'Lei Complementar 109/2001 · Previdência Complementar', max:79 },
-  'Lei 10.406':{ arquivo:'js/cc-texto.js', global:'CC_TEXTO', titulo:'Código Civil · Lei 10.406/2002 (texto consolidado: Normas.leg.br; conferir o oficial)', max:2046 }
+  'Lei 10.406':{ arquivo:'js/cc-texto.js', global:'CC_TEXTO', titulo:'Código Civil · Lei 10.406/2002 (texto consolidado: Normas.leg.br; conferir o oficial)', max:2046 },
+  'Lei 8.213':{ arquivo:'js/l8213-texto.js', global:'L8213_TEXTO', titulo:'Lei 8.213/1991 · Planos de Benefícios da Previdência Social (compilação da Câmara dos Deputados, via Normas.leg.br; conferir alterações recentes)', max:156 },
+  'Lei 8.212':{ arquivo:'js/l8212-texto.js', global:'L8212_TEXTO', titulo:'Lei 8.212/1991 · Organização da Seguridade Social e Plano de Custeio (compilação da Câmara dos Deputados, via Normas.leg.br; conferir alterações recentes)', max:105 },
+  'Lei 9.717':{ arquivo:'js/l9717-texto.js', global:'L9717_TEXTO', titulo:'Lei 9.717/1998 · Regras gerais dos regimes próprios de previdência social (compilação da Câmara dos Deputados, via Normas.leg.br)', max:11 },
 };
 function teoriaLeisDaQuestao(q){
   if(!q) return [];
