@@ -170,6 +170,10 @@ function questaoAtualizadaAviso(q){
 /* painel das alterações legais da matéria (clique no selo da matéria) */
 function abrirAlteracoesLegais(materia){
   const a = atualizacaoLegalDaMateria(materia), alts = alteracoesDaMateria(materia);
+  // questões da matéria afetadas por cada alteração (calculado só ao abrir o painel, não a cada tela)
+  const afetadas = {};
+  alts.forEach(x=>{ afetadas[x.id] = []; });
+  ALL_QUESTIONS.forEach(q=>{ if(q.materia!==materia || q.duplicataOculta) return; alteracoesDaQuestao(q).forEach(x=>{ if(afetadas[x.id]) afetadas[x.id].push(q.uid); }); });
   const antigo = document.getElementById('alt-legais-modal'); if(antigo) antigo.remove();
   const b = document.createElement('div'); b.id = 'alt-legais-modal'; b.className = 'alt-legais-fundo';
   b.innerHTML = `<div class="alt-legais-caixa" role="dialog" aria-label="Alterações legais">
@@ -178,9 +182,17 @@ function abrirAlteracoesLegais(materia){
     <p class="alt-legais-sub">${a.data ? 'Última conferência: ' + _dataBr(a.data) : 'Sem conferência registrada.'}</p>
     ${a.resumo ? `<p class="alt-legais-resumo">${esc(a.resumo)}</p>` : ''}
     <h4>Alterações registradas (${alts.length})</h4>
-    ${alts.length ? alts.map(x => `<div class="alt-legais-item ${x.status==='a-conferir' ? 'conf' : 'ok'}"><b>${esc(x.titulo)}</b><span class="alt-legais-st">${x.status==='confirmada' ? 'confirmada no texto carregado' : 'a conferir no texto oficial'} · registrada em ${_dataBr(x.registrada)}</span><p>${esc(x.resumo)}</p>${x.gabarito ? `<p><b>Gabarito:</b> ${esc(x.gabarito)}</p>` : ''}<small>Fonte: ${esc(x.fonte)}${(x.dispositivos||[]).length ? ' · questões que citam: ' + x.dispositivos.map(d=>esc(d.norma+' art. '+d.n)).join(', ') : ' · vale para a matéria (sem dispositivo específico)'}</small></div>`).join('') : '<p class="alt-legais-vazio">Nenhuma alteração legal registrada para esta matéria desde a última conferência.</p>'}
+    ${alts.length ? alts.map(x => `<div class="alt-legais-item ${x.status==='a-conferir' ? 'conf' : 'ok'}"><b>${esc(x.titulo)}</b><span class="alt-legais-st">${x.status==='confirmada' ? 'confirmada no texto carregado' : 'a conferir no texto oficial'} · registrada em ${_dataBr(x.registrada)}</span><p>${esc(x.resumo)}</p>${x.gabarito ? `<p><b>Gabarito:</b> ${esc(x.gabarito)}</p>` : ''}<small>Fonte: ${esc(x.fonte)}${(x.dispositivos||[]).length ? ' · questões que citam: ' + x.dispositivos.map(d=>esc(d.norma+' art. '+d.n)).join(', ') : ' · vale para a matéria (sem dispositivo específico)'}</small>${(afetadas[x.id]||[]).length ? `<div style="margin-top:6px;"><button type="button" class="btn btn-gold btn-sm" data-estudar-alt="${esc(x.id)}">Estudar as ${afetadas[x.id].length} questõe${afetadas[x.id].length===1?'':'s'} afetada${afetadas[x.id].length===1?'':'s'}</button></div>` : ((x.dispositivos||[]).length ? '<div style="margin-top:6px;font-size:12px;opacity:.7;">Nenhuma questão desta matéria cita esses dispositivos.</div>' : '')}</div>`).join('') : '<p class="alt-legais-vazio">Nenhuma alteração legal registrada para esta matéria desde a última conferência.</p>'}
     <p class="alt-legais-dica">As questões afetadas ganham a etiqueta 🔔, 🔄 ou ❓.</p></div>`;
-  b.addEventListener('click', e => { if(e.target===b || e.target.closest('.alt-legais-fechar')) b.remove(); });
+  b.addEventListener('click', e => {
+    if(e.target===b || e.target.closest('.alt-legais-fechar')){ b.remove(); return; }
+    const bt = e.target.closest('[data-estudar-alt]');
+    if(bt){
+      const uids = afetadas[bt.dataset.estudarAlt] || []; if(!uids.length) return;
+      b.remove(); STATE.materia = materia; STATE.viewImportar = false; STATE.tema = 'todos'; setLocalTab(materia, 'simulado');
+      startQuiz(uids, { subconjunto:true, rotulo:'Questões afetadas por alteração legal' });
+    }
+  });
   document.body.appendChild(b);
 }
 document.addEventListener('click', e => {
