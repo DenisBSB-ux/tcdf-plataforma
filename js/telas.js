@@ -1069,6 +1069,8 @@ function renderLanding(){
   <div class="landing-hero">
     <h2 class="section-title">${esc(STATE.materia || 'Painel do candidato')}${STATE.tema!=='todos' ? ` <span class="materia-assunto-label" style="font-size:14px;">· ${esc(STATE.tema)}</span>` : ''} ${STATE.materia ? atualizacaoLegalBadge(STATE.materia) : ''} ${qtdSimuladosGerados>0 ? `<span class="sim-count-badge">${qtdSimuladosGerados}</span>` : ''}</h2>
     ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin-bottom:8px;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
+    ${(()=>{ const d = diasDesdeUltimoBackupArquivo(); const temProgresso = Object.values(PROGRESS||{}).some(b=>b && Object.keys(b.perguntas||{}).length>20);
+      return (temProgresso && (d===null || d>=14)) ? `<div class="side-status" style="margin-bottom:8px;font-size:12px;">💾 ${d===null ? 'Você ainda não baixou um backup do seu progresso.' : 'Seu último backup em arquivo foi há '+d+' dias.'} <button type="button" class="btn-outline btn-sm" data-exportar-backup>Baixar agora</button></div>` : ''; })()}
     ${tabelaEstat ? '' : infoSalvo + botoesAcao}
   </div>
   ${tabelaEstat}
