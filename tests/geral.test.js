@@ -8,6 +8,7 @@ const js = fs.readdirSync(path.join(raiz, 'js')).filter(f => f.endsWith('.js'));
 let erroSintaxe = [];
 for (const f of js) { try { new vm.Script(fs.readFileSync(path.join(raiz, 'js', f), 'utf8'), { filename: f }); } catch (e) { erroSintaxe.push(f + ': ' + e.message); } }
 t('sintaxe de js/*.js', !erroSintaxe.length, erroSintaxe.slice(0, 3).join(' | '));
+try { new vm.Script(fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8'), { filename: 'sw.js' }); t('sintaxe de sw.js', true); } catch (e) { t('sintaxe de sw.js', false, e.message); }
 
 // 2. versão ?v= única no index.html e todo script/estilo local referenciado existe
 const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');

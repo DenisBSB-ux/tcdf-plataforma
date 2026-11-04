@@ -26,6 +26,28 @@ function podeRenderizarAgora(){
     e.preventDefault(); el.click();
   });
 })();
+// modo offline: service worker (rede primeiro, cache como reserva). Só em https/localhost.
+try{
+  if('serviceWorker' in navigator && (location.protocol==='https:' || location.hostname==='localhost' || location.hostname==='127.0.0.1')){
+    window.addEventListener('load', ()=>{
+      navigator.serviceWorker.register('sw.js').then(()=>navigator.serviceWorker.ready).then(reg=>{
+        // depois de a tela abrir, pede ao service worker para guardar o que a página usa e os arquivos de carga sob demanda
+        setTimeout(()=>{
+          try{
+            const v = ((window.__TCDF_BUILD__||{}).versao||'');
+            const q = v ? '?v='+v : '';
+            const usados = performance.getEntriesByType('resource').map(r=>r.name);
+            const lazy = [];
+            try{ Object.values(LEI_FONTES).forEach(f=>{ if(f.arquivo) lazy.push(f.arquivo+q); }); }catch(_){}
+            ['doutrina-ps','doutrina-pdpm','doutrina-df','doutrina-dadm','doutrina-cst','doutrina-adm','teoria-dt','armadilhas-dados'].forEach(n=>lazy.push('js/'+n+'.js'+q));
+            const alvo = reg.active || navigator.serviceWorker.controller;
+            if(alvo) alvo.postMessage({ tipo:'precache', urls: [location.href].concat(usados, lazy) });
+          }catch(_){}
+        }, 8000);
+      }).catch(e=>console.warn('Modo offline indisponível', e));
+    });
+  }
+}catch(_){}
 (async function init(){
   root.innerHTML = `<div style="padding:60px;text-align:center;color:#a9b6cc;font-family:var(--font-mono);font-size:13px;">Carregando processo…</div>`;
   try{ await loadProgress(); }catch(e){
