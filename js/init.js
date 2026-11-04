@@ -58,6 +58,8 @@ try{
   ensureMateriaSelecionada();
   // linha de sincronização: atualiza o "há N min" sozinha e reage a perder/voltar a conexão (ao voltar, envia o pendente)
   setInterval(()=>{ try{ atualizarLinhaSync(); atualizarIndicadorNuvem(); }catch(_){} }, 30000);
+  // sincronização automática a cada 1 min (e ao voltar para a aba)
+  setInterval(()=>{ try{ sincronizacaoAutomatica(); }catch(_){} }, 60000);
   window.addEventListener('offline', ()=>{ try{ atualizarLinhaSync(); atualizarIndicadorNuvem(); }catch(_){} });
   window.addEventListener('online', ()=>{ try{ atualizarLinhaSync(); atualizarIndicadorNuvem(); if(typeof sincronizacaoAtiva==='function' && sincronizacaoAtiva()) pushToCloud(); }catch(_){} });
   // cópia automática diária do progresso (últimos 7 dias), logo depois de abrir, sem atrasar a primeira tela
@@ -121,6 +123,7 @@ try{
   // pendente (progresso e simulado em andamento)
   document.addEventListener('visibilitychange', ()=>{
     if(document.visibilityState==='hidden') salvarTudoAgoraAoSair();
+    else { try{ sincronizacaoAutomatica(); }catch(_){} }
   });
   window.addEventListener('pagehide', salvarTudoAgoraAoSair);
 })();
