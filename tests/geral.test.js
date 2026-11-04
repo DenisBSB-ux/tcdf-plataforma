@@ -46,6 +46,22 @@ vm.createContext(ctx2);
 vm.runInContext(u.slice(u.indexOf('function quebrarItensAlfabeticos'), u.indexOf('// combina a quebra em frases')) + ';this.q = quebrarItensAlfabeticos;', ctx2);
 t('util: não quebra "147-B)"', ctx2.q('Analise: a) um b) dois, art. 147-B) fim') === 'Analise:\na) um\nb) dois, art. 147-B) fim');
 
+// 4b. revisão do dia (repetição espaçada)
+const est = fs.readFileSync(path.join(raiz, 'js', 'estudo.js'), 'utf8');
+const DIA = 86400000, agora = Date.now();
+const q = (n, t) => ({ uid: 'q' + n, t: t || 'CE', duplicataOculta: false });
+const ctx3 = { BY_UID: { q1: q(1), q2: q(2), q3: q(3), q4: q(4), q5: q(5, 'sem_gabarito') }, getBucket: () => ({ perguntas: {
+  q1: { historico: [{ ts: agora - 2*DIA, c: false }] },                                  // errou há 2 dias → vence
+  q2: { historico: [{ ts: agora - 3*60000, c: false }] },                                // errou agora há pouco → ainda não
+  q3: { historico: [{ ts: agora - 10*DIA, c: true }, { ts: agora - 8*DIA, c: true }] },   // 2 acertos, há 8 dias → vence (7)
+  q4: { historico: [{ ts: agora - 20*DIA, c: true }] },                                   // 1 acerto há 20 dias → vence (3)
+  q5: { historico: [{ ts: agora - 20*DIA, c: false }] } } }) };                           // fora do escopo
+vm.createContext(ctx3);
+vm.runInContext(est.slice(est.indexOf('const REVISAO_INTERVALOS_DIAS'), est.indexOf('function iniciarRevisaoDeHoje')) + ';this.rev = revisaoDeHoje;', ctx3);
+const revs = ctx3.rev('X', agora).map(x => x.uid);
+t('revisão: vencidas entram, recentes e fora do escopo não', revs.join() === 'q1,q4,q3' || (revs.length === 3 && revs.includes('q1') && revs.includes('q3') && revs.includes('q4') && !revs.includes('q2') && !revs.includes('q5')), revs.join());
+t('revisão: erradas primeiro', revs[0] === 'q1');
+
 // 5. nenhum JS usa lookbehind em regex literal (quebra Safari < 16.4)
 const comLookbehind = js.filter(f => !/texto|dados|doutrina/.test(f) && /\/[^\/\n]*\(\?<[=!][^\/\n]*\/[gimsuy]*[,;)\s]/.test(fs.readFileSync(path.join(raiz, 'js', f), 'utf8').replace(/new RegExp\([^)]*\)/g, '')));
 t('sem lookbehind em regex literal', !comLookbehind.length, comLookbehind.join(','));

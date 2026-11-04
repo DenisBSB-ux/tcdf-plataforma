@@ -927,6 +927,32 @@ function refazerQuestao(uid){
   render();
 }
 
+/* ---- revisão do dia (repetição espaçada simples, estilo Leitner) ----
+   Questão errada na última vez volta em 1 dia; acertos seguidos espaçam a revisão: 1 acerto → 3 dias, 2 → 7, 3 → 15, 4 ou mais → 30. */
+const REVISAO_INTERVALOS_DIAS = [1, 3, 7, 15, 30];
+function revisaoDeHoje(materiaKey, agora){
+  agora = agora || Date.now();
+  const bucket = getBucket(materiaKey), out = [];
+  Object.entries(bucket.perguntas || {}).forEach(([uid, p])=>{
+    const q = BY_UID[uid];
+    if(!q || q.duplicataOculta || (q.t!=='CE' && q.t!=='MC')) return;
+    const h = Array.isArray(p.historico) ? p.historico : [];
+    if(!h.length) return;
+    let seq = 0; for(let i=h.length-1; i>=0 && h[i].c===true; i--) seq++;
+    const intervalo = REVISAO_INTERVALOS_DIAS[Math.min(seq, REVISAO_INTERVALOS_DIAS.length-1)] * 86400000;
+    const vence = (h[h.length-1].ts || 0) + intervalo;
+    if(agora >= vence) out.push({ uid, atraso: agora - vence, errou: seq===0 });
+  });
+  return out.sort((a,b)=> (b.errou - a.errou) || (b.atraso - a.atraso));   // erradas primeiro, depois as mais atrasadas
+}
+function iniciarRevisaoDeHoje(){
+  if(!STATE.materia) return;
+  const lista = revisaoDeHoje(STATE.materia); if(!lista.length) return;
+  setLocalTab(STATE.materia, 'simulado');
+  STATE.quiz = { queue: lista.map(x=>x.uid), idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, origemErros:true, treinoArmadilha:'Revisão de hoje' };
+  salvarQuizEmAndamento();
+  render();
+}
 function refazerTodasErros(){
   const uids = getCadernoErros().map(e=>e.uid);
   if(uids.length===0) return;
