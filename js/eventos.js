@@ -78,6 +78,8 @@ function attachHandlers(){
 
   const btnRevisaoHoje = document.getElementById('btn-revisao-hoje');
   if(btnRevisaoHoje) btnRevisaoHoje.addEventListener('click', iniciarRevisaoDeHoje);
+  const btnInstalarApp = document.getElementById('btn-instalar-app');
+  if(btnInstalarApp) btnInstalarApp.addEventListener('click', ()=>instalarApp());
   const btnSyncAgora = document.getElementById('btn-sync-agora');
   if(btnSyncAgora) btnSyncAgora.addEventListener('click', ()=>sincronizarAgora());
   const btnEntrarGoogle = document.getElementById('btn-entrar-google');

@@ -17,6 +17,14 @@ t('versão única no index.html', versoes.length === 1, versoes.join(','));
 const refs = [...html.matchAll(/(?:src|href)="((?:js|css)\/[^"?]+)/g)].map(m => m[1]);
 t('arquivos referenciados existem', refs.every(r => fs.existsSync(path.join(raiz, r))), refs.filter(r => !fs.existsSync(path.join(raiz, r))).join(','));
 
+// 2b. app instalável: manifesto válido e ícones existentes
+try {
+  const man = JSON.parse(fs.readFileSync(path.join(raiz, 'manifest.webmanifest'), 'utf8'));
+  t('manifesto: nome, start_url e display', !!(man.name && man.start_url && man.display === 'standalone'));
+  t('manifesto: ícones existem', (man.icons || []).length >= 2 && man.icons.every(i => fs.existsSync(path.join(raiz, i.src))));
+  t('index.html liga o manifesto', /rel="manifest"\s+href="manifest\.webmanifest"/.test(html));
+} catch (e) { t('manifesto válido', false, e.message); }
+
 // 3. textos de lei: carregam, sem artigo vazio, e toda entrada de LEI_FONTES aponta para arquivo e global existentes
 const teoria = fs.readFileSync(path.join(raiz, 'js', 'teoria.js'), 'utf8');
 const bloco = teoria.match(/const LEI_FONTES = \{[\s\S]*?\n\};/);
