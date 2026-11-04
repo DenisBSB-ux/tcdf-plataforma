@@ -1,6 +1,6 @@
 # Toda segunda-feira (ou manualmente): consulta a base OFICIAL do Senado (dados abertos) e registra alterações em normas carregadas na plataforma.
 # Se houver novidade: atualiza js/atualizacoes-legais.js (alterações + selo), sobe a versão, abre PR e mescla sozinho. Sem novidade, só atualiza a data do selo.
-# Nunca altera gabarito, lista nem texto de lei.
+# Nunca altera gabarito nem lista. Pode atualizar texto de lei (js/*-texto.js, a partir do Normas.leg.br), validado por verificar_textos.js (nenhum artigo pode sumir).
 name: detectar-alteracoes-legais
 on:
   schedule:
@@ -19,15 +19,20 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - name: Detectar alterações
+        shell: bash
         run: python3 .claude/skills/atualizacao-legal-semanal/detectar_alteracoes.py | tee relatorio.json
       - name: Sincronizar texto consolidado (Normas.leg.br)
+        shell: bash
         run: python3 .claude/skills/atualizacao-legal-semanal/sync_normas.py | tee relatorio-texto.json
       - name: Validar, abrir PR e mesclar
+        shell: bash
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
         run: |
           rm -f relatorio.json relatorio-texto.json
           for f in $(git diff --name-only | grep '\.js$'); do node --check "$f"; done
-          git diff --quiet && { echo "Sem mudanças."; exit 0; }
+          [ -z "$(git status --porcelain)" ] && { echo "Sem mudanças."; exit 0; }
+          T=$(git diff --name-only | grep '^js/.*-texto\.js$' || true)
+          [ -z "$T" ] || node .claude/skills/atualizacao-legal-semanal/verificar_textos.js HEAD $T
           node --check js/atualizacoes-legais.js
           node .claude/skills/atualizacao-legal-semanal/verificar_cobertura.js "$(date +%Y-%m-%d)" || echo "(cobertura parcial: matérias sem fonte oficial seguem pela rotina de pesquisa)"
           V=$(grep -o 'v[0-9]\{3\}' index.html | head -1); N=$((10#${V#v}+1)); NV="v$N"

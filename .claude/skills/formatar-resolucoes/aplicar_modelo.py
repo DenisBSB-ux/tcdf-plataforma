@@ -14,6 +14,11 @@ for pos, nova in REV.items():
     for sim in ('📌', '⚠️', '💡', '🪤'):
         if sim not in nova: continue
         v = nova[sim]
+        if sim == '⚠️':
+            atual = re.search(r'(?m)^⚠️ (?!ERROS)[^\n]*', res)
+            prot = r'Gabarito ajustado|Conferir o gabarito|Conferir o dispositivo'
+            if atual and re.search(prot, atual.group(0)) and not (v and re.search(prot, v)):
+                raise SystemExit('questão %s: a revisão apagaria/reescreveria um aviso de gabarito (PADRAO §4): %s' % (pos, atual.group(0)[:100]))
         if sim == '⚠️': pad = r'(?m)^⚠️ (?!ERROS)[^\n]*\n?'
         else: pad = r'(?m)^' + sim + r' [^\n]*\n?'
         if v is None: res = re.sub(pad, '', res, count=1)

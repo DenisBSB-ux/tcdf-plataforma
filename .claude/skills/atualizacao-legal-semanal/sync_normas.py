@@ -217,6 +217,10 @@ def normalizar(linhas):
 
 
 def linha_igual(nova, antiga):
+    # revogação nova vale sempre a troca — testar ANTES da comparação por substring (normalizar() apaga '(Revogado…)' e a linha nova viraria
+    # substring da antiga, escondendo a revogação)
+    if REVOGACAO.search(nova) and not re.search(r'\((?:Revogad|Suprimid)', antiga):
+        return False
     nx, ny = normalizar([nova]), normalizar([antiga])
     if nx == ny:
         return True
@@ -233,6 +237,8 @@ def artigo_igual(novo, antigo):
     if len(novo) != len(antigo):
         return False
     for nova, antiga in zip(novo, antigo):
+        if REVOGACAO.search(nova) and not re.search(r'\((?:Revogad|Suprimid)', antiga):
+            return False                # revogação nova: o artigo mudou
         nx, ny = normalizar([nova]), normalizar([antiga])
         if nx == ny:
             continue

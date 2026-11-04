@@ -1,6 +1,9 @@
 ---
 name: formatar-resolucoes
 description: Reescreve as resoluções (### Resolução) de uma matéria do TCDF Plataforma no formato padrão com símbolos (⚖️ 📌 🔑 ⚠️ 🪤 💡), para reimportar com o botão "🔁 Substituir por matéria". Use quando o usuário pedir para atualizar/padronizar as resoluções de uma matéria (ex.: Lei 14.133, Contratos, IN 5, Decreto 44.330, Análise de Dados e IA). O modelo é o da Lei 14.133, já aplicado também em Análise de Dados e IA.
+
+> **Atenção:** onde este arquivo disser que a classificação (Sinal/Armadilha) só é aplicada "após o sim", vale o que está em `PADRAO.md` e `ATUALIZAR_LISTA.md` (classificação pré-autorizada em 21/10/2026; a lei carregada prevalece sobre o gabarito, PADRAO §4). Gabarito de fato, doutrina ou jurisprudência continua só mudando com a confirmação do usuário. Em caso de conflito, `PADRAO.md` é a fonte de verdade.
+
 ---
 
 # Formatar resoluções de uma matéria
