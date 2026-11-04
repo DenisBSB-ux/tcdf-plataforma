@@ -2000,3 +2000,21 @@ body:not(.theme-light) .crit-f textarea{ background:rgba(255,255,255,.07); color
 /* linha de sincronização: estado "enviando" e horário */
 .sync-linha.pending .sync-dot{ background:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.2); }
 .sync-linha small{ opacity:.7; margin-left:4px; }
+
+/* ---------- acessibilidade e celular ---------- */
+.pular-conteudo{ position:absolute; left:8px; top:-48px; z-index:100000; background:#111; color:#fff; padding:10px 14px; border-radius:8px; font-weight:600; text-decoration:none; }
+.pular-conteudo:focus{ top:8px; outline:2px solid var(--gold-bright, #f5c542); }
+#conteudo-principal:focus{ outline:none; }
+/* foco visível em tudo que se aciona (teclado) */
+button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible{ outline:2px solid var(--gold-bright, #f5c542); outline-offset:2px; }
+/* telas de toque: alvos de pelo menos 40 px (o mínimo recomendado é 44) */
+@media (pointer:coarse){
+  .tema-switch{ min-height:36px; min-width:62px; }
+  .cor-dot{ width:34px; height:34px; }
+  .side-action-btn, #btn-sync-agora, #btn-sair-google, .btn-sm, .btn-outline.btn-sm{ min-height:40px; }
+  .prova-link{ padding:10px 0; margin-top:0; }
+  .prova-det-btn{ min-height:40px; padding:8px 12px; }
+  .chip, span.chip{ min-height:36px; display:inline-flex; align-items:center; }
+  .zoom-control button{ min-width:40px; min-height:40px; }
+}
+@media (prefers-reduced-motion:reduce){ *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; } }
