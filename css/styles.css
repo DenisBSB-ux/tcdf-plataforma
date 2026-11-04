@@ -1996,3 +1996,7 @@ body:not(.theme-light) .import-field input[type=text],
 body:not(.theme-light) .editor-font-size,
 body:not(.theme-light) .crit-f input,
 body:not(.theme-light) .crit-f textarea{ background:rgba(255,255,255,.07); color:var(--ink); border-color:rgba(255,255,255,.18); }
+
+/* linha de sincronização: estado "enviando" e horário */
+.sync-linha.pending .sync-dot{ background:#f59e0b; box-shadow:0 0 0 3px rgba(245,158,11,.2); }
+.sync-linha small{ opacity:.7; margin-left:4px; }

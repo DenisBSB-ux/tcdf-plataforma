@@ -910,7 +910,8 @@ function renderSyncSidebarBlock(){
   const statusDetalhe = STATE.syncStatus ? STATE.syncStatus.detalhe : '';
   return `<div class="sidebar-block"><div class="sb-pad sync-block compact">
     ${syncUsuarioHtml()}
-    <div class="sync-linha ${statusClass}" id="sync-status-el"><span class="sync-dot"></span>${statusClass==='ok' ? `Atualizado${statusHorario ? ` em <b>${esc(statusHorario)}</b>` : ' na nuvem'}` : esc(STATE.syncStatus ? STATE.syncStatus.msg : 'sincronizando…')}</div>
+    <div class="sync-linha ${textoLinhaSync().classe}" id="sync-status-el"><span class="sync-dot"></span>${textoLinhaSync().html}</div>
+    <button class="side-action-btn compact" id="btn-sync-agora" title="Envia o que estiver pendente e busca o que mudou em outros aparelhos">↻ Sincronizar agora</button>
     ${statusDetalhe ? `<div class="side-status detail">${esc(statusDetalhe)}</div>` : ''}
     ${ALERTAS_SOBRESCRITA_NUVEM.length>0 ? `<div class="side-status err" style="margin-top:6px;">
       ⚠ ${ALERTAS_SOBRESCRITA_NUVEM.length} possível sobrescrita detectada — outro dispositivo publicou depois da sua última sincronização.
