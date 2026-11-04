@@ -1988,3 +1988,11 @@ body.theme-light .cc-ctx{ color:#3b3f45; }
 
 /* foco visível para chips e linhas clicáveis acessíveis pelo teclado */
 span.chip:focus-visible, [data-macro-materia]:focus-visible{ outline:2px solid var(--accent, #3b82f6); outline-offset:2px; }
+
+/* tema escuro (padrão): caixas que usavam fundo "papel" claro com texto claro (contraste ~1:1) */
+body:not(.theme-light) .tela-login-caixa,
+body:not(.theme-light) .crit-box{ background:var(--black-800,#1c2230); border-color:rgba(255,255,255,.14); }
+body:not(.theme-light) .import-field input[type=text],
+body:not(.theme-light) .editor-font-size,
+body:not(.theme-light) .crit-f input,
+body:not(.theme-light) .crit-f textarea{ background:rgba(255,255,255,.07); color:var(--ink); border-color:rgba(255,255,255,.18); }
