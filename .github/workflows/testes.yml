@@ -1,0 +1,18 @@
+# Roda os testes do repositório (merge entre aparelhos, textos de lei, sintaxe, versão) em todo push e pull request.
+# Só leitura: não mescla nem altera nada.
+name: testes
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Testes
+        run: bash tests/run.sh
