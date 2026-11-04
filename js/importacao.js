@@ -219,7 +219,7 @@ function parseMarkdownQuestoes(content){
     const nivel = nivelTxt.includes('alta') ? 'alta' : (nivelTxt.includes('baixa') ? 'baixa' : 'media');
     const tendMatch = bloco.match(/\*\*Tend[êe]ncia:\*\*\s*(\w+)/i);
     const tendTxt = tendMatch ? tendMatch[1].trim().toLowerCase() : '';
-    const tendencia = tendTxt.includes('cresc') ? '↑ Crescente' : (tendTxt.includes('decresc') ? '↓ Decrescente' : '→ Estável');
+    const tendencia = tendTxt.includes('decresc') ? '↓ Decrescente' : (tendTxt.includes('cresc') ? '↑ Crescente' : '→ Estável');   // 'decrescente' contém 'crescente': testar o decrescente primeiro
     const assuntoMatch = bloco.match(/\*\*Assunto:\*\*\s*(.+)/i);
     const assunto = assuntoMatch ? assuntoMatch[1].trim() : null;
     // rótulo opcional de tipo de cobrança (ex.: "T:inv", "H", "I?") — vale mesmo
@@ -264,8 +264,9 @@ function parseMarkdownQuestoes(content){
       if(tipo==='CE'){
         gabarito = /certo/i.test(gabarito) ? 'Certo' : (/errado/i.test(gabarito) ? 'Errado' : gabarito);
       } else {
-        const letraMatch = gabarito.match(/[A-E]/i);
-        gabarito = letraMatch ? letraMatch[0].toUpperCase() : gabarito;
+        // letra isolada ("B", "(B)", "Letra B", "Alternativa B"); 'Letra B' não pode virar 'E' (o 'e' de "Letra")
+        const letraMatch = gabarito.trim().match(/^\W*(?:letra|alternativa|gabarito)?\W*([A-Ea-e])\W*$/i);
+        gabarito = letraMatch ? letraMatch[1].toUpperCase() : gabarito;
       }
     }
 
@@ -448,8 +449,8 @@ function parseTxtQuestoesFormatoGemini(content){
 
     let tendenciaSeta = '→ Estável';
     if(tendenciaTxt){
-      if(/crescente/i.test(tendenciaTxt)) tendenciaSeta = '↑ Crescente';
-      else if(/decrescente|queda/i.test(tendenciaTxt)) tendenciaSeta = '↓ Decrescente';
+      if(/decrescente|queda/i.test(tendenciaTxt)) tendenciaSeta = '↓ Decrescente';
+      else if(/crescente/i.test(tendenciaTxt)) tendenciaSeta = '↑ Crescente';
     }
 
     let ar = null;
@@ -656,12 +657,12 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   const anteriores = ALL_QUESTIONS.filter(q => q.materia===materiaNome && q.origem!=='embutido');
   const porFinal = {};
   anteriores.forEach(q=>{
-    const c = chaveDeEnunciado(q.q);
+    const c = chaveDeEnunciado(textoDeChave(q));
     if(c) (porFinal[finalDaChave(c)] = porFinal[finalDaChave(c)] || []).push({ q, chave: c });
   });
   // todas as cópias anteriores equivalentes (a matéria pode ter duplicatas)
   const equivalentesAnteriores = r => {
-    const c = chaveDeEnunciado(r.q);
+    const c = chaveDeEnunciado(textoDeChave(r));
     return c ? (porFinal[finalDaChave(c)] || []).filter(x => mesmaQuestao(c, x.chave)).map(x => x.q) : [];
   };
   // Substituir: a lista passa a ser exatamente a do arquivo, e o progresso vai
@@ -690,7 +691,9 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   const slug = slugify(materiaNome);
   if(modo === 'substituir'){   // sobras de edições (aparelho ou nuvem) com uid desta matéria caem em outra questão quando o número muda
     // só uids deste slug seguidos de número (slug-12, slug-12-1): matéria de slug parecido (slug-extra-3) não é tocada
-    const uidDestaMateria = u => u.startsWith(slug+'-') && /^\d+(-\d+)?$/.test(u.slice(slug.length+1));
+    // não infere só pelo texto do uid: 'contratos-2-7' pertence à matéria 'Contratos 2', não a 'Contratos'
+    const uidsDeOutras = new Set(ALL_QUESTIONS.filter(q=>q.materia!==materiaNome).map(q=>q.uid));
+    const uidDestaMateria = u => u.startsWith(slug+'-') && /^\d+(-\d+)?$/.test(u.slice(slug.length+1)) && !uidsDeOutras.has(u);
     Object.keys(EDICOES_USUARIO).filter(uidDestaMateria).forEach(u => delete EDICOES_USUARIO[u]);
     if(opSub.descartarGab) Object.keys(GABARITOS_ALTERADOS).filter(uidDestaMateria).forEach(u => delete GABARITOS_ALTERADOS[u]);
   }
@@ -930,7 +933,7 @@ function finalDaChave(chave){
 }
 // agrupa questões equivalentes (mesmaQuestao, de forma transitiva)
 function agruparQuestoesEquivalentes(qs){
-  const chaves = qs.map(q=>chaveDeEnunciado(q.q));
+  const chaves = qs.map(q=>chaveDeEnunciado(textoDeChave(q)));
   const pai = qs.map((_,i)=>i);
   const raiz = i => { while(pai[i]!==i){ pai[i] = pai[pai[i]]; i = pai[i]; } return i; };
   const baldes = {};
@@ -961,7 +964,7 @@ function somarProgressoDaQuestao(pPara, pDe){
 function questaoMaisAtual(a, b){
   const anoA = anoRealDaQuestao(a)||0, anoB = anoRealDaQuestao(b)||0;
   if(anoA!==anoB) return anoA>anoB ? a : b;
-  const ca = chaveDeEnunciado(a.q).length, cb = chaveDeEnunciado(b.q).length;
+  const ca = chaveDeEnunciado(textoDeChave(a)).length, cb = chaveDeEnunciado(textoDeChave(b)).length;
   if(ca!==cb) return ca>cb ? a : b;
   return ((a.r||'').length+(a.rf||'').length) >= ((b.r||'').length+(b.rf||'').length) ? a : b;
 }
@@ -1039,7 +1042,7 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
     const porFinalDestino = {};
     ALL_QUESTIONS.forEach(q=>{
       if(q.materia!==nomeDestino) return;
-      const chave = chaveDeEnunciado(q.q);
+      const chave = chaveDeEnunciado(textoDeChave(q));
       if(chave) (porFinalDestino[finalDaChave(chave)] = porFinalDestino[finalDaChave(chave)]||[]).push({ q, chave });
     });
 
@@ -1047,7 +1050,7 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
     const mapaUidMescla = {};   // uid na origem -> uid no destino (edições, gabaritos, flashcards e chutes acompanham a questão)
 
     qsOrigem.forEach(q=>{
-      const chave = chaveDeEnunciado(q.q);
+      const chave = chaveDeEnunciado(textoDeChave(q));
       const candidato = chave ? (porFinalDestino[finalDaChave(chave)]||[]).find(c => mesmaQuestao(chave, c.chave)) : null;
       const equivalente = candidato ? candidato.q : null;
       const pOrigem = bucketOrigem.perguntas[q.uid];
@@ -1160,7 +1163,7 @@ function encontrarMateriaSemelhante(materiaNome, results){
   const chaves = new Set(results.map(r=>{
     const copia = { ...r, alt: Array.isArray(r.alt) ? r.alt.map(a=>({ ...a })) : r.alt };
     sanitizarFonteEmbutida(copia);
-    const c = chaveDeEnunciado(copia.q);
+    const c = chaveDeEnunciado(textoDeChave(copia));
     return c ? finalDaChave(c) : '';
   }).filter(Boolean));
   if(chaves.size<3) return null;
@@ -1178,6 +1181,13 @@ function encontrarMateriaSemelhante(materiaNome, results){
 // mesma questão importada de formatos diferentes (.txt do Gemini, .md
 // exportado, PDF) chega com pequenas diferenças de texto.
 const LIMIAR_MATERIA_SEMELHANTE = 0.4;
+// Em múltipla escolha o enunciado-base pode se repetir com alternativas diferentes: a chave inclui as alternativas
+// (no fim, para a comparação por sufixo de mesmaQuestao continuar funcionando).
+function textoDeChave(q){
+  if(!q) return '';
+  const alt = Array.isArray(q.alt) ? q.alt.map(a=>(a&&a.letra?a.letra+' ':'')+((a&&a.texto)||'')).join(' ') : '';
+  return String(q.q||'') + (alt ? ' ' + alt : '');
+}
 function chaveDeEnunciado(texto){
   const chave = normalizarParaComparacao(limparMarcadoresCitacao(String(texto||'')))
     .replace(/^(questao\s*)?\d+\s*[).:\-–—]\s*/, '')
@@ -1189,7 +1199,7 @@ function chaveDeEnunciado(texto){
 function chavesPorMateria(){
   const mapa = {};
   ALL_QUESTIONS.forEach(q=>{
-    const c = chaveDeEnunciado(q.q);
+    const c = chaveDeEnunciado(textoDeChave(q));
     if(!c) return;
     (mapa[q.materia] = mapa[q.materia] || new Set()).add(finalDaChave(c));
   });

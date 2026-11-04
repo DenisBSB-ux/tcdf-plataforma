@@ -214,7 +214,8 @@ function attachHandlers(){
     el.addEventListener('click', ()=>{
       if(el.disabled) return;
       if(clickTimer){ clearTimeout(clickTimer); clickTimer = null; return; } // 2º clique: o dblclick cuida
-      clickTimer = setTimeout(()=>{ clickTimer = null; pickAnswer(el.dataset.opt); }, 260);
+      const uidNoClique = STATE.quiz && STATE.quiz.queue[STATE.quiz.idx];
+      clickTimer = setTimeout(()=>{ clickTimer = null; pickAnswer(el.dataset.opt, uidNoClique); }, 260);
     });
     el.addEventListener('dblclick', (e)=>{
       e.preventDefault();
@@ -575,10 +576,16 @@ function attachHandlers(){
   root.querySelectorAll('[data-remover-duplicatas]').forEach(el=>{
     el.addEventListener('click', async ()=>{
       const materiaNome = el.dataset.removerDuplicatas;
+      if(!window.confirm(`Remover as questões duplicadas de "${materiaNome}"? Fica a mais completa de cada grupo e o progresso é somado nela. Essa ação não pode ser desfeita automaticamente.`)) return;
       el.disabled = true;
       el.textContent = '⏳ Removendo…';
-      const resultado = await removerDuplicatasDaMateria(materiaNome);
-      STATE.dedupInfo = { materia: materiaNome, ...resultado };
+      try{
+        const resultado = await removerDuplicatasDaMateria(materiaNome);
+        STATE.dedupInfo = { materia: materiaNome, ...resultado };
+      }catch(err){
+        console.error('Falha ao remover duplicatas', err);
+        STATE.dedupInfo = { materia: materiaNome, removidas: 0, publicadoOk: false, motivoPublicacao: (err && err.message) || 'erro ao remover' };
+      }
       render();
     });
   });
@@ -636,11 +643,15 @@ function isDigitandoEmCampo(e){
 }
 document.addEventListener('keydown', (e)=>{
   if(isDigitandoEmCampo(e)) return;
+  // atalhos do navegador (Ctrl+C, Ctrl+E, Alt+←…) nunca são nossos
+  if(e.ctrlKey || e.metaKey || e.altKey) return;
+  const noBotao = !!(e.target && e.target.closest && e.target.closest('button, a, select, [role="button"]'));
 
-  if(STATE.flashDeck){
+  // baralho de flashcards: só vale quando o baralho está visível (aba Flashcards, fora de simulado)
+  if(STATE.flashDeck && STATE.materia && getLocalTab(STATE.materia)==='flashcards'){
     if(e.key==='ArrowLeft'){ e.preventDefault(); flashGoPrev(); return; }
     if(e.key==='ArrowRight'){ e.preventDefault(); flashGoNext(); return; }
-    if(e.key===' ' || e.key==='Enter'){ e.preventDefault(); STATE.flashDeck.flipped = !STATE.flashDeck.flipped; render(); return; }
+    if((e.key===' ' || e.key==='Enter') && !noBotao){ e.preventDefault(); STATE.flashDeck.flipped = !STATE.flashDeck.flipped; render(); return; }
     return;
   }
 
@@ -648,14 +659,12 @@ document.addEventListener('keydown', (e)=>{
   const quiz = STATE.quiz;
   if(e.key==='ArrowLeft'){ e.preventDefault(); goPrev(); return; }
   if(e.key==='ArrowRight'){ e.preventDefault(); goNext(); return; }
-  if(!e.ctrlKey && !e.metaKey && !e.altKey){
-    if(e.key==='n' || e.key==='N'){ e.preventDefault(); goNextNaoRespondida(); return; }
-  }
+  if(e.key==='n' || e.key==='N'){ e.preventDefault(); goNextNaoRespondida(); return; }
   const uid = quiz.queue[quiz.idx];
   const q = BY_UID[uid];
   if(q && q.t==='CE' && !quiz.respostas[uid]){
-    if(e.key==='c' || e.key==='C'){ e.preventDefault(); pickAnswer('Certo'); return; }
-    if(e.key==='e' || e.key==='E'){ e.preventDefault(); pickAnswer('Errado'); return; }
+    if(e.key==='c' || e.key==='C'){ e.preventDefault(); pickAnswer('Certo', uid); return; }
+    if(e.key==='e' || e.key==='E'){ e.preventDefault(); pickAnswer('Errado', uid); return; }
   }
 });
 

@@ -100,12 +100,15 @@ async function buscarImagemNuvem(id){
   if(!ok) setTimeout(()=>_imgBuscando.delete(id), 60000);
 }
 
+const _DATAURL_IMG_OK = /^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+\/=]+$/;
 /* ---------- exibição / salvamento ---------- */
 // põe o src real nos <img data-img="id"> do HTML (só para exibir)
 function hidratarImagens(html){
   if(!html || html.indexOf('data-img')<0) return html;
   return html.replace(/<img\b[^>]*\bdata-img="([^"]+)"[^>]*>/g, (m, id)=>{
-    const d = IMAGENS_USUARIO[id];
+    if(!/^[A-Za-z0-9_-]+$/.test(id)) return '';                       // id fora do formato: nunca entra no HTML
+    let d = IMAGENS_USUARIO[id];
+    if(d && !_DATAURL_IMG_OK.test(d)) d = null;                       // só data:image/(png|jpg|gif|webp);base64 válido vira src
     if(!d) buscarImagemNuvem(id);
     return `<img data-img="${id}" src="${d || GIF_VAZIO}" alt="figura" ${d?'':'data-pendente="1" '}>`;
   });
@@ -117,7 +120,7 @@ function prepararEditorParaSalvar(div){
     const src = img.getAttribute('src') || '';
     let id = img.getAttribute('data-img');
     if(!id && src.startsWith('data:image/')){
-      if(src.length > 650000){ img.remove(); return; }
+      if(src.length > 650000 || !_DATAURL_IMG_OK.test(src)){ img.remove(); return; }
       id = novoIdImagem(); IMAGENS_USUARIO[id] = src; img.setAttribute('data-img', id);
       salvarImagensUsuario(); enviarImagemNuvem(id);
     }

@@ -251,8 +251,10 @@ function dividirEmFrases(texto){
     /\b(art|arts|inc|par|§|nº|n°|no|ed|op|cit|cf|vs|sr|sra|dr|dra|min|des|ex)\.\s/gi,
     m => m.replace('.', '\u0000')
   );
+  // (sem lookbehind: ele é erro de sintaxe no Safari anterior a 16.4 e derrubaria o script inteiro)
   const partes = marcado
-    .split(/(?<=[.!?])\s+(?=[A-ZÀ-Ú"“(])|\n+/)
+    .replace(/([.!?])\s+(?=[A-ZÀ-Ú"“(])/g, '$1\u0001')
+    .split(/\u0001|\n+/)
     .map(p => p.replace(/\u0000/g, '.').trim())
     .filter(Boolean);
   return partes.length ? partes : [texto.trim()];
@@ -268,7 +270,11 @@ function temListaAlfabetica(texto){
 // "c. e d)" (quando duas letras são combinadas numa análise só)
 function quebrarItensAlfabeticos(texto){
   if(!texto || !temListaAlfabetica(texto)) return texto;
-  return texto.replace(/\s*(?<![-–])\b([a-e])(\)|\.\s*e\s*[a-e]\))/gi, '\n$1$2');   // não quebra "art. 147-B)"
+  // não quebra "art. 147-B)" (letra colada a hífen); sem lookbehind, por compatibilidade com Safari < 16.4
+  return texto.replace(/(\s*)\b([a-e])(\)|\.\s*e\s*[a-e]\))/gi, (m, sp, letra, resto, pos, todo)=>{
+    const anterior = sp ? sp.slice(-1) : (pos>0 ? todo[pos-1] : '');
+    return (anterior==='-' || anterior==='–') ? m : '\n'+letra+resto;
+  });
 }
 
 // combina a quebra em frases (item 5) com o destaque de palavras-chave (item 6):

@@ -8,10 +8,20 @@ const _CC_NUM = `(?:\\d{1,3}(?:\\.\\d{3})+|\\d+)(?:,\\d+)?|(?:cento e )?(?:${_CC
 const _CC_UN = 'dias úteis|dias corridos|dias|dia|meses|mês|anos|ano|horas|hora|minutos|semanas|vezes|por cento|%|salários mínimos|salário mínimo|membros|conselheiros|deputados|auditores|procuradores|vagas|parcelas|cargos|reais';
 const _CC_RE_QTD = new RegExp(`(?<![\\wÀ-ÿ])(${_CC_NUM})(?:\\s+(?:a|até|e)\\s+(${_CC_NUM}))?\\s*(?:\\(\\d+\\)\\s*)?(${_CC_UN})(?![\\wÀ-ÿ])`, 'i');
 const _CC_RE_QUO = /(dois terços|2\/3|três quintos|3\/5|um terço|1\/3|um quinto|quatro quintos|maioria absoluta|maioria simples|maioria qualificada|unanimidade|metade)/i;
+// quórum só vale com fronteira: '2/3' não pode casar dentro de '12/3/2020' nem 'metade' dentro de outra palavra (sem lookbehind, por Safari < 16.4)
+function _ccQuoOk(txt, idx, len){
+  const ant = idx>0 ? txt[idx-1] : '', dep = txt[idx+len] || '';
+  return !/[\d\/.,\wÀ-ÿ]/.test(ant) && !/[\d\/\wÀ-ÿ]/.test(dep);
+}
+function _ccAcharQuo(txt){
+  const g = new RegExp(_CC_RE_QUO.source, 'gi'); let m;
+  while((m = g.exec(txt))){ if(_ccQuoOk(txt, m.index, m[0].length)) return m; }
+  return null;
+}
 const _CC_FRAC = { 'dois terços':'2/3', 'três quintos':'3/5', 'um terço':'1/3', 'um quinto':'1/5', 'quatro quintos':'4/5' };
 function cartaoValor(txt){
   txt = String(txt||'');
-  const mq = txt.match(_CC_RE_QUO);
+  const mq = _ccAcharQuo(txt);
   const m = txt.match(_CC_RE_QTD);
   // vale o que aparece primeiro no trecho
   if(mq && (!m || mq.index <= m.index)){ const k = mq[1].toLowerCase(); return { big: _CC_FRAC[k] || (k==='2/3'||k==='3/5'||k==='1/3'||k==='1/5'||k==='4/5' ? k : k.charAt(0).toUpperCase()+k.slice(1)), un:'', texto: !(_CC_FRAC[k]||/\//.test(k)) }; }
@@ -23,7 +33,8 @@ function cartaoValor(txt){
   return null;
 }
 /* troca de termos: diff por palavras entre o Trecho (errado) e a Correção; só quando a mudança é pontual */
-function _ccNorm(w){ return w.toLowerCase().replace(/[^\wÀ-ÿ%\/]/g,''); }
+// só tira a pontuação das bordas e o ponto de milhar: '2,5%' e '25%' (ou '1,5' e '15') continuam diferentes
+function _ccNorm(w){ return w.toLowerCase().replace(/^[^\wÀ-ÿ%\/]+|[^\wÀ-ÿ%\/]+$/g,'').replace(/(\d)\.(?=\d{3}(?!\d))/g,'$1'); }
 function cartaoDiff(a, b, o){
   o = o || {};
   const A = String(a||'').trim().split(/\s+/).filter(Boolean), B = String(b||'').trim().split(/\s+/).filter(Boolean);
@@ -132,7 +143,7 @@ function cartaoValoresDe(txt){
   txt = String(txt||''); const achados = [];
   const g1 = new RegExp(_CC_RE_QTD.source, 'gi'), g2 = new RegExp(_CC_RE_QUO.source, 'gi'); let m;
   while((m = g1.exec(txt))){ const v = cartaoValor(m[0]); if(v) achados.push({ v, idx:m.index, len:m[0].length }); }
-  while((m = g2.exec(txt))){ const v = cartaoValor(m[0]); if(v) achados.push({ v, idx:m.index, len:m[0].length }); }
+  while((m = g2.exec(txt))){ if(!_ccQuoOk(txt, m.index, m[0].length)) continue; const v = cartaoValor(m[0]); if(v) achados.push({ v, idx:m.index, len:m[0].length }); }
   return achados.sort((a,b)=>a.idx-b.idx);
 }
 function _ccCtx(txt, a){

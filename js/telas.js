@@ -326,7 +326,8 @@ function computeSnapshotMateria(materiaKey){
   const bucket = getBucket(materiaKey);
   let ac=0, erradas=0, ultimaRespostaTs=null;
   Object.entries(bucket.perguntas).forEach(([uid,p])=>{
-    if(!BY_UID[uid]) return; // órfã: questão não existe mais na base atual
+    const qq = BY_UID[uid];
+    if(!qq || qq.duplicataOculta || (qq.t!=='CE' && qq.t!=='MC')) return; // órfã, duplicata oculta ou fora do escopo do total: não conta (senão 'respondidas' passa do total)
     if(p.ultimoResultado===true) ac++;
     else if(p.ultimoResultado===false) erradas++;
     // (item 3) última resposta dada nesta matéria — o último item do histórico
@@ -513,7 +514,10 @@ function downloadRelatorioAuditoria(){
 // caso é raro e o próximo import/edição já corrige.
 let _analiseTemasCache = {};
 function analisarTemasDaMateriaCached(materiaKey){
-  const qtdAtual = ALL_QUESTIONS.length;
+  // assinatura barata do conteúdo da matéria: quantidade + soma dos temas + ocultas (a lista atualizada costuma ter a MESMA quantidade)
+  let qtdAtual = ALL_QUESTIONS.length, somaTemas = 0, ocultas = 0;
+  for(const q of ALL_QUESTIONS){ if(!materiaKey || q.materia===materiaKey){ somaTemas += (q.tema||'').length; if(q.duplicataOculta) ocultas++; } }
+  qtdAtual = qtdAtual + '|' + somaTemas + '|' + ocultas;
   const hit = _analiseTemasCache[materiaKey||''];
   if(hit && hit.qtdAtual===qtdAtual) return hit.dados;
   const dados = analisarTemasDaMateria(materiaKey);
@@ -1061,12 +1065,15 @@ function renderLanding(){
     ${quizSalvo ? `<button class="btn-outline btn-sm" id="btn-reiniciar-simulado" style="justify-content:center;min-width:140px;">🔄 Reiniciar simulado</button>` : ''}
   </div>`;
 
+  // a tabela de matérias já traz Continuar/Configurar/Reiniciar; sem ela (menos de 2 matérias) estes botões são a única porta de entrada
+  const tabelaEstat = renderEstatisticasPorMateria();
   return `
   <div class="landing-hero">
     <h2 class="section-title">${esc(STATE.materia || 'Painel do candidato')}${STATE.tema!=='todos' ? ` <span class="materia-assunto-label" style="font-size:14px;">· ${esc(STATE.tema)}</span>` : ''} ${STATE.materia ? atualizacaoLegalBadge(STATE.materia) : ''} ${qtdSimuladosGerados>0 ? `<span class="sim-count-badge">${qtdSimuladosGerados}</span>` : ''}</h2>
     ${STATE.simuladoSalvoMsg ? `<div class="side-status ok" style="margin-bottom:8px;">✓ Simulado salvo! Veja em "Simulados salvos" logo abaixo.</div>` : ''}
+    ${tabelaEstat ? '' : infoSalvo + botoesAcao}
   </div>
-  ${renderEstatisticasPorMateria()}
+  ${tabelaEstat}
   ${renderDashboardAnalitico()}
   ${renderSimuladosSalvosBlock()}
   ${STATE.materia ? renderDangerZone() : ''}
@@ -1531,6 +1538,8 @@ function continuarSimuladoDaMateria(materiaNome){
   const last = acharIdxUltimaRespondida(q);
   if(last>=0) q.idx = last;
   STATE.quiz = q;
+  setLocalTab(materiaNome, 'simulado');   // senão a aba lembrada (erros, flashcards…) esconde o simulado retomado
+  STATE.mostrarConfigSimulado = false;
   render();
 }
 /* ---- ordem das questões no simulado ---- */
@@ -1673,7 +1682,8 @@ function startQuiz(nums, opcoes){
   // aberto até responder tudo. Conjunto específico (refazer erros) mantém a
   // ordem dada; o resto segue a ordem escolhida em "Ordem das questões".
   const queue = nums ? candidatos.map(q=>q.uid) : filaSimuladoPrevia(); // respeita a quantidade definida na configuração
-  STATE.quiz = { queue, idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, ordem: nums ? null : STATE.ordemSimulado, ...((!nums && getSetup(STATE.materia).qtd>0 && queue.length < pool().length) ? { limitado:true } : {}), ...(opcoes && opcoes.subconjunto ? { origemErros:true, treinoArmadilha: opcoes.rotulo||true } : {}) };
+  try{ delete getSetup(STATE.materia)._sel; }catch(_){}   // a prévia guardada não vale para o próximo simulado (progresso muda; 'intercalado' é aleatório)
+  STATE.quiz = { queue, idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, universo: nums ? null : candidatos.map(q=>q.uid), ordem: nums ? null : STATE.ordemSimulado, ...((!nums && getSetup(STATE.materia).qtd>0 && queue.length < pool().length) ? { limitado:true } : {}), ...(opcoes && opcoes.subconjunto ? { origemErros:true, treinoArmadilha: opcoes.rotulo||true } : {}) };
   STATE.setupDrawerOpen = false;
   STATE.mostrarConfigSimulado = false;
   STATE.simuladoSalvoMsg = false;

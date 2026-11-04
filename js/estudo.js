@@ -30,8 +30,17 @@ function btnChuteHtml(materiaKey, uid, revelado){
   return `<button type="button" class="icon-btn ${marcado?'btn-chute-ativo btn-em-uso':''}" id="btn-chute" data-uid="${esc(uid)}" aria-pressed="${marcado?'true':'false'}" aria-label="${marcado?'Desmarcar chute':'Marcar como chute'}" title="${marcado?'Desmarcar &quot;chutei essa&quot;':'Marcar que você chutou esta resposta (não afeta estatísticas de acerto)'}">${icoSvg('dado')}<span class="btn-txt">Chute${marcado?' ✓':''}</span></button>`;
 }
 function renderQuiz(){
-  try{ if(STATE.quiz && typeof reconciliarProgressoComQuiz==='function') reconciliarProgressoComQuiz(STATE.quiz); }catch(_){}
+  try{ if(STATE.quiz && !STATE.quiz.finished && !STATE.quiz.reaberto && typeof reconciliarProgressoComQuiz==='function') reconciliarProgressoComQuiz(STATE.quiz); }catch(_){}
   const quiz = STATE.quiz;
+  // uids que não existem mais saem da fila (e das respostas) ANTES de qualquer tela, inclusive a de resultados
+  if(quiz.queue.some(u=>!BY_UID[u])){
+    const uidAntes = quiz.queue[quiz.idx];
+    quiz.queue = quiz.queue.filter(u=>BY_UID[u]);
+    const ni = quiz.queue.indexOf(uidAntes);
+    quiz.idx = ni>=0 ? ni : Math.max(0, Math.min(quiz.idx, quiz.queue.length-1));
+    Object.keys(quiz.respostas||{}).forEach(u=>{ if(!quiz.queue.includes(u)) delete quiz.respostas[u]; });
+    salvarQuizEmAndamento();
+  }
   if(quiz.finished) return renderResults();
 
   // remove uids repetidos da fila (mantém a primeira ocorrência) e ajusta a
@@ -52,7 +61,11 @@ function renderQuiz(){
   // não existem mais e inclui os que faltam. Filas de "refazer erros"
   // (origemErros) são um subconjunto de propósito e não são tocadas.
   if(!quiz.origemErros && !quiz.limitado && quiz.materia){
-    const poolAtual = ALL_QUESTIONS.filter(q2=>q2.materia===quiz.materia && !q2.duplicataOculta && (q2.t==='CE'||q2.t==='MC'));
+    // universo = o conjunto filtrado com que o simulado foi criado (assunto, nível, banca…); simulados antigos, sem ele, só perdem órfãs
+    const poolValido = q2=>q2.materia===quiz.materia && !q2.duplicataOculta && (q2.t==='CE'||q2.t==='MC');
+    const universoSet = Array.isArray(quiz.universo) ? new Set(quiz.universo) : null;
+    const naFila = new Set(quiz.queue);
+    const poolAtual = ALL_QUESTIONS.filter(q2=> poolValido(q2) && (universoSet ? universoSet.has(q2.uid) : naFila.has(q2.uid)));
     const poolUids = new Set(poolAtual.map(q2=>q2.uid));
     const semOrfas = quiz.queue.filter(u=>poolUids.has(u));
     const queueUidsAtuais = new Set(semOrfas);
@@ -81,7 +94,7 @@ function renderQuiz(){
   // neste objeto de quiz específico (ver armazenamento.js) -- sem isso, uma
   // questão já respondida podia voltar a aparecer "em branco" depois de
   // reordenar a fila ou retomar um simulado antigo
-  if(curarRespostasDoHistorico(quiz)) salvarQuizEmAndamento();
+  if(!quiz.origemErros && curarRespostasDoHistorico(quiz)) salvarQuizEmAndamento();
 
   // uids que não existem mais (matéria apagada/substituída) saem da fila; fila vazia encerra o quiz
   if(quiz.queue.some(u=>!BY_UID[u])){
@@ -153,7 +166,7 @@ function renderQuiz(){
       if(!emEdicaoAlt && !customAlt && STATE.quiz && STATE.quiz.respostas && STATE.quiz.respostas[uidAtual] && typeof mcMarcasAlternativas==='function'){ const mm = mcMarcasAlternativas(q); if(mm && mm[letraUp]) textoHtml = mm[letraUp]; }   // errada: palavras que a separam da certa riscadas; certa: palavras que a distinguem destacadas
       if(emEdicaoAlt){
         return `<div class="answer-opt-edit">
-          <span class="letter">${letraUp}</span>
+          <span class="letter">${esc(letraUp)}</span>
           <div class="campo-editavel-conteudo" contenteditable="true" id="conteudo-alt${idx}-${esc(uidAtual)}" style="flex:1;">${textoHtml}</div>
         </div>`;
       }
@@ -167,8 +180,8 @@ function renderQuiz(){
         else cls+=' nao-escolhida-errada';
       }
       if(riscadas.includes(letraUp)) cls+=' riscado';
-      return `<button class="${cls}" data-opt="${letraUp}" ${revelado?'disabled':''} title="2 cliques risca esta alternativa">
-        <span class="letter">${letraUp}</span> <span class="opt-text">${textoHtml}</span>
+      return `<button class="${cls}" data-opt="${esc(letraUp)}" ${revelado?'disabled':''} title="2 cliques risca esta alternativa">
+        <span class="letter">${esc(letraUp)}</span> <span class="opt-text">${textoHtml}</span>
       </button>`;
     }).join('') + (emEdicaoAlt ? '' : (revelado ? `<div class="chute-chip-row">${chuteChip}</div>` : btnChutarHtml));
   } else {
@@ -483,10 +496,11 @@ function renderResolucao(q, resposta, quiz){
   `;
 }
 
-function pickAnswer(opt){
+function pickAnswer(opt, uidClicado){
   const quiz = STATE.quiz;
   if(!quiz) return; // clique atrasado (temporizador de duplo clique) após sair da sessão
   const uid = quiz.queue[quiz.idx];
+  if(uidClicado && uidClicado !== uid) return;   // o usuário já navegou: a resposta não vale para a questão seguinte
   if(quiz.respostas[uid]) return;
   const q = BY_UID[uid];
   const correct = opt === gabaritoEfetivo(q);
@@ -501,7 +515,7 @@ function pickAnswer(opt){
   if(chuteArmado === uid){ toggleChute(quiz.materia, uid, correct); chuteArmado = null; }
   // finaliza sozinho assim que todas as questões da fila foram respondidas, em
   // qualquer ordem
-  if(Object.keys(quiz.respostas).length >= quiz.queue.length){
+  if(quiz.queue.every(u=>quiz.respostas[u])){
     finalizarQuiz();
     return;
   }
@@ -586,7 +600,7 @@ function resetQuestaoAtual(){
   const quiz = STATE.quiz;
   const uid = quiz.queue[quiz.idx];
   if(!quiz.respostas[uid]) return;
-  undoRegistro(quiz.materia, uid);
+  if(!quiz.respostas[uid].recuperadaDoHistorico) undoRegistro(quiz.materia, uid);   // a recuperada do histórico é tentativa de OUTRO simulado
   delete quiz.respostas[uid];
   salvarQuizEmAndamento();
   render();
@@ -596,8 +610,8 @@ function resetSimuladoAtual(){
   const quiz = STATE.quiz;
   if(!quiz) return;
   const ok = window.confirm('Isso vai reiniciar o simulado do zero — as respostas já dadas nele serão desfeitas (seu progresso geral da matéria é ajustado de volta, questão por questão). A fila e os filtros continuam os mesmos. Deseja continuar?');
-  if(!ok) return;
-  Object.keys(quiz.respostas).forEach(uid => undoRegistro(quiz.materia, uid));
+  if(!ok) return false;
+  Object.keys(quiz.respostas).forEach(uid => { if(!quiz.respostas[uid].recuperadaDoHistorico) undoRegistro(quiz.materia, uid); });
   quiz.respostas = {};
   quiz.idx = 0;
   quiz.finished = false;
@@ -611,9 +625,10 @@ function resetSimuladoAtual(){
 function reiniciarSimuladoDaMateria(materiaNome){
   const q = STATE.quizzesEmAndamento[materiaNome];
   if(!q || q.finished) return;
+  const antes = { m: STATE.materia, q: STATE.quiz };
   STATE.materia = materiaNome;
   STATE.quiz = q;
-  resetSimuladoAtual();
+  if(!resetSimuladoAtual()){ STATE.materia = antes.m; STATE.quiz = antes.q; }   // cancelou: não deixa o app "dentro" do simulado
 }
 
 function abandonarQuiz(){
@@ -720,7 +735,7 @@ function renderResults(){
     <h3>Questões erradas nesta sessão</h3>
     ${errList.map(uid=>{
       const q=BY_UID[uid];
-      return `<div class="error-row"><span class="num">${String(q.n).padStart(3,'0')}</span>
+      return `<div class="error-row"><span class="num">${esc(String(q.n).padStart(3,'0'))}</span>
         <div class="summary">${esc(q.rf)}<div class="meta">${esc(q.bc)}</div></div></div>`;
     }).join('')}
     <p style="font-size:12.5px;color:var(--ink-soft);margin-top:10px;">Essas questões já estão salvas automaticamente no caderno de erros desta matéria.</p>
@@ -791,7 +806,7 @@ function renderErros(){
         <span class="num">${esc(String(q.n).padStart(3,'0'))}</span>
         ${cobrancaTag(q) || `<span class="tag tag-cobranca-ausente" title="Esta questão ainda não tem o rótulo de tipo de cobrança (Literal, Interpretativa etc.) classificado">❔ Sem rótulo</span>`}
         <div class="summary">${esc(limparEnunciado(q.q, q.t) || q.rf || '')}</div>
-        <button class="btn btn-gold btn-sm" data-refazer="${uid}">Refazer</button>
+        <button class="btn btn-gold btn-sm" data-refazer="${esc(uid)}">Refazer</button>
       </div>`;
     }).join('')}
 
@@ -811,8 +826,8 @@ function renderErros(){
         ${statusChip}
         ${cobrancaTag(q) || `<span class="tag tag-cobranca-ausente" title="Esta questão ainda não tem o rótulo de tipo de cobrança (Literal, Interpretativa etc.) classificado">❔ Sem rótulo</span>`}
         <div class="summary">${esc(limparEnunciado(q.q, q.t) || q.rf || '')}</div>
-        <button class="btn btn-ghost btn-sm" data-desmarcar-chute="${uid}" title="Remover da lista de chutes">✕ Desmarcar</button>
-        <button class="btn btn-gold btn-sm" data-refazer="${uid}">Refazer</button>
+        <button class="btn btn-ghost btn-sm" data-desmarcar-chute="${esc(uid)}" title="Remover da lista de chutes">✕ Desmarcar</button>
+        <button class="btn btn-gold btn-sm" data-refazer="${esc(uid)}">Refazer</button>
       </div>`;
     }).join('')}
 
@@ -988,7 +1003,7 @@ function renderFlashcards(){
     <h2 class="section-title">Flashcards</h2>
     ${filtroHtml}
     <div class="flash-header">
-      <div class="flash-counter">CARTA ${deck.idx+1} DE ${deck.uids.length} · QUESTÃO Nº ${q.n}${q.tema && q.tema!=='Geral'?` · ${esc(q.tema)}`:''}</div>
+      <div class="flash-counter">CARTA ${deck.idx+1} DE ${deck.uids.length} · QUESTÃO Nº ${esc(String(q.n))}${q.tema && q.tema!=='Geral'?` · ${esc(q.tema)}`:''}</div>
       ${renderZoomControl()}
     </div>
     <div class="progress-bar flash-progress"><div class="fill" style="width:${progressPct}%"></div></div>
