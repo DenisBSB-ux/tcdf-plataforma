@@ -548,6 +548,33 @@ function setSyncStatusDOM(type, msg, detalhe){
   }
   atualizarIndicadorNuvem();
 }
+// Sincronização automática (chamada a cada 1 min): 1 leitura barata do manifesto; só puxa tudo se OUTRO aparelho gravou depois;
+// reenvia o que ficou pendente; e renova o "Sincronizado há N min" a cada verificação bem-sucedida.
+let _syncAutoEmAndamento = false;
+async function sincronizacaoAutomatica(){
+  if(_syncAutoEmAndamento || !sincronizacaoAtiva()) return;
+  if(typeof navigator!=='undefined' && navigator.onLine===false){ try{ atualizarLinhaSync(); atualizarIndicadorNuvem(); }catch(_){} return; }
+  if(document.visibilityState==='hidden') return;                         // aba em segundo plano: não gasta cota
+  _syncAutoEmAndamento = true;
+  try{
+    let puxou = false;
+    // 1) mudanças de outros aparelhos (não puxa no meio de um simulado aberto: o simulado em andamento não pode ser trocado por baixo)
+    const doc = await comLimiteDeTempo(fbDb.collection('progresso').doc(STATE.syncCode).get(), 15000, 'tempo esgotado ao verificar a nuvem');
+    const remotoTs = doc.exists ? (Number(doc.data().updatedAt) || 0) : 0;
+    if(remotoTs > (window.__MANIFESTO_TS||0) && !STATE.quiz){
+      const r = await pullFromCloud({ silent:true });
+      puxou = r === true;
+      if(puxou && typeof podeRenderizarAgora==='function' && podeRenderizarAgora()) try{ render(); }catch(_){}
+    }
+    // 2) o que ficou pendente de envio
+    if(MATERIAS_PROGRESSO_SUJAS.size>0 || quizSyncPendente) await pushToCloud();
+    // 3) verificação ok: renova o horário (sem erro pendente)
+    if(!STATE.syncStatus || STATE.syncStatus.type!=='err' || puxou || MATERIAS_PROGRESSO_SUJAS.size===0) marcarUltimoSyncOk();
+  }catch(e){
+    console.warn('Sincronização automática falhou', e);
+    setSyncStatusDOM('err', 'falha ao sincronizar', motivoErroFirestore(e));
+  }finally{ _syncAutoEmAndamento = false; }
+}
 // "Sincronizar agora": envia o que está pendente e puxa o que mudou em outros aparelhos
 async function sincronizarAgora(){
   if(!sincronizacaoAtiva()){ alert('Entre com o Google para sincronizar.'); return; }
@@ -633,6 +660,7 @@ async function pullFromCloud({silent} = {}){
     const doc = await comLimiteDeTempo(fbDb.collection('progresso').doc(STATE.syncCode).get(), 15000, 'tempo esgotado ao ler o progresso na nuvem');
     if(doc.exists){
       const data = doc.data();
+      const tsManifestoLido = Number(data.updatedAt) || 0;
       // retrocompatibilidade: documentos gravados antes da v42 podem ter
       // 'progress' direto no manifesto (objeto nativo ou string) — a partir da
       // v42, cada matéria tem seu próprio documento (ver pushToCloud)
@@ -667,6 +695,7 @@ async function pullFromCloud({silent} = {}){
         mergeRemoteQuizzesEmAndamentoNaMemoria(quizzesRemotos);
       }
       saveProgress();
+      if(!falhouMateria) window.__MANIFESTO_TS = Math.max(window.__MANIFESTO_TS||0, tsManifestoLido);
       if(falhouMateria){
         // pull incompleto: não conta como sincronizado (evita sobrescrever a nuvem sem ter lido tudo)
         setSyncStatusDOM('err', 'sincronização incompleta — tentando de novo depois', 'Alguma matéria não pôde ser lida da nuvem.');
@@ -1042,10 +1071,12 @@ async function _pushToCloudInterno(){
     // (a cada resposta) o documento inteiro seria sobrescrito, apagando o campo
     // quizzesEmAndamento gravado separadamente por sincronizarQuizEmAndamentoNaNuvem
     // arrayUnion: o manifesto nunca perde matéria (outro aparelho pode ter criado uma que este ainda não puxou)
-    const manifesto = sanitizarParaFirestore(comDono({ updatedAt: Date.now() }));
+    const tsManifesto = Date.now();
+    const manifesto = sanitizarParaFirestore(comDono({ updatedAt: tsManifesto }));
     const chavesPROGRESS = Object.keys(PROGRESS);
     if(chavesPROGRESS.length) manifesto.materiasComProgresso = firebase.firestore.FieldValue.arrayUnion(...chavesPROGRESS);
     await comLimiteDeTempo(fbDb.collection('progresso').doc(STATE.syncCode).set(manifesto, { merge: true }), 15000, 'tempo esgotado ao salvar o manifesto de progresso');
+    window.__MANIFESTO_TS = tsManifesto;
     if(algumaFalhou) throw new Error('uma ou mais matérias não sincronizaram (ver avisos acima) — os dados já estão salvos neste dispositivo');
     marcarUltimoSyncOk();
   }catch(e){
