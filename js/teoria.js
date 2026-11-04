@@ -83,6 +83,16 @@ async function teoriaRemoverLocal(materia){
   TEORIA.locais[k] = null; TEORIA.msg = { tipo:'ok', txt:'PDF removido deste aparelho.' }; render();
 }
 
+// carga preguiçosa de scripts COM limite de tempo: em rede travada (nem onload nem onerror) a promessa não fica pendente para sempre
+// nem presa em cache — o timeout dispara o mesmo onerror de cada chamador (que limpa o cache e rejeita).
+function anexarScriptComTimeout(sc, ms){
+  let fim = false;
+  const t = setTimeout(()=>{ if(fim) return; fim = true; try{ sc.remove(); }catch(_){} if(sc.onerror) sc.onerror(new Event('timeout')); }, ms || 20000);
+  const ok = sc.onload, er = sc.onerror;
+  sc.onload = function(e){ if(fim) return; fim = true; clearTimeout(t); return ok && ok.call(this, e); };
+  sc.onerror = function(e){ if(fim && !(e && e.type==='timeout')) return; fim = true; clearTimeout(t); return er && er.call(this, e); };
+  document.head.appendChild(sc);
+}
 /* ================= LEITOR DE PDF DA PLATAFORMA ================= */
 const LEITOR = { aberto:false, pdf:null, pag:1, total:0, zoom:null, renderTask:null, rotulo:'' };
 let pdfjsPromessa = null;
@@ -93,7 +103,7 @@ function pdfjsCarregar(){
     const s = document.createElement('script'); s.src = PDFJS_BASE + 'pdf.min.js';
     s.onload = ()=>{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_BASE + 'pdf.worker.min.js'; ok(window.pdfjsLib); };
     s.onerror = ()=>{ pdfjsPromessa = null; falha(new Error('Não foi possível carregar o leitor de PDF (sem conexão?).')); };
-    document.head.appendChild(s);
+    anexarScriptComTimeout(s, 30000);
   });
   return pdfjsPromessa;
 }
@@ -455,7 +465,7 @@ function doutrinaPsCarregar(){
   doutrinaPsPromessa = new Promise((ok,falha)=>{
     const sc = document.createElement('script'); sc.src = 'js/doutrina-ps.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
     sc.onload = ok; sc.onerror = ()=>{ doutrinaPsPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
-    document.head.appendChild(sc);
+    anexarScriptComTimeout(sc);
   });
   return doutrinaPsPromessa;
 }
@@ -466,7 +476,7 @@ function doutrinaPdpmCarregar(){
   doutrinaPdpmPromessa = new Promise((ok,falha)=>{
     const sc = document.createElement('script'); sc.src = 'js/doutrina-pdpm.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
     sc.onload = ok; sc.onerror = ()=>{ doutrinaPdpmPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
-    document.head.appendChild(sc);
+    anexarScriptComTimeout(sc);
   });
   return doutrinaPdpmPromessa;
 }
@@ -477,7 +487,7 @@ function doutrinaDfCarregar(){
   doutrinaDfPromessa = new Promise((ok,falha)=>{
     const sc = document.createElement('script'); sc.src = 'js/doutrina-df.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
     sc.onload = ok; sc.onerror = ()=>{ doutrinaDfPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
-    document.head.appendChild(sc);
+    anexarScriptComTimeout(sc);
   });
   return doutrinaDfPromessa;
 }
@@ -488,7 +498,7 @@ function doutrinaDadmCarregar(){
   doutrinaDadmPromessa = new Promise((ok,falha)=>{
     const sc = document.createElement('script'); sc.src = 'js/doutrina-dadm.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
     sc.onload = ok; sc.onerror = ()=>{ doutrinaDadmPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
-    document.head.appendChild(sc);
+    anexarScriptComTimeout(sc);
   });
   return doutrinaDadmPromessa;
 }
@@ -499,7 +509,7 @@ function doutrinaCstCarregar(){
   doutrinaCstPromessa = new Promise((ok,falha)=>{
     const sc = document.createElement('script'); sc.src = 'js/doutrina-cst.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
     sc.onload = ok; sc.onerror = ()=>{ doutrinaCstPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
-    document.head.appendChild(sc);
+    anexarScriptComTimeout(sc);
   });
   return doutrinaCstPromessa;
 }
@@ -510,7 +520,7 @@ function doutrinaAdmCarregar(){
   doutrinaAdmPromessa = new Promise((ok,falha)=>{
     const sc = document.createElement('script'); sc.src = 'js/doutrina-adm.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
     sc.onload = ok; sc.onerror = ()=>{ doutrinaAdmPromessa = null; falha(new Error('Não foi possível carregar a doutrina.')); };
-    document.head.appendChild(sc);
+    anexarScriptComTimeout(sc);
   });
   return doutrinaAdmPromessa;
 }
@@ -578,7 +588,7 @@ function leiCarregar(norma){
   leiCarregando[norma] = new Promise((ok,falha)=>{
     const sc = document.createElement('script'); sc.src = f.arquivo + '?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
     sc.onload = ok; sc.onerror = ()=>{ delete leiCarregando[norma]; falha(new Error('Não foi possível carregar o texto da norma.')); };
-    document.head.appendChild(sc);
+    anexarScriptComTimeout(sc);
   });
   return leiCarregando[norma];
 }
@@ -791,7 +801,7 @@ function apostilaCarregar(){
   apostilaPromessa = new Promise((ok,falha)=>{
     const sc = document.createElement('script'); sc.src = 'js/teoria-dt.js?v=' + ((window.__TCDF_BUILD__||{}).versao||'');
     sc.onload = ok; sc.onerror = ()=>{ apostilaPromessa = null; falha(new Error('Não foi possível carregar a apostila.')); };
-    document.head.appendChild(sc);
+    anexarScriptComTimeout(sc);
   });
   return apostilaPromessa;
 }
