@@ -258,7 +258,7 @@ const LEI_FONTES = {
   'SUM TCU':{ arquivo:'js/sumulas-tcu-texto.js', global:'SUMULAS_TCU_TEXTO', titulo:'Súmulas do TCU', max:0 },
   'Lei 4.320':{ arquivo:'js/l4320-texto.js', global:'L4320_TEXTO', titulo:'Lei 4.320/1964 · Normas Gerais de Direito Financeiro (compilado do Planalto, via terceiros; conferir o texto oficial)', max:115 },
   'LC 101':{ arquivo:'js/lc101-texto.js', global:'LC101_TEXTO', titulo:'LC 101/2000 · Lei de Responsabilidade Fiscal (compilado do Planalto, via terceiros; conferir o texto oficial)', max:75 },
-  'Lei 13.709':{ arquivo:'js/l13709-texto.js', global:'L13709_TEXTO', titulo:'Lei 13.709/2018 · LGPD (artigos transcritos do compilado do Planalto; conferir o texto oficial)', max:65 },
+  'Lei 13.709':{ arquivo:'js/l13709-texto.js', global:'L13709_TEXTO', titulo:'Lei 13.709/2018 · LGPD (texto vigente, base de dados abertos do Senado/Normas.leg.br)', max:65 },
   'Lei 12.527':{ arquivo:'js/l12527-texto.js', global:'L12527_TEXTO', titulo:'Lei 12.527/2011 · Lei de Acesso à Informação (LAI)', max:47 },
   'Lei 8.429':{ arquivo:'js/l8429-texto.js', global:'L8429_TEXTO', titulo:'Lei 8.429/1992 · Improbidade Administrativa (com a Lei 14.230/2021)', max:25 },
   'Lei 9.784':{ arquivo:'js/l9784-texto.js', global:'L9784_TEXTO', titulo:'Lei 9.784/1999 · Processo Administrativo Federal', max:70 },
@@ -425,8 +425,9 @@ function doutrinaDadmDaQuestao(q){
 function doutrinaDaQuestao(q){
   if(!q) return null;
   { const k = doutrinaDfDaQuestao(q) || doutrinaDadmDaQuestao(q); if(k) return k; } const t = String(q.q||'') + ' ' + String(q.tema||'');
-  if(/Bonavides|gera[çc][õo]es|dimens[õo]es.{0,30}direitos fundamentais/i.test(t)) return 'geracoes';
-  if(/efic[áa]cia (plena|contida|limitada)|normas (constitucionais )?program[áa]ticas|classifica[çc][ãa]o tripartite|aplicabilidade das normas|restringida pelo legislador infraconstitucional/i.test(t)) return 'eficacia';
+  const ehConst = /constitucional/i.test(String(q.materia||''));   // 'gerações futuras' e 'eficácia' aparecem em outras disciplinas
+  if(ehConst && /Bonavides|gera[çc][õo]es|dimens[õo]es.{0,30}direitos fundamentais/i.test(t)) return 'geracoes';
+  if(ehConst && /efic[áa]cia (plena|contida|limitada)|normas (constitucionais )?program[áa]ticas|classifica[çc][ãa]o tripartite|aplicabilidade das normas|restringida pelo legislador infraconstitucional/i.test(t)) return 'eficacia';
   if(/^reg/i.test(String(q.materia||'')) && /mandado de seguran[çc]a/i.test(String(q.q||'')) && /Minist[ée]rio P[úu]blico|MP\b/.test(String(q.q||''))) return 'mpc';
   if(/primeiros socorros/i.test(String(q.materia||''))) return doutrinaPsDaQuestao(q);
   if(/PDPM|mulher|maria da penha/i.test(String(q.materia||''))){ const k = doutrinaPdpmDaQuestao(q); if(k) return k; }
@@ -593,7 +594,7 @@ function leiOrdem(norma){
 function leiAlvosDaQuestao(q, norma, n){
   const m = String((q && q.r) || '').match(/⚖️\s*([^\n]*)/); if(!m) return [];
   const linha = m[1].replace(/\*+/g,'').replace(/[“”]/g,'"');
-  const pos = linha.search(new RegExp('Art\\.?\\s*'+String(n).replace('-','\\-')+'\\b')); if(pos<0) return [];
+  const pos = linha.search(new RegExp('Art\\.?\\s*'+String(n).replace('-','\\-')+'(?![\\w-])')); if(pos<0) return [];
   const resto = linha.slice(pos).replace(/^Art\.?\s*[\w-]+[º°]?\s*/,'').split('·')[0].replace(/§§\s*([^▸]*)/g,(m,l)=>l.split(/,|\se\s/).map(x=>'§ '+x.trim()).filter(x=>x!=='§').join(', '));
   const romN = r=>{ const v = {I:1,V:5,X:10,L:50}; let n=0, pv=0; r.split('').reverse().forEach(c=>{ const x=v[c]; n += x<pv ? -x : x; pv = x; }); return n; };
   const romS = n=>{ let r=''; [[50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']].forEach(([v,l])=>{ while(n>=v){ r+=l; n-=v; } }); return r; };
@@ -735,7 +736,7 @@ function apostilaSecoesDoArtigo(q, norma, n){
   const sec = (TEORIA_TEXTO[t.chave] || []).filter(x=> x.norma===norma && x.artigos.includes(+n));
   const m = String(q.r||'').match(/⚖️\s*([^\n]*)/); const linha = m ? m[1].replace(/\*+/g,'') : '';
   const rom = (linha.match(/▸\s*([IVXL]+)\b/)||[])[1]; const par = (linha.match(/§\s*(\d+)/)||[])[1];
-  const pontos = x=>{ let p = 0; if(rom && new RegExp('(^|[^A-Z])'+rom+'([^A-Z]|$)').test(x.titulo)) p += 2; if(par && new RegExp('§\\s*'+par).test(x.titulo)) p += 2; if(!rom && !par && /caput/i.test(x.titulo)) p += 1; return p; };
+  const pontos = x=>{ let p = 0; if(rom && new RegExp('(^|[^A-Za-z])'+rom+'([^A-Za-z]|$)').test(x.titulo)) p += 2; if(par && new RegExp('§\\s*'+par+'(?!\\d)').test(x.titulo)) p += 2; if(!rom && !par && /caput/i.test(x.titulo)) p += 1; return p; };
   sec.sort((a,b)=> pontos(b)-pontos(a));
   const mx = sec.length ? pontos(sec[0]) : 0;
   return mx>0 ? sec.filter(x=> pontos(x)===mx) : sec;   // só o trecho que a questão cita (se houver)
