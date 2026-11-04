@@ -4,7 +4,7 @@ Uso: python3 gerar_texto_lei.py entrada.txt LC116_TEXTO lc116-texto.js "Texto da
 (roda da raiz do repositório). Mantém a ÚLTIMA ocorrência de cada artigo e, dentro do artigo, o último de cada § / inciso / alínea repetido:
 o Planalto imprime o texto antigo riscado antes do vigente, e o pdftotext não distingue o risco."""
 import re,json,sys
-INI=re.compile(r'^(Art\.?\s*\d+(?:-[A-Z])?\s*[º°o.]?\s|§\s*\d+|Parágrafo único|[IVXLC]+\s*[-–—]\s|[a-z]\)\s|\d+\.\s)')
+INI=re.compile(r'^(Art(?:igo)?\.?\s*\d+(?:-[A-Z])?\s*[º°o.]?\s|§\s*\d+|Parágrafo único|[IVXLC]+\s*[-–—]\s|[a-z]\)\s|\d+\.\s)')
 CAB=re.compile(r'^(LIVRO|T[ÍI]TULO|CAP[ÍI]TULO|SE[ÇC][ÃA]O|SUBSE[ÇC][ÃA]O|PARTE|DISPOSI[ÇC][ÕO]ES|ANEXO)\b')
 def limpa(t):
     t=re.sub(r'\[([^\]]*)\]\([^)]*\)',r'\1',t); t=re.sub(r'<https?://[^>\s]*>','',t)
@@ -13,6 +13,8 @@ def parse(t,maxart=None):
     linhas=[re.sub(r'\s+',' ',l).strip() for l in t.split('\n')]; linhas=[l for l in linhas if l]
     ocs=[]; cur=None
     for l in linhas:
+        if re.match(r'^(Brasília,? |Este texto não substitui)',l): cur=None; continue   # assinatura/rodapé: fecha o último artigo
+        l=re.sub(r'^Artigo\b','Art.',l)                                              # 'Artigo 100' (Lei 4.320) = 'Art. 100'
         m=re.match(r'^Art\.?\s*(\d+)\s*[º°o]?(?:\s*-\s*([A-Z]))?\s*[º°o]?\.?(?=\s|$)',l)
         if m:
             cur=[m.group(1)+('-'+m.group(2) if m.group(2) else ''),[l]]; ocs.append(cur); continue

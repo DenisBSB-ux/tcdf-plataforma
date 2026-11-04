@@ -10,17 +10,20 @@ on:
 permissions:
   contents: write
   pull-requests: write
+concurrency:
+  group: auto-merge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 jobs:
   mesclar:
     if: startsWith(github.head_ref, 'claude/atualizacao-legal-')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { ref: "${{ github.event.pull_request.head.sha }}" }
+        with: { ref: "${{ github.event.pull_request.head.sha }}", fetch-depth: 0 }
       - name: Conferir arquivos alterados
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}", PR: "${{ github.event.pull_request.number }}" }
         run: |
-          gh api "repos/${{ github.repository }}/pulls/$PR/files" --paginate --jq '.[].filename' > arquivos.txt
+          gh api "repos/${{ github.repository }}/pulls/$PR/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)' > arquivos.txt   # inclui o nome antigo de arquivo renomeado
           cat arquivos.txt
           while read -r f; do
             case "$f" in
@@ -40,8 +43,13 @@ jobs:
           global.window=global;global.document={addEventListener(){}};global.esc=String;
           (0,eval)(require('fs').readFileSync('js/atualizacoes-legais.js','utf8')+';if(!Array.isArray(ALTERACOES_LEGAIS)||!ATUALIZACOES_LEGAIS.length) throw new Error(\"estrutura inválida\")');
           console.log('ok',v[0]);"
+      - name: Integridade dos textos de lei alterados (nenhum artigo pode sumir)
+        run: |
+          git fetch origin main
+          F=$(grep '^js/.*-texto\.js$' arquivos.txt | while read -r f; do [ -f "$f" ] && echo "$f"; done)
+          [ -z "$F" ] || node .claude/skills/atualizacao-legal-semanal/verificar_textos.js origin/main $F
       - name: Cobertura das matérias (todas conferidas)
         run: node .claude/skills/atualizacao-legal-semanal/verificar_cobertura.js
       - name: Mesclar (squash)
         env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}", PR: "${{ github.event.pull_request.number }}" }
-        run: gh pr merge "$PR" --squash --delete-branch --repo "${{ github.repository }}"
+        run: gh pr merge "$PR" --squash --delete-branch --repo "${{ github.repository }}" --match-head-commit "${{ github.event.pull_request.head.sha }}"

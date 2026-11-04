@@ -2,15 +2,23 @@
 # Fecha uma lista INTEIRA (padrão final) depois que os subagentes escreveram pasta/lotes/bNN.py e pasta/resp/rNN.py (+ eNN.py nas de múltipla escolha).
 # Uso: bash fechar_lista_completa.sh <pasta> "<Matéria>"      (pasta tem original.md; resultado: pasta/entrega.md)
 # Passos: build (resoluções) → preparar → montar_respostas → finalizar_lista.sh → inserir Explicação → verificações → PORTÃO DO POP-UP.
-cd /home/user/tcdf-plataforma; SK=.claude/skills/formatar-resolucoes; D=$1; M=$2
-python3 $SK/montar_respostas.py $D
-python3 $SK/montar_resolucoes.py build $D/original.md $D/lotes $D/built.md | tail -2
-python3 $SK/aplicar_gab.py $D
+set -o pipefail
+RAIZ=$(cd "$(dirname "$0")/../../.." && pwd)
+D=$(realpath "$1"); M=$2
+cd "$RAIZ" || exit 1; SK=.claude/skills/formatar-resolucoes
+falhou(){ echo "FALHOU: $*"; exit 1; }
+rm -f "$D"/built.md "$D"/entrega.md "$D"/.gab_alt "$D"/.sem_popup
+python3 $SK/montar_respostas.py $D || falhou montar_respostas
+python3 $SK/montar_resolucoes.py build $D/original.md $D/lotes $D/built.md | tail -2 || falhou montar_resolucoes
+[ -s $D/built.md ] || falhou 'built.md não foi gerado (verifique lotes/bNN.py)'
+python3 $SK/aplicar_gab.py $D || falhou aplicar_gab
 GAB_ALT=$(cat $D/.gab_alt 2>/dev/null)
 python3 $SK/preparar_lista.py $D/built.md $D/q | tail -1 | cut -c1-120
 python3 $SK/montar_respostas.py $D >/dev/null
 GAB_ALT="$GAB_ALT" bash $SK/finalizar_lista.sh $D/q $D/original.md "$M" 2>&1 | tail -18
-python3 $SK/inserir_explicacao.py $D/q/final.md $D/X.py $D/entrega.md
+[ -s $D/q/final.md ] || falhou finalizar_lista
+[ -s $D/q/final.md ] || falhou 'q/final.md não foi gerado pelo finalizar_lista.sh'
+python3 $SK/inserir_explicacao.py $D/q/final.md $D/X.py $D/entrega.md || falhou inserir_explicacao
 echo "--- verificações finais"
 python3 $SK/verificar_modelo.py $D/entrega.md | tail -1
 node $SK/verificar_importador.js $D/original.md $D/entrega.md 2>&1 | tr -d '\n ' | grep -o '"enunciadosIguais":[a-z]*\|"gabaritosDivergentes":\[[^]]*\]\|"resolucoesMalFormatadas":\[[^]]*\]' | tr '\n' ' '; echo
@@ -20,7 +28,9 @@ MATERIA="$M" timeout 280 node $SK/auditar_lista.js $D/original.md $D/entrega.md 
 import sys,json; s=sys.stdin.read(); d=json.loads(s[s.index('{'):]); sp=d.get('semPopup') or []; pt=d.get('popupSemTexto') or []
 print('semPopup:',sp,'| popupSemTexto:',pt)
 open('$D/.sem_popup','w').write(','.join(str(x) for x in sp))
-print('PORTÃO: ' + ('OK' if not sp and not pt else 'FALHOU — rode: python3 $SK/sugerir_popup.py $D/entrega.md '+','.join(str(x) for x in sp)+'  e corrija a linha ⚖️ (norma carregada) ou crie a ficha 📖; depois repita'))"
+ok = not sp and not pt
+print('PORTÃO: ' + ('OK' if ok else 'FALHOU — rode: python3 $SK/sugerir_popup.py $D/entrega.md '+','.join(str(x) for x in sp)+'  e corrija a linha ⚖️ (norma carregada) ou crie a ficha 📖; depois repita'))
+open('$D/.portao_popup','w').write('ok' if ok else 'falhou')"
 echo "--- PORTÃO DO DESTAQUE (o pop-up abre no trecho específico do assunto)"
 MATERIA="$M" timeout 280 node $SK/auditar_destaque.js $D/entrega.md 2>&1 | python3 -c "
 import sys,json; s=sys.stdin.read()
@@ -38,3 +48,4 @@ t=open('$D/entrega.md',encoding='utf-8').read(); q=re.split(r'(?m)^## QUESTÃO \
 print('conferir gabarito:',[i+1 for i,b in enumerate(q) if 'Conferir o gabarito' in b]); print('sem ⚖️:',[i+1 for i,b in enumerate(q) if '\n⚖️' not in b.split('### Resolução')[1]])
 PY
 echo "ENTREGA: $D/entrega.md"
+[ "$(cat $D/.portao_popup 2>/dev/null)" = ok ] || { echo "PORTÃO DO POP-UP FALHOU (código de saída 1)"; exit 1; }

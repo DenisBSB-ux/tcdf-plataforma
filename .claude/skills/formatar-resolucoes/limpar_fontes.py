@@ -7,7 +7,9 @@ def limpa(t):
         if l.startswith('⚠️') and not l.startswith('⚠️ ERROS'):
             o=l
             l=re.sub(r' ?Atualização verificada em \d\d/\d\d/\d{4}:.*$','',l)           # selo vai até o fim da linha
-            l=re.sub(r'Fonte:.*?\.(?=\s|$) ?','',l)                                 # frase "Fonte: …"
+            # frase "Fonte: …" termina no ponto final de SENTENÇA (ponto seguido de maiúscula ou fim), não no de "art." / "nº"
+            # — e nunca é removida se carrega aviso de gabarito
+            l=re.sub(r'Fonte:(?:(?!\.(?:\s+[A-ZÁ-Ú⚠]|$)).)*\.?(?=\s+[A-ZÁ-Ú⚠]|$) ?',lambda m: m.group(0) if re.search(r'Conferir|[Gg]abarito',m.group(0)) else '',l)
             l=re.sub(r' ?\((?:texto|acórdão|texto da súmula|acórdão e súmula)[^)]*não carregad[^)]*\)','',l)
             l=re.sub(r'[;,] textos? não (?:está )?carregados?[^.]*','',l)
             l=re.sub(r'; o texto não está carregado na plataforma','',l)

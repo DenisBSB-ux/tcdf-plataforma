@@ -73,8 +73,9 @@ def main():
             resumo = 'Base oficial do Senado (alteração permanente declarada em %s): %s. Dispositivos: %s. O texto do pop-up pode estar desatualizado nesses artigos; questões que os citam ficam marcadas: conferir o gabarito.' % (x['data'], titulo, lista)
             esc = lambda s: s.replace('\\', '\\\\').replace("'", "\\'")
             itens_novos.append((norma, "  { id:'%s', mat:'%s', titulo:'%s', resumo:'%s', fonte:'Senado Federal · base oficial de legislação (dados abertos)', registrada:'%s', status:'confirmada', dispositivos:[%s], gabarito:'' },\n" % (ident, esc(f['mat']), esc(titulo), esc(resumo), hoje_iso, disp)))
-    json.dump(vistas, open(ep, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
+    # --so-relatorio é somente leitura: não pode marcar alterações como 'já vistas' (apagaria alertas futuros)
     if not so_rel:
+        json.dump(vistas, open(ep, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
         p = os.path.join(RAIZ, 'js/atualizacoes-legais.js'); s = open(p, encoding='utf-8').read()
         if itens_novos:
             k = s.index('const ALTERACOES_LEGAIS = ['); e = s.index('\n];', k)

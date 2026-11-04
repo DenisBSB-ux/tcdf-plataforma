@@ -31,6 +31,7 @@ def main():
                     if '~~' not in s and ref and overlap(corpo, ref) >= lim: cont['ERROS'] += 1; continue
                     novas.append(l); continue
                 em_erros = False if s else em_erros
+                if re.search(r'Gabarito ajustado|Conferir o gabarito|Conferir o dispositivo', s): novas.append(l); continue   # aviso de gabarito nunca é "redundante" (PADRAO §4)
                 if s[:1] in ('💡', '🪤') or s.startswith('⚠️'):
                     simb = '⚠️' if s.startswith('⚠️') else s[:1]
                     if ref and '~~' not in s and overlap(re.sub(r'^\S+\s*', '', s), ref) >= lim: cont[simb] += 1; continue
