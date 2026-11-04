@@ -536,6 +536,7 @@ function atualizarLinhaSync(){
   const el = document.getElementById('sync-status-el'); if(!el) return;
   const t = textoLinhaSync();
   el.className = 'sync-linha ' + t.classe;
+  el.setAttribute('role','status'); el.setAttribute('aria-live','polite');
   el.innerHTML = '<span class="sync-dot"></span>' + t.html;
 }
 function setSyncStatusDOM(type, msg, detalhe){

@@ -910,7 +910,7 @@ function renderSyncSidebarBlock(){
   const statusDetalhe = STATE.syncStatus ? STATE.syncStatus.detalhe : '';
   return `<div class="sidebar-block"><div class="sb-pad sync-block compact">
     ${syncUsuarioHtml()}
-    <div class="sync-linha ${textoLinhaSync().classe}" id="sync-status-el"><span class="sync-dot"></span>${textoLinhaSync().html}</div>
+    <div class="sync-linha ${textoLinhaSync().classe}" id="sync-status-el" role="status" aria-live="polite"><span class="sync-dot"></span>${textoLinhaSync().html}</div>
     <button class="side-action-btn compact" id="btn-sync-agora" title="Envia o que estiver pendente e busca o que mudou em outros aparelhos">↻ Sincronizar agora</button>
     ${statusDetalhe ? `<div class="side-status detail">${esc(statusDetalhe)}</div>` : ''}
     ${ALERTAS_SOBRESCRITA_NUVEM.length>0 ? `<div class="side-status err" style="margin-top:6px;">
@@ -934,7 +934,7 @@ function renderMateriaPage(){
   const mostrarTabsSecundarias = tabAtual==='simulado' && !emSimuladoEmAndamento;
 
   if(STATE.focusMode){
-    return `<div class="main-content"><div class="panel"><div class="pad">${renderMainPanel(tabAtual)}</div></div></div>`;
+    return `<div class="main-content" id="conteudo-principal" role="main" tabindex="-1"><div class="panel"><div class="pad">${renderMainPanel(tabAtual)}</div></div></div>`;
   }
 
   return `
@@ -946,7 +946,7 @@ function renderMateriaPage(){
       </div></div>
       ${renderSyncSidebarBlock()}
     </aside>
-    <div class="main-content">
+    <div class="main-content" id="conteudo-principal" role="main" tabindex="-1">
       <div class="panel"><div class="pad">${renderMainPanel(tabAtual)}</div></div>
     </div>
   </div>`;
