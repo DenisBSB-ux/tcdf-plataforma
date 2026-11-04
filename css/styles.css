@@ -2018,3 +2018,15 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   .zoom-control button{ min-width:40px; min-height:40px; }
 }
 @media (prefers-reduced-motion:reduce){ *, *::before, *::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; } }
+
+/* cartão "Revisão de hoje" (alinhado à esquerda) */
+.revisao-hoje{ display:flex; align-items:center; justify-content:flex-start; gap:14px; flex-wrap:wrap; width:fit-content; max-width:100%; margin:0 auto 12px 0; padding:12px 16px; text-align:left;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-left:4px solid var(--gold-bright, #f5c542); border-radius:10px; }
+.revisao-hoje .rh-ico{ font-size:22px; line-height:1; }
+.revisao-hoje .rh-txt{ display:flex; flex-direction:column; gap:2px; text-align:left; }
+.revisao-hoje .rh-txt b{ font-size:15px; }
+.revisao-hoje .rh-txt span{ font-size:13px; opacity:.85; }
+.revisao-hoje .rh-txt em{ font-style:normal; color:#f59e8b; font-weight:600; }
+body.theme-light .revisao-hoje{ background:rgba(0,0,0,.04); border-color:rgba(0,0,0,.12); border-left-color:var(--gold-bright, #c9971c); }
+body.theme-light .revisao-hoje .rh-txt em{ color:#b42318; }
+@media (max-width:480px){ .revisao-hoje{ width:100%; } .revisao-hoje .btn{ flex:1 1 100%; justify-content:center; } }

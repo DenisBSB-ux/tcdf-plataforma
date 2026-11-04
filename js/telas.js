@@ -1074,8 +1074,9 @@ function renderLanding(){
       return (temProgresso && (d===null || d>=14)) ? `<div class="side-status" style="margin-bottom:8px;font-size:12px;">💾 ${d===null ? 'Você ainda não baixou um backup do seu progresso.' : 'Seu último backup em arquivo foi há '+d+' dias.'} <button type="button" class="btn-outline btn-sm" data-exportar-backup>Baixar agora</button></div>` : ''; })()}
     ${(()=>{ if(!STATE.materia) return ''; const rev = revisaoDeHoje(STATE.materia); if(!rev.length) return '';
       const erros = rev.filter(x=>x.errou).length;
-      return `<div class="side-status" style="margin-bottom:8px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;" title="Questões que já chegaram na data de rever: erradas há mais de 1 dia, ou acertadas há tempo suficiente (3, 7, 15 ou 30 dias, conforme os acertos seguidos)">
-        <span>🔁 <b>Revisão de hoje:</b> ${rev.length} ${rev.length===1?'questão':'questões'}${erros ? ` (${erros} erradas)` : ''}</span>
+      return `<div class="revisao-hoje" title="Questões que já chegaram na data de rever: erradas há mais de 1 dia, ou acertadas há tempo suficiente (3, 7, 15 ou 30 dias, conforme os acertos seguidos)">
+        <span class="rh-ico" aria-hidden="true">🔁</span>
+        <div class="rh-txt"><b>Revisão de hoje</b><span>${rev.length} ${rev.length===1?'questão':'questões'}${erros ? ` · <em>${erros} ${erros===1?'errada':'erradas'}</em>` : ''}</span></div>
         <button type="button" class="btn btn-gold btn-sm" id="btn-revisao-hoje">Revisar agora</button></div>`; })()}
     ${tabelaEstat ? '' : infoSalvo + botoesAcao}
   </div>
