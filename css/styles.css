@@ -2030,3 +2030,10 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 body.theme-light .revisao-hoje{ background:rgba(0,0,0,.04); border-color:rgba(0,0,0,.12); border-left-color:var(--gold-bright, #c9971c); }
 body.theme-light .revisao-hoje .rh-txt em{ color:#b42318; }
 @media (max-width:480px){ .revisao-hoje{ width:100%; } .revisao-hoje .btn{ flex:1 1 100%; justify-content:center; } }
+
+/* aviso de nova versão do app */
+#aviso-nova-versao{ position:fixed; left:50%; bottom:18px; transform:translateX(-50%); z-index:100001; display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:center;
+  max-width:calc(100vw - 24px); padding:10px 14px; border-radius:12px; background:#1f2937; color:#fff; border:1px solid rgba(255,255,255,.2); box-shadow:0 8px 30px rgba(0,0,0,.45); font-size:14px; }
+#aviso-nova-versao button{ font:inherit; cursor:pointer; border-radius:8px; border:0; padding:7px 12px; min-height:36px; }
+#aviso-nova-versao #btn-atualizar-app{ background:var(--gold-bright,#f5c542); color:#1a1a1d; font-weight:700; }
+#aviso-nova-versao #btn-adiar-app{ background:transparent; color:#fff; }

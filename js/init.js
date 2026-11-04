@@ -39,6 +39,7 @@ try{
             const usados = performance.getEntriesByType('resource').map(r=>r.name);
             const lazy = [];
             try{ Object.values(LEI_FONTES).forEach(f=>{ if(f.arquivo) lazy.push(f.arquivo+q); }); }catch(_){}
+            lazy.push('manifest.webmanifest','img/icon-192.png','img/icon-512.png');
             ['doutrina-ps','doutrina-pdpm','doutrina-df','doutrina-dadm','doutrina-cst','doutrina-adm','teoria-dt','armadilhas-dados'].forEach(n=>lazy.push('js/'+n+'.js'+q));
             const alvo = reg.active || navigator.serviceWorker.controller;
             if(alvo) alvo.postMessage({ tipo:'precache', urls: [location.href].concat(usados, lazy) });
@@ -48,6 +49,39 @@ try{
     });
   }
 }catch(_){}
+/* ---- app instalável (PWA) e atualização ---- */
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); window.__PROMPT_INSTALAR = e; try{ if(APP_INICIADO) render(); }catch(_){} });
+window.addEventListener('appinstalled', ()=>{ window.__PROMPT_INSTALAR = null; try{ render(); }catch(_){} });
+function appInstalado(){ return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true; }
+function ehIOS(){ return /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream; }
+async function instalarApp(){
+  const ev = window.__PROMPT_INSTALAR; if(!ev) return;
+  ev.prompt(); try{ await ev.userChoice; }catch(_){} window.__PROMPT_INSTALAR = null; try{ render(); }catch(_){}
+}
+// aviso "Nova versão disponível": compara a versão do index.html no servidor com a que está em uso (a cada 5 min e ao voltar para o app)
+let _avisoVersaoMostrado = false;
+async function verificarNovaVersao(){
+  if(_avisoVersaoMostrado || (typeof navigator!=='undefined' && navigator.onLine===false)) return;
+  try{
+    const r = await fetch('index.html?_=' + Date.now(), { cache:'no-store' }); if(!r.ok) return;
+    const m = (await r.text()).match(/versao:\s*'(v\d+)'/); if(!m) return;
+    const atual = (window.__TCDF_BUILD__||{}).versao;
+    if(m[1] && atual && m[1] !== atual){
+      _avisoVersaoMostrado = true;
+      const d = document.createElement('div'); d.id = 'aviso-nova-versao'; d.setAttribute('role','status');
+      d.innerHTML = '🆕 Nova versão disponível (' + m[1] + '). <button type="button" id="btn-atualizar-app">Atualizar agora</button> <button type="button" id="btn-adiar-app" aria-label="Fechar aviso">✕</button>';
+      document.body.appendChild(d);
+      d.querySelector('#btn-atualizar-app').addEventListener('click', ()=>{
+        try{ salvarTudoAgoraAoSair(); }catch(_){}
+        setTimeout(()=>{ location.reload(); }, 300);
+      });
+      d.querySelector('#btn-adiar-app').addEventListener('click', ()=>{ d.remove(); setTimeout(()=>{ _avisoVersaoMostrado = false; }, 30*60000); });
+    }
+  }catch(_){}
+}
+setInterval(verificarNovaVersao, 5*60000);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') verificarNovaVersao(); });
+setTimeout(verificarNovaVersao, 20000);
 (async function init(){
   root.innerHTML = `<div style="padding:60px;text-align:center;color:#a9b6cc;font-family:var(--font-mono);font-size:13px;">Carregando processo…</div>`;
   try{ await loadProgress(); }catch(e){

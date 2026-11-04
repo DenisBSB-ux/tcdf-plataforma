@@ -911,6 +911,7 @@ function renderSyncSidebarBlock(){
   return `<div class="sidebar-block"><div class="sb-pad sync-block compact">
     ${syncUsuarioHtml()}
     <div class="sync-linha ${textoLinhaSync().classe}" id="sync-status-el" role="status" aria-live="polite"><span class="sync-dot"></span>${textoLinhaSync().html}</div>
+    ${(typeof appInstalado==='function' && !appInstalado()) ? (window.__PROMPT_INSTALAR ? '<button class="side-action-btn compact" id="btn-instalar-app" title="Instala a plataforma como um aplicativo neste aparelho (abre em janela própria e atualiza sozinho)">📲 Instalar o app</button>' : (ehIOS() ? '<div class="side-status detail">📲 Para instalar no iPhone/iPad: toque em Compartilhar e em "Adicionar à Tela de Início".</div>' : '')) : ''}
     <button class="side-action-btn compact" id="btn-sync-agora" title="Envia o que estiver pendente e busca o que mudou em outros aparelhos">↻ Sincronizar agora</button>
     ${statusDetalhe ? `<div class="side-status detail">${esc(statusDetalhe)}</div>` : ''}
     ${ALERTAS_SOBRESCRITA_NUVEM.length>0 ? `<div class="side-status err" style="margin-top:6px;">
