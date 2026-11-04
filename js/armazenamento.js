@@ -179,8 +179,15 @@ function idbOpen(){
     if(typeof indexedDB === 'undefined'){ reject(new Error('IndexedDB indisponível neste navegador')); return; }
     const req = indexedDB.open(IDB_NAME, 1);
     req.onupgradeneeded = ()=>{ req.result.createObjectStore(IDB_STORE); };
-    req.onsuccess = ()=> resolve(req.result);
-    req.onerror = ()=> reject(req.error);
+    req.onsuccess = ()=>{
+      const db = req.result;
+      // conexão fechada pelo navegador (comum no Safari) ou troca de versão: na próxima chamada reabre
+      db.onclose = ()=>{ idbPromise = null; };
+      db.onversionchange = ()=>{ try{ db.close(); }catch(_){} idbPromise = null; };
+      resolve(db);
+    };
+    req.onerror = ()=>{ idbPromise = null; reject(req.error); };
+    req.onblocked = ()=>{ idbPromise = null; reject(new Error('IndexedDB bloqueado por outra aba')); };
   });
   return idbPromise;
 }
@@ -190,6 +197,7 @@ function idbGet(key){
     const req = tx.objectStore(IDB_STORE).get(key);
     req.onsuccess = ()=> resolve(req.result); // undefined se a chave não existir
     req.onerror = ()=> reject(req.error);
+    tx.onabort = ()=> reject(tx.error || new Error('leitura abortada'));
   }));
 }
 function idbSet(key, value){
@@ -198,6 +206,8 @@ function idbSet(key, value){
     tx.objectStore(IDB_STORE).put(value, key);
     tx.oncomplete = ()=> resolve();
     tx.onerror = ()=> reject(tx.error);
+    // cota excedida / falha no commit: a transação dispara só 'abort' — sem isto a Promise nunca terminava
+    tx.onabort = ()=> reject(tx.error || new Error('gravação abortada (cota ou falha de commit)'));
   }));
 }
 
@@ -207,14 +217,18 @@ async function storageGet(key){
     // portanto não alternamos de modo por causa de um storageGet — só storageSet decide isso.
     return await window.storage.get(key, false);
   }
+  let falhouIdb = false;
   try{
     const v = await idbGet(key);
     if(v !== undefined) return { key, value: v };
-  }catch(e){ /* IndexedDB indisponível nesta sessão — segue pro fallback de localStorage abaixo */ }
+  }catch(e){ falhouIdb = true; /* IndexedDB indisponível nesta sessão — segue pro fallback de localStorage abaixo */ }
   // ainda não migrado pro IndexedDB (ou IndexedDB indisponível): tenta localStorage;
   // se achar, migra silenciosamente pro IndexedDB pra não estourar cota de novo depois
   const vLocal = window.localStorage.getItem(key);
-  if(vLocal === null){ const err = new Error('not found'); throw err; }
+  if(vLocal === null){
+    // 'falhaReal' diferencia "a chave não existe" de "não consegui ler" (IndexedDB com erro): quem lê dado vital precisa saber
+    const err = new Error(falhouIdb ? 'falha de leitura do armazenamento' : 'not found'); err.falhaReal = falhouIdb; throw err;
+  }
   idbSet(key, vLocal).catch(()=>{});
   return { key, value: vLocal };
 }

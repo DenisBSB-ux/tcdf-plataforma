@@ -62,7 +62,14 @@ async function registrarFigura(file){
 }
 
 /* ---------- nuvem ---------- */
+const _imgEnviando = new Map();   // id -> Promise: evita upload duplicado em paralelo e permite aguardar (sair da conta)
 async function enviarImagemNuvem(id){
+  if(_imgEnviando.has(id)) return _imgEnviando.get(id);
+  const prom = _enviarImagemNuvem(id).finally(()=>_imgEnviando.delete(id));
+  _imgEnviando.set(id, prom);
+  return prom;
+}
+async function _enviarImagemNuvem(id){
   try{
     if(typeof sincronizacaoAtiva!=='function' || !sincronizacaoAtiva() || IMAGENS_ENVIADAS.has(id) || !IMAGENS_USUARIO[id]) return;
     await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__img__${id}`).set(sanitizarParaFirestore(comDono({
@@ -72,7 +79,8 @@ async function enviarImagemNuvem(id){
   }catch(e){ console.warn('Figura ficou só neste aparelho por enquanto', e); }
 }
 function enviarImagensPendentes(){
-  Object.keys(IMAGENS_USUARIO).forEach(id=>{ if(!IMAGENS_ENVIADAS.has(id)) enviarImagemNuvem(id); });
+  // devolve uma Promise que termina quando os envios em curso terminam (quem não precisa esperar pode ignorá-la)
+  return Promise.all(Object.keys(IMAGENS_USUARIO).filter(id=>!IMAGENS_ENVIADAS.has(id)).map(id=>enviarImagemNuvem(id)));
 }
 async function buscarImagemNuvem(id){
   if(_imgBuscando.has(id)) return;

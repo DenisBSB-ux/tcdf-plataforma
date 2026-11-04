@@ -79,7 +79,7 @@ async function carregarQuizSalvo(materiaKey){
   }catch(e){ /* nada salvo pra essa matéria ainda neste dispositivo */ }
   return null;
 }
-async function verificarQuizSalvo(materiaKey){
+async function verificarQuizSalvo(materiaKey, opcoes){
   const q = await carregarQuizSalvo(materiaKey);
   const atual = STATE.quizzesEmAndamento[materiaKey];
   // Só sobrescreve quando o armazenamento local tem um simulado E (não havia
@@ -89,7 +89,7 @@ async function verificarQuizSalvo(materiaKey){
     STATE.quizzesEmAndamento[materiaKey] = q;
   }
   try{ if(STATE.quizzesEmAndamento[materiaKey]) reconciliarProgressoComQuiz(STATE.quizzesEmAndamento[materiaKey], materiaKey); }catch(_){}
-  render();
+  if(!(opcoes && opcoes.semRender)) render();
 }
 // Confere o simulado em andamento de TODAS as matérias (pro botão "Continuar"
 // aparecer em todas, não só na aberta). Roda uma vez no boot, sem esperar
@@ -99,8 +99,10 @@ async function verificarTodosQuizzesSalvos(){
   const materias = materiasDisponiveis();
   await Promise.all(materias.map(m=>{
     STATE.quizzesVerificados.add(m);
-    return verificarQuizSalvo(m);
+    return verificarQuizSalvo(m, { semRender:true });
   }));
+  // um único redesenho no fim (e só se não atrapalhar edição/digitação), em vez de um por matéria
+  if(typeof podeRenderizarAgora!=='function' || podeRenderizarAgora()) render();
 }
 function formatarDataHoraSalvamento(ts){
   const d = new Date(ts);
@@ -132,7 +134,10 @@ try{
         else if(!usuario && uidAntes && !SAINDO_DA_CONTA){
           // saiu por outro caminho (outra aba, sessão expirada): o aparelho
           // também não pode ficar com os dados dessa conta
-          limparDadosDoUsuarioNoAparelho().then(()=>{ if(APP_INICIADO) render(); });
+          // cópia de segurança do que estava no aparelho (pode haver coisa ainda não enviada)
+          const copia = (()=>{ try{ return JSON.stringify({ ts: Date.now(), progress: PROGRESS, edicoes: EDICOES_USUARIO, pendentes: Array.from(MATERIAS_PROGRESSO_SUJAS) }); }catch(_){ return ''; } })();
+          (copia ? storageSet('tcdf-backup-pre-logout', copia).catch(()=>{}) : Promise.resolve())
+            .then(()=>limparDadosDoUsuarioNoAparelho()).then(()=>{ if(APP_INICIADO) render(); });
         }
         else if(APP_INICIADO) render();
       });
@@ -178,11 +183,14 @@ async function vincularContaGoogle(){
       // com OUTRA conta, puxa o da nuvem e envia tudo com o campo "dono"
       await conectarSincronizacao(codigo);
     }else{
-      await pullFromCloud({ silent: true });
-      // na primeira vez regrava tudo com o campo "dono" (assume os documentos
-      // antigos); nas outras, só o que estiver pendente
-      if(primeiraVez) Object.keys(PROGRESS).forEach(m => marcarProgressoSujo(m));
-      await pushToCloud();
+      const puxou = await pullFromCloud({ silent: true });
+      // pull falhou/incompleto (null): não envia nada por cima da nuvem sem ter lido tudo
+      if(puxou !== null){
+        // na primeira vez regrava tudo com o campo "dono" (assume os documentos
+        // antigos); nas outras, só o que estiver pendente
+        if(primeiraVez) Object.keys(PROGRESS).forEach(m => marcarProgressoSujo(m));
+        await pushToCloud();
+      }
     }
   }catch(e){
     console.error('Falha ao vincular a conta Google à sincronização', e);
@@ -219,8 +227,10 @@ async function sairDaConta(){
   try{
     let tudoEnviado = true;
     try{
-      await comLimiteDeTempo(Promise.all([flushQuizSyncPendente(), pushToCloud()]), 20000, 'tempo esgotado ao enviar o progresso');
+      await comLimiteDeTempo(Promise.all([flushQuizSyncPendente(), pushToCloud(), enviarImagensPendentes()]), 25000, 'tempo esgotado ao enviar o progresso');
       if(MATERIAS_PROGRESSO_SUJAS.size>0) tudoEnviado = false;
+      // figura colada que ainda não subiu seria perdida (a edição que a referencia continua sincronizando)
+      if(Object.keys(IMAGENS_USUARIO).some(id=>!IMAGENS_ENVIADAS.has(id))) tudoEnviado = false;
     }catch(e){ tudoEnviado = false; }
     if(!tudoEnviado && !window.confirm('Parte do seu progresso ainda não chegou à nuvem (sem conexão?). Se sair agora, ela será apagada deste aparelho.\n\nSair mesmo assim?')) return;
     await limparDadosDoUsuarioNoAparelho();
@@ -242,6 +252,10 @@ async function limparDadosDoUsuarioNoAparelho(){
   PROGRESS = {};
   MATERIAS_PROGRESSO_SUJAS.clear();
   EDICOES_USUARIO = {};
+  // dados por conta que ficavam na memória e iam para a nuvem da conta seguinte
+  GABARITOS_ALTERADOS = {};
+  IMAGENS_USUARIO = {};
+  IMAGENS_ENVIADAS = new Set();
   edicaoAtual = null;
   STATE.quizzesEmAndamento = {};
   STATE.quizzesVerificados = new Set();
@@ -249,7 +263,7 @@ async function limparDadosDoUsuarioNoAparelho(){
   STATE.flashDeck = null;
   STATE.syncCode = '';
   STATE.syncStatus = null;
-  const escritas = [[STORAGE_KEY, '{}'], [EDICOES_KEY, '{}'], [IMAGENS_KEY, '{}'], [IMAGENS_ENVIADAS_KEY, '[]'], [SYNC_CODE_KEY, ''], [LAST_SYNC_KEY, ''], [CONTA_DO_APARELHO_KEY, '']];
+  const escritas = [[STORAGE_KEY, '{}'], [EDICOES_KEY, '{}'], [GABARITOS_ALTERADOS_KEY, '{}'], ['tcdf-edicoes-orfas', '{}'], [IMAGENS_KEY, '{}'], [IMAGENS_ENVIADAS_KEY, '[]'], [SYNC_CODE_KEY, ''], [LAST_SYNC_KEY, ''], [CONTA_DO_APARELHO_KEY, '']];
   chavesQuiz.forEach(k => escritas.push([quizStorageKey(k), '']));
   for(const [chave, valor] of escritas){
     try{ await storageSet(chave, valor); }catch(e){ console.warn('Falha ao limpar '+chave, e); }
@@ -287,6 +301,40 @@ function _migrarBucketPorMapa(velho, novo){
   Object.entries(velho.chutes||{}).forEach(([u,c])=>{ const n = mapa[u]; if(n && !out.chutes[n]) out.chutes[n] = c; });
   return out;
 }
+// ---- remoções que sincronizam ("lápides") ----
+// O merge só soma; sem registro da remoção, o que foi apagado voltava no envio seguinte. Campos do bucket:
+//   resetEm: ts do "apagar histórico da matéria"; lapides: { 'c:<uid>': ts (chute desmarcado), 's:<ts>': ts (simulado salvo excluído) };
+//   desfeitos: { <uid>: { ts, keys:[ 'ts-c', ... ] } } (tentativas desfeitas).
+const _LAPIDE_VALIDADE_MS = 120*24*3600*1000;
+function _aposReset(side, R){
+  const o = { ...side, perguntas:{}, flash:{}, chutes:{}, sessoes:[], simuladosSalvos:[], desfeitos:{} };
+  Object.entries(side.perguntas||{}).forEach(([uid,p])=>{
+    const h = ((p&&p.historico)||[]).filter(x=>(x.ts||0)>R);
+    if(!h.length) return;   // sem data, ou toda anterior ao reset: descartada
+    o.perguntas[uid] = { ...p, historico:h, tentativas:h.length, acertos:h.filter(x=>x.c).length, ultimoResultado:h[h.length-1].c };
+  });
+  Object.entries(side.flash||{}).forEach(([uid,f])=>{ if(((f&&f.ts)||0)>R) o.flash[uid] = f; });
+  Object.entries(side.chutes||{}).forEach(([uid,c])=>{ if(((c&&c.ts)||0)>R) o.chutes[uid] = c; });
+  o.sessoes = (side.sessoes||[]).filter(x=>(x.ts||0)>R);
+  o.simuladosSalvos = (side.simuladosSalvos||[]).filter(x=>(x.ts||0)>R);
+  return o;
+}
+function _unirLapides(a, b){
+  const out = {}, agora = Date.now();
+  [a||{}, b||{}].forEach(m=>Object.entries(m).forEach(([k,ts])=>{ if(typeof ts==='number' && agora-ts < _LAPIDE_VALIDADE_MS) out[k] = Math.max(out[k]||0, ts); }));
+  return out;
+}
+function _unirDesfeitos(a, b){
+  const out = {}, agora = Date.now();
+  [a||{}, b||{}].forEach(m=>Object.entries(m).forEach(([uid,d])=>{
+    if(!d || typeof d.ts!=='number' || agora-d.ts >= _LAPIDE_VALIDADE_MS) return;
+    const o = out[uid] || (out[uid] = { ts:0, keys:[] });
+    o.ts = Math.max(o.ts, d.ts);
+    (d.keys||[]).forEach(k=>{ if(!o.keys.includes(k)) o.keys.push(k); });
+    o.keys = o.keys.slice(-20);
+  }));
+  return out;
+}
 function mergeBucket(local, remote){
   const gl = (local && local.geracao) || 0, gr = (remote && remote.geracao) || 0;
   if(gl !== gr){
@@ -296,35 +344,54 @@ function mergeBucket(local, remote){
   }
   local = local || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
   remote = remote || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
+  // "apagar histórico": o lado que não conhece o reset perde o que é anterior a ele
+  const R = Math.max(local.resetEm||0, remote.resetEm||0);
+  if(R){
+    if((local.resetEm||0) < R) local = _aposReset(local, R);
+    if((remote.resetEm||0) < R) remote = _aposReset(remote, R);
+  }
+  const lapides = _unirLapides(local.lapides, remote.lapides);
+  const desfeitos = _unirDesfeitos(local.desfeitos, remote.desfeitos);
   // parte do bucket local inteiro ({...local}) para não perder campos que o merge não conhece
   const merged = { ...local, perguntas:{...local.perguntas}, flash:{...local.flash}, sessoes:[...(local.sessoes||[])], simuladosSalvos:[...(local.simuladosSalvos||[])], chutes:{...(local.chutes||{})} };
+  if(R) merged.resetEm = R;
+  if(Object.keys(lapides).length) merged.lapides = lapides; else delete merged.lapides;
+  if(Object.keys(desfeitos).length) merged.desfeitos = desfeitos; else delete merged.desfeitos;
 
-  // chutes: união por uid; em conflito vale a marcação mais recente
+  // chutes: união por uid; em conflito vale a marcação mais recente; lápide apaga marcação igual ou mais antiga
   Object.entries(remote.chutes||{}).forEach(([uid, rc])=>{
     const lc = merged.chutes[uid];
     if(!lc || ((rc&&rc.ts)||0) > ((lc&&lc.ts)||0)) merged.chutes[uid] = rc;
   });
+  Object.keys(merged.chutes).forEach(uid=>{ const L = lapides['c:'+uid]; if(L && ((merged.chutes[uid]&&merged.chutes[uid].ts)||0) <= L) delete merged.chutes[uid]; });
 
-  Object.entries(remote.perguntas||{}).forEach(([uid, remoteP])=>{
-    const localP = merged.perguntas[uid];
-    const allHist = [...((localP&&localP.historico)||[]), ...(remoteP.historico||[])];
-    if(allHist.length===0) return;
-    const seen = new Set();
-    const dedup = [];
+  const uids = new Set([...Object.keys(merged.perguntas), ...Object.keys(remote.perguntas||{})]);
+  uids.forEach(uid=>{
+    const localP = (local.perguntas||{})[uid], remoteP = (remote.perguntas||{})[uid];
+    if(!remoteP && !desfeitos[uid]) return;               // só no lado local, sem desfeito: fica como está
+    const desf = desfeitos[uid], ocultas = new Set((desf&&desf.keys)||[]);
+    const allHist = [...((localP&&localP.historico)||[]), ...((remoteP&&remoteP.historico)||[])];
+    const seen = new Set(), dedup = [];
     allHist.sort((a,b)=>a.ts-b.ts).forEach(h=>{
       const k = h.ts+'-'+h.c;
-      if(!seen.has(k)){ seen.add(k); dedup.push(h); }
+      if(!seen.has(k) && !ocultas.has(k)){ seen.add(k); dedup.push(h); }
     });
-    // o histórico guarda só 20 itens: os contadores nunca podem encolher abaixo do que já havia de cada lado
-    const tentativas = Math.max(dedup.length, (localP&&localP.tentativas)||0, remoteP.tentativas||0);
-    const acertos = Math.min(tentativas, Math.max(dedup.filter(h=>h.c).length, (localP&&localP.acertos)||0, remoteP.acertos||0));
-    merged.perguntas[uid] = {
-      ...(localP||{}),
-      tentativas,
-      acertos,
-      ultimoResultado: dedup[dedup.length-1].c,
-      historico: dedup.slice(-20),
-    };
+    // contadores: o histórico guarda só 20 itens, então nunca encolhem abaixo do que cada lado já tinha — exceto quando
+    // houve "desfazer": vale então o lado que desfez por último (ele reflete a tentativa removida)
+    let tentativas, acertos;
+    const dl = (local.desfeitos||{})[uid], dr = (remote.desfeitos||{})[uid];
+    if(desf && (dl||dr)){
+      const ladoP = ((dl&&dl.ts)||0) >= ((dr&&dr.ts)||0) ? localP : remoteP;
+      tentativas = ladoP ? (ladoP.tentativas||0) : dedup.length;
+      acertos = ladoP ? (ladoP.acertos||0) : dedup.filter(h=>h.c).length;
+    } else {
+      tentativas = Math.max(dedup.length, (localP&&localP.tentativas)||0, (remoteP&&remoteP.tentativas)||0);
+      acertos = Math.max(dedup.filter(h=>h.c).length, (localP&&localP.acertos)||0, (remoteP&&remoteP.acertos)||0);
+    }
+    acertos = Math.min(acertos, tentativas);
+    if(tentativas<=0 && !dedup.length){ delete merged.perguntas[uid]; return; }
+    const ultimo = dedup.length ? dedup[dedup.length-1].c : (localP&&localP.ultimoResultado!==undefined ? localP.ultimoResultado : (remoteP&&remoteP.ultimoResultado));
+    merged.perguntas[uid] = { ...(remoteP||{}), ...(localP||{}), tentativas, acertos, ultimoResultado: ultimo===undefined ? null : ultimo, historico: dedup.slice(-20) };
   });
 
   Object.entries(remote.flash||{}).forEach(([uid, remoteF])=>{
@@ -343,14 +410,35 @@ function mergeBucket(local, remote){
   (remote.simuladosSalvos||[]).forEach(s=>{
     if(!salvosKeys.has(s.ts)){ merged.simuladosSalvos.push(s); salvosKeys.add(s.ts); }
   });
+  merged.simuladosSalvos = merged.simuladosSalvos.filter(s=>!lapides['s:'+s.ts]);
   merged.simuladosSalvos.sort((a,b)=>a.ts-b.ts);
   if(merged.simuladosSalvos.length>20) merged.simuladosSalvos = merged.simuladosSalvos.slice(-20);
 
   return merged;
 }
 
+// "Substituir por matéria" em outro aparelho renumerou os uids: edições e gabaritos corrigidos deste aparelho, indexados pelo
+// uid antigo, passariam a valer em OUTRA questão. Move-os pelo mapa; o que o mapa não cobre (e cai em uid desta matéria) sai.
+function _migrarEdicoesEGabaritos(materiaKey, localBucket, remoteBucket){
+  const gl = (localBucket && localBucket.geracao) || 0, gr = (remoteBucket && remoteBucket.geracao) || 0;
+  const mig = remoteBucket && remoteBucket.migracao;
+  if(!(gr > gl) || !mig || !mig.mapa) return;
+  const slug = slugify(materiaKey);
+  const daMateria = u => u.startsWith(slug+'-') && /^\d+(-\d+)?$/.test(u.slice(slug.length+1));
+  const encadeia = (mig.de||0) === gl;
+  [EDICOES_USUARIO, GABARITOS_ALTERADOS].forEach(mapaDados=>{
+    const movidos = {};
+    Object.keys(mapaDados).filter(daMateria).forEach(u=>{
+      if(encadeia && mig.mapa[u]) movidos[mig.mapa[u]] = mapaDados[u];
+      delete mapaDados[u];
+    });
+    Object.assign(mapaDados, movidos);
+  });
+  salvarEdicoesUsuario(); salvarGabaritosAlterados();
+}
 function mergeRemoteProgressoNaMemoria(remoteProgress){
   Object.entries(remoteProgress||{}).forEach(([materiaKey, remoteBucket])=>{
+    try{ _migrarEdicoesEGabaritos(materiaKey, PROGRESS[materiaKey], remoteBucket); }catch(e){ console.warn('Falha ao migrar edições/gabaritos', e); }
     PROGRESS[materiaKey] = mergeBucket(PROGRESS[materiaKey], remoteBucket);
   });
 }
@@ -412,8 +500,18 @@ function mergeRemoteQuestoesNaMemoria(remoteQuestoes){
   const existingUids = new Set(ALL_QUESTIONS.map(q=>q.uid));
   let added = 0;
   remoteQuestoes.forEach(q=>{
-    if(q && q.uid && !existingUids.has(q.uid)){
-      ALL_QUESTIONS.push(q);
+    if(q && typeof q==='object' && typeof q.uid==='string' && q.uid && !existingUids.has(q.uid)){
+      // mesma normalização do loadProgress: campos controlados e origem 'importado' (backup/nuvem não decide o que é "embutido")
+      const fixed = {
+        ...q,
+        es: (q.es==='literal'||q.es==='tematico'||q.es==='fora') ? q.es : 'literal',
+        nv: (q.nv==='baixa'||q.nv==='media'||q.nv==='alta') ? q.nv : 'media',
+        t: (q.t==='CE'||q.t==='MC') ? q.t : 'sem_gabarito',
+        materia: typeof q.materia==='string' && q.materia ? q.materia : 'Importado',
+        tema: typeof q.tema==='string' && q.tema ? q.tema : 'Geral',
+        origem: 'importado',
+      };
+      ALL_QUESTIONS.push(fixed);
       existingUids.add(q.uid);
       added++;
     }
@@ -481,7 +579,7 @@ let _prefsUltimoEnvio = 0;
 function sincronizarPrefsLento(){ if(Date.now()-_prefsUltimoEnvio < 600000) return; _prefsUltimoEnvio = Date.now(); sincronizarPrefs(); }
 async function puxarPrefs(){
   try{
-    const doc = await fbDb.collection('progresso').doc(`${STATE.syncCode}__prefs`).get();
+    const doc = await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__prefs`).get(), 15000, 'tempo esgotado ao ler as preferências');
     const local = parseInt(_lsGet(PREFS_TS_KEY)||'0', 10) || 0;
     if(!doc.exists){ sincronizarPrefs(); return; }          // primeira vez: sobe as preferências deste aparelho
     const d = doc.data(); if(!(d.updatedAt > local)) return;
@@ -503,7 +601,7 @@ async function pullFromCloud({silent} = {}){
   if(!sincronizacaoAtiva()) return null;
   if(!silent) setSyncStatusDOM('pending', 'sincronizando…');
   try{
-    const doc = await fbDb.collection('progresso').doc(STATE.syncCode).get();
+    const doc = await comLimiteDeTempo(fbDb.collection('progresso').doc(STATE.syncCode).get(), 15000, 'tempo esgotado ao ler o progresso na nuvem');
     if(doc.exists){
       const data = doc.data();
       // retrocompatibilidade: documentos gravados antes da v42 podem ter
@@ -517,7 +615,7 @@ async function pullFromCloud({silent} = {}){
       let algumaEdicaoNova = false, algumGabaritoNovo = false, falhouMateria = false;
       for(const materiaNome of materiasComProgresso){
         try{
-          const docMateria = await fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugify(materiaNome)}`).get();
+          const docMateria = await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__${slugify(materiaNome)}`).get(), 15000, 'tempo esgotado ao ler a matéria "'+materiaNome+'" na nuvem');
           if(docMateria.exists && docMateria.data().progress){
             mergeRemoteProgressoNaMemoria({ [materiaNome]: JSON.parse(docMateria.data().progress) });
           }
@@ -840,7 +938,17 @@ function progressoParaNuvem(bucket, outrosBytes){
   }
   return null;   // não cabe nem podado: quem chama avisa em vez de tentar gravar (a gravação falharia)
 }
+// uma única execução por vez; chamadas durante o envio pedem uma nova rodada e esperam por ela
+let _pushEmAndamento = null, _pushPendente = false;
 async function pushToCloud(){
+  if(_pushEmAndamento){ _pushPendente = true; return _pushEmAndamento; }
+  _pushEmAndamento = (async()=>{
+    try{ do{ _pushPendente = false; await _pushToCloudInterno(); }while(_pushPendente); }
+    finally{ _pushEmAndamento = null; }
+  })();
+  return _pushEmAndamento;
+}
+async function _pushToCloudInterno(){
   if(!sincronizacaoAtiva()) return;
   enviarImagensPendentes(); // figuras novas das edições (coleção progresso, 1 doc por figura)
   // Nada mudou desde o último envio: nenhuma chamada à nuvem (economiza a cota
@@ -875,7 +983,7 @@ async function pushToCloud(){
             const d = docRemoto.data();
             if(d.progress) PROGRESS[materiaNome] = mergeBucket(PROGRESS[materiaNome], JSON.parse(d.progress));
             if(d.gabaritos){ try{ if(mergeRemoteGabaritosNaMemoria(JSON.parse(d.gabaritos))) salvarGabaritosAlterados(); }catch(_){} }
-            if(d.edicoes){ try{ if(mergeRemoteEdicoesNaMemoria(JSON.parse(d.edicoes))) salvarEdicoesUsuario(); }catch(_){} }
+            // edições NÃO são mescladas aqui: o merge só preenche campos ausentes e traria de volta o que o usuário restaurou/apagou
           }
         }catch(eLeitura){ throw eLeitura; }
         // desmarca ANTES de enviar: respostas dadas durante o envio marcam de novo e vão no próximo ciclo
@@ -904,10 +1012,11 @@ async function pushToCloud(){
     // merge:true é essencial aqui: sem isso, cada vez que o progresso é salvo
     // (a cada resposta) o documento inteiro seria sobrescrito, apagando o campo
     // quizzesEmAndamento gravado separadamente por sincronizarQuizEmAndamentoNaNuvem
-    await comLimiteDeTempo(fbDb.collection('progresso').doc(STATE.syncCode).set(sanitizarParaFirestore(comDono({
-      materiasComProgresso: Object.keys(PROGRESS),
-      updatedAt: Date.now(),
-    })), { merge: true }), 15000, 'tempo esgotado ao salvar o manifesto de progresso');
+    // arrayUnion: o manifesto nunca perde matéria (outro aparelho pode ter criado uma que este ainda não puxou)
+    const manifesto = sanitizarParaFirestore(comDono({ updatedAt: Date.now() }));
+    const chavesPROGRESS = Object.keys(PROGRESS);
+    if(chavesPROGRESS.length) manifesto.materiasComProgresso = firebase.firestore.FieldValue.arrayUnion(...chavesPROGRESS);
+    await comLimiteDeTempo(fbDb.collection('progresso').doc(STATE.syncCode).set(manifesto, { merge: true }), 15000, 'tempo esgotado ao salvar o manifesto de progresso');
     if(algumaFalhou) throw new Error('uma ou mais matérias não sincronizaram (ver avisos acima) — os dados já estão salvos neste dispositivo');
     marcarUltimoSyncOk();
   }catch(e){
@@ -969,7 +1078,10 @@ async function loadProgress(){
         PROGRESS = parsed || {};
       }
     }
-  }catch(e){ /* chave ainda não existe */ }
+  }catch(e){
+    // chave inexistente é normal; falha REAL de leitura liga a proteção: nada será gravado por cima do que está no aparelho
+    if(e && e.falhaReal){ window.__LOAD_PROGRESS_FALHOU = true; console.error('Falha ao ler o progresso deste aparelho — gravações locais suspensas até recarregar', e); }
+  }
 
   try{
     const res2 = await storageGet(CUSTOM_KEY);
@@ -1062,7 +1174,7 @@ async function loadProgress(){
   // permanentemente num aparelho ficar removida em qualquer outro também
   if(FIREBASE_OK){
     try{
-      const docOc = await fbDb.collection('publico').doc('_materias_ocultas').get();
+      const docOc = await comLimiteDeTempo(fbDb.collection('publico').doc('_materias_ocultas').get(), 10000, 'tempo esgotado ao ler as matérias ocultas');
       const nomesNaNuvem = (docOc.exists && Array.isArray(docOc.data().nomes)) ? docOc.data().nomes : [];
       nomesNaNuvem.forEach(n=>MATERIAS_OCULTAS.add(n));
       // AUTOCURA: se este aparelho tem na lista local algum nome que a nuvem
@@ -1195,7 +1307,10 @@ function saveProgress(){
 }
 async function salvarProgressoLocal(){
   // se a leitura inicial falhou e nada foi respondido ainda, não grava um estado vazio por cima do que está no aparelho
-  if(window.__LOAD_PROGRESS_FALHOU && Object.keys(PROGRESS||{}).length===0) return;
+  if(window.__LOAD_PROGRESS_FALHOU){
+    STATE.avisoStorage = 'Não foi possível ler o progresso deste aparelho, então não vou gravar por cima dele. Recarregue a página (Ctrl+Shift+R).';
+    return;
+  }
   try{
     await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS));
   }catch(e){
@@ -1301,14 +1416,32 @@ async function importarProgresso(file){
   reader.onload = async (e) => {
     try{
       const payload = JSON.parse(e.target.result);
-      if(!payload || typeof payload.progress !== 'object'){
+      if(!payload || typeof payload.progress !== 'object' || payload.progress===null || Array.isArray(payload.progress)){
         STATE.importProgressoLog = { error: 'Arquivo não reconhecido como backup de progresso válido.' };
+        render();
+        return;
+      }
+      // valida o formato ANTES de mexer em qualquer coisa (um item inválido não pode deixar o progresso pela metade)
+      const perigosas = new Set(['__proto__','constructor','prototype']);
+      const limpo = {};
+      for(const [materia, bucket] of Object.entries(payload.progress)){
+        if(perigosas.has(materia) || !bucket || typeof bucket!=='object' || Array.isArray(bucket)) continue;
+        const b = { ...bucket, perguntas:{} };
+        for(const [uid, p] of Object.entries(bucket.perguntas||{})){
+          if(perigosas.has(uid) || !p || typeof p!=='object' || !Number.isFinite(p.tentativas)) continue;
+          b.perguntas[uid] = { ...p, historico: Array.isArray(p.historico) ? p.historico.filter(h=>h && Number.isFinite(h.ts)) : [] };
+        }
+        limpo[materia] = b;
+      }
+      if(!Object.keys(limpo).length){
+        STATE.importProgressoLog = { error: 'O arquivo não contém progresso de nenhuma matéria.' };
         render();
         return;
       }
       // mescla progresso usando a mesma lógica robusta da sincronização em nuvem
       // (soma tentativas por questão sem perder nada do que já existe aqui)
-      mergeRemoteProgressoNaMemoria(payload.progress);
+      mergeRemoteProgressoNaMemoria(limpo);
+      Object.keys(limpo).forEach(m => marcarProgressoSujo(m));   // sem isto o importado só ia para a nuvem depois de recarregar
 
       // reimporta também as questões customizadas do backup, se houver, evitando duplicar uid
       mergeRemoteQuestoesNaMemoria(payload.questoesImportadas);
@@ -1332,7 +1465,9 @@ async function importarProgresso(file){
 function registrarResposta(materiaKey, uid, acertou, segundos){
   const bucket = getBucket(materiaKey);
   const p = bucket.perguntas[uid] || { tentativas:0, acertos:0, ultimoResultado:null, historico:[] };
-  p.tentativas += 1;
+  if(!Array.isArray(p.historico)) p.historico = [];            // entradas antigas/importadas podem vir sem histórico
+  p.tentativas = (p.tentativas||0) + 1;
+  p.acertos = p.acertos||0;
   if(acertou) p.acertos += 1;
   p.ultimoResultado = acertou;
   p.historico.push(typeof segundos==='number' ? { ts: Date.now(), c: acertou, t: segundos } : { ts: Date.now(), c: acertou });
@@ -1348,8 +1483,12 @@ function undoRegistro(materiaKey, uid){
   if(!p || !p.tentativas) return;
   // O histórico é truncado em 20 entradas mas p.tentativas não: sem histórico
   // pra esta tentativa, usa o ultimoResultado atual como a tentativa desfeita.
+  const _d = (bucket.desfeitos = bucket.desfeitos || {});
+  const _reg = _d[uid] || (_d[uid] = { ts:0, keys:[] });
+  _reg.ts = Date.now();
   if(p.historico && p.historico.length){
     const last = p.historico.pop();
+    _reg.keys = _reg.keys.concat([last.ts+'-'+last.c]).slice(-20);
     p.tentativas = Math.max(0, p.tentativas-1);
     if(last.c) p.acertos = Math.max(0, p.acertos-1);
     p.ultimoResultado = p.historico.length ? p.historico[p.historico.length-1].c : null;
@@ -1374,6 +1513,7 @@ function toggleChute(materiaKey, uid, correct){
   const bucket = getBucket(materiaKey);
   if(bucket.chutes[uid]){
     delete bucket.chutes[uid];
+    (bucket.lapides = bucket.lapides || {})['c:'+uid] = Date.now();
   } else {
     bucket.chutes[uid] = { ts: Date.now(), correct: (correct===true || correct===false) ? correct : null };
   }
@@ -1399,7 +1539,7 @@ function registrarSessao(materiaKey, total, acertos, tema, queue, respostas){
 
 function resetProgressoMateria(materiaKey){
   limparQuizSalvo(materiaKey);   // sem isso o simulado em andamento ressuscitaria o progresso (reconciliarProgressoComQuiz)
-  PROGRESS[materiaKey] = { perguntas:{}, flash:{}, sessoes:[] };
+  PROGRESS[materiaKey] = { perguntas:{}, flash:{}, sessoes:[], resetEm: Date.now() };   // resetEm: o merge não traz de volta o que é anterior
   marcarProgressoSujo(materiaKey);
   saveProgress();
 }
