@@ -693,7 +693,9 @@ function ajustarMotivacao(){
     if(r.absoluto && r.px < 12){ cont.classList.add('msg-linha'); medir(); }
   });
 }
-new MutationObserver(()=>{ if(document.querySelector('.resumo-motiva')) ajustarMotivacao(); }).observe(document.documentElement,{childList:true,subtree:true});
+// agrupa as mutações de um mesmo quadro em UMA medição (antes media layout a cada mutação do documento inteiro)
+let _motivaAgendada = false;
+new MutationObserver(()=>{ if(_motivaAgendada) return; _motivaAgendada = true; requestAnimationFrame(()=>{ _motivaAgendada = false; if(document.querySelector('.resumo-motiva')) ajustarMotivacao(); }); }).observe(document.documentElement,{childList:true,subtree:true});
 window.addEventListener('resize', ajustarMotivacao);
 
 document.addEventListener('click', (ev)=>{ if(ev.target && ev.target.closest && ev.target.closest('#btn-diagnostico-materia')) exportarDiagnosticoMateria(); });

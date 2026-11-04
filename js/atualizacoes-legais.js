@@ -65,9 +65,12 @@ function _reI(src){ let r = _reCache.get(src); if(!r){ r = new RegExp(src, 'i');
 function alteracoesDaMateria(m){ return ALTERACOES_LEGAIS.filter(a => _reI(a.mat).test(m || '')); }
 function alteracoesDaQuestao(q){
   if(!q) return [];
+  // só calcula as referências (regex sobre enunciado+resolução) se a matéria tem alguma alteração com dispositivos
+  const alts = alteracoesDaMateria(q.materia).filter(a => (a.dispositivos||[]).length);
+  if(!alts.length) return [];
   let refs = []; try{ refs = refsArtigosDaQuestao(q); }catch(_){}
   const txt = String(q.q||'') + ' ' + String(q.r||'').split(/\n/).filter(l=>/^\s*[⚖📌]/u.test(l)).join(' ');
-  return alteracoesDaMateria(q.materia).filter(a => (a.dispositivos||[]).some(d => refs.some(r => (!r.norma || r.norma===d.norma) && +r.n===+d.n)) && (!a.termo || _reI(a.termo).test(txt)));
+  return alts.filter(a => (a.dispositivos||[]).some(d => refs.some(r => (!r.norma || r.norma===d.norma) && +r.n===+d.n)) && (!a.termo || _reI(a.termo).test(txt)));
 }
 /* alteração que traz trecho/correção/justificativa prontos e cujo trecho consta no enunciado (item defasado: rachura + correção + Justificativa) */
 function _reTermos(lista){ return new RegExp((lista||[]).slice().sort((a,b)=>b.length-a.length).map(t=>t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|'), 'i'); }

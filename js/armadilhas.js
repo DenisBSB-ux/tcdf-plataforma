@@ -55,9 +55,9 @@ function armDadosCarregar(){
   sc.onload = ()=>{
     _armDadosEstado = 2; ARM_IDX = null;
     ALL_QUESTIONS.forEach(q=>{ delete q._armH; });          // reclassifica o que foi visto antes dos dados chegarem
-    try{ if(typeof edicaoAtual==='undefined' || !edicaoAtual) render(); }catch(_){}
+    try{ if(typeof podeRenderizarAgora==='function' ? podeRenderizarAgora() : (typeof edicaoAtual==='undefined' || !edicaoAtual)) render(); }catch(_){}
   };
-  sc.onerror = ()=>{ _armDadosEstado = 3; console.warn('Não foi possível carregar a classificação de armadilhas.'); };
+  sc.onerror = ()=>{ _armDadosEstado = 3; try{ sc.remove(); }catch(_){} console.warn('Não foi possível carregar a classificação de armadilhas; nova tentativa em 1 min.'); setTimeout(()=>{ if(_armDadosEstado===3) _armDadosEstado = 0; }, 60000); };
   document.head.appendChild(sc);
 }
 function armIndice(){
@@ -284,7 +284,7 @@ function armAplicarEdicao(q){
 }
 function armAutosize(){ document.querySelectorAll('textarea.arm-autosize').forEach(t=>{ t.style.height='auto'; t.style.height=(t.scrollHeight+4)+'px'; }); }
 document.addEventListener('input', e=>{ if(e.target.classList && e.target.classList.contains('arm-autosize')) armAutosize(); });
-new MutationObserver(()=>{ if(document.querySelector('textarea.arm-autosize')) armAutosize(); }).observe(document.documentElement,{childList:true,subtree:true});
+(()=>{ let ag = false; new MutationObserver(()=>{ if(ag) return; ag = true; requestAnimationFrame(()=>{ ag = false; if(document.querySelector('textarea.arm-autosize')) armAutosize(); }); }).observe(document.documentElement,{childList:true,subtree:true}); })();
 // o clique no botão não pode tirar a seleção feita no enunciado
 document.addEventListener('mousedown', (ev)=>{ if(ev.target.closest && ev.target.closest('[data-arm-selecao]')) ev.preventDefault(); });
 document.addEventListener('click', (ev)=>{
