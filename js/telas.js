@@ -748,7 +748,6 @@ function renderLetterhead(){
           </div>`;
       })()}
       <button class="tema-switch ${STATE.theme==='light'?'claro':''}" id="btn-theme-toggle" role="switch" aria-checked="${STATE.theme==='light'?'true':'false'}" title="Alternar modo claro/escuro"><span class="tema-knob">${STATE.theme==='light'?'☀️':'🌙'}</span></button>
-      ${typeof cartoesBotaoHtml==='function' ? cartoesBotaoHtml() : ''}
       <div class="color-picker-wrap">
         <button class="cor-dot" id="btn-color-picker" title="Mudar a cor do layout" style="--c:${(PALETAS_CORES[STATE.corTema]||PALETAS_CORES['Dourado (padrão)']).gold};"></button>
         ${STATE.corPickerAberto ? `<div class="color-picker-pop">
