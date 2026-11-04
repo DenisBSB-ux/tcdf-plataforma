@@ -34,6 +34,10 @@ function podeRenderizarAgora(){
     window.__LOAD_PROGRESS_FALHOU = true;
   }
   ensureMateriaSelecionada();
+  // linha de sincronização: atualiza o "há N min" sozinha e reage a perder/voltar a conexão (ao voltar, envia o pendente)
+  setInterval(()=>{ try{ atualizarLinhaSync(); atualizarIndicadorNuvem(); }catch(_){} }, 30000);
+  window.addEventListener('offline', ()=>{ try{ atualizarLinhaSync(); atualizarIndicadorNuvem(); }catch(_){} });
+  window.addEventListener('online', ()=>{ try{ atualizarLinhaSync(); atualizarIndicadorNuvem(); if(typeof sincronizacaoAtiva==='function' && sincronizacaoAtiva()) pushToCloud(); }catch(_){} });
   // cópia automática diária do progresso (últimos 7 dias), logo depois de abrir, sem atrasar a primeira tela
   setTimeout(()=>{ try{ carregarSnapshots().then(()=>snapshotDiario()); }catch(_){} }, 4000);
   setInterval(()=>{ try{ snapshotDiario(); }catch(_){} }, 6*3600*1000);

@@ -76,6 +76,8 @@ function attachHandlers(){
     });
   }
 
+  const btnSyncAgora = document.getElementById('btn-sync-agora');
+  if(btnSyncAgora) btnSyncAgora.addEventListener('click', ()=>sincronizarAgora());
   const btnEntrarGoogle = document.getElementById('btn-entrar-google');
   if(btnEntrarGoogle) btnEntrarGoogle.addEventListener('click', entrarComGoogle);
   const btnEntrarGoogleBanner = document.getElementById('btn-entrar-google-banner');

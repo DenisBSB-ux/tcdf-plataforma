@@ -520,15 +520,42 @@ function mergeRemoteQuestoesNaMemoria(remoteQuestoes){
   return added;
 }
 
+// texto da linha de sincronização (barra lateral): estado real — offline, pendências, erro ou "há N min"
+function textoLinhaSync(){
+  const n = MATERIAS_PROGRESSO_SUJAS.size, st = STATE.syncStatus;
+  if(typeof navigator!=='undefined' && navigator.onLine===false) return { classe:'err', html:'📴 Sem conexão' + (n ? ' — ' + n + ' matéria' + (n>1?'s':'') + ' aguardando envio' : '') };
+  if(st && st.type==='err') return { classe:'err', html: esc(st.msg) };
+  if(n>0 || quizSyncPendente) return { classe:'pending', html:'⏳ Enviando ' + (n>0 ? n + ' matéria' + (n>1?'s':'') : 'simulado') + '…' };
+  const ts = window.__ULTIMO_SYNC_TS || (st && st.type==='ok' ? st.ts : 0);
+  if(!ts) return { classe:(st&&st.type)||'', html: esc(st ? st.msg : 'sincronizando…') };
+  const min = Math.floor((Date.now()-ts)/60000), hh = new Date(ts).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const rel = min<1 ? 'agora' : (min<60 ? 'há '+min+' min' : (min<1440 ? 'há '+Math.floor(min/60)+' h' : 'há '+Math.floor(min/1440)+' d'));
+  return { classe:'ok', html:'🟢 Sincronizado ' + rel + ' <small>(' + hh + ')</small>' };
+}
+function atualizarLinhaSync(){
+  const el = document.getElementById('sync-status-el'); if(!el) return;
+  const t = textoLinhaSync();
+  el.className = 'sync-linha ' + t.classe;
+  el.innerHTML = '<span class="sync-dot"></span>' + t.html;
+}
 function setSyncStatusDOM(type, msg, detalhe){
   STATE.syncStatus = { type, msg, detalhe, ts: Date.now() };
   const el = document.getElementById('sync-status-el');
   if(el){
-    el.textContent = msg;
-    el.className = 'sync-status ' + type;
+    atualizarLinhaSync();
     if(detalhe) el.title = detalhe; else el.removeAttribute('title');
   }
   atualizarIndicadorNuvem();
+}
+// "Sincronizar agora": envia o que está pendente e puxa o que mudou em outros aparelhos
+async function sincronizarAgora(){
+  if(!sincronizacaoAtiva()){ alert('Entre com o Google para sincronizar.'); return; }
+  setSyncStatusDOM('pending','sincronizando…');
+  try{
+    const puxou = await pullFromCloud({ silent:true });
+    if(puxou !== null) await pushToCloud();
+  }catch(e){ console.warn('Sincronizar agora falhou', e); }
+  try{ render(); }catch(_){}
 }
 
 function motivoErroFirestore(e){
@@ -547,6 +574,7 @@ function formatarUltimoSync(ts){
 }
 function marcarUltimoSyncOk(){
   const ts = Date.now();
+  window.__ULTIMO_SYNC_TS = ts;
   setSyncStatusDOM('ok', formatarUltimoSync(ts));
   atualizarIndicadorNuvem();
   storageSet(LAST_SYNC_KEY, String(ts)).catch(()=>{});
@@ -1198,6 +1226,7 @@ async function loadProgress(){
     try{
       const res6 = await storageGet(LAST_SYNC_KEY);
       if(res6 && res6.value){
+        window.__ULTIMO_SYNC_TS = parseInt(res6.value,10);
         STATE.syncStatus = { type:'ok', msg: formatarUltimoSync(parseInt(res6.value,10)) };
       }
     }catch(e){ /* nunca sincronizou ainda neste dispositivo */ }
@@ -1329,6 +1358,7 @@ function salvarTudoAgoraAoSair(){
 // situação do envio do progresso pra nuvem, mostrada ao lado do 💾 nas questões
 function estadoSincronizacaoProgresso(){
   if(!sincronizacaoAtiva()) return { icone:'⚠', texto:'só neste aparelho (sem login)', classe:'err' };
+  if(typeof navigator!=='undefined' && navigator.onLine===false) return { icone:'📴', texto:'sem conexão — suas respostas ficam salvas neste aparelho e sobem quando a internet voltar', classe:'err' };
   if(STATE.syncStatus && STATE.syncStatus.type==='err') return { icone:'⚠', texto:'falha ao enviar pra nuvem — tenta de novo a cada resposta', classe:'err' };
   if(MATERIAS_PROGRESSO_SUJAS.size>0 || quizSyncPendente) return { icone:'⏳', texto:'enviando pra nuvem…', classe:'pending' };
   return { icone:'☁✓', texto:'salvo na nuvem', classe:'ok' };
