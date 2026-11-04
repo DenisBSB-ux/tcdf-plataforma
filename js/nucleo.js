@@ -331,7 +331,7 @@ function marcarDuplicatas(){
   const porMateria = {};
   ALL_QUESTIONS.forEach(q=>{
     q.duplicataOculta = false;
-    const chave = normalizarParaComparacao(q.q);
+    const chave = normalizarParaComparacao(q.q + (Array.isArray(q.alt) ? ' ' + q.alt.map(a=>(a&&a.letra?a.letra+' ':'')+((a&&a.texto)||'')).join(' ') : ''));   // MC: enunciado-base igual com alternativas diferentes NÃO é duplicata
     if(!chave || chave.length<15) return; // enunciados muito curtos não entram na checagem (risco de falso positivo)
     if(!porMateria[q.materia]) porMateria[q.materia] = {};
     if(!porMateria[q.materia][chave]) porMateria[q.materia][chave] = [];

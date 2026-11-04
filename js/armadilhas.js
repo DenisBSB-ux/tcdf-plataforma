@@ -414,7 +414,7 @@ function armGuiaDados(escopo){
     // revisão por idade do último erro: só a matéria atual (o treino abre nela)
     if(caiu && q.materia===STATE.materia){
       const idade = (hoje-armUltimoTs(p))/DIA;
-      cods.forEach(c=>{ const r = D.rev[c]; (idade>=30 ? r.d30 : idade>=7 ? r.d7 : idade>=1 ? r.d1 : []).push(q.uid); if(!armUltimoTs(p)) r.d30.push(q.uid); });
+      cods.forEach(c=>{ const r = D.rev[c]; (idade>=30 ? r.d30 : idade>=7 ? r.d7 : idade>=1 ? r.d1 : []).push(q.uid); });   // sem data (ts=0) a idade já cai em d30: não empurrar de novo
     }
     if(escopo && q.materia!==escopo) return;
     D.total++;
@@ -607,7 +607,7 @@ function renderGuiaArmadilhas(){
 /* ================= CRITÉRIOS DE CLASSIFICAÇÃO EDITÁVEIS =================
    O usuário pode alterar, remover ou adicionar tipos de armadilha. As mudanças
    ficam neste navegador (localStorage 'tcdf_arm_criterios'); sem elas valem os
-   critérios padrão do código. Código do critério: 2 a 4 letras maiúsculas. */
+   critérios padrão do código. Código do critério: 2 a 5 letras maiúsculas (NORMA tem 5). */
 const ARM_CRIT_KEY = 'tcdf_arm_criterios';
 const ARM_TIPOS_PADRAO = JSON.parse(JSON.stringify(ARM_TIPOS));
 const ARM_ORDEM_PADRAO = ARM_ORDEM.slice();
@@ -617,7 +617,7 @@ function armCritSanear(cfg){
   const txt = v => (typeof v==='string' ? v : '').slice(0, 2000);
   const tipos = {}, ordem = [];
   cfg.ordem.forEach(c=>{
-    if(typeof c!=='string' || !/^[A-Za-z0-9]{1,4}$/.test(c) || tipos[c]) return;
+    if(typeof c!=='string' || !/^[A-Za-z0-9]{1,5}$/.test(c) || tipos[c]) return;
     const t = cfg.tipos[c]; if(!t || typeof t!=='object') return;
     const limpo = {};
     Object.keys(t).forEach(k=>{ if(typeof t[k]==='string' || typeof t[k]==='number' || typeof t[k]==='boolean') limpo[k] = typeof t[k]==='string' ? txt(t[k]) : t[k]; });
@@ -653,7 +653,7 @@ function armCritLinhaHtml(cod, t, novo){
   const f = (campo, rot, val, tipo) => `<label class="crit-f"><span>${rot}</span>${tipo==='area'?`<textarea data-f="${campo}" rows="2">${esc(val||'')}</textarea>`:`<input data-f="${campo}" value="${esc(val||'')}">`}</label>`;
   return `<div class="crit-linha" data-cod="${esc(cod)}" ${novo?'data-novo="1"':''}>
     <div class="crit-topo">
-      <label class="crit-f crit-cod"><span>Código</span><input data-f="cod" maxlength="4" value="${esc(cod)}" ${novo?'':'readonly'} placeholder="ABC"></label>
+      <label class="crit-f crit-cod"><span>Código</span><input data-f="cod" maxlength="5" value="${esc(cod)}" ${novo?'':'readonly'} placeholder="ABC"></label>
       <label class="crit-f crit-cor"><span>Cor</span><input type="color" data-f="cor" value="${esc(t.cor||'#475569')}"></label>
       ${f('nome','Nome',t.nome)}
       <button type="button" class="btn-ui btn-cancelar-edicao crit-rem" title="Remover este critério">🗑 Remover</button>
@@ -698,7 +698,7 @@ function armCritAbrir(){
       lista.querySelectorAll('.crit-linha').forEach(l=>{
         const g = k=>{ const el=l.querySelector(`[data-f="${k}"]`); return el?el.value.trim():''; };
         const cod = g('cod').toUpperCase();
-        if(!/^[A-Z]{2,4}$/.test(cod)) { erro = 'O código deve ter de 2 a 4 letras (A–Z).'; return; }
+        if(!/^[A-Z]{2,5}$/.test(cod)) { erro = 'O código "'+cod+'" é inválido: use de 2 a 5 letras (A–Z).'; return; }
         if(tipos[cod]) { erro = `Código repetido: ${cod}.`; return; }
         if(!g('nome')) { erro = `Informe o nome do critério ${cod}.`; return; }
         const cor = g('cor') || '#475569';
