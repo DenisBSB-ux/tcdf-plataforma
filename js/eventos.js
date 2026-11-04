@@ -471,6 +471,8 @@ function attachHandlers(){
       const ts = parseInt(el.dataset.excluirSalvo,10);
       const bucket = getBucket(STATE.materia);
       bucket.simuladosSalvos = (bucket.simuladosSalvos||[]).filter(s=>s.ts!==ts);
+      (bucket.lapides = bucket.lapides || {})['s:'+ts] = Date.now();
+      marcarProgressoSujo(STATE.materia);
       saveProgress();
       render();
     });

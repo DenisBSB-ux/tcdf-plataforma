@@ -1044,6 +1044,7 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
     });
 
     let fundidas = 0, movidas = 0;
+    const mapaUidMescla = {};   // uid na origem -> uid no destino (edições, gabaritos, flashcards e chutes acompanham a questão)
 
     qsOrigem.forEach(q=>{
       const chave = chaveDeEnunciado(q.q);
@@ -1063,6 +1064,7 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
           bucketDestino.perguntas[equivalente.uid] = somarProgressoDaQuestao(bucketDestino.perguntas[equivalente.uid], pOrigem);
         }
         delete bucketOrigem.perguntas[q.uid];
+        mapaUidMescla[q.uid] = equivalente.uid;
         fundidas++;
         return;
       }
@@ -1076,6 +1078,7 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
       const idx = ALL_QUESTIONS.findIndex(x=>x.uid===q.uid);
       if(idx!==-1) ALL_QUESTIONS[idx] = { ...q, materia: nomeDestino, uid, origem: q.origem==='embutido' ? 'importado' : q.origem };
       if(pOrigem){ bucketDestino.perguntas[uid] = pOrigem; delete bucketOrigem.perguntas[q.uid]; }
+      mapaUidMescla[q.uid] = uid;
       movidas++;
     });
 
@@ -1086,6 +1089,14 @@ async function mesclarMaterias(nomeOrigem, nomeDestino){
     // removida aqui. Todo conteúdo de origem já foi consumido (fundido no
     // destino) ou realocado (com materia/uid do destino) pelos ramos acima, então
     // qualquer entrada que ainda reste com o nome antigo é sempre sobra a descartar.
+    // o que era indexado pelo uid da origem vai para o uid novo (sem sobrescrever o que o destino já tem)
+    Object.entries(mapaUidMescla).forEach(([uidAntigo, uidNovo])=>{
+      if(EDICOES_USUARIO[uidAntigo]){ if(!EDICOES_USUARIO[uidNovo]) EDICOES_USUARIO[uidNovo] = EDICOES_USUARIO[uidAntigo]; delete EDICOES_USUARIO[uidAntigo]; }
+      if(GABARITOS_ALTERADOS[uidAntigo]){ if(!GABARITOS_ALTERADOS[uidNovo]) GABARITOS_ALTERADOS[uidNovo] = GABARITOS_ALTERADOS[uidAntigo]; delete GABARITOS_ALTERADOS[uidAntigo]; }
+      if(bucketOrigem.flash && bucketOrigem.flash[uidAntigo]){ bucketDestino.flash = bucketDestino.flash || {}; if(!bucketDestino.flash[uidNovo]) bucketDestino.flash[uidNovo] = bucketOrigem.flash[uidAntigo]; }
+      if(bucketOrigem.chutes && bucketOrigem.chutes[uidAntigo]){ bucketDestino.chutes = bucketDestino.chutes || {}; if(!bucketDestino.chutes[uidNovo]) bucketDestino.chutes[uidNovo] = bucketOrigem.chutes[uidAntigo]; }
+    });
+    salvarEdicoesUsuario(); salvarGabaritosAlterados();
     ALL_QUESTIONS = ALL_QUESTIONS.filter(q => q.materia !== nomeOrigem);
     // o destino pode já ter cópias da mesma questão entre si (de mesclas ou
     // importações anteriores) — a mescla sempre termina sem duplicatas
