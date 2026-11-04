@@ -1349,23 +1349,74 @@ async function saveCustomQuestions(){
 }
 
 /* ================= exportar / importar progresso (backup manual entre computadores) ================= */
-function exportarProgresso(){
-  const payload = {
+const ULTIMO_BACKUP_ARQUIVO_KEY = 'tcdf-ultimo-backup-arquivo';
+function _payloadBackup(){
+  return {
     formato: 'sim-progresso-backup-v1',
     exportadoEm: new Date().toISOString(),
     progress: PROGRESS,
+    edicoes: EDICOES_USUARIO,
+    gabaritos: GABARITOS_ALTERADOS,
     questoesImportadas: ALL_QUESTIONS.filter(q => q.origem === 'importado'),
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+}
+function _baixarJson(obj, nome){
+  const blob = new Blob([JSON.stringify(obj)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const dataStr = new Date().toISOString().slice(0,10);
-  a.href = url;
-  a.download = `progresso-simulado-${dataStr}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function exportarProgresso(){
+  _baixarJson(_payloadBackup(), `progresso-simulado-${new Date().toISOString().slice(0,10)}.json`);
+  try{ localStorage.setItem(ULTIMO_BACKUP_ARQUIVO_KEY, String(Date.now())); }catch(_){}
+  if(typeof render==='function') try{ render(); }catch(_){}
+}
+function diasDesdeUltimoBackupArquivo(){
+  try{ const t = parseInt(localStorage.getItem(ULTIMO_BACKUP_ARQUIVO_KEY)||'0',10); return t ? Math.floor((Date.now()-t)/86400000) : null; }catch(_){ return null; }
+}
+
+/* ---- cópias automáticas no aparelho (últimos 7 dias) ----
+   Uma por dia, guardadas no próprio armazenamento do navegador. "Recuperar" MESCLA a cópia no progresso atual (nunca apaga nada). */
+const SNAPSHOTS_KEY = 'tcdf-snapshots';
+const SNAPSHOTS_MAX = 7;
+let SNAPSHOTS = [];   // [{ ts, progress: string(JSON), edicoes, gabaritos }]
+async function carregarSnapshots(){
+  try{ const r = await storageGet(SNAPSHOTS_KEY); SNAPSHOTS = (r && r.value) ? JSON.parse(r.value) : []; if(!Array.isArray(SNAPSHOTS)) SNAPSHOTS = []; }
+  catch(_){ SNAPSHOTS = []; }
+  return SNAPSHOTS;
+}
+async function snapshotDiario(forcar){
+  try{
+    if(window.__LOAD_PROGRESS_FALHOU) return;                                     // estado local não confiável: não gravar cópia por cima
+    if(!Object.keys(PROGRESS||{}).length) return;                                  // nada para guardar
+    if(!SNAPSHOTS.length) await carregarSnapshots();
+    const ultimo = SNAPSHOTS.length ? SNAPSHOTS[SNAPSHOTS.length-1].ts : 0;
+    if(!forcar && Date.now()-ultimo < 20*3600*1000) return;
+    SNAPSHOTS.push({ ts: Date.now(), progress: JSON.stringify(PROGRESS), edicoes: JSON.stringify(EDICOES_USUARIO), gabaritos: JSON.stringify(GABARITOS_ALTERADOS) });
+    SNAPSHOTS = SNAPSHOTS.slice(-SNAPSHOTS_MAX);
+    await storageSet(SNAPSHOTS_KEY, JSON.stringify(SNAPSHOTS));
+  }catch(e){ console.warn('Não foi possível guardar a cópia automática', e); }
+}
+async function recuperarSnapshot(ts){
+  const sn = SNAPSHOTS.find(x=>x.ts===ts); if(!sn) return;
+  if(!window.confirm('Recuperar a cópia de '+new Date(ts).toLocaleString('pt-BR')+'?\n\nO conteúdo dela será MESCLADO com o seu progresso atual: nada do que existe hoje é apagado.')) return;
+  await snapshotDiario(true);                                                      // guarda o estado atual antes
+  try{
+    const prog = JSON.parse(sn.progress);
+    mergeRemoteProgressoNaMemoria(prog);
+    try{ if(sn.edicoes && mergeRemoteEdicoesNaMemoria(JSON.parse(sn.edicoes))) salvarEdicoesUsuario(); }catch(_){}
+    try{ if(sn.gabaritos && mergeRemoteGabaritosNaMemoria(JSON.parse(sn.gabaritos))) salvarGabaritosAlterados(); }catch(_){}
+    Object.keys(prog).forEach(m=>marcarProgressoSujo(m));
+    saveProgress();
+    STATE.importProgressoLog = { ok:true, ts:Date.now(), msg:'Cópia recuperada e mesclada.' };
+  }catch(e){ STATE.importProgressoLog = { error:'Não foi possível recuperar a cópia: '+(e && e.message || e) }; }
+  render();
+}
+function baixarSnapshot(ts){
+  const sn = SNAPSHOTS.find(x=>x.ts===ts); if(!sn) return;
+  _baixarJson({ formato:'sim-progresso-backup-v1', exportadoEm:new Date(ts).toISOString(), progress:JSON.parse(sn.progress), edicoes:JSON.parse(sn.edicoes||'{}'), gabaritos:JSON.parse(sn.gabaritos||'{}'), questoesImportadas:[] }, `copia-automatica-${new Date(ts).toISOString().slice(0,10)}.json`);
 }
 
 // Relatório de diagnóstico da matéria selecionada (sem enunciados): conta o que existe no progresso oficial,
@@ -1445,6 +1496,9 @@ async function importarProgresso(file){
 
       // reimporta também as questões customizadas do backup, se houver, evitando duplicar uid
       mergeRemoteQuestoesNaMemoria(payload.questoesImportadas);
+      // edições e gabaritos corrigidos do backup (preenchem só o que falta; nada do que existe é sobrescrito)
+      try{ if(payload.edicoes && typeof payload.edicoes==='object' && mergeRemoteEdicoesNaMemoria(payload.edicoes)) salvarEdicoesUsuario(); }catch(_){}
+      try{ if(payload.gabaritos && typeof payload.gabaritos==='object' && mergeRemoteGabaritosNaMemoria(payload.gabaritos)) salvarGabaritosAlterados(); }catch(_){}
 
       saveProgress();
       await saveCustomQuestions();

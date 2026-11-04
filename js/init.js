@@ -34,6 +34,9 @@ function podeRenderizarAgora(){
     window.__LOAD_PROGRESS_FALHOU = true;
   }
   ensureMateriaSelecionada();
+  // cópia automática diária do progresso (últimos 7 dias), logo depois de abrir, sem atrasar a primeira tela
+  setTimeout(()=>{ try{ carregarSnapshots().then(()=>snapshotDiario()); }catch(_){} }, 4000);
+  setInterval(()=>{ try{ snapshotDiario(); }catch(_){} }, 6*3600*1000);
   APP_INICIADO = true;
   render();
   // salvamento automático silencioso a cada minuto, além do salvamento

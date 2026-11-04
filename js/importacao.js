@@ -76,19 +76,31 @@ function renderImportarConteudo(){
         </div>` : ''}
 
         </div>
-        ${false ? `<div class="card-block" style="margin-top:10px;">
-          <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:14px;">O progresso é salvo automaticamente (a cada minuto e a cada resposta). Use os botões abaixo apenas se quiser um arquivo de backup extra, ou para levar o progresso manualmente para outro computador sem usar a sincronização em nuvem.</p>
-          <button class="side-action-btn" id="btn-exportar-progresso" title="Baixa um arquivo .json com todo o seu progresso">⬇ Exportar backup</button>
-          <button class="side-action-btn" id="btn-importar-progresso" title="Carrega um backup .json exportado anteriormente">⬆ Importar backup</button>
-          <input type="file" id="file-input-progresso" accept=".json,application/json" style="display:none;">
-          ${STATE.importProgressoLog ? (STATE.importProgressoLog.ok
-            ? `<div class="side-status ok">✓ backup importado</div>`
-            : `<div class="side-status err">${esc(STATE.importProgressoLog.error||'')}</div>`) : ''}
-        </div>` : ''}
+        ${renderBackupCard()}
 
   `;
 }
 
+function renderBackupCard(){
+  const dias = (typeof diasDesdeUltimoBackupArquivo==='function') ? diasDesdeUltimoBackupArquivo() : null;
+  const aviso = dias===null ? 'Você ainda não baixou nenhum backup em arquivo.' : (dias===0 ? 'Último backup em arquivo: hoje.' : 'Último backup em arquivo: há '+dias+' dia'+(dias===1?'':'s')+'.');
+  const snaps = (typeof SNAPSHOTS!=='undefined' ? SNAPSHOTS : []).slice().reverse();
+  const log = STATE.importProgressoLog;
+  return `<div class="card-block" id="card-backup" style="margin-top:10px;">
+    <h3 class="section-title" style="font-size:15px;margin-bottom:6px;">💾 Backup do progresso</h3>
+    <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">O progresso é salvo sozinho no aparelho e na nuvem. O arquivo é uma garantia extra (guarde em outro lugar). ${esc(aviso)}</p>
+    <button class="side-action-btn" id="btn-exportar-progresso" title="Baixa um arquivo .json com progresso, edições e gabaritos corrigidos">⬇ Baixar backup</button>
+    <button class="side-action-btn" id="btn-importar-progresso" title="Mescla um backup .json no progresso atual (nada é apagado)">⬆ Importar backup</button>
+    <input type="file" id="file-input-progresso" accept=".json,application/json" style="display:none;">
+    ${log ? (log.ok ? `<div class="side-status ok">✓ ${esc(log.msg||'backup importado')}</div>` : `<div class="side-status err">${esc(log.error||'')}</div>`) : ''}
+    <h4 style="font-size:13px;margin:14px 0 6px;">Cópias automáticas neste aparelho (últimos 7 dias)</h4>
+    ${snaps.length ? snaps.map(sn=>`<div style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin:4px 0;">
+      <span style="flex:1;">${esc(new Date(sn.ts).toLocaleString('pt-BR'))}</span>
+      <button class="btn-outline btn-sm" data-snap-recuperar="${Number(sn.ts)}" title="Mescla esta cópia no progresso atual (nada é apagado)">Recuperar</button>
+      <button class="btn-outline btn-sm" data-snap-baixar="${Number(sn.ts)}" title="Baixa esta cópia como arquivo">Baixar</button>
+    </div>`).join('') : '<p style="font-size:12px;color:var(--ink-soft);">A primeira cópia é feita automaticamente quando você usa o app.</p>'}
+  </div>`;
+}
 function renderImportLog(){
   const log = STATE.importLog;
   if(log.pending){

@@ -64,6 +64,9 @@ function attachHandlers(){
 
   const btnExportarProgresso = document.getElementById('btn-exportar-progresso');
   if(btnExportarProgresso) btnExportarProgresso.addEventListener('click', exportarProgresso);
+  root.querySelectorAll('[data-snap-recuperar]').forEach(el=> el.addEventListener('click', ()=> recuperarSnapshot(parseInt(el.dataset.snapRecuperar,10))));
+  root.querySelectorAll('[data-snap-baixar]').forEach(el=> el.addEventListener('click', ()=> baixarSnapshot(parseInt(el.dataset.snapBaixar,10))));
+  root.querySelectorAll('[data-exportar-backup]').forEach(el=> el.addEventListener('click', exportarProgresso));
   const btnImportarProgresso = document.getElementById('btn-importar-progresso');
   const fileInputProgresso = document.getElementById('file-input-progresso');
   if(btnImportarProgresso && fileInputProgresso){
