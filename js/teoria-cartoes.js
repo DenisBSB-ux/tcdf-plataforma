@@ -27,10 +27,37 @@ function teoriaCartaoDaQuestao(q){
     return c.h === hq;
   }) || null;
 }
+
+// Destaque automático (heurística leve em português) nos trechos que não têm marca manual: verbos, adjetivos e negações/limites.
+const _CT_LIM = new Set(['não','nem','nunca','jamais','sem','apenas','somente','só','exclusivamente','sempre','todo','toda','todos','todas','qualquer','nenhum','nenhuma','mesmo','mesma','salvo','exceto','mas','porém','contudo','sempre']);
+const _CT_VERB = new Set(['é','são','foi','foram','era','será','serão','seja','sejam','ser','está','estão','deve','devem','deverá','poderá','pode','podem','cabe','compete','exige','exigem','veda','proíbe','permite','impõe','garante','assegura','limita','obriga','autoriza','dispõe','estabelece','prevê','abrange','aplica','incide','afeta','tem','têm','possui','gera','causa','institui','cobra','arrecada','define','considera','constitui','configura','depende','decorre','resulta','corresponde','envolve','inclui','exclui','trata','busca','visa','permanece','mantém','ocorre','paga','pagam','distribui','destina','destinam','pertence','pertencem','conduz','facilita','dificulta','reduz','aumenta','altera','revoga','atribui','concede','reconhece','assume','ocupa','atua','atuam','cria','criam','usa','usam','emite','emitem','fixa','fixam']);
+const _CT_NAO_VERB = new Set(['alternativa','alternativas','objetivo','objetivos','executivo','legislativo','ativo','passivo','capital','material','mulher','colher','lugar','ar','par','mar','azar','celular','militar','familiar','particular','popular','regular','singular','similar','vulgar','exemplar','calendar','secular','espetacular','polar','solar','lunar','muitas','outras']);
+function _ctClasseDaPalavra(w){
+  const x = w.toLowerCase();
+  if(x.length < 2) return '';
+  if(_CT_LIM.has(x)) return 'ct-neg';
+  if(_CT_VERB.has(x)) return 'ct-v';
+  if(x.length < 5 || _CT_NAO_VERB.has(x)) return '';
+  if(/(ando|endo|indo|ondo|aram|eram|iram|ou)$/.test(x) && x.length >= 6) return 'ct-v';
+  if(/(ar|er|ir)$/.test(x) && x.length >= 6) return 'ct-v';                       // infinitivos (instituir, cobrar)
+  if(/(ado|ada|ados|adas|ido|ida|idos|idas)$/.test(x) && x.length >= 6) return 'ct-v';  // particípios
+  if(/(ável|ível|áveis|íveis|oso|osa|osos|osas|ivo|iva|ivos|ivas|ico|ica|icos|icas|ário|ária|ários|árias|ório|ória|órios|órias|eiro|eira|eiros|eiras|ual|uais|al|ais)$/.test(x) && x.length >= 6) return 'ct-adj';
+  return '';
+}
+function _ctDestacaTexto(txt){
+  txt = String(txt||'');
+  let out = '', i = 0; const re = /[\p{L}][\p{L}’'-]*/gu; let m;
+  while((m = re.exec(txt))){
+    const cl = _ctClasseDaPalavra(m[0]);
+    out += esc(txt.slice(i, m.index)) + (cl ? `<span class="${cl}">${esc(m[0])}</span>` : esc(m[0]));
+    i = m.index + m[0].length;
+  }
+  return out + esc(txt.slice(i));
+}
 function _ctRegraHtml(txt){
   let out = '', i = 0; const re = /\{(\d)\|([^}]+)\}/g; let m;
-  while((m = re.exec(txt))){ out += esc(txt.slice(i, m.index)) + `<mark class="ct-k ct-c${Number(m[1])%5}">${esc(m[2])}</mark>`; i = m.index + m[0].length; }
-  return out + esc(txt.slice(i));
+  while((m = re.exec(txt))){ out += _ctDestacaTexto(txt.slice(i, m.index)) + `<mark class="ct-k ct-c${Number(m[1])%5}">${esc(m[2])}</mark>`; i = m.index + m[0].length; }
+  return out + _ctDestacaTexto(txt.slice(i));
 }
 function cartaoTeoriaHtml(q){
   const c = teoriaCartaoDaQuestao(q); if(!c) return '';
@@ -60,28 +87,26 @@ function _crRegraHtml(txt, chaves){
   });
   marcas.sort((a,b) => a.ini - b.ini);
   let out = '', cur = 0;
-  marcas.forEach(m => { out += esc(txt.slice(cur, m.ini)) + `<mark class="ct-k ct-c${m.i%5}">${esc(txt.slice(m.ini, m.fim))}</mark>`; cur = m.fim; });
-  return out + esc(txt.slice(cur));
+  marcas.forEach(m => { out += _ctDestacaTexto(txt.slice(cur, m.ini)) + `<mark class="ct-k ct-c${m.i%5}">${esc(txt.slice(m.ini, m.fim))}</mark>`; cur = m.fim; });
+  return out + _ctDestacaTexto(txt.slice(cur));
 }
 function cartaoResolucaoHtml(q){
   if(!q || typeof textoResolucaoAtualizado !== 'function') return '';
-  if(typeof EDICOES_USUARIO !== 'undefined' && EDICOES_USUARIO[q.uid] && EDICOES_USUARIO[q.uid].r) return '';   // edição do usuário: mostra o texto dele
   if(typeof alteracaoComTrecho === 'function' && alteracaoComTrecho(q)) return '';                                // aviso de alteração legal: mantém o texto
   const linhas = String(textoResolucaoAtualizado(q) || '').split(/\n/).map(l => l.trim()).filter(Boolean);
   const pega = (re) => { const l = linhas.find(x => re.test(x)); return l ? _crLimpa(l.replace(re, '')) : ''; };
   const regra = pega(/^📌\s*/u);
   if(!regra) return '';
   const chaves = pega(/^🔑\s*/u).split(/\s*[·|]\s*/).map(_crLimpa).filter(Boolean);
-  const base = pega(/^⚖\uFE0F?\s*/u), atencao = pega(/^⚠\uFE0F?(?!\s*ERROS)\s*/u), arm = pega(/^🪤\s*/u), macete = pega(/^💡\s*/u);
+  const atencao = pega(/^⚠\uFE0F?(?!\s*ERROS)\s*/u), arm = pega(/^🪤\s*/u), macete = pega(/^💡\s*/u);
   const pontos = [];
-  if(base) pontos.push({ ico:'⚖️', t:'Base legal', d:base });
   if(atencao && !/^ERROS\b/.test(atencao)) pontos.push({ ico:'⚠️', t:'Atenção', d:atencao });
   if(macete) pontos.push({ ico:'💡', t:'Macete', d:macete });
-  const lis = pontos.map((p, i) => `<li class="ct-ponto ct-c${i%5}"><span class="ct-ico" aria-hidden="true">${esc(p.ico)}</span><div><b>${esc(p.t)}</b><span>${esc(p.d)}</span></div></li>`).join('');
+  const lis = pontos.map((p, i) => `<li class="ct-ponto ct-c${i%5}"><span class="ct-ico" aria-hidden="true">${esc(p.ico)}</span><div><b>${esc(p.t)}</b><span>${_ctDestacaTexto(p.d)}</span></div></li>`).join('');
   return `<section class="cartao-teoria ct-resumo" aria-label="Resolução em figura">
     <header><span class="ct-selo">🗂️ Resolução em figura</span></header>
     <p class="ct-regra">${_crRegraHtml(regra, chaves)}</p>
     ${lis ? `<ol class="ct-pontos ct-n${Math.min(pontos.length,5)}">${lis}</ol>` : ''}
-    ${arm ? `<div class="ct-arm"><span aria-hidden="true">⚠️</span><div><b>Armadilha</b> ${esc(arm)}</div></div>` : ''}
+    ${arm ? `<div class="ct-arm"><span aria-hidden="true">⚠️</span><div><b>Armadilha</b> ${_ctDestacaTexto(arm)}</div></div>` : ''}
   </section>`;
 }

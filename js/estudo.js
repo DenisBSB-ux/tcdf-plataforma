@@ -455,7 +455,7 @@ function campoEditavelSimples(q, campo, htmlAuto){
   let conteudo = custom ? ((campo==='r' || campo==='rf') ? simbolosComDica(custom) : custom) : htmlAuto;
   if(custom && campo==='r' && !emEdicao && typeof alteracaoComTrecho==='function'){ const al = alteracaoComTrecho(q); if(al) conteudo = marcarAlteracaoDom(conteudo, al); }
   const btnEditar = '';
-  const btnRest = (!emEdicao && custom) ? `<button class="btn-restaurar-campo btn-ui" data-uid="${esc(uid)}" data-campo="${campo}" title="Descartar edição e voltar ao texto automático">↺ Restaurar</button>` : '';
+  const btnRest = '';   // botão "Restaurar" removido (pedido do usuário)
   const barraSalvar = (emEdicao && campo==='r') ? `<div class="campo-editavel-acoes campo-salvar-barra"><button class="btn-ui btn-ui-salvar btn-salvar-edicao" data-editar-acao="salvar" data-uid="${esc(uid)}">💾 Salvar</button><button class="btn-ui btn-cancelar-edicao" data-editar-acao="cancelar">✕ Cancelar</button></div>` : '';
   return `
     ${(btnEditar||btnRest) ? `<div class="campo-editavel-header" style="justify-content:flex-end;"><span class="campo-editavel-acoes">${btnEditar}${btnRest}</span></div>` : ''}
@@ -476,9 +476,9 @@ function renderResolucao(q, resposta, quiz){
   const palavrasChave = palavrasChaveDaRespostaCorreta(q);
   const gAlterado = gabAtivo(q.uid);
   // questão com "Teoria em figura": a figura substitui a justificativa escrita e os cartões (em edição, volta ao normal)
-  const tc = (edicaoAtual!==q.uid && typeof teoriaCartaoDaQuestao==='function' && typeof cartaoTeoriaHtml==='function') ? teoriaCartaoDaQuestao(q) : null;
+  const tc = (typeof teoriaCartaoDaQuestao==='function' && typeof cartaoTeoriaHtml==='function') ? teoriaCartaoDaQuestao(q) : null;
   // sem cartão de teoria: a justificativa escrita vira figura (cartaoResolucaoHtml devolve '' quando não dá, e aí fica o texto)
-  const tr = (!tc && edicaoAtual!==q.uid && typeof cartaoResolucaoHtml==='function') ? cartaoResolucaoHtml(q) : '';
+  const tr = (!tc && typeof cartaoResolucaoHtml==='function') ? cartaoResolucaoHtml(q) : '';
   return `
   <div class="answer-feedback ${feedbackClass}">
     ${(!gAlterado && typeof propostaPorNormaNova==='function' && propostaPorNormaNova(q)) ? `<div class="arm-justificativa"><em>Gabarito proposto:</em> <b>Certo</b> — o item traz a redação atual (${esc(propostaPorNormaNova(q).trecho)}) e o arquivo marca Errado. Confirme em ✔ Revisado.</div>` : ''}
@@ -491,7 +491,7 @@ function renderResolucao(q, resposta, quiz){
   </div>
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   <div class="resolucao-box ${tintClass} resolucao-unica">
-    ${tc ? cartaoTeoriaHtml(q) : (tr || `${armPainelHtml(q)}
+    ${(tc || tr) ? `${edicaoAtual===q.uid ? armPainelHtml(q) : ''}${tc ? cartaoTeoriaHtml(q) : tr}` : (`${armPainelHtml(q)}
     ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(textoResolucaoAtualizado(q).split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).filter(l=>{ if(edicaoAtual===q.uid) return true; const ex = explicacaoPlana(q); if(!ex || !/^\s*📌/u.test(l)) return true; const pl = l.replace(/^\s*📌\s*/u,'').replace(/==|\*\*|~~/g,'').replace(/\s+/g,' ').trim(); return pl!==ex; }).join('\n'), palavrasChave, q))}
     ${(edicaoAtual===q.uid || typeof cartaoComparativoHtml!=='function') ? '' : cartaoComparativoHtml(q, resposta && resposta.picked)}
 `)}
