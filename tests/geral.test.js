@@ -71,6 +71,15 @@ const revs = ctx3.rev('X', agora).map(x => x.uid);
 t('revisão: vencidas entram, recentes e fora do escopo não', revs.join() === 'q1,q4,q3' || (revs.length === 3 && revs.includes('q1') && revs.includes('q3') && revs.includes('q4') && !revs.includes('q2') && !revs.includes('q5')), revs.join());
 t('revisão: erradas primeiro', revs[0] === 'q1');
 
+// 4c. "Teoria em figura" (piloto): estrutura dos cartões
+try {
+  const cx = { console, esc: s => String(s) }; vm.createContext(cx);
+  vm.runInContext(fs.readFileSync(path.join(raiz, 'js', 'teoria-cartoes.js'), 'utf8') + ';this.C = TEORIA_CARTOES; this.H = cartaoTeoriaHtml;', cx);
+  const ok = cx.C.length > 0 && cx.C.every(c => c.titulo && c.regra && c.base && c.armadilha && Array.isArray(c.pontos) && c.pontos.length >= 3 && c.pontos.every(p => p.t && p.d));
+  t('cartões de teoria: estrutura (' + cx.C.length + ')', ok);
+  t('cartões de teoria: só na matéria certa', cx.H({ materia: 'Direito Tributário', n: cx.C[0].n }).includes('cartao-teoria') && cx.H({ materia: 'Direito Civil', n: cx.C[0].n }) === '');
+} catch (e) { t('cartões de teoria', false, e.message); }
+
 // 5. nenhum JS usa lookbehind em regex literal (quebra Safari < 16.4)
 const comLookbehind = js.filter(f => !/texto|dados|doutrina/.test(f) && /\/[^\/\n]*\(\?<[=!][^\/\n]*\/[gimsuy]*[,;)\s]/.test(fs.readFileSync(path.join(raiz, 'js', f), 'utf8').replace(/new RegExp\([^)]*\)/g, '')));
 t('sem lookbehind em regex literal', !comLookbehind.length, comLookbehind.join(','));
