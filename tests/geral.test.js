@@ -74,9 +74,11 @@ t('revisão: erradas primeiro', revs[0] === 'q1');
 // 4c. "Teoria em figura" (piloto): estrutura dos cartões
 try {
   const cx = { console, esc: s => String(s) }; vm.createContext(cx);
-  vm.runInContext(fs.readFileSync(path.join(raiz, 'js', 'teoria-cartoes.js'), 'utf8') + ';this.C = TEORIA_CARTOES; this.H = cartaoTeoriaHtml;', cx);
+  vm.runInContext(fs.readdirSync(path.join(raiz, 'js')).filter(f => /^teoria-cartoes.*\.js$/.test(f)).sort((a, b) => (b === 'teoria-cartoes.js') - (a === 'teoria-cartoes.js') || a.localeCompare(b)).map(f => fs.readFileSync(path.join(raiz, 'js', f), 'utf8')).join('\n') + ';this.C = TEORIA_CARTOES; this.H = cartaoTeoriaHtml;', cx);
   const ok = cx.C.length > 0 && cx.C.every(c => c.titulo && c.regra && c.base && c.armadilha && Array.isArray(c.pontos) && c.pontos.length >= 3 && c.pontos.every(p => p.t && p.d));
   t('cartões de teoria: estrutura (' + cx.C.length + ')', ok);
+  const ns = cx.C.map(c => c.n); t('cartões de teoria: sem número repetido', new Set(ns).size === ns.length);
+  t('cartões de teoria: marcadores = pontos', cx.C.every(c => (c.regra.match(/\{\d\|[^}]+\}/g) || []).length === c.pontos.length && c.pontos.length <= 5));
   t('cartões de teoria: só na matéria certa', cx.H({ materia: 'Direito Tributário', n: cx.C[0].n }).includes('cartao-teoria') && cx.H({ materia: 'Direito Civil', n: cx.C[0].n }) === '');
 } catch (e) { t('cartões de teoria', false, e.message); }
 
