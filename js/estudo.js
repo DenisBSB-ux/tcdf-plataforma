@@ -510,6 +510,7 @@ function pickAnswer(opt, uidClicado){
   const q = BY_UID[uid];
   const correct = opt === gabaritoEfetivo(q);
   quiz.respostas[uid] = { picked: opt, correct };
+  if(quiz.limpas) delete quiz.limpas[uid];
   // tempo gasto na questão (s), sem contar pausas longas: máx. 10 min
   const seg = (TEMPO_QUESTAO.uid===uid && TEMPO_QUESTAO.ts) ? Math.min(600, Math.round((Date.now()-TEMPO_QUESTAO.ts)/1000)) : null;
   registrarResposta(quiz.materia, uid, correct, seg);
@@ -607,6 +608,9 @@ function resetQuestaoAtual(){
   if(!quiz.respostas[uid]) return;
   if(!quiz.respostas[uid].recuperadaDoHistorico) undoRegistro(quiz.materia, uid);   // a recuperada do histórico é tentativa de OUTRO simulado
   delete quiz.respostas[uid];
+  // "limpa" de propósito: sem isto, a cura do histórico (curarRespostasDoHistorico) trazia a resposta de volta
+  // quando a questão já tinha outra tentativa registrada (outro simulado ou rodada anterior)
+  (quiz.limpas = quiz.limpas || {})[uid] = true;
   salvarQuizEmAndamento();
   render();
 }
@@ -618,6 +622,7 @@ function resetSimuladoAtual(){
   if(!ok) return false;
   Object.keys(quiz.respostas).forEach(uid => { if(!quiz.respostas[uid].recuperadaDoHistorico) undoRegistro(quiz.materia, uid); });
   quiz.respostas = {};
+  quiz.limpas = {}; (quiz.queue||[]).forEach(u => { quiz.limpas[u] = true; });   // reiniciar do zero: nenhuma resposta do histórico volta
   quiz.idx = 0;
   quiz.finished = false;
   salvarQuizEmAndamento();
