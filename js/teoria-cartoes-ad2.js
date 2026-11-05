@@ -155,4 +155,12 @@ TEORIA_CARTOES.push(
     regra:'O intervalo é {0|(p′ – EBP, p′ + EBP)}, com {1|EBP = zα/2·√(p′q′/n)} e {2|q′ = 1 – p′}.',
     pontos:[ { ico:'↔️', t:'(p′ – EBP, p′ + EBP)', d:'forma do intervalo de confiança' }, { ico:'📐', t:'EBP', d:'margem: z vezes √(p′q′/n)' }, { ico:'🔁', t:'q′ = 1 – p′', d:'complemento da proporção amostral' } ],
     armadilha:'Esquecer de multiplicar √(p′q′/n) pelo z do nível de confiança.' },
+  { m:/an[aá]lise de dados/i, n:101, h:'v26259', titulo:'LGPD: princípio da necessidade', base:'Lei 13.709/2018, art. 6º, III', fonte:[['Lei 13.709',6]],
+    regra:'O princípio da {0|necessidade} limita o tratamento ao {1|mínimo necessário} para as finalidades, com dados {2|pertinentes, proporcionais} e {3|não excessivos} em relação a elas.',
+    pontos:[ { ico:'✂️', t:'Necessidade', d:'limitação do tratamento' }, { ico:'📏', t:'Mínimo necessário', d:'só o preciso para a finalidade' }, { ico:'🎯', t:'Pertinentes e proporcionais', d:'dados ligados à finalidade' }, { ico:'🚫', t:'Não excessivos', d:'nada além do necessário' } ],
+    armadilha:'Confundir necessidade com finalidade (propósito legítimo) ou com adequação (compatibilidade com as finalidades).' },
+  { m:/an[aá]lise de dados/i, n:102, h:'ofnam6', titulo:'LGPD: dados anonimizados', base:'Lei 13.709/2018, art. 12', fonte:[['Lei 13.709',12]],
+    regra:'Os dados {0|anonimizados} {1|não serão considerados dados pessoais}, salvo quando o processo for {2|revertido} com meios próprios ou puder ser revertido com {3|esforços razoáveis}.',
+    pontos:[ { ico:'🕶️', t:'Anonimizados', d:'sem identificar a pessoa' }, { ico:'✅', t:'Fora da LGPD', d:'não são dados pessoais' }, { ico:'↩️', t:'Reversão', d:'com meios próprios, volta a ser pessoal' }, { ico:'⏱️', t:'Esforços razoáveis', d:'custo e tempo, tecnologias disponíveis' } ],
+    armadilha:'Dizer que anonimizado é sempre dado pessoal, ou que nunca pode voltar a sê-lo.' },
 );
