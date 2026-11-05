@@ -2042,37 +2042,34 @@ body.theme-light .revisao-hoje .rh-txt em{ color:#b42318; }
 
 /* "Teoria em figura" (piloto): adapta-se à largura do próprio cartão (container queries) e usa uma cor por conceito */
 .cartao-teoria{ container-type:inline-size; container-name:ct; width:100%; max-width:100%; min-width:0; box-sizing:border-box; align-self:stretch; margin:6px 0; padding:clamp(12px,2.4cqw,22px); border-radius:16px; border:1px solid rgba(255,255,255,.14); background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));
-  --c0:#60a5fa; --c1:#f87171; --c2:#fbbf24; --c3:#4ade80; --c4:#c084fc; }
-.cartao-teoria header{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
-.cartao-teoria .ct-selo{ align-self:flex-start; font-size:clamp(10.5px,1.6cqw,12.5px); font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:3px 10px; border-radius:999px; background:rgba(255,255,255,.1); }
-.cartao-teoria h4{ margin:0; font-size:clamp(17px,3.2cqw,26px); line-height:1.2; }
-.cartao-teoria .ct-regra{ margin:0 0 14px; padding:clamp(10px,2cqw,18px) clamp(12px,2.4cqw,22px); border-radius:12px; background:rgba(255,255,255,.06); font-size:clamp(14.5px,2.5cqw,20px); line-height:1.65; }
-.cartao-teoria .ct-k{ background:transparent; color:inherit; font-weight:700; padding:1px 5px; border-radius:6px; border-bottom:3px solid currentColor; }
+  --c0:#7cacf0; --c1:#ee8f8f; --c2:#e6bb62; --c3:#74cb9f; --c4:#b9a0ee; }
+.cartao-teoria header{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+.cartao-teoria .ct-selo{ align-self:flex-start; font-size:11.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:3px 10px; border-radius:999px; background:rgba(255,255,255,.08); opacity:.9; }
+.cartao-teoria h4{ margin:0; font-size:clamp(18px,2.8cqw,24px); line-height:1.25; font-weight:700; letter-spacing:-.01em; }
+.cartao-teoria .ct-regra{ margin:0 0 16px; padding:clamp(12px,2cqw,18px) clamp(14px,2.4cqw,22px); border-radius:14px; background:rgba(255,255,255,.05); font-size:clamp(15.5px,2.1cqw,19px); line-height:1.65; }
+.cartao-teoria .ct-k{ background:transparent; color:inherit; font-weight:700; padding:1px 6px; border-radius:6px; border-bottom:2px solid currentColor; }
 /* destaque automático: verbos (verde), adjetivos (rosa), negações e limites (vermelho sublinhado) */
-.cartao-teoria .ct-v{ color:#4ade80; font-weight:700; }
-.cartao-teoria .ct-adj{ color:#f0abfc; font-style:italic; font-weight:600; }
-.cartao-teoria .ct-neg{ color:#fb7185; font-weight:800; text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:3px; }
-body.theme-light .cartao-teoria .ct-v{ color:#15803d; }
-body.theme-light .cartao-teoria .ct-adj{ color:#a21caf; }
-body.theme-light .cartao-teoria .ct-neg{ color:#be123c; }
-.cartao-teoria .ct-k.ct-c0{ color:var(--c0); background:color-mix(in srgb,var(--c0) 18%,transparent); }
-.cartao-teoria .ct-k.ct-c1{ color:var(--c1); background:color-mix(in srgb,var(--c1) 18%,transparent); }
-.cartao-teoria .ct-k.ct-c2{ color:var(--c2); background:color-mix(in srgb,var(--c2) 18%,transparent); }
-.cartao-teoria .ct-k.ct-c3{ color:var(--c3); background:color-mix(in srgb,var(--c3) 18%,transparent); }
-.cartao-teoria .ct-k.ct-c4{ color:var(--c4); background:color-mix(in srgb,var(--c4) 18%,transparent); }
+.cartao-teoria .ct-v{ color:var(--c3); font-weight:650; }
+.cartao-teoria .ct-adj{ color:var(--c4); font-style:italic; font-weight:600; }
+.cartao-teoria .ct-neg{ color:var(--c1); font-weight:750; text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:3px; }
+.cartao-teoria .ct-k.ct-c0{ color:var(--c0); background:color-mix(in srgb,var(--c0) 14%,transparent); }
+.cartao-teoria .ct-k.ct-c1{ color:var(--c1); background:color-mix(in srgb,var(--c1) 14%,transparent); }
+.cartao-teoria .ct-k.ct-c2{ color:var(--c2); background:color-mix(in srgb,var(--c2) 14%,transparent); }
+.cartao-teoria .ct-k.ct-c3{ color:var(--c3); background:color-mix(in srgb,var(--c3) 14%,transparent); }
+.cartao-teoria .ct-k.ct-c4{ color:var(--c4); background:color-mix(in srgb,var(--c4) 14%,transparent); }
 .cartao-teoria .ct-nums{ display:flex; gap:10px; flex-wrap:wrap; margin:0 0 14px; }
 .cartao-teoria .ct-num{ flex:1 1 140px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.07); text-align:center; }
 .cartao-teoria .ct-num b{ font-size:clamp(22px,4cqw,34px); line-height:1.1; color:var(--c2); }
 .cartao-teoria .ct-num span{ font-size:12px; opacity:.8; }
-.cartao-teoria .ct-pontos{ list-style:none; margin:0 0 14px; padding:0; display:grid; grid-template-columns:1fr; gap:10px; }
-.cartao-teoria .ct-ponto{ --cor:var(--c0); display:flex; flex-direction:column; gap:6px; padding:12px 12px 12px; border-radius:12px; background:color-mix(in srgb,var(--cor) 13%,transparent); border:1px solid color-mix(in srgb,var(--cor) 45%,transparent); border-top:5px solid var(--cor); }
+.cartao-teoria .ct-pontos{ list-style:none; margin:0 0 16px; padding:0; display:grid; grid-template-columns:1fr; gap:12px; }
+.cartao-teoria .ct-ponto{ --cor:var(--c0); display:flex; flex-direction:column; gap:8px; padding:14px; border-radius:14px; background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.09); border-left:3px solid var(--cor); }
 .cartao-teoria .ct-ponto.ct-c0{ --cor:var(--c0); } .cartao-teoria .ct-ponto.ct-c1{ --cor:var(--c1); } .cartao-teoria .ct-ponto.ct-c2{ --cor:var(--c2); } .cartao-teoria .ct-ponto.ct-c3{ --cor:var(--c3); } .cartao-teoria .ct-ponto.ct-c4{ --cor:var(--c4); }
-.cartao-teoria .ct-ico{ font-size:clamp(22px,3.6cqw,32px); line-height:1; }
-.cartao-teoria .ct-ponto b{ display:block; font-size:clamp(14px,2.2cqw,17px); color:var(--cor); }
-.cartao-teoria .ct-ponto div > span{ display:block; font-size:clamp(12.5px,1.9cqw,15px); opacity:.92; line-height:1.4; }
-.cartao-teoria .ct-arm{ display:flex; gap:8px; align-items:flex-start; padding:10px 14px; border-radius:12px; background:rgba(245,158,11,.13); border:1px solid rgba(245,158,11,.4); font-size:clamp(13px,2cqw,16px); }
+.cartao-teoria .ct-ico{ width:36px; height:36px; display:grid; place-items:center; border-radius:10px; background:color-mix(in srgb,var(--cor) 16%,transparent); font-size:19px; line-height:1; flex:none; }
+.cartao-teoria .ct-ponto b{ display:block; font-size:clamp(14.5px,1.9cqw,16px); font-weight:700; color:var(--cor); }
+.cartao-teoria .ct-ponto div > span{ display:block; margin-top:2px; font-size:clamp(13.5px,1.7cqw,14.5px); opacity:.85; line-height:1.5; }
+.cartao-teoria .ct-arm{ display:flex; gap:10px; align-items:flex-start; padding:12px 16px; border-radius:14px; background:color-mix(in srgb,var(--c2) 10%,transparent); border:1px solid color-mix(in srgb,var(--c2) 30%,transparent); font-size:clamp(14px,1.8cqw,15.5px); line-height:1.5; }
 .cartao-teoria .ct-arm b{ margin-right:4px; }
-.cartao-teoria footer{ margin-top:10px; font-size:11.5px; opacity:.6; font-style:italic; }
+.cartao-teoria footer{ margin-top:14px; font-size:12px; line-height:1.5; opacity:.62; }
 .cartao-teoria footer a{ color:inherit; font-weight:700; text-decoration:underline; }
 body.theme-light .cartao-teoria{ border-color:rgba(0,0,0,.14); background:linear-gradient(160deg,rgba(0,0,0,.04),rgba(0,0,0,.015));
   --c0:#1d4ed8; --c1:#b91c1c; --c2:#a16207; --c3:#15803d; --c4:#7e22ce; }
@@ -2086,4 +2083,7 @@ body.theme-light .cartao-teoria .ct-regra, body.theme-light .cartao-teoria .ct-n
 @container ct (min-width:520px){ .cartao-teoria .ct-n5{ grid-template-columns:repeat(6,1fr); } .cartao-teoria .ct-n5 .ct-ponto{ grid-column:span 2; } .cartao-teoria .ct-n5 .ct-ponto:nth-child(n+4){ grid-column:span 3; } }
 @container ct (min-width:740px){ .cartao-teoria .ct-n5{ grid-template-columns:repeat(5,1fr); } .cartao-teoria .ct-n5 .ct-ponto, .cartao-teoria .ct-n5 .ct-ponto:nth-child(n+4){ grid-column:span 1; } }
 /* cartão estreito: cada ponto vira uma linha com a cor na lateral */
-@container ct (max-width:519px){ .cartao-teoria .ct-ponto{ flex-direction:row; align-items:flex-start; gap:10px; border-top-width:1px; border-left:5px solid var(--cor); } }
+@container ct (max-width:519px){ .cartao-teoria .ct-ponto{ flex-direction:row; align-items:flex-start; gap:12px; } }
+/* realce de correção no enunciado (tema escuro): tons suaves, na mesma paleta do cartão */
+body:not(.theme-light) del.arm-trecho, body:not(.theme-light) .arm-trecho{ background:rgba(238,143,143,.16) !important; color:#f2b3b3 !important; text-decoration:line-through; text-decoration-color:rgba(238,143,143,.7); font-weight:inherit !important; }
+body:not(.theme-light) mark.arm-correcao, body:not(.theme-light) ins.arm-correcao{ background:rgba(116,203,159,.16) !important; color:#a6e3c4 !important; font-weight:600 !important; text-decoration:none; }
