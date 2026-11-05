@@ -9,10 +9,23 @@ const TEORIA_CARTOES = [
     armadilha:'Chamar de tributo uma multa (sanção de ato ilícito) ou uma prestação "voluntária".' },
 ];
 
+// código do enunciado (FNV-1a do texto sem acentos/pontuação): distingue questões que repetem o mesmo número na lista
+function _ctHash(txt){
+  const s = String(txt||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+  let h = 0x811c9dc5;
+  for(let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return h.toString(36);
+}
 function teoriaCartaoDaQuestao(q){
   if(!q) return null;
-  const n = Number(q.n);
-  return TEORIA_CARTOES.find(c => c.n === n && c.m.test(String(q.materia||''))) || null;
+  const n = Number(q.n), mat = String(q.materia||'');
+  let hq = null;
+  return TEORIA_CARTOES.find(c => {
+    if(c.n !== n || !c.m.test(mat)) return false;
+    if(!c.h) return true;
+    if(hq === null) hq = _ctHash(q.q);
+    return c.h === hq;
+  }) || null;
 }
 function _ctRegraHtml(txt){
   let out = '', i = 0; const re = /\{(\d)\|([^}]+)\}/g; let m;
