@@ -356,6 +356,7 @@ function curarRespostasDoHistorico(quiz){
   let curouAlgo = false;
   (quiz.queue||[]).forEach(u => {
     if(quiz.respostas[u]) return;
+    if(quiz.limpas && quiz.limpas[u]) return;   // o usuário limpou esta resposta de propósito
     const hist = bucket.perguntas[u];
     if(!hist || !hist.tentativas || hist.ultimoResultado==null) return;
     const q = typeof BY_UID !== 'undefined' ? BY_UID[u] : null;

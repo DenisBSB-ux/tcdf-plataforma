@@ -83,6 +83,21 @@ try {
   t('cartões de teoria: só na matéria certa', cx.H({ materia: 'Direito Tributário', n: cx.C[0].n }).includes('cartao-teoria') && cx.H({ materia: 'Direito Civil', n: cx.C[0].n }) === '');
 } catch (e) { t('cartões de teoria', false, e.message); }
 
+
+// 4d. "Limpar a resposta": a cura do histórico não traz de volta a resposta que o usuário limpou de propósito
+try {
+  const arm = fs.readFileSync(path.join(raiz, 'js', 'armazenamento.js'), 'utf8');
+  const ini = arm.indexOf('function curarRespostasDoHistorico'), fim = arm.indexOf('\n}\n', ini) + 3;
+  const cx = { BY_UID: { u1: { uid: 'u1', t: 'CE' } }, gabaritoEfetivo: () => 'Certo', getBucket: () => ({ perguntas: { u1: { tentativas: 2, ultimoResultado: true } } }) };
+  vm.createContext(cx); vm.runInContext(arm.slice(ini, fim) + ';this.cura = curarRespostasDoHistorico;', cx);
+  const quiz = () => ({ materia: 'M', queue: ['u1'], respostas: {} });
+  const q1 = quiz(); cx.cura(q1);
+  const q2 = quiz(); q2.limpas = { u1: true }; cx.cura(q2);
+  t('limpar resposta: sem marca, a cura traz do histórico; com marca, não', !!q1.respostas.u1 && !q2.respostas.u1);
+  const est = fs.readFileSync(path.join(raiz, 'js', 'estudo.js'), 'utf8');
+  t('limpar resposta: o botão e o reiniciar marcam "limpas"', /function resetQuestaoAtual[\s\S]*?quiz\.limpas/.test(est) && /function resetSimuladoAtual[\s\S]*?quiz\.limpas/.test(est) && /delete quiz\.limpas\[uid\]/.test(est));
+} catch (e) { t('limpar resposta', false, e.message); }
+
 // 5. nenhum JS usa lookbehind em regex literal (quebra Safari < 16.4)
 const comLookbehind = js.filter(f => !/texto|dados|doutrina/.test(f) && /\/[^\/\n]*\(\?<[=!][^\/\n]*\/[gimsuy]*[,;)\s]/.test(fs.readFileSync(path.join(raiz, 'js', f), 'utf8').replace(/new RegExp\([^)]*\)/g, '')));
 t('sem lookbehind em regex literal', !comLookbehind.length, comLookbehind.join(','));
