@@ -29,6 +29,6 @@ function cartaoTeoriaHtml(q){
     ${nums ? `<div class="ct-nums">${nums}</div>` : ''}
     <ol class="ct-pontos ct-n${Math.min(c.pontos.length,5)}">${pontos}</ol>
     <div class="ct-arm"><span aria-hidden="true">⚠️</span><div><b>Armadilha</b> ${esc(c.armadilha)}</div></div>
-    <footer>Resumo do texto da lei carregado na plataforma (${esc(c.base)}) · gerado por IA, conferido; veja o dispositivo completo no pop-up ⚖️.</footer>
+    <footer>${c.ext ? `Fonte externa: ${esc(c.ext.nome)}${/^https:\/\//.test(c.ext.url||'') ? ` · <a href="${esc(c.ext.url)}" target="_blank" rel="noopener noreferrer">abrir</a>` : ''} · trecho: “${esc(c.ext.trecho)}” · resumo gerado por IA; confira na fonte.` : `Resumo do texto da lei carregado na plataforma (${esc(c.base)}) · gerado por IA, conferido; veja o dispositivo completo no pop-up ⚖️.`}</footer>
   </section>`;
 }

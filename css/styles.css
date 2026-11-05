@@ -2066,6 +2066,7 @@ body.theme-light .revisao-hoje .rh-txt em{ color:#b42318; }
 .cartao-teoria .ct-arm{ display:flex; gap:8px; align-items:flex-start; padding:10px 14px; border-radius:12px; background:rgba(245,158,11,.13); border:1px solid rgba(245,158,11,.4); font-size:clamp(13px,2cqw,16px); }
 .cartao-teoria .ct-arm b{ margin-right:4px; }
 .cartao-teoria footer{ margin-top:10px; font-size:11.5px; opacity:.6; font-style:italic; }
+.cartao-teoria footer a{ color:inherit; font-weight:700; text-decoration:underline; }
 body.theme-light .cartao-teoria{ border-color:rgba(0,0,0,.14); background:linear-gradient(160deg,rgba(0,0,0,.04),rgba(0,0,0,.015));
   --c0:#1d4ed8; --c1:#b91c1c; --c2:#a16207; --c3:#15803d; --c4:#7e22ce; }
 body.theme-light .cartao-teoria .ct-selo{ background:rgba(0,0,0,.07); }
