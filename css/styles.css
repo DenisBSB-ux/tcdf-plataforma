@@ -1304,6 +1304,8 @@ body:not(.theme-light) .qm-provabar{ background:var(--black-900); border-bottom-
 body.focus-mode .app{ width:80%; }
 @media (max-width:1100px){ .app, body.focus-mode .app{ width:100%; } }
 .app-shell{ grid-template-columns: 240px minmax(0,1fr); }
+/* telas estreitas: uma coluna só (a regra acima, mais abaixo no arquivo, impedia o empilhamento e deixava o app com ~240 px de largura) */
+@media (max-width:900px){ .app-shell{ grid-template-columns:minmax(0,1fr); } }
 .compact-side .nav-tab,
 .compact-side .tab-btn{ white-space:nowrap; }
 .letterhead, .app > .letterhead{ max-width:none; }
@@ -2038,25 +2040,42 @@ body.theme-light .revisao-hoje .rh-txt em{ color:#b42318; }
 #aviso-nova-versao #btn-atualizar-app{ background:var(--gold-bright,#f5c542); color:#1a1a1d; font-weight:700; }
 #aviso-nova-versao #btn-adiar-app{ background:transparent; color:#fff; }
 
-/* "Teoria em figura" (piloto) */
-.cartao-teoria{ margin:14px 0; padding:16px; border-radius:14px; border:1px solid rgba(255,255,255,.14); background:linear-gradient(160deg,rgba(255,255,255,.06),rgba(255,255,255,.02)); }
-.cartao-teoria header{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
-.cartao-teoria .ct-selo{ align-self:flex-start; font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:3px 9px; border-radius:999px; background:rgba(245,197,66,.16); color:var(--gold-bright,#f5c542); }
-.cartao-teoria h4{ margin:0; font-size:17px; line-height:1.25; }
-.cartao-teoria .ct-regra{ margin:0 0 12px; padding:10px 12px; border-left:4px solid var(--gold-bright,#f5c542); background:rgba(245,197,66,.08); border-radius:0 8px 8px 0; font-size:14.5px; line-height:1.5; }
-.cartao-teoria .ct-nums{ display:flex; gap:10px; flex-wrap:wrap; margin:0 0 12px; }
-.cartao-teoria .ct-num{ flex:1 1 140px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 12px; border-radius:10px; background:rgba(255,255,255,.06); text-align:center; }
-.cartao-teoria .ct-num b{ font-size:26px; line-height:1.1; color:var(--gold-bright,#f5c542); }
+/* "Teoria em figura" (piloto): adapta-se à largura do próprio cartão (container queries) e usa uma cor por conceito */
+.cartao-teoria{ container-type:inline-size; container-name:ct; width:100%; max-width:100%; min-width:0; box-sizing:border-box; align-self:stretch; margin:6px 0; padding:clamp(12px,2.4cqw,22px); border-radius:16px; border:1px solid rgba(255,255,255,.14); background:linear-gradient(160deg,rgba(255,255,255,.07),rgba(255,255,255,.02));
+  --c0:#60a5fa; --c1:#f87171; --c2:#fbbf24; --c3:#4ade80; --c4:#c084fc; }
+.cartao-teoria header{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+.cartao-teoria .ct-selo{ align-self:flex-start; font-size:clamp(10.5px,1.6cqw,12.5px); font-weight:700; letter-spacing:.05em; text-transform:uppercase; padding:3px 10px; border-radius:999px; background:rgba(255,255,255,.1); }
+.cartao-teoria h4{ margin:0; font-size:clamp(17px,3.2cqw,26px); line-height:1.2; }
+.cartao-teoria .ct-regra{ margin:0 0 14px; padding:clamp(10px,2cqw,18px) clamp(12px,2.4cqw,22px); border-radius:12px; background:rgba(255,255,255,.06); font-size:clamp(14.5px,2.5cqw,20px); line-height:1.65; }
+.cartao-teoria .ct-k{ background:transparent; color:inherit; font-weight:700; padding:1px 5px; border-radius:6px; border-bottom:3px solid currentColor; }
+.cartao-teoria .ct-k.ct-c0{ color:var(--c0); background:color-mix(in srgb,var(--c0) 18%,transparent); }
+.cartao-teoria .ct-k.ct-c1{ color:var(--c1); background:color-mix(in srgb,var(--c1) 18%,transparent); }
+.cartao-teoria .ct-k.ct-c2{ color:var(--c2); background:color-mix(in srgb,var(--c2) 18%,transparent); }
+.cartao-teoria .ct-k.ct-c3{ color:var(--c3); background:color-mix(in srgb,var(--c3) 18%,transparent); }
+.cartao-teoria .ct-k.ct-c4{ color:var(--c4); background:color-mix(in srgb,var(--c4) 18%,transparent); }
+.cartao-teoria .ct-nums{ display:flex; gap:10px; flex-wrap:wrap; margin:0 0 14px; }
+.cartao-teoria .ct-num{ flex:1 1 140px; display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 12px; border-radius:12px; background:rgba(255,255,255,.07); text-align:center; }
+.cartao-teoria .ct-num b{ font-size:clamp(22px,4cqw,34px); line-height:1.1; color:var(--c2); }
 .cartao-teoria .ct-num span{ font-size:12px; opacity:.8; }
-.cartao-teoria .ct-pontos{ list-style:none; margin:0 0 12px; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:8px; }
-.cartao-teoria .ct-ponto{ display:flex; gap:10px; align-items:flex-start; padding:9px 10px; border-radius:10px; background:rgba(255,255,255,.05); }
-.cartao-teoria .ct-bola{ flex:0 0 24px; height:24px; display:inline-flex; align-items:center; justify-content:center; border-radius:50%; background:var(--gold-bright,#f5c542); color:#1a1a1d; font-weight:700; font-size:13px; }
-.cartao-teoria .ct-ponto b{ display:block; font-size:13.5px; }
-.cartao-teoria .ct-ponto span:not(.ct-bola){ display:block; font-size:12.5px; opacity:.85; line-height:1.4; }
-.cartao-teoria .ct-arm{ display:flex; gap:8px; align-items:flex-start; padding:9px 12px; border-radius:10px; background:rgba(245,158,11,.13); border:1px solid rgba(245,158,11,.35); font-size:13.5px; }
+.cartao-teoria .ct-pontos{ list-style:none; margin:0 0 14px; padding:0; display:grid; grid-template-columns:1fr; gap:10px; }
+.cartao-teoria .ct-ponto{ --cor:var(--c0); display:flex; flex-direction:column; gap:6px; padding:12px 12px 12px; border-radius:12px; background:color-mix(in srgb,var(--cor) 13%,transparent); border:1px solid color-mix(in srgb,var(--cor) 45%,transparent); border-top:5px solid var(--cor); }
+.cartao-teoria .ct-ponto.ct-c0{ --cor:var(--c0); } .cartao-teoria .ct-ponto.ct-c1{ --cor:var(--c1); } .cartao-teoria .ct-ponto.ct-c2{ --cor:var(--c2); } .cartao-teoria .ct-ponto.ct-c3{ --cor:var(--c3); } .cartao-teoria .ct-ponto.ct-c4{ --cor:var(--c4); }
+.cartao-teoria .ct-ico{ font-size:clamp(22px,3.6cqw,32px); line-height:1; }
+.cartao-teoria .ct-ponto b{ display:block; font-size:clamp(14px,2.2cqw,17px); color:var(--cor); }
+.cartao-teoria .ct-ponto span:not(.ct-ico){ display:block; font-size:clamp(12.5px,1.9cqw,15px); opacity:.92; line-height:1.4; }
+.cartao-teoria .ct-arm{ display:flex; gap:8px; align-items:flex-start; padding:10px 14px; border-radius:12px; background:rgba(245,158,11,.13); border:1px solid rgba(245,158,11,.4); font-size:clamp(13px,2cqw,16px); }
 .cartao-teoria .ct-arm b{ margin-right:4px; }
-.cartao-teoria footer{ margin-top:10px; font-size:11.5px; opacity:.65; font-style:italic; }
-body.theme-light .cartao-teoria{ border-color:rgba(0,0,0,.14); background:linear-gradient(160deg,rgba(0,0,0,.04),rgba(0,0,0,.015)); }
-body.theme-light .cartao-teoria .ct-selo, body.theme-light .cartao-teoria .ct-num b{ color:#8a5a00; }
-body.theme-light .cartao-teoria .ct-num, body.theme-light .cartao-teoria .ct-ponto{ background:rgba(0,0,0,.05); }
-@media (max-width:480px){ .cartao-teoria{ padding:12px; } .cartao-teoria .ct-pontos{ grid-template-columns:1fr; } }
+.cartao-teoria footer{ margin-top:10px; font-size:11.5px; opacity:.6; font-style:italic; }
+body.theme-light .cartao-teoria{ border-color:rgba(0,0,0,.14); background:linear-gradient(160deg,rgba(0,0,0,.04),rgba(0,0,0,.015));
+  --c0:#1d4ed8; --c1:#b91c1c; --c2:#a16207; --c3:#15803d; --c4:#7e22ce; }
+body.theme-light .cartao-teoria .ct-selo{ background:rgba(0,0,0,.07); }
+body.theme-light .cartao-teoria .ct-regra, body.theme-light .cartao-teoria .ct-num{ background:rgba(0,0,0,.05); }
+/* colunas conforme a largura do cartão e a quantidade de pontos (sem sobrar bloco isolado) */
+@container ct (min-width:400px){ .cartao-teoria .ct-n2{ grid-template-columns:repeat(2,1fr); } }
+@container ct (min-width:560px){ .cartao-teoria .ct-n3{ grid-template-columns:repeat(3,1fr); } }
+@container ct (min-width:440px){ .cartao-teoria .ct-n4{ grid-template-columns:repeat(2,1fr); } }
+@container ct (min-width:760px){ .cartao-teoria .ct-n4{ grid-template-columns:repeat(4,1fr); } }
+@container ct (min-width:520px){ .cartao-teoria .ct-n5{ grid-template-columns:repeat(6,1fr); } .cartao-teoria .ct-n5 .ct-ponto{ grid-column:span 2; } .cartao-teoria .ct-n5 .ct-ponto:nth-child(n+4){ grid-column:span 3; } }
+@container ct (min-width:740px){ .cartao-teoria .ct-n5{ grid-template-columns:repeat(5,1fr); } .cartao-teoria .ct-n5 .ct-ponto, .cartao-teoria .ct-n5 .ct-ponto:nth-child(n+4){ grid-column:span 1; } }
+/* cartão estreito: cada ponto vira uma linha com a cor na lateral */
+@container ct (max-width:519px){ .cartao-teoria .ct-ponto{ flex-direction:row; align-items:flex-start; gap:10px; border-top-width:1px; border-left:5px solid var(--cor); } }
