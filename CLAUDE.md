@@ -5,3 +5,5 @@
 - Responder em português, curto. Uma lista por vez. Não colocar identificador de modelo em arquivos do repositório.
 - Fluxo de publicação já autorizado: commit com os trailers pedidos, cherry-pick sobre `origin/main` novo, push com `--force-with-lease`, PR e squash-merge.
 - Antes de subir código: `bash tests/run.sh` (merge entre aparelhos, textos de lei, sintaxe, versão). O GitHub roda o mesmo em todo PR (`.github/workflows/testes.yml`).
+- **Figuras (teoria/resolução em figura):** o passo a passo e as ferramentas estão em `.claude/skills/teoria-em-figura/SKILL.md`. **Ao fim de cada mudança, avisar o usuário se ela precisa do upload das listas ou se a plataforma resolve sozinha**: layout, cores, botões, destaques e código = só atualizar o site; cartões novos, texto/gabarito/numeração de questões e listas novas = o usuário envia o `.md` atual da matéria (uma por vez) e reimporta com 🔁 Substituir por matéria. A nuvem exige login: não dá para buscar a lista de lá.
+
