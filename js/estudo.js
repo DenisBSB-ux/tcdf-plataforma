@@ -477,6 +477,8 @@ function renderResolucao(q, resposta, quiz){
   const gAlterado = gabAtivo(q.uid);
   // questão com "Teoria em figura": a figura substitui a justificativa escrita e os cartões (em edição, volta ao normal)
   const tc = (edicaoAtual!==q.uid && typeof teoriaCartaoDaQuestao==='function' && typeof cartaoTeoriaHtml==='function') ? teoriaCartaoDaQuestao(q) : null;
+  // sem cartão de teoria: a justificativa escrita vira figura (cartaoResolucaoHtml devolve '' quando não dá, e aí fica o texto)
+  const tr = (!tc && edicaoAtual!==q.uid && typeof cartaoResolucaoHtml==='function') ? cartaoResolucaoHtml(q) : '';
   return `
   <div class="answer-feedback ${feedbackClass}">
     ${(!gAlterado && typeof propostaPorNormaNova==='function' && propostaPorNormaNova(q)) ? `<div class="arm-justificativa"><em>Gabarito proposto:</em> <b>Certo</b> — o item traz a redação atual (${esc(propostaPorNormaNova(q).trecho)}) e o arquivo marca Errado. Confirme em ✔ Revisado.</div>` : ''}
@@ -489,10 +491,10 @@ function renderResolucao(q, resposta, quiz){
   </div>
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   <div class="resolucao-box ${tintClass} resolucao-unica">
-    ${tc ? cartaoTeoriaHtml(q) : `${armPainelHtml(q)}
+    ${tc ? cartaoTeoriaHtml(q) : (tr || `${armPainelHtml(q)}
     ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(textoResolucaoAtualizado(q).split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).filter(l=>{ if(edicaoAtual===q.uid) return true; const ex = explicacaoPlana(q); if(!ex || !/^\s*📌/u.test(l)) return true; const pl = l.replace(/^\s*📌\s*/u,'').replace(/==|\*\*|~~/g,'').replace(/\s+/g,' ').trim(); return pl!==ex; }).join('\n'), palavrasChave, q))}
     ${(edicaoAtual===q.uid || typeof cartaoComparativoHtml!=='function') ? '' : cartaoComparativoHtml(q, resposta && resposta.picked)}
-`}
+`)}
   </div>
   ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
     : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}

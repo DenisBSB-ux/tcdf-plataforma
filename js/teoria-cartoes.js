@@ -45,3 +45,43 @@ function cartaoTeoriaHtml(q){
     <footer>${c.ext ? `Fonte externa: ${esc(c.ext.nome)}${/^https:\/\//.test(c.ext.url||'') ? ` · <a href="${esc(c.ext.url)}" target="_blank" rel="noopener noreferrer">abrir</a>` : ''} · trecho: “${esc(c.ext.trecho)}” · resumo gerado por IA; confira na fonte.` : `Resumo do texto da lei carregado na plataforma (${esc(c.base)}) · gerado por IA, conferido; veja o dispositivo completo no pop-up ⚖️.`}</footer>
   </section>`;
 }
+
+// "Resolução em figura": nas questões SEM cartão de teoria, a justificativa escrita (📌 🔑 ⚖️ ⚠️ 🪤 💡) vira a mesma figura:
+// regra com as palavras-chave (🔑) em cores, pontos de atenção e faixa de armadilha. Usa só o texto que já está na lista.
+function _crLimpa(t){ return String(t||'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uE000-\uF8FF\u200B-\u200F\u2060\uFE0E\uFE0F\uFEFF]/g,'').replace(/==/g,'').replace(/\*\*/g,'').replace(/~~/g,'').replace(/\s+/g,' ').trim(); }
+function _crRegraHtml(txt, chaves){
+  const marcas = [];
+  chaves.slice(0,5).forEach((k, i) => {
+    if(!k || k.length < 3) return;
+    const pos = txt.toLowerCase().indexOf(k.toLowerCase());
+    if(pos < 0) return;
+    if(marcas.some(m => pos < m.fim && pos + k.length > m.ini)) return;
+    marcas.push({ ini:pos, fim:pos + k.length, i });
+  });
+  marcas.sort((a,b) => a.ini - b.ini);
+  let out = '', cur = 0;
+  marcas.forEach(m => { out += esc(txt.slice(cur, m.ini)) + `<mark class="ct-k ct-c${m.i%5}">${esc(txt.slice(m.ini, m.fim))}</mark>`; cur = m.fim; });
+  return out + esc(txt.slice(cur));
+}
+function cartaoResolucaoHtml(q){
+  if(!q || typeof textoResolucaoAtualizado !== 'function') return '';
+  if(typeof EDICOES_USUARIO !== 'undefined' && EDICOES_USUARIO[q.uid] && EDICOES_USUARIO[q.uid].r) return '';   // edição do usuário: mostra o texto dele
+  if(typeof alteracaoComTrecho === 'function' && alteracaoComTrecho(q)) return '';                                // aviso de alteração legal: mantém o texto
+  const linhas = String(textoResolucaoAtualizado(q) || '').split(/\n/).map(l => l.trim()).filter(Boolean);
+  const pega = (re) => { const l = linhas.find(x => re.test(x)); return l ? _crLimpa(l.replace(re, '')) : ''; };
+  const regra = pega(/^📌\s*/u);
+  if(!regra) return '';
+  const chaves = pega(/^🔑\s*/u).split(/\s*[·|]\s*/).map(_crLimpa).filter(Boolean);
+  const base = pega(/^⚖\uFE0F?\s*/u), atencao = pega(/^⚠\uFE0F?(?!\s*ERROS)\s*/u), arm = pega(/^🪤\s*/u), macete = pega(/^💡\s*/u);
+  const pontos = [];
+  if(base) pontos.push({ ico:'⚖️', t:'Base legal', d:base });
+  if(atencao && !/^ERROS\b/.test(atencao)) pontos.push({ ico:'⚠️', t:'Atenção', d:atencao });
+  if(macete) pontos.push({ ico:'💡', t:'Macete', d:macete });
+  const lis = pontos.map((p, i) => `<li class="ct-ponto ct-c${i%5}"><span class="ct-ico" aria-hidden="true">${esc(p.ico)}</span><div><b>${esc(p.t)}</b><span>${esc(p.d)}</span></div></li>`).join('');
+  return `<section class="cartao-teoria ct-resumo" aria-label="Resolução em figura">
+    <header><span class="ct-selo">🗂️ Resolução em figura</span></header>
+    <p class="ct-regra">${_crRegraHtml(regra, chaves)}</p>
+    ${lis ? `<ol class="ct-pontos ct-n${Math.min(pontos.length,5)}">${lis}</ol>` : ''}
+    ${arm ? `<div class="ct-arm"><span aria-hidden="true">⚠️</span><div><b>Armadilha</b> ${esc(arm)}</div></div>` : ''}
+  </section>`;
+}
