@@ -307,24 +307,32 @@ function retaAvaliar(nota){
   render();
 }
 
-function retaCabecalho(dias, fase){
-  const total = 30, rest = Math.max(0, Math.min(total, dias)), off = 276.5 * (1 - rest/total);
-  const rotulo = dias > 0 ? 'D-' + dias : (dias === 0 ? 'HOJE' : 'D+' + Math.abs(dias));
-  const fases = [['cobrir','D-16 a D-8 · Cobrir lacunas'],['fixar','D-7 a D-3 · Fixar'],['leve','D-2 e D-1 · Leve'],['dia','Véspera · Cola']];
-  return `<div class="reta-topo">
-    <div class="reta-anel" aria-label="${esc(rotulo)} para a prova"><svg width="96" height="96" viewBox="0 0 104 104"><circle cx="52" cy="52" r="44" fill="none" stroke="rgba(255,255,255,.12)" stroke-width="9"/><circle cx="52" cy="52" r="44" fill="none" stroke="var(--gold)" stroke-width="9" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 52 52)"/></svg>
-      <div class="reta-anel-n"><b>${esc(rotulo)}</b><span>${esc(PROVA_TCDF.rotulo)}</span></div></div>
-    <div class="reta-topo-t"><h2 class="section-title" style="margin:0;">Reta Final</h2>
-      <p class="section-desc" style="margin:4px 0 8px;">Um só lugar para revisar: o app decide o que estudar hoje, em que ordem e por quanto tempo, a partir dos seus erros, chutes e do que mais cai.</p>
-      <div class="reta-fases">${fases.map(f => `<span class="${f[0] === fase.id || (f[0]==='dia' && (fase.id==='dia')) ? 'on' : ''}">${f[1]}</span>`).join('')}</div></div></div>`;
+function retaCabecalho(dias, fase, mats){
+  const janela = 30, rest = Math.max(0, Math.min(janela, dias)), circ = 2*Math.PI*50, off = circ*(1 - rest/janela);
+  const rotulo = dias > 0 ? 'D-' + dias : (dias === 0 ? 'Hoje' : 'D+' + Math.abs(dias));
+  const passos = [['cobrir','Cobrir lacunas','D-16 a D-8'],['fixar','Fixar','D-7 a D-3'],['leve','Leve','D-2 e D-1'],['dia','Véspera e prova','cola de véspera']];
+  const ordem = ['cobrir','fixar','leve','dia'], atual = Math.max(0, ordem.indexOf(fase.id === 'pos' ? 'dia' : fase.id));
+  const erros = retaErros(mats).filter(e => e.nivel < 3).length, cart = retaCartoes(mats), agora = Date.now();
+  const vencidos = cart.filter(c => { const x = retaAgendaDe(c.uid, c.mat); return x && x.d <= agora; }).length;
+  return `<section class="reta-hero">
+    <div class="reta-anel" role="img" aria-label="${esc(rotulo)} para a prova">
+      <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="trilho" cx="60" cy="60" r="50"/><circle class="prog" cx="60" cy="60" r="50" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 60 60)"/></svg>
+      <div class="reta-anel-n"><b>${esc(rotulo)}</b><span>${dias > 0 ? (dias === 1 ? 'dia' : 'dias') : 'prova'}</span></div></div>
+    <div class="reta-hero-t">
+      <div class="reta-kick">Revisão de reta final · prova ${esc(PROVA_TCDF.rotulo)}</div>
+      <h2>Reta Final</h2>
+      <p>O app decide o que estudar hoje, em que ordem e por quanto tempo, a partir dos seus erros, chutes e do que mais cai.</p>
+</div>
+    <div class="reta-stats"><div><b>${erros}</b><span>erros em aberto</span></div><div><b>${vencidos}</b><span>cartões vencidos</span></div><div><b>${cart.length}</b><span>cartões no total</span></div></div>
+    <ol class="reta-passos" aria-label="Fases até a prova">${passos.map((x,i) => `<li class="${i < atual ? 'ok' : (i === atual ? 'on' : '')}"><i>${i < atual ? '✓' : i+1}</i><span><b>${x[1]}</b><small>${x[2]}</small></span></li>`).join('')}</ol>
+  </section>`;
 }
 function retaAbas(){
   const a = STATE.retaAba || 'hoje';
-  const abas = [['hoje','🎯 Hoje'],['erros','🗂️ Caderno de erros'],['cartoes','🃏 Cartões'],['prontidao','📊 Prontidão'],['vespera','📄 Cola de véspera']];
-  return `<div class="reta-abas" role="tablist">${abas.map(x => `<button role="tab" aria-selected="${a===x[0]}" class="${a===x[0]?'on':''}" data-reta-aba="${x[0]}">${x[1]}</button>`).join('')}</div>
-  <div class="reta-escopo"><span>Escopo:</span>
-    <button class="${STATE.retaEscopo==='materia'?'':'on'}" data-reta-escopo="todas">🌐 Todas as matérias</button>
-    <button class="${STATE.retaEscopo==='materia'?'on':''}" data-reta-escopo="materia">📚 ${esc(STATE.materia||'Esta matéria')}</button>
+  const abas = [['hoje','🎯','Hoje'],['erros','🗂️','Caderno de erros'],['cartoes','🃏','Cartões'],['prontidao','📊','Prontidão'],['vespera','📄','Cola de véspera']];
+  return `<nav class="reta-abas" role="tablist" aria-label="Seções da Reta Final">${abas.map(x => `<button role="tab" aria-selected="${a===x[0]}" class="${a===x[0]?'on':''}" data-reta-aba="${x[0]}"><i aria-hidden="true">${x[1]}</i><span>${x[2]}</span></button>`).join('')}</nav>
+  <div class="reta-escopo"><span class="reta-escopo-rot">Escopo</span>
+    <div class="reta-seg" role="group" aria-label="Escopo"><button class="${STATE.retaEscopo==='materia'?'':'on'}" data-reta-escopo="todas">🌐 Todas as matérias</button><button class="${STATE.retaEscopo==='materia'?'on':''}" data-reta-escopo="materia">📚 ${esc(STATE.materia||'Esta matéria')}</button></div>
     <span class="reta-escopo-links"><button data-reta-classico="erros" title="A lista simples de erros e chutes desta matéria">Lista clássica de erros</button><button data-reta-classico="flashcards" title="Os flashcards de resumo desta matéria">Flashcards de resumo</button></span></div>`;
 }
 
@@ -341,7 +349,7 @@ function retaHtmlHoje(mats){
       <p class="section-desc" style="margin:0 0 10px;">${esc(dicaFase)}</p>
       <div class="reta-barra"><i style="width:${pct}%"></i></div>
       <div class="reta-barra-leg"><span>${blocos.filter(b=>b.feito).length} de ${blocos.length} blocos</span><span>${retaFmtMin(Math.max(0,total-feitoMin))} restantes</span></div>
-      <ul class="reta-plano">${blocos.map(b => `<li class="${b.feito?'ok':''}"><span class="reta-chk">${b.feito?'✓':''}</span><div class="t"><b>${b.ico} ${esc(b.titulo)}</b><small>${esc(b.sub)} · feito: ${b.feitos}/${b.total}</small></div><span class="min">${retaFmtMin(b.min)}</span><button class="btn btn-sm ${b.feito?'':'btn-gold'}" data-reta-bloco="${b.id}">${b.feito?'Refazer':'Começar'}</button></li>`).join('')}</ul>
+      <ul class="reta-plano">${blocos.map(b => `<li class="${b.feito?'ok':''}"><span class="reta-ico" aria-hidden="true">${b.feito?'✓':b.ico}</span><div class="t"><b>${esc(b.titulo)}</b><small>${esc(b.sub)}</small><div class="reta-mini" title="${b.feitos} de ${b.total}"><i style="width:${b.total?Math.round(100*Math.min(1,b.feitos/b.total)):0}%"></i></div></div><div class="reta-lado"><span class="min">⏱ ${retaFmtMin(b.min)}</span><button class="btn btn-sm ${b.feito?'':'btn-gold'}" data-reta-bloco="${b.id}">${b.feito?'Refazer':'Começar'}</button></div></li>`).join('')}</ul>
       <button class="btn btn-gold reta-cta" data-reta-bloco="proximo">▶ Começar o próximo bloco</button></div>
     <div class="card-reta"><h3>Como o plano é feito</h3>
       <p class="section-desc" style="margin:0 0 6px;">Erros que voltaram (nível e intervalo), cartões vencidos e novos conforme a fase, a sua causa de erro nº 1, chutes e um relâmpago com os “quase dominados”. Cada item sai da lista quando você faz.</p>
@@ -443,8 +451,8 @@ function retaHtmlProntidao(mats){
     <div class="card-reta" style="grid-column:1/-1;"><h3>Mapa de prontidão</h3><p class="section-desc" style="margin:0 0 10px;">Chance estimada de acertar cada assunto hoje (acertos recentes pesam mais; chute acertado vale meio). É uma <b>estimativa</b>, não uma promessa de nota.</p>
       ${linhas.map(l => { const resp = l.temas.filter(t => t.chance!==null); const m = resp.length ? resp.reduce((s,t)=>s+t.chance*t.peso,0)/resp.reduce((s,t)=>s+t.peso,0) : null;
         return `<div class="reta-mat"><div class="reta-mat-cab"><b>${esc(l.mat)}</b><span>${m===null?'sem respostas':Math.round(m*100)+'%'}</span></div>
-          <div class="reta-tiles">${l.temas.slice().sort((a,b)=>(a.chance===null?-1:a.chance)-(b.chance===null?-1:b.chance)).slice(0,14).map(t => `<div class="reta-tile" style="background:${retaCorChance(t.chance)}" title="${esc(t.tema)} · ${t.resp}/${t.total} respondidas"><span>${t.chance===null?'—':Math.round(t.chance*100)+'%'}</span><small>${esc(t.tema)}</small></div>`).join('')}</div></div>`; }).join('')}
-      <div class="reta-leg"><span>baixa</span><i style="background:#ee8f8f"></i><i style="background:#e6bb62"></i><i style="background:#9bd6a8"></i><i style="background:#74cb9f"></i><span>alta</span><i style="background:rgba(255,255,255,.12)"></i><span>sem respostas</span></div></div>
+          <div class="reta-tiles">${l.temas.slice().sort((a,b)=>(a.chance===null?2:a.chance)-(b.chance===null?2:b.chance)).slice(0,14).map(t => `<div class="reta-tile${t.chance===null?' vazio':''}" style="${t.chance===null?'':'background:'+retaCorChance(t.chance)}" title="${esc(t.tema)} · ${t.resp}/${t.total} respondidas"><span>${t.chance===null?'—':Math.round(t.chance*100)+'%'}</span><small>${esc(t.tema)}</small></div>`).join('')}</div></div>`; }).join('')}
+      <div class="reta-leg"><span>baixa</span><i style="background:#ee8f8f"></i><i style="background:#e6bb62"></i><i style="background:#9bd6a8"></i><i style="background:#74cb9f"></i><span>alta</span><i class="vazio"></i><span>sem respostas</span></div></div>
     <div class="card-reta"><h3>Onde estão os pontos</h3><ul class="reta-pontos">${topo.map(x => `<li><span>${esc(x.mat)} · ${esc(x.tema)}</span><b>+${x.ganho.toFixed(1)}%</b></li>`).join('')}</ul>
       <p class="section-desc" style="margin:8px 0 0;">Ganho esperado, em % da nota, se o assunto subir a 85%. Cada matéria pesa igual; dentro dela, peso = incidência × nº de questões.</p></div>
     <div class="card-reta"><h3>Visão geral</h3><div class="reta-geral">${geral===null?'—':Math.round(geral*100)+'%'}</div><p class="section-desc" style="margin:0;">Chance média estimada hoje. Subir os 5 assuntos de maior ganho a 85% somaria cerca de <b>+${ganhoTop5.toFixed(1)}%</b> à nota.</p></div></div>`;
@@ -476,7 +484,7 @@ function renderReta(){
     else corpo = retaHtmlVespera(mats);
   }catch(e){ corpo = `<div class="card-reta"><h3>Não foi possível montar esta aba</h3><p class="section-desc">${esc(e && e.message || String(e))}</p></div>`; }
   if(STATE.retaSessao && aba === 'cartoes') return `<div class="reta">${corpo}</div>`;
-  return `<div class="reta">${retaCabecalho(dias, fase)}${retaAbas()}${corpo}</div>`;
+  return `<div class="reta">${retaCabecalho(dias, fase, mats)}${retaAbas()}${corpo}</div>`;
 }
 
 /* ---------- eventos (delegação; chamado por render()) ---------- */
