@@ -282,6 +282,8 @@ function getBucket(materiaKey){
   // — não mexe em tentativas/acertos, só registra a marcação (item novo; bucket
   // de matéria antiga carregado do storage não tem esse campo ainda)
   if(!PROGRESS[materiaKey].chutes) PROGRESS[materiaKey].chutes = {};
+  // "srs": agenda de revisão dos cartões de lacuna (Reta Final): { uid: { i:intervalo(dias), e:facilidade, r:acertos seguidos, l:lapsos, d:próxima revisão, t:última } }
+  if(!PROGRESS[materiaKey].srs) PROGRESS[materiaKey].srs = {};
   return PROGRESS[materiaKey];
 }
 

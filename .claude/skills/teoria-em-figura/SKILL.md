@@ -45,3 +45,5 @@ description: Gera e mantém as "figuras" das resoluções do TCDF Plataforma (ca
 - v409–v410: Conhecimentos do DF (203, lista padronizada e renumerada), 114 cartões.
 - v411–v412: edição sem campo de justificativa/Restaurar, sem "Base legal", destaque de verbos/adjetivos/negações.
 - Relatórios de pendências ficam com o usuário (por matéria): o que falta, conferências de gabarito e fontes.
+- v417: **Reta Final** (`js/reta-final.js`): aba única que substitui "Caderno de erros" e "Flashcards" no menu (as telas clássicas continuam por links dentro dela). Hoje (plano do dia por fase até a prova), Caderno de erros (por causa e nível), Cartões de lacuna (gerados das marcas das figuras; agenda em `bucket.srs`, sincronizada no merge), Prontidão e Cola de véspera (imprimir). Só precisa das figuras já publicadas; não exige upload de listas.
+
