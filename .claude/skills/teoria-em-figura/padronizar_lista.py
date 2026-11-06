@@ -28,7 +28,9 @@ def main():
         if re.search(r'(?m)^📌', b): st['ja_padrao'] += 1
         else:
             m = mapa.get(enun(b))
-            if not m: st['sem_par'].append(n); out.append(b); continue
+            if not m:
+                st['sem_par'].append(n)
+                out.append(re.sub(r'^## QUESTÃO \d+', '## QUESTÃO %d' % i, b, count=1) if renum else b); continue
             r = resolucao(m).split('\n---')[0]
             r = re.sub(r'\n### Resumo Flash.*', '', r, flags=re.S).strip('\n') + '\n'
             b = b.split('### Resolução', 1)[0] + '### Resolução\n' + r.lstrip('\n') + '\n---\n\n'; st['da_copia'] += 1
