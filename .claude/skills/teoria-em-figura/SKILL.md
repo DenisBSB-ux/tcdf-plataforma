@@ -30,6 +30,9 @@ description: Gera e mantém as "figuras" das resoluções do TCDF Plataforma (ca
 7. `bash tests/run.sh` + `node testar_figuras.js lista.md "<Matéria>"` (cartões em questões distintas; as demais com resolução em figura; largura ok em 1280 e 380 px). PR, esperar o teste, squash-merge.
 8. Entregar relatório curto: situação, o que falta (pos, nº, assunto, início do enunciado), conferências pedidas e o que depende do usuário.
 
+## Regra permanente para questões sem cartão (decisão do usuário)
+Questão sem fonte suficiente **não vira pendência para o usuário**: a base é a **resolução em figura** (já automática). Antes de desistir, **tentar fontes externas** (STF por API, Senado, STJ, sites jurídicos e de concursos, documentação oficial) e fazer o cartão se o trecho literal sustentar o ponto. No relatório, listar as que ficaram só com a resolução em figura como informação, sem pedir fonte ao usuário (só pedir decisão sobre gabaritos em dúvida, que continuam dependendo da confirmação dele).
+
 ## Fontes e limites (aprendidos)
 - Texto de lei: só via `lei.js` (nunca de memória). Cartão de lei usa `fonte:[['CF',150]]`; as palavras marcadas e os números devem existir no texto lido (o `validar.js` avisa).
 - Fonte externa: trecho **literal** (≤ 260 caracteres), nome e URL da página lida. Ordem: lei carregada > STF/Senado/órgãos oficiais > organismos e docs oficiais (NIST, OCDE, Microsoft Learn, Embrapa, IPEA, ENAP) > universidades > sites jurídicos/de concursos > Wikipédia (último recurso).
@@ -46,4 +49,5 @@ description: Gera e mantém as "figuras" das resoluções do TCDF Plataforma (ca
 - v411–v412: edição sem campo de justificativa/Restaurar, sem "Base legal", destaque de verbos/adjetivos/negações.
 - Relatórios de pendências ficam com o usuário (por matéria): o que falta, conferências de gabarito e fontes.
 - v417: **Reta Final** (`js/reta-final.js`): aba única que substitui "Caderno de erros" e "Flashcards" no menu (as telas clássicas continuam por links dentro dela). Hoje (plano do dia por fase até a prova), Caderno de erros (por causa e nível), Cartões de lacuna (gerados das marcas das figuras; agenda em `bucket.srs`, sincronizada no merge), Prontidão e Cola de véspera (imprimir). Só precisa das figuras já publicadas; não exige upload de listas.
+- v421–v422: Direito Civil (233, lista padronizada e renumerada): 224 cartões de lei + 6 com fonte externa (STJ Súmulas 195 e 385, STF Tema 786 e ADI 4815, Decreto 9.830 e LC 95 via Senado). O PDF oficial das súmulas do STJ (stj.jus.br/docs_internet/SumulasSTJ.pdf) é acessível por curl; o Senado (legis.senado.leg.br/norma/...) traz o texto de leis e decretos.
 
