@@ -192,7 +192,7 @@ function tendenciasDisponiveis(){
 function getLocalTab(materiaKey){
   const tab = STATE.tabByMateria[materiaKey];
   // abas que ainda existem ("Resumo p/ revisão" foi removida)
-  return ['simulado','erros','flashcards','guia-arm'].includes(tab) ? tab : 'simulado';
+  return ['simulado','reta','erros','flashcards','guia-arm'].includes(tab) ? tab : 'simulado';
 }
 function setLocalTab(materiaKey, tab){
   STATE.tabByMateria[materiaKey] = tab;
@@ -253,6 +253,7 @@ function render(){
     ${STATE.focusMode ? '' : `<div class="footer-note">${esc(CONFIG.footer)} · Versão ${esc(window.__TCDF_BUILD__.versao)} (${esc(window.__TCDF_BUILD__.build)}) · armazenamento: ${esc(STORAGE_MODE==='local' ? 'IndexedDB' : STORAGE_MODE)}</div>`}
   `;
   attachHandlers();
+  if(typeof retaAnexar==='function') retaAnexar();
 }
 
 // Banner fixo quando storageSet/storageGet falham (armazenamento cheio,
@@ -956,12 +957,12 @@ function renderMateriaPage(){
 function renderLocalTabs(){
   const tabs = [
     {id:'simulado', n:'01', label:'Questões'},
-    {id:'erros', n:'02', label:'Caderno de erros'},
-    {id:'flashcards', n:'03', label:'Flashcards'},
-    {id:'guia-arm', n:'04', label:'Guia de armadilhas'},
-    {id:'importar', n:'05', label:'Importar (Admin)'},
+    {id:'reta', n:'02', label:'Reta Final'},
+    {id:'guia-arm', n:'03', label:'Guia de armadilhas'},
+    {id:'importar', n:'04', label:'Importar (Admin)'},
   ];
-  const atual = STATE.viewImportar ? 'importar' : getLocalTab(STATE.materia);
+  let atual = STATE.viewImportar ? 'importar' : getLocalTab(STATE.materia);
+  if(atual==='erros' || atual==='flashcards') atual = 'reta';   // as telas clássicas ficam dentro da Reta Final
   return `<div class="tabs">${tabs.map(t=>`
     <button class="tab-btn ${atual===t.id?'active':''}" data-local-tab="${t.id}">
       <span class="n">${t.n}</span>${t.label}
@@ -975,6 +976,7 @@ function renderMainPanel(tabAtual){
     if(STATE.mostrarConfigSimulado) return renderSetupInline();
     return renderLanding();
   }
+  if(tabAtual==='reta') return (typeof renderReta==='function' ? renderReta() : '');
   if(tabAtual==='erros') return renderErros();
   if(tabAtual==='flashcards') return renderFlashcards();
   if(tabAtual==='guia-arm') return renderGuiaArmadilhas();

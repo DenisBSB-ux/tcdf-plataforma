@@ -299,6 +299,8 @@ function _migrarBucketPorMapa(velho, novo){
   });
   Object.entries(velho.flash||{}).forEach(([u,f])=>{ const n = mapa[u]; if(n && !out.flash[n]) out.flash[n] = f; });
   Object.entries(velho.chutes||{}).forEach(([u,c])=>{ const n = mapa[u]; if(n && !out.chutes[n]) out.chutes[n] = c; });
+  out.srs = {};   // agenda dos cartões (Reta Final) acompanha a questão renumerada
+  Object.entries(velho.srs||{}).forEach(([u,x])=>{ const n = mapa[u]; if(n && !out.srs[n]) out.srs[n] = x; });
   return out;
 }
 // ---- remoções que sincronizam ("lápides") ----
@@ -315,6 +317,7 @@ function _aposReset(side, R){
   });
   Object.entries(side.flash||{}).forEach(([uid,f])=>{ if(((f&&f.ts)||0)>R) o.flash[uid] = f; });
   Object.entries(side.chutes||{}).forEach(([uid,c])=>{ if(((c&&c.ts)||0)>R) o.chutes[uid] = c; });
+  o.srs = {}; Object.entries(side.srs||{}).forEach(([uid,x])=>{ if(((x&&x.t)||0)>R) o.srs[uid] = x; });
   o.sessoes = (side.sessoes||[]).filter(x=>(x.ts||0)>R);
   o.simuladosSalvos = (side.simuladosSalvos||[]).filter(x=>(x.ts||0)>R);
   return o;
@@ -342,8 +345,8 @@ function mergeBucket(local, remote){
     if(gr > gl){ local = _migrarBucketPorMapa(local || {}, remote); local.geracao = gr; local.migracao = remote.migracao; }
     else { remote = _migrarBucketPorMapa(remote || {}, local); remote.geracao = gl; }
   }
-  local = local || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
-  remote = remote || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
+  local = local || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{}, srs:{} };
+  remote = remote || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{}, srs:{} };
   // "apagar histórico": o lado que não conhece o reset perde o que é anterior a ele
   const R = Math.max(local.resetEm||0, remote.resetEm||0);
   if(R){
@@ -393,6 +396,14 @@ function mergeBucket(local, remote){
     const ultimo = dedup.length ? dedup[dedup.length-1].c : (localP&&localP.ultimoResultado!==undefined ? localP.ultimoResultado : (remoteP&&remoteP.ultimoResultado));
     merged.perguntas[uid] = { ...(remoteP||{}), ...(localP||{}), tentativas, acertos, ultimoResultado: ultimo===undefined ? null : ultimo, historico: dedup.slice(-20) };
   });
+
+  // agenda de revisão dos cartões (Reta Final): por questão, vale a revisão mais recente
+  merged.srs = { ...(local.srs||{}) };
+  Object.entries(remote.srs||{}).forEach(([uid, rs])=>{
+    const ls = merged.srs[uid];
+    if(!ls || ((rs&&rs.t)||0) > ((ls&&ls.t)||0)) merged.srs[uid] = rs;
+  });
+  if(!Object.keys(merged.srs).length) delete merged.srs;
 
   Object.entries(remote.flash||{}).forEach(([uid, remoteF])=>{
     const localF = merged.flash[uid];

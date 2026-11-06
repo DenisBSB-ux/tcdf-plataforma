@@ -54,5 +54,22 @@ t('idempotente', JSON.stringify(m1.perguntas) === JSON.stringify(m2.perguntas));
 // 9. sessões e simulados salvos somam sem duplicar
 r = mb(B({ sessoes: [{ ts: 1 }, { ts: 2 }] }), B({ sessoes: [{ ts: 2 }, { ts: 3 }] })); t('sessões sem duplicar', r.sessoes.length === 3);
 
+
+// agenda de revisão dos cartões (srs, Reta Final): vale a revisão mais recente por questão; não se perde ao mesclar; apagar histórico a limpa
+{
+  const A = B({ srs: { u1: { i: 2, e: 2.5, r: 2, l: 0, d: now + 2 * 864e5, t: now - 1000 }, u2: { i: 1, e: 2.3, r: 1, l: 0, d: now + 864e5, t: now - 5000 } } });
+  const Bb = B({ srs: { u1: { i: 5, e: 2.6, r: 3, l: 0, d: now + 5 * 864e5, t: now }, u3: { i: 1, e: 2.3, r: 1, l: 0, d: now, t: now - 100 } } });
+  const m = mb(A, Bb), m2 = mb(Bb, A);
+  t('srs: união por questão', m.srs.u1 && m.srs.u2 && m.srs.u3);
+  t('srs: vale a revisão mais recente', m.srs.u1.i === 5 && m2.srs.u1.i === 5);
+  const ord = o => JSON.stringify(Object.keys(o).sort().map(k => [k, o[k]]));
+  t('srs: merge simétrico', ord(m.srs) === ord(m2.srs));
+  const semAgenda = mb(B({}), B({}));
+  t('srs: bucket sem agenda continua sem o campo', semAgenda.srs === undefined);
+  const R = now - 500;
+  const rs = mb(B({ resetEm: R }), B({ srs: { u1: { i: 2, t: R - 10 }, u2: { i: 1, t: now } } }));
+  t('srs: apagar histórico descarta a agenda anterior ao reset', rs.srs && !rs.srs.u1 && !!rs.srs.u2);
+}
+
 console.log('merge: ' + ok + ' ok, ' + bad + ' falhas');
 process.exit(bad ? 1 : 0);

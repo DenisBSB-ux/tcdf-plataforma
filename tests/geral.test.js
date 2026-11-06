@@ -98,6 +98,30 @@ try {
   t('limpar resposta: o botão e o reiniciar marcam "limpas"', /function resetQuestaoAtual[\s\S]*?quiz\.limpas/.test(est) && /function resetSimuladoAtual[\s\S]*?quiz\.limpas/.test(est) && /delete quiz\.limpas\[uid\]/.test(est));
 } catch (e) { t('limpar resposta', false, e.message); }
 
+
+// 4e. Reta Final: lógica pura (fases, nível do erro, agenda dos cartões, lacunas)
+try {
+  const rf = fs.readFileSync(path.join(raiz, 'js', 'reta-final.js'), 'utf8');
+  const cx = { esc: x => String(x) }; vm.createContext(cx);
+  vm.runInContext(rf + ';this.F = retaFaseDeDias; this.N = retaNivelErro; this.A = retaAgenda; this.R = retaRotuloIntervalo; this.P1 = retaPartesDeRegra; this.P2 = retaPartesComChaves;', cx);
+  t('reta: fases por dias', cx.F(16).id === 'cobrir' && cx.F(8).id === 'cobrir' && cx.F(7).id === 'fixar' && cx.F(3).id === 'fixar' && cx.F(2).id === 'leve' && cx.F(1).id === 'leve' && cx.F(0).id === 'dia' && cx.F(-1).id === 'pos');
+  const D = 864e5, now = 1e13, H = (ts, c) => ({ ts, c });
+  t('reta: nunca errou não é erro', cx.N({ historico: [H(now-D, true)], ultimoResultado: true }) === null);
+  t('reta: errou na última = nível 0', cx.N({ historico: [H(now-3*D, true), H(now-D, false)], ultimoResultado: false }).nivel === 0);
+  t('reta: acertos espaçados sobem o nível', cx.N({ historico: [H(now-5*D, false), H(now-3*D, true)], ultimoResultado: true }).nivel === 1
+    && cx.N({ historico: [H(now-5*D, false), H(now-3*D, true), H(now-D, true)], ultimoResultado: true }).nivel === 2
+    && cx.N({ historico: [H(now-6*D, false), H(now-4*D, true), H(now-2*D, true), H(now-D*0.5, true)], ultimoResultado: true }).nivel === 3);
+  t('reta: acertos no mesmo dia contam uma vez só', cx.N({ historico: [H(now-3*D, false), H(now-D, true), H(now-D+60000, true), H(now-D+120000, true)], ultimoResultado: true }).nivel === 1);
+  t('reta: reincidência conta os erros', cx.N({ historico: [H(1, false), H(2, false), H(3, false)], ultimoResultado: false }).reinc === 3);
+  const a1 = cx.A(null, 3, now, 16), a2 = cx.A(a1, 3, now, 16), a3 = cx.A(a2, 3, now, 16);
+  t('reta: agenda cresce (1 → 2 → mais) e respeita o teto de 1/3 do tempo', a1.i === 1 && a2.i === 2 && a3.i > 2 && a3.i <= 5 && cx.A(a3, 4, now, 16).i <= 5);
+  t('reta: perto da prova o intervalo fica curto', cx.A(a3, 4, now, 3).i <= 1 && cx.A(null, 4, now, 3).i <= 1);
+  t('reta: errei volta hoje e conta lapso', cx.A(a3, 1, now, 16).d - now <= 15*60000 && cx.A(a3, 1, now, 16).l === 1 && cx.A(a3, 1, now, 16).r === 0);
+  t('reta: rótulos dos botões', cx.R(null, 1, now, 16) === 'volta hoje' && cx.R(null, 3, now, 16) === 'amanhã' && /^em \d+ dias$/.test(cx.R(a2, 3, now, 16)));
+  t('reta: lacunas a partir de {i|palavra}', JSON.stringify(cx.P1('O {0|ICMS} não compõe a {1|base de cálculo}.')) === JSON.stringify([{ t: 'O ' }, { l: 'ICMS' }, { t: ' não compõe a ' }, { l: 'base de cálculo' }, { t: '.' }]));
+  t('reta: lacunas a partir das palavras-chave', cx.P2('A regressividade pesa mais em quem ganha menos', ['regressividade', 'ganha menos', 'inexistente']).filter(p => p.l).length === 2);
+} catch (e) { t('reta final', false, e.message); }
+
 // 5. nenhum JS usa lookbehind em regex literal (quebra Safari < 16.4)
 const comLookbehind = js.filter(f => !/texto|dados|doutrina/.test(f) && /\/[^\/\n]*\(\?<[=!][^\/\n]*\/[gimsuy]*[,;)\s]/.test(fs.readFileSync(path.join(raiz, 'js', f), 'utf8').replace(/new RegExp\([^)]*\)/g, '')));
 t('sem lookbehind em regex literal', !comLookbehind.length, comLookbehind.join(','));
