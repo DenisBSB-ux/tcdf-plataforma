@@ -2085,7 +2085,20 @@ body.theme-light .cartao-teoria .ct-regra, body.theme-light .cartao-teoria .ct-n
 /* cartão estreito: cada ponto vira uma linha com a cor na lateral */
 @container ct (max-width:519px){ .cartao-teoria .ct-ponto{ flex-direction:row; align-items:flex-start; gap:12px; } }
 /* realce de correção no enunciado (tema escuro): tons suaves, na mesma paleta do cartão */
-body:not(.theme-light) del.arm-trecho, body:not(.theme-light) .arm-trecho{ background:rgba(238,143,143,.16) !important; color:#f2b3b3 !important; text-decoration:line-through; text-decoration-color:rgba(238,143,143,.7); font-weight:inherit !important; }
+body:not(.theme-light) del.arm-trecho, body:not(.theme-light) .arm-trecho{ background:rgba(238,143,143,.10) !important; color:#f6b8b8 !important; text-decoration:line-through; text-decoration-color:rgba(238,143,143,.85); text-decoration-thickness:2px; font-weight:inherit !important; opacity:1 !important; }
+body:not(.theme-light) ins.arm-trecho, body:not(.theme-light) mark.arm-ok{ background:rgba(116,203,159,.14) !important; color:#a7ecc8 !important; text-decoration:none; }
+/* modo escuro: cartão de figura mais nítido, cores menos saturadas e fundos mais suaves */
+body:not(.theme-light) .cartao-teoria{ background:linear-gradient(160deg,rgba(255,255,255,.055),rgba(255,255,255,.02)); border-color:rgba(255,255,255,.12); --c0:#8db6f2; --c1:#f0a0a0; --c2:#e9c577; --c3:#86d4ac; --c4:#c3aef0; }
+body:not(.theme-light) .cartao-teoria .ct-regra{ background:rgba(255,255,255,.04); color:#e8ebf1; }
+body:not(.theme-light) .cartao-teoria .ct-k.ct-c0, body:not(.theme-light) .cartao-teoria .ct-k.ct-c1, body:not(.theme-light) .cartao-teoria .ct-k.ct-c2, body:not(.theme-light) .cartao-teoria .ct-k.ct-c3, body:not(.theme-light) .cartao-teoria .ct-k.ct-c4{ border-bottom-width:1.5px; }
+body:not(.theme-light) .cartao-teoria .ct-k.ct-c0{ background:color-mix(in srgb,var(--c0) 11%,transparent); } body:not(.theme-light) .cartao-teoria .ct-k.ct-c1{ background:color-mix(in srgb,var(--c1) 11%,transparent); } body:not(.theme-light) .cartao-teoria .ct-k.ct-c2{ background:color-mix(in srgb,var(--c2) 11%,transparent); } body:not(.theme-light) .cartao-teoria .ct-k.ct-c3{ background:color-mix(in srgb,var(--c3) 11%,transparent); } body:not(.theme-light) .cartao-teoria .ct-k.ct-c4{ background:color-mix(in srgb,var(--c4) 11%,transparent); }
+body:not(.theme-light) .cartao-teoria .ct-v{ color:#9fdcbd; font-weight:600; }
+body:not(.theme-light) .cartao-teoria .ct-ponto{ background:rgba(255,255,255,.03); border-color:rgba(255,255,255,.08); }
+body:not(.theme-light) .cartao-teoria .ct-ponto div > span{ opacity:.9; }
+body:not(.theme-light) .cartao-teoria .ct-arm{ background:color-mix(in srgb,var(--c2) 8%,transparent); border-color:color-mix(in srgb,var(--c2) 24%,transparent); }
+body:not(.theme-light) .cartao-teoria footer{ opacity:.7; }
+body:not(.theme-light) .answer-opt.ce-btn.picked.correct, body:not(.theme-light) .answer-opt.correct{ background:rgba(63,150,105,0.20); }
+body:not(.theme-light) .answer-opt.ce-btn.picked.incorrect, body:not(.theme-light) .answer-opt.incorrect{ background:rgba(194,80,65,0.20); }
 body:not(.theme-light) mark.arm-correcao, body:not(.theme-light) ins.arm-correcao{ background:rgba(116,203,159,.16) !important; color:#a6e3c4 !important; font-weight:600 !important; text-decoration:none; }
 /* figura na tela da questão: ocupa a mesma largura do enunciado e das alternativas (sem caixa extra ao redor) */
 .resolucao-box.com-figura{ padding:0; background:transparent; border:0; border-radius:0; font-size:15pt; }
