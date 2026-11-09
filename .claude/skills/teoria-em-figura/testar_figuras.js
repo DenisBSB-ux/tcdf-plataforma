@@ -25,7 +25,7 @@ const fs = require('fs');
         const f = document.querySelector('.cartao-teoria');
         if (!f) { out.texto++; out.semFigura.push(q.n); continue; }
         if (f.classList.contains('ct-resumo')) out.resumo++; else out.teoria++;
-        if (f.scrollWidth > f.clientWidth + 2 || f.getBoundingClientRect().width > vw + 1) out.largura++;
+        if (f.scrollWidth > f.clientWidth + 2 || f.getBoundingClientRect().width > vw + 1) { out.largura++; (out.largos = out.largos || []).push(q.n + ' ' + q.uid); }
       }
       return out; }, [md, vw, mat]);
     console.log(nome, JSON.stringify(r), errs.slice(0, 2));

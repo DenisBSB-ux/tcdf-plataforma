@@ -2236,3 +2236,6 @@ body:not(.theme-light) mark.arm-trecho, body:not(.theme-light) del.arm-trecho, b
 .cartao-teoria .ct-alt-falta div{ opacity:.6; font-style:italic; }
 body.theme-light .cartao-teoria .ct-alt{ border-color:rgba(0,0,0,.1); background:rgba(0,0,0,.025); }
 body.theme-light .cartao-teoria .ct-alt-ok{ background:color-mix(in srgb,var(--c3) 10%,transparent); }
+
+/* v433 — palavras longas dentro dos pontos do cartão quebram em tela estreita */
+.cartao-teoria .ct-ponto > div, .cartao-teoria .ct-ponto b, .cartao-teoria .ct-ponto span{ min-width:0; overflow-wrap:anywhere; }

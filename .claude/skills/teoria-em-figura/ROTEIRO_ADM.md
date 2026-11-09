@@ -1,0 +1,8 @@
+# Roteiro: "Teoria em figura" — Adm Geral & Pub (Direito Administrativo Geral)
+Leia antes ROTEIRO.md, ROTEIRO_EXT.md, ROTEIRO_RJU.md e ROTEIRO_CF.md. Diferenças:
+- Lista: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/adm/padrao.md (300 questões, numeração única 1..300: `pos` = número do cabeçalho). Índice: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/figuras/adm_index.json.
+- `m:/adm geral/i` (nome da matéria na plataforma: 'Adm Geral & Pub'). Validação: `MATERIA='Adm Geral & Pub' LISTA=<lista acima> MAXPOS=300 node .claude/skills/teoria-em-figura/validar.js <arquivo>`.
+- Textos de lei CARREGADOS: CF/1988, Lei 9.784, CTN, Lei 14.133, Lei 8.429 (conferir com lei.js). Use `fonte:[['Lei 9.784',N]]` etc. Doutrina administrativa (atributos do ato, poderes, organização administrativa, responsabilidade civil, serviços públicos) e jurisprudência do STF/STJ: só com texto literal (API do STF via curl: stf.js/stfq.py, WAF: repita com pausa; STJ: SumulasSTJ.pdf) via `ext`; senão pule. Sem blogs de cursinho; Wikipedia não.
+- Lei posterior/emendas: o texto carregado manda. Divergência entre resolução da lista e texto → siga o texto e registre 'divergência: pos N — motivo' no .skip.txt; gabarito em conflito → cartão neutro. Questões "Conferir o gabarito" (52, 253): cartão neutro.
+- Múltipla escolha (72): o cartão trata da regra da alternativa correta; as alternativas já são justificadas pela plataforma a partir do bloco ERROS.
+- Pule (motivo em .skip.txt) se não houver fonte literal confiável. Um cartão por questão, com título e foco próprios (muitas questões repetem o tema: varie o foco).
