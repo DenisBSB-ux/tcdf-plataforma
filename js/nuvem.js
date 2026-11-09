@@ -1451,14 +1451,30 @@ function diasDesdeUltimoBackupArquivo(){
 }
 
 /* ---- cópias automáticas no aparelho (últimos 7 dias) ----
-   Uma por dia, guardadas no próprio armazenamento do navegador. "Recuperar" MESCLA a cópia no progresso atual (nunca apaga nada). */
+   Uma por dia (últimos 14 dias), guardadas no próprio armazenamento do navegador. "Recuperar" MESCLA a cópia no progresso atual (nunca apaga nada). */
 const SNAPSHOTS_KEY = 'tcdf-snapshots';
-const SNAPSHOTS_MAX = 7;
+const SNAPSHOTS_MAX = 14;
 let SNAPSHOTS = [];   // [{ ts, progress: string(JSON), edicoes, gabaritos }]
 async function carregarSnapshots(){
   try{ const r = await storageGet(SNAPSHOTS_KEY); SNAPSHOTS = (r && r.value) ? JSON.parse(r.value) : []; if(!Array.isArray(SNAPSHOTS)) SNAPSHOTS = []; }
   catch(_){ SNAPSHOTS = []; }
   return SNAPSHOTS;
+}
+
+/* ---- arquivo de backup automático, uma vez por dia ----
+   Na primeira abertura do dia (e a cada 6 h com o app aberto) baixa o arquivo .json do progresso, se a opção estiver ligada (padrão: ligada). */
+const BACKUP_ARQ_AUTO_KEY = 'tcdf-backup-arquivo-auto';
+function backupArquivoAutoLigado(){ try{ return localStorage.getItem(BACKUP_ARQ_AUTO_KEY) !== '0'; }catch(_){ return true; } }
+function definirBackupArquivoAuto(ligado){ try{ localStorage.setItem(BACKUP_ARQ_AUTO_KEY, ligado ? '1' : '0'); }catch(_){} }
+function backupArquivoAutomatico(){
+  try{
+    if(!backupArquivoAutoLigado()) return;
+    if(window.__LOAD_PROGRESS_FALHOU) return;
+    if(!Object.keys(PROGRESS||{}).length) return;
+    const t = parseInt(localStorage.getItem(ULTIMO_BACKUP_ARQUIVO_KEY)||'0',10);
+    if(t && new Date(t).toDateString() === new Date().toDateString()) return;
+    exportarProgresso();
+  }catch(e){ console.warn('Não foi possível gerar o backup automático em arquivo', e); }
 }
 async function snapshotDiario(forcar){
   try{
@@ -1466,7 +1482,7 @@ async function snapshotDiario(forcar){
     if(!Object.keys(PROGRESS||{}).length) return;                                  // nada para guardar
     if(!SNAPSHOTS.length) await carregarSnapshots();
     const ultimo = SNAPSHOTS.length ? SNAPSHOTS[SNAPSHOTS.length-1].ts : 0;
-    if(!forcar && Date.now()-ultimo < 20*3600*1000) return;
+    if(!forcar && ultimo && new Date(ultimo).toDateString() === new Date().toDateString()) return;   // uma cópia por dia (dia do calendário)
     SNAPSHOTS.push({ ts: Date.now(), progress: JSON.stringify(PROGRESS), edicoes: JSON.stringify(EDICOES_USUARIO), gabaritos: JSON.stringify(GABARITOS_ALTERADOS) });
     SNAPSHOTS = SNAPSHOTS.slice(-SNAPSHOTS_MAX);
     await storageSet(SNAPSHOTS_KEY, JSON.stringify(SNAPSHOTS));
