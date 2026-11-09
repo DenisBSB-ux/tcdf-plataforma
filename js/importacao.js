@@ -23,6 +23,8 @@ function renderImportarConteudo(){
   return `
         <div class="imp-wrap">
         <h2 class="section-title">Importar questões</h2>
+        <div class="lote-topo"><button type="button" class="btn btn-primary btn-sm" id="btn-importar-lote" title="Escolha vários arquivos .md/.txt de uma vez: a plataforma identifica a matéria de cada um e importa no lugar certo">📚 Importar várias matérias</button><input type="file" id="file-input-lote" accept=".txt,text/plain,.md,text/markdown" multiple style="display:none;"></div>
+        ${typeof renderImportLote==='function' ? renderImportLote() : ''}
         ${(vazio || STATE.importFormAberto || STATE.importPendente || STATE.importSemelhante || STATE.importLog) ? form_ : `<button type="button" class="btn btn-primary btn-sm" id="btn-nova-materia">+ Nova matéria</button>`}
 
         ${STATE.importPendente ? renderImportPendente() : ''}

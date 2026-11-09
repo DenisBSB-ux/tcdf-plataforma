@@ -555,6 +555,7 @@ function attachHandlers(){
       if(e.target.files && e.target.files[0]) handleImportFile(e.target.files[0]);
     });
   }
+  if(typeof bindImportLote==='function') bindImportLote();
   const btnBuscarComputador = document.getElementById('btn-buscar-computador');
   if(btnBuscarComputador && fileInput) btnBuscarComputador.addEventListener('click', ()=> fileInput.click());
 
