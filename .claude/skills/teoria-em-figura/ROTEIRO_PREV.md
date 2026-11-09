@@ -1,0 +1,8 @@
+# Roteiro: "Teoria em figura" — Previdenciário
+Leia antes ROTEIRO.md, ROTEIRO_EXT.md, ROTEIRO_RJU.md, ROTEIRO_CF.md e ROTEIRO_ADM.md. Diferenças:
+- Lista: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/prev/padrao.md (233 questões, numeração única 1..233: `pos` = número do cabeçalho). Índice: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/figuras/prev_index.json.
+- `m:/previd/i`. Validação: `MATERIA='Previdenciário' LISTA=<lista acima> MAXPOS=233 node .claude/skills/teoria-em-figura/validar.js <arquivo>`.
+- Textos CARREGADOS (lei.js): CF, Lei 8.213, Lei 8.212, LC 769 (RPPS/DF), LC 932, LC 109, LC 108, Lei 9.717 (e outros: confira com `node .claude/skills/formatar-resolucoes/lei.js "<norma>" N`). Use `fonte:[['Lei 8.213',N]]` etc. Jurisprudência/súmulas (STF, STJ, TNU, Súmulas da AGU) e EC 103/2019 (se não carregada): via ext com texto literal (API do STF; SumulasSTJ.pdf; Câmara/Senado; o Planalto bloqueia).
+- O texto carregado traz alterações recentes: siga o TEXTO quando a resolução da lista divergir e registre 'divergência: pos N — motivo' no .skip.txt; gabarito em conflito com o texto → cartão neutro. Questões "Conferir o gabarito" (11, 33, 34, 37, 58, 91, 99, 101, 105, 112, 138, 162, 209, 211, 224): cartão neutro.
+- Múltipla escolha (51): o cartão trata da regra da alternativa correta; as alternativas já são justificadas pela plataforma.
+- Pule (motivo em .skip.txt) se não houver fonte literal confiável. Um cartão por questão, com título e foco próprios (muitas repetem o tema: varie o foco).
