@@ -2221,3 +2221,18 @@ body.theme-light .reta-notas button{ color:#fff; }
 
 /* v425 — trecho riscado legível no escuro: texto claro, risco fino e translúcido */
 body:not(.theme-light) mark.arm-trecho, body:not(.theme-light) del.arm-trecho, body:not(.theme-light) .qm-enunciado .arm-trecho, body:not(.theme-light) .arm-trecho{ background:rgba(240,128,128,.14) !important; color:#ffd0d0 !important; font-weight:500 !important; text-decoration:line-through !important; text-decoration-thickness:1px !important; text-decoration-color:rgba(255,160,160,.55) !important; opacity:1 !important; }
+
+/* v426 — todas as alternativas justificadas na figura (múltipla escolha) */
+.cartao-teoria .ct-alts{ margin-top:14px; }
+.cartao-teoria .ct-alts h5{ margin:0 0 8px; font-size:13px; letter-spacing:.06em; text-transform:uppercase; opacity:.75; }
+.cartao-teoria .ct-alts ol{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+.cartao-teoria .ct-alt{ display:flex; gap:12px; align-items:flex-start; padding:10px 14px; border-radius:12px; border:1px solid rgba(255,255,255,.09); border-left:3px solid var(--c1); background:rgba(255,255,255,.03); font-size:clamp(14px,.76em,16px); line-height:1.5; }
+.cartao-teoria .ct-alt-ok{ border-left-color:var(--c3); background:color-mix(in srgb,var(--c3) 9%,transparent); }
+.cartao-teoria .ct-alt-l{ flex:none; display:inline-flex; align-items:center; gap:3px; font-weight:800; font-size:15px; min-width:36px; }
+.cartao-teoria .ct-alt-l i{ font-style:normal; font-size:13px; }
+.cartao-teoria .ct-alt-ok .ct-alt-l{ color:var(--c3); } .cartao-teoria .ct-alt-no .ct-alt-l{ color:var(--c1); }
+.cartao-teoria .ct-alt b{ margin-right:4px; }
+.cartao-teoria .ct-alt-ok b{ color:var(--c3); } .cartao-teoria .ct-alt-no b{ color:var(--c1); }
+.cartao-teoria .ct-alt-falta div{ opacity:.6; font-style:italic; }
+body.theme-light .cartao-teoria .ct-alt{ border-color:rgba(0,0,0,.1); background:rgba(0,0,0,.025); }
+body.theme-light .cartao-teoria .ct-alt-ok{ background:color-mix(in srgb,var(--c3) 10%,transparent); }
