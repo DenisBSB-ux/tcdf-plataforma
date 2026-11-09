@@ -1,0 +1,8 @@
+# Roteiro: "Teoria em figura" — PDPM Mulheres
+Leia antes ROTEIRO.md e ROTEIRO_EXT.md (formato do cartão, limites, marcadores {i|palavra}, campo `ext`) e ROTEIRO_RJU.md (matéria com lei carregada). Diferenças:
+- Lista: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/pdpm/padrao.md (200 questões, numeração única 1..200: `pos` = número do cabeçalho). Índice: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/figuras/pdpm_index.json.
+- `m:/pdpm|mulher|maria da penha/i`. Validação: `MATERIA='PDPM Mulheres' LISTA=<lista acima> MAXPOS=200 node .claude/skills/teoria-em-figura/validar.js <arquivo>`.
+- Textos de lei CARREGADOS: **Lei 11.340** (Maria da Penha, ~135 questões) e **Decreto 42.590** (II PDPM; quando a questão cita "Eixo N / Anexo", confira se o texto está em lei.js; se não estiver, use `ext` ou pule). Leia o artigo com `node .claude/skills/formatar-resolucoes/lei.js "Lei 11.340" N` e `... "Decreto 42.590" N`; use `fonte:[['Lei 11.340',N]]`. Outras normas (ADI 4424, Súmulas STJ 536/542/588, CP, Lei 13.104, Lei 14.994) só com texto literal (stf.js/stfq.py, Senado) via `ext`; senão pule.
+- Questões com "Conferir o gabarito": cartão neutro, só a regra literal; nunca afirmar o que contradiz a lei lida. Quando a resolução da lista divergir do texto da lei, siga a lei e registre 'divergência: pos N — motivo' no .skip.txt.
+- Múltipla escolha (31 questões): o cartão trata da regra da alternativa correta; as alternativas já são justificadas pela plataforma a partir do bloco ERROS.
+- Pule (motivo em .skip.txt) se não houver fonte literal confiável. Um cartão por questão, com título e foco próprios.
