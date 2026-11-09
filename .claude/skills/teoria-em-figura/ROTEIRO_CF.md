@@ -1,0 +1,8 @@
+# Roteiro: "Teoria em figura" — Direito Constitucional
+Leia antes ROTEIRO.md, ROTEIRO_EXT.md e ROTEIRO_RJU.md (matéria com lei carregada). Diferenças:
+- Lista: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/cf/padrao.md (250 questões, numeração única 1..250: `pos` = número do cabeçalho). Índice: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/figuras/cf_index.json.
+- `m:/constitucional/i`. Validação: `MATERIA='Constitucional' LISTA=<lista acima> MAXPOS=250 node .claude/skills/teoria-em-figura/validar.js <arquivo>`.
+- Texto carregado: **CF/1988** (com ADCT e EC 132). Leia com `node .claude/skills/formatar-resolucoes/lei.js "CF" N` e use `fonte:[['CF',N]]`. O texto carregado já traz emendas RECENTES (ex.: art. 7º, XIII = 40 horas semanais, EC 141/2026). Quando a resolução da lista divergir do texto carregado, SIGA O TEXTO e registre 'divergência: pos N — motivo' no .skip.txt; se o gabarito conflitar com o texto, cartão neutro (a regra literal).
+- Súmulas/temas/ADI do STF: API pública do STF (curl; stf.js/stfq.py; WAF: repita com pausa) via `ext`; STJ via https://www.stj.jus.br/docs_internet/SumulasSTJ.pdf. Doutrina (eficácia das normas, gerações de direitos): só com fonte literal confiável; senão pule.
+- Questões "Conferir o gabarito": cartão neutro. Múltipla escolha (65): o cartão trata da regra da alternativa correta; as alternativas já são justificadas pela plataforma a partir do bloco ERROS.
+- Pule (motivo em .skip.txt) se não houver fonte literal confiável. Um cartão por questão, com título e foco próprios.
