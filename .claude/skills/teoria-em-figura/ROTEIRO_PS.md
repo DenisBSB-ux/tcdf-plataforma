@@ -1,0 +1,10 @@
+# Roteiro: "Teoria em figura" — Primeiros Socorros
+Leia antes ROTEIRO.md, ROTEIRO_EXT.md e ROTEIRO_CIVIL.md (formato do cartão, limites, marcadores {i|palavra}, campo `ext`, regras de fonte). Diferenças desta matéria:
+- Lista: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/ps/padrao.md (100 questões, `## QUESTÃO n`, numeração única 1..100: `pos` = número do cabeçalho). Índice: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/figuras/ps_index.json.
+- `m:/primeiros socorros|socorro/i`. Validação: `MATERIA='Primeiros Socorros' LISTA=<lista acima> MAXPOS=100 node .claude/skills/teoria-em-figura/validar.js <arquivo>`.
+- NÃO há lei carregada na plataforma (só 2 questões citam o CP art. 135: omissão de socorro; texto via `node .claude/skills/formatar-resolucoes/lei.js "Decreto-Lei 2.848" 135`, se carregado; senão use `ext` com Senado/Planalto-espelho). Os demais cartões usam `ext`.
+- Fontes (nesta ordem): Ministério da Saúde (bvsms.saude.gov.br, gov.br/saude), SAMU/Corpo de Bombeiros, Cruz Vermelha/IFRC (primeiros socorros), AHA/ILCOR (RCP, engasgo), Sociedade Brasileira de Queimaduras, MSD Manuals, universidades públicas. Sem blogs de cursinho. Se o site recusar robôs, NÃO contorne: use outra fonte (use Bash+curl; Node ignora o proxy).
+- O trecho deve ser literal e SUSTENTAR a tese testada, coerente com o gabarito (ou neutro se a resolução mandar "Conferir o gabarito"). Condutas mudam entre diretrizes (ex.: queimadura, garrote, sangramento): use só o que a fonte diz. Se a fonte contradiz a resolução da lista, siga a fonte e registre no .skip.txt como "divergência: pos N — motivo".
+- Pule (motivo em .skip.txt) se não houver fonte literal confiável: essas ficarão com a resolução em figura. Prefira pular a inventar.
+- Um cartão por questão, com título e foco próprios (muitas questões repetem o tema: varie o foco).
+- Múltipla escolha (14 questões): o cartão trata da regra da alternativa correta; as alternativas já são justificadas pela plataforma a partir do bloco ERROS.
