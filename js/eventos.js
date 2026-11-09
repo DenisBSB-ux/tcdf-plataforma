@@ -62,6 +62,8 @@ function attachHandlers(){
   const btnBaixarAuditoria = document.getElementById('btn-baixar-auditoria');
   if(btnBaixarAuditoria) btnBaixarAuditoria.addEventListener('click', downloadRelatorioAuditoria);
 
+  const chkBackupAuto = document.getElementById('chk-backup-arquivo-auto');
+  if(chkBackupAuto) chkBackupAuto.addEventListener('change', ()=>{ definirBackupArquivoAuto(chkBackupAuto.checked); if(chkBackupAuto.checked) backupArquivoAutomatico(); });
   const btnExportarProgresso = document.getElementById('btn-exportar-progresso');
   if(btnExportarProgresso) btnExportarProgresso.addEventListener('click', exportarProgresso);
   root.querySelectorAll('[data-snap-recuperar]').forEach(el=> el.addEventListener('click', ()=> recuperarSnapshot(parseInt(el.dataset.snapRecuperar,10))));
