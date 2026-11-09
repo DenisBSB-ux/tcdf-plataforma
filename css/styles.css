@@ -2239,3 +2239,25 @@ body.theme-light .cartao-teoria .ct-alt-ok{ background:color-mix(in srgb,var(--c
 
 /* v433 — palavras longas dentro dos pontos do cartão quebram em tela estreita */
 .cartao-teoria .ct-ponto > div, .cartao-teoria .ct-ponto b, .cartao-teoria .ct-ponto span{ min-width:0; overflow-wrap:anywhere; }
+
+/* v437 — importar várias matérias de uma vez */
+.lote-topo{ margin:0 0 12px; }
+.lote-box{ margin:0 0 18px; padding:16px; border:1px solid var(--bd, rgba(255,255,255,.14)); border-radius:14px; background:rgba(255,255,255,.04); }
+.lote-ajuda{ margin:6px 0 12px; font-size:13px; opacity:.85; line-height:1.5; }
+.lote-linha{ display:flex; flex-direction:column; gap:8px; padding:10px 12px; margin:0 0 8px; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.03); }
+.lote-linha.erro, .lote-linha.conflito{ border-color:#e27d7d; }
+.lote-arq{ font-weight:700; font-size:14px; overflow-wrap:anywhere; }
+.lote-meta{ margin-left:8px; font-weight:400; font-size:12px; opacity:.75; }
+.lote-destino{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; font-size:13px; }
+.lote-destino select, .lote-destino input[type=text]{ max-width:100%; padding:6px 8px; border-radius:8px; border:1px solid rgba(255,255,255,.2); background:transparent; color:inherit; font:inherit; }
+.lote-destino select option{ color:#111; }
+.lote-acao{ font-weight:700; }
+.lote-via{ font-size:12px; color:#6fd6a6; } .lote-via.fraco{ color:#e6bb62; }
+.lote-aviso{ margin:6px 0; font-size:13px; color:#e6bb62; }
+.lote-botoes{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.lote-res{ padding:6px 0; font-size:14px; line-height:1.5; } .lote-res.err{ color:#e27d7d; }
+.lote-pub{ margin:8px 0 12px; font-size:13px; } .lote-pub.err{ color:#e6bb62; }
+body.theme-light .lote-box{ background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.14); }
+body.theme-light .lote-linha{ background:#fff; border-color:rgba(0,0,0,.12); }
+body.theme-light .lote-destino select, body.theme-light .lote-destino input[type=text]{ border-color:rgba(0,0,0,.25); }
+body.theme-light .lote-via{ color:#15803d; } body.theme-light .lote-via.fraco, body.theme-light .lote-aviso{ color:#a16207; }
