@@ -59,6 +59,35 @@ function _ctRegraHtml(txt){
   while((m = re.exec(txt))){ out += _ctDestacaTexto(txt.slice(i, m.index)) + `<mark class="ct-k ct-c${Number(m[1])%5}">${esc(m[2])}</mark>`; i = m.index + m[0].length; }
   return out + _ctDestacaTexto(txt.slice(i));
 }
+// Múltipla escolha: TODAS as alternativas justificadas (certa e erradas). Fonte: linhas "- Letra X: Errada; motivo" do bloco ERROS
+// da lista e, para a certa, a linha "Certa;" (se houver) ou a essência 📌. Letra sem texto na lista aparece marcada para revisão.
+function _altsLinhasErros(q){
+  const m = {};
+  String(typeof textoResolucaoAtualizado==='function' ? textoResolucaoAtualizado(q) : (q.r||'')).split(/\n/).forEach(l=>{
+    const r = /^\s*[-•*]?\s*Letra\s+([A-E])\s*[:\-–]\s*(.+)$/iu.exec(l.trim()); if(r) m[r[1].toUpperCase()] = _crLimpa(r[2]);
+  });
+  return m;
+}
+function altsJustificadasHtml(q){
+  if(!q || q.t!=='MC' || !Array.isArray(q.alt) || !q.alt.length) return '';
+  let g = ''; try{ g = String(gabaritoEfetivo(q)||'').toUpperCase(); }catch(_){}
+  if(!g) return '';
+  const erros = _altsLinhasErros(q);
+  const linhas = String(textoResolucaoAtualizado(q)||'').split(/\n/).map(l=>l.trim());
+  const pLin = linhas.find(x=>/^📌\s*/u.test(x)); const regra = pLin ? _crLimpa(pLin.replace(/^📌\s*/u,'')) : '';
+  const itens = q.alt.map(a=>{
+    const L = String(a.letra||'').toUpperCase(); const certa = L===g;
+    let t = erros[L] || '';
+    const ehCerta = /^certa\b/i.test(t), ehErrada = /^errada\b/i.test(t);
+    t = t.replace(/^(certa|errada)\s*[;:.\-–]?\s*/i,'').trim();
+    if(certa && (ehErrada || !t)) t = regra;
+    if(!certa && ehCerta && !t) t = '';
+    const falta = !t;
+    const txt = falta ? 'Justificativa ainda não consta na lista.' : t;
+    return `<li class="ct-alt ${certa?'ct-alt-ok':'ct-alt-no'}${falta?' ct-alt-falta':''}"><span class="ct-alt-l" aria-label="${certa?'Alternativa correta':'Alternativa errada'}">${esc(L)}<i aria-hidden="true">${certa?'✓':'✗'}</i></span><div><b>${certa?'Correta':'Errada'}</b> ${_ctDestacaTexto(txt)}</div></li>`;
+  }).join('');
+  return `<div class="ct-alts"><h5>Por que cada alternativa</h5><ol>${itens}</ol></div>`;
+}
 function cartaoTeoriaHtml(q){
   const c = teoriaCartaoDaQuestao(q); if(!c) return '';
   const nums = (c.numeros||[]).map(x=>`<div class="ct-num"><b>${esc(x.v)}</b><span>${esc(x.r)}</span></div>`).join('');
@@ -69,6 +98,7 @@ function cartaoTeoriaHtml(q){
     ${nums ? `<div class="ct-nums">${nums}</div>` : ''}
     <ol class="ct-pontos ct-n${Math.min(c.pontos.length,5)}">${pontos}</ol>
     <div class="ct-arm"><span aria-hidden="true">⚠️</span><div><b>Armadilha</b> ${esc(c.armadilha)}</div></div>
+    ${altsJustificadasHtml(q)}
     <footer>${c.ext ? `Fonte externa: ${esc(c.ext.nome)}${/^https:\/\//.test(c.ext.url||'') ? ` · <a href="${esc(c.ext.url)}" target="_blank" rel="noopener noreferrer">abrir</a>` : ''} · trecho: “${esc(c.ext.trecho)}” · resumo gerado por IA; confira na fonte.` : `Resumo do texto da lei carregado na plataforma (${esc(c.base)}) · gerado por IA, conferido; veja o dispositivo completo no pop-up ⚖️.`}</footer>
   </section>`;
 }
@@ -108,5 +138,6 @@ function cartaoResolucaoHtml(q){
     <p class="ct-regra">${_crRegraHtml(regra, chaves)}</p>
     ${lis ? `<ol class="ct-pontos ct-n${Math.min(pontos.length,5)}">${lis}</ol>` : ''}
     ${arm ? `<div class="ct-arm"><span aria-hidden="true">⚠️</span><div><b>Armadilha</b> ${_ctDestacaTexto(arm)}</div></div>` : ''}
+    ${altsJustificadasHtml(q)}
   </section>`;
 }
