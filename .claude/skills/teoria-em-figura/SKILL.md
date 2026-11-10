@@ -66,3 +66,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - **IN nº 5 (10/11/2026, v440):** lista de 100 padronizada e renumerada (15 repetidos); 99 cartões (`teoria-cartoes-in5.js`, IN 5/2017 e Lei 14.133 carregadas). Sem cartão: 33.
   - 2ª rodada IN nº 5 (v441): +1 cartão (33, ext gov.br/compras, Anexo VII-A 7.6); 100/100.
 - **Decreto 44.330 (10/11/2026, v442):** lista de 53 padronizada e renumerada (3 repetidos); 52 cartões (`teoria-cartoes-d44.js`, Decreto 44.330, IN 5 e Lei 14.133 carregados). Sem cartão: 23 (IMR, Anexo VIII-A da IN 5).
+  - 2ª rodada Decreto 44.330 (v443): +1 cartão (23, ext gov.br/compras, Anexo VIII-A item 1); 53/53.
