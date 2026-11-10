@@ -2338,3 +2338,14 @@ body.theme-light .estudo-btn.ativo{ box-shadow:0 0 0 2px rgba(0,0,0,.55); }
 body.theme-light .estudo-btn{ border-color:rgba(0,0,0,.3); } body.theme-light .estudo-btn:hover{ border-color:rgba(0,0,0,.6); }
 body.theme-light .estudo-btn.estudo-teoria.ativo{ border-color:#c24747; } body.theme-light .estudo-btn.estudo-revisar.ativo{ border-color:#b8860b; } body.theme-light .estudo-btn.estudo-avancar.ativo{ border-color:#2f8a5c; }
 .estudo-aviso{ font-size:16px; }
+
+/* v458 — botões de estudo em 14 px; enunciado e opções Certo/Errado/alternativas com a mesma fonte e o mesmo tamanho (18 px) */
+.estudo-btn, .estudo-btn.estudo-teoria, .estudo-btn.estudo-revisar, .estudo-btn.estudo-avancar{ font-size:14px; padding:7px 14px; }
+.estudo-aviso{ font-size:14px; }
+body .answer-opt .opt-text, body .ce-btn .opt-text{ font-family:inherit; font-size:18px; line-height:1.6; }
+body .answer-opt .letter, body .ce-btn .letter{ font-family:inherit; }
+body .enunciado .campo-editavel-conteudo, body .case-body .campo-editavel-conteudo{ font-family:inherit; font-size:18px; line-height:1.6; }
+
+/* v458 — botões <button> não herdam a fonte da página: Certo/Errado e alternativas usam a mesma fonte do enunciado */
+body .answer-opt, body .ce-btn, body .answer-opt .opt-text, body .ce-btn .opt-text, body .answer-opt .letter, body .ce-btn .letter{ font-family:var(--font-body); }
+body .ce-btn .letter, body .answer-opt .letter{ font-size:16px; }
