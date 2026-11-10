@@ -32,9 +32,9 @@ const ESTUDO_MARCAS = [
 ];
 function estudoSegHtml(materiaKey, uid){
   const atual = estudoMarca(materiaKey, uid);
-  return `<div class="estudo-seg" role="group" aria-label="Como estudar esta questão">` + ESTUDO_MARCAS.map(m =>
+  return `<div class="estudo-seg${avancoBloqueado() ? ' pendente' : ''}" role="group" aria-label="Como estudar esta questão">` + ESTUDO_MARCAS.map(m =>
     `<button type="button" class="estudo-btn estudo-${m.n}${atual===m.n?' ativo':''}" data-estudo-marca="${m.n}" data-uid="${esc(uid)}" aria-pressed="${atual===m.n?'true':'false'}" title="${esc(m.dica)}${atual===m.n?' (clique para desmarcar)':''}"><span aria-hidden="true">${m.ico}</span> ${m.rot}</button>`
-  ).join('') + `</div>`;
+  ).join('') + (avancoBloqueado() ? `<span class="estudo-aviso" role="status">Escolha uma opção para ir à próxima questão</span>` : '') + `</div>`;
 }
 function renderQuiz(){
   try{ if(STATE.quiz && !STATE.quiz.finished && !STATE.quiz.reaberto && typeof reconciliarProgressoComQuiz==='function') reconciliarProgressoComQuiz(STATE.quiz); }catch(_){}
@@ -242,9 +242,9 @@ function renderQuiz(){
         <div class="toolbar-grupo" role="group" aria-label="Navegar entre questões">
           ${btnBarra('btn-prev','esq','Questão anterior',{atalho:'←',off:quiz.idx===0})}
           <span class="q-jump-label" aria-live="polite">${quiz.idx+1} / ${quiz.queue.length}</span>
-          ${btnBarra('btn-next-arrow','dir','Próxima questão',{atalho:'→',off:quiz.idx===quiz.queue.length-1})}
-          ${btnBarra('btn-jump-ultima-respondida','dupla','Próxima não respondida',{atalho:'N',off:!quiz.queue.some((u,i)=>i!==quiz.idx && !quiz.respostas[u])})}
-          ${btnBarra('btn-jump-proximo-assunto','assunto','Próximo assunto',{off:idxProximoAssunto<0})}
+          ${btnBarra('btn-next-arrow','dir','Próxima questão',{atalho:'→',off:quiz.idx===quiz.queue.length-1 || avancoBloqueado()})}
+          ${btnBarra('btn-jump-ultima-respondida','dupla','Próxima não respondida',{atalho:'N',off:!quiz.queue.some((u,i)=>i!==quiz.idx && !quiz.respostas[u]) || avancoBloqueado()})}
+          ${btnBarra('btn-jump-proximo-assunto','assunto','Próximo assunto',{off:idxProximoAssunto<0 || avancoBloqueado()})}
         </div>
         <span class="toolbar-divider" role="separator"></span>
         <div class="toolbar-grupo" role="group" aria-label="Ferramentas">
@@ -506,8 +506,10 @@ function renderResolucao(q, resposta, quiz){
     ${(edicaoAtual===q.uid || typeof cartaoComparativoHtml!=='function') ? '' : cartaoComparativoHtml(q, resposta && resposta.picked)}
 `)}
   </div>
-  ${temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida" style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
-    : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}" style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>` : '')}
+  ${(() => { const bl = avancoBloqueado(), dica = bl ? ' disabled title="Escolha Estudar (teoria), Revisar (matéria) ou Concluído para continuar"' : '';
+    return temProxima ? `<button class="btn btn-gold btn-sm" id="btn-proxima-rapida"${dica} style="margin-top:16px;width:100%;justify-content:center;">Próxima questão ⏩</button>`
+    : (proximaNaoRespondidaIdx>=0 ? `<button class="btn btn-gold btn-sm" data-jump="${proximaNaoRespondidaIdx}"${dica} style="margin-top:16px;width:100%;justify-content:center;">Ir para questão ${proximaNaoRespondidaIdx+1} (não respondida) ⏩</button>`
+    : (bl ? `<button class="btn btn-gold btn-sm" disabled title="Escolha Estudar (teoria), Revisar (matéria) ou Concluído para finalizar" style="margin-top:16px;width:100%;justify-content:center;">Finalizar simulado</button>` : '')); })()}
   `;
 }
 
@@ -530,7 +532,7 @@ function pickAnswer(opt, uidClicado){
   // escolhida é que entra no histórico de chutes — e desarma pra próxima
   // finaliza sozinho assim que todas as questões da fila foram respondidas, em
   // qualquer ordem
-  if(quiz.queue.every(u=>quiz.respostas[u])){
+  if(quiz.queue.every(u=>quiz.respostas[u]) && !avancoBloqueado()){   // a última questão só encerra o simulado depois da marca (ver data-estudo-marca)
     finalizarQuiz();
     return;
   }
@@ -540,6 +542,14 @@ function pickAnswer(opt, uidClicado){
 
 
 
+// só se passa à próxima questão depois de escolher Estudar (teoria), Revisar (matéria) ou Concluído na questão já respondida
+// (voltar continua livre; simulado reaberto/revisão não exige a marca)
+function avancoBloqueado(){
+  const q = STATE.quiz;
+  if(!q || q.finished || q.reaberto) return false;
+  const uid = q.queue[q.idx];
+  return !!(uid && q.respostas && q.respostas[uid] && !estudoMarca(q.materia, uid));
+}
 function goPrev(){
   const quiz = STATE.quiz;
   if(quiz.idx>0){ chuteArmado=null; dicaChuteAberta=null; quiz.idx -= 1; salvarQuizEmAndamento(); render(); }
@@ -547,12 +557,14 @@ function goPrev(){
 // seta simples →: próxima questão da fila (respondida ou não)
 function goNext(){
   const quiz = STATE.quiz;
+  if(avancoBloqueado()) return;
   if(quiz.idx < quiz.queue.length-1){ chuteArmado=null; dicaChuteAberta=null; quiz.idx += 1; salvarQuizEmAndamento(); render(); }
 }
 // seta dupla ⏩: próxima questão NÃO respondida (depois da atual; se não houver, a primeira não respondida;
 // com tudo respondido, segue em ordem)
 function goNextNaoRespondida(){
   const quiz = STATE.quiz;
+  if(avancoBloqueado()) return;
   const livre = i => !quiz.respostas[quiz.queue[i]];
   let alvo = -1;
   for(let i=quiz.idx+1; i<quiz.queue.length; i++){ if(livre(i)){ alvo = i; break; } }
@@ -562,6 +574,7 @@ function goNextNaoRespondida(){
 }
 function goToQuestion(i){
   const quiz = STATE.quiz;
+  if(i > quiz.idx && avancoBloqueado()) return;
   if(i>=0 && i<quiz.queue.length){ chuteArmado=null; dicaChuteAberta=null; quiz.idx = i; salvarQuizEmAndamento(); render(); }
 }
 
