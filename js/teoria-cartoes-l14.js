@@ -1,4 +1,4 @@
-/* Teoria em figura — Lei 14.133 (Lei 14.133 carregada). Identificados por número + código do enunciado. */
+/* Teoria em figura — Lei 14.133 (Lei 14.133 carregada; Q73 via ext, IN SEGES 73/2022 art. 23). Identificados por número + código do enunciado. */
 TEORIA_CARTOES.push(
   { m:/14\.?133/i, n:1, h:'1umcyjh',  titulo:'Recursos de cooperação estrangeira', base:'Lei 14.133, art. 1º, § 3º', fonte:[['Lei 14.133',1]],
     regra:'Em licitações com recursos de {0|empréstimo ou doação} de agência oficial de cooperação estrangeira, podem ser admitidas {1|condições decorrentes de acordos internacionais} {2|aprovados pelo Congresso Nacional e ratificados pelo Presidente da República}.',
@@ -288,6 +288,12 @@ TEORIA_CARTOES.push(
     regra:'Quando houver a possibilidade de {0|compra ou de locação} de bens, o {1|estudo técnico preliminar} deverá considerar os {2|custos e os benefícios} de cada opção, com indicação da {3|alternativa mais vantajosa}.',
     pontos:[ { ico:'🛍️', t:'Compra ou locação', d:'as duas opções possíveis para o bem' }, { ico:'📋', t:'ETP', d:'é o documento que faz a comparação' }, { ico:'⚖️', t:'Custos e benefícios', d:'de cada opção' }, { ico:'🏆', t:'Mais vantajosa', d:'o estudo indica a alternativa mais vantajosa' } ],
     armadilha:'Presumir que a compra é sempre preferível à locação, sem a comparação no ETP.' },
+  { m:/14\.?133/i, n:73, h:'1vwgt42',  titulo:'Modo de disputa aberto: tempos da etapa de lances', base:'IN SEGES/ME 73/2022, art. 23',
+    ext:{ nome:'IN SEGES/ME nº 73/2022 (gov.br/compras), art. 23', url:'https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-seges-me-no-73-de-30-de-setembro-de-2022',
+      trecho:'No modo de disputa aberto, de que trata o inciso I do caput do art. 22, a etapa de envio de lances durará dez minutos e, após isso, será prorrogada automaticamente pelo sistema quando houver lance ofertado nos últimos dois minutos' },
+    regra:'No modo de disputa {0|aberto}, a etapa de envio de lances {1|durará dez minutos} e será {2|prorrogada automaticamente} pelo sistema quando houver lance nos {3|últimos dois minutos} da etapa.',
+    pontos:[ { ico:'📣', t:'Modo aberto', d:'inciso I do caput do art. 22 da IN' }, { ico:'⏱️', t:'Dez minutos', d:'duração da etapa de envio de lances' }, { ico:'🔁', t:'Prorrogação automática', d:'feita pelo sistema, sem ato do agente' }, { ico:'⏳', t:'Últimos dois minutos', d:'lance nesse período dispara a prorrogação' } ],
+    armadilha:'Confundir com o modo aberto e fechado, cuja etapa de lances tem duração de quinze minutos.' },
   { m:/14\.?133/i, n:74, h:'1am2lzg',  titulo:'Atestados: parcelas de maior relevância', base:'Lei 14.133, art. 67, § 1º', fonte:[['Lei 14.133',67]],
     regra:'A qualificação {0|técnico-operacional} é restrita ao rol do art. 67, e a exigência de {1|atestados} fica restrita às parcelas de {2|maior relevância ou valor significativo}, as de valor individual igual ou superior a {3|4%} do valor total estimado.',
     pontos:[ { ico:'🏭', t:'Técnico-operacional', d:'capacidade operacional da empresa' }, { ico:'📜', t:'Atestados', d:'exigência restrita a parcelas específicas' }, { ico:'🎯', t:'Relevância ou valor', d:'a lei liga os dois critérios por "ou"' }, { ico:'4️⃣', t:'4% do total', d:'valor individual mínimo de cada parcela' } ],
