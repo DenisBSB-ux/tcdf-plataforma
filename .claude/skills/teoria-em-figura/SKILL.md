@@ -70,3 +70,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - **Contratos (10/11/2026, v444):** lista de 200 padronizada e renumerada (68 repetidos; Q133 com ERROS por letra); 200 cartões (`teoria-cartoes-ctr.js`, Lei 14.133, IN 5, Decreto 44.330 e Súmulas TCU carregados; Q99 com Anexo VIII-A via ext). Sem puladas, então sem segunda busca.
 - **Direito Civil, reimportação (10/11/2026, v445):** a lista reexportada pela plataforma trouxe a Q126 com alternativas separadas (enunciado mudou); o cartão da Q126 ganhou uma segunda entrada com o código novo do enunciado, e as duas versões funcionam.
 - **Lei 14.133 (10/11/2026, v446):** lista de 232 padronizada e renumerada (13 repetidos; Q56 e Q218 reescritas); 231 cartões (`teoria-cartoes-l14.js`, só texto carregado). Sem cartão: 73.
+  - 2ª rodada Lei 14.133 (v447): +1 cartão (73, ext IN SEGES 73/2022 art. 23); 232/232.
