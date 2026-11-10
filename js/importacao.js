@@ -735,7 +735,7 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
         if(chutesOld[eq.uid]){ bucket.chutes = bucket.chutes || {}; if(!bucket.chutes[uid]) bucket.chutes[uid] = chutesOld[eq.uid]; }
         if(edOld[eq.uid] && !EDICOES_USUARIO[uid]){
           const ed = { ...edOld[eq.uid] };
-          if(opSub.descartarRes){ delete ed.r; delete ed.rf; } // usa a resolução (e o resumo flash) do arquivo
+          if(opSub.descartarRes){ delete ed.r; delete ed.rf; delete ed.rt; delete ed.rtT; } // usa a resolução (e o resumo flash) do arquivo
           if(Object.keys(ed).length) EDICOES_USUARIO[uid] = ed;
         }
         if(gabOld[eq.uid] && !GABARITOS_ALTERADOS[uid] && !opSub.descartarGab){ GABARITOS_ALTERADOS[uid] = gabOld[eq.uid]; }

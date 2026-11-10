@@ -24,10 +24,17 @@ function btnBarra(id, ico, rotulo, o={}){
   const dica = o.atalho ? `${rotulo} (${o.atalho})` : rotulo;
   return `<button type="button" class="icon-btn${o.ligado?' btn-em-uso':''}" id="${id}" aria-label="${esc(rotulo)}" title="${esc(dica)}"${o.ligado!==undefined?` aria-pressed="${o.ligado?'true':'false'}"`:''}${o.off?' disabled':''}>${icoSvg(ico)}</button>`;
 }
-function btnChuteHtml(materiaKey, uid, revelado){
-  if(!revelado) return '';
-  const marcado = chuteMarcado(materiaKey, uid);
-  return `<button type="button" class="icon-btn ${marcado?'btn-chute-ativo btn-em-uso':''}" id="btn-chute" data-uid="${esc(uid)}" aria-pressed="${marcado?'true':'false'}" aria-label="${marcado?'Desmarcar chute':'Marcar como chute'}" title="${marcado?'Desmarcar &quot;chutei essa&quot;':'Marcar que você chutou esta resposta (não afeta estatísticas de acerto)'}">${icoSvg('dado')}<span class="btn-txt">Chute${marcado?' ✓':''}</span></button>`;
+// marcas por questão: Teoria (precisa estudar a matéria), Revisar (ler o resumo ou o mapa mental) e Avançar (só responder questões); dados usados na Reta Final
+const ESTUDO_MARCAS = [
+  { n:'teoria',  ico:'📚', rot:'Teoria',  dica:'Precisa estudar a matéria (teoria) antes de avançar' },
+  { n:'revisar', ico:'🔁', rot:'Revisar', dica:'Precisa ler o resumo ou o mapa mental' },
+  { n:'avancar', ico:'⏭', rot:'Avançar', dica:'Está dominada: só responder questões' }
+];
+function estudoSegHtml(materiaKey, uid){
+  const atual = estudoMarca(materiaKey, uid);
+  return `<div class="estudo-seg" role="group" aria-label="Como estudar esta questão">` + ESTUDO_MARCAS.map(m =>
+    `<button type="button" class="estudo-btn estudo-${m.n}${atual===m.n?' ativo':''}" data-estudo-marca="${m.n}" data-uid="${esc(uid)}" aria-pressed="${atual===m.n?'true':'false'}" title="${esc(m.dica)}${atual===m.n?' (clique para desmarcar)':''}"><span aria-hidden="true">${m.ico}</span> ${m.rot}</button>`
+  ).join('') + `</div>`;
 }
 function renderQuiz(){
   try{ if(STATE.quiz && !STATE.quiz.finished && !STATE.quiz.reaberto && typeof reconciliarProgressoComQuiz==='function') reconciliarProgressoComQuiz(STATE.quiz); }catch(_){}
@@ -125,26 +132,11 @@ function renderQuiz(){
   const riscadas = (STATE.quiz.riscadas && STATE.quiz.riscadas[uidAtual]) || [];
   const gEfetivo = gabaritoEfetivo(q);
   const emEdicaoAlt = edicaoAtual === uidAtual && q.t==='MC' && q.alt;
-  // chip "🎲 chute" mostrado no lugar do botão depois que a questão já foi
-  // respondida como chute (reaproveita o mesmo histórico independente)
-  const chuteChip = chuteMarcado(quiz.materia, uidAtual)
-    ? `<span class="review-chip review-study chute-chip-inline">🎲 chute</span>` : '';
-  // botão "Chute": agora é um TOGGLE — clica em "Chute" primeiro (fica
-  // destacado/armado), depois escolhe a resposta normalmente (Certo/Errado ou
-  // uma letra); a resposta escolhida é que entra no histórico de chutes,
-  // não uma resposta sorteada
-  const chuteArmadoAqui = chuteArmado === uidAtual;
-  // sem texto no botão — só o dado 🎲 (destacado em dourado quando armado);
-  // mesmo tamanho dos demais botões de resposta (herda .ce-btn/.answer-opt)
-  const btnChutarHtml = `<button class="answer-opt ce-btn ce-chute ${chuteArmadoAqui?'armado':''}" id="btn-chute-armar" title="${chuteArmadoAqui?'Cancelar o chute':'Marcar que a próxima resposta é um chute — escolha Certo/Errado ou a alternativa normalmente em seguida'}">
-    <span class="letter">🎲</span>
-  </button>`;
-  const chuteHint = chuteArmadoAqui ? `<div class="chute-hint">🎲 Chute armado — agora escolha sua resposta</div>` : '';
   if(q.t === 'CE'){
     // modelo de layout: as duas opções ficam em linhas largas (letra C/E + texto);
     // depois de responder, a correta fica verde e a escolhida errada, vermelha
     const gCE = gEfetivo;
-    optionsHtml = chuteHint + `<div class="ce-buttons-row">` + ['Certo','Errado'].map(opt=>{
+    optionsHtml = `<div class="ce-buttons-row">` + ['Certo','Errado'].map(opt=>{
       let cls='answer-opt ce-btn ' + (opt==='Certo' ? 'ce-certo' : 'ce-errado');
       if(revelado){
         const escolhida = opt===resposta.picked;
@@ -156,9 +148,9 @@ function renderQuiz(){
       return `<button class="${cls}" data-opt="${opt}" ${revelado?'disabled':''} title="${opt} (2 cliques risca)">
         <span class="letter">${opt==='Certo'?'C':'E'}</span><span class="opt-text">${opt}</span>
       </button>`;
-    }).join('') + (revelado ? chuteChip : btnChutarHtml) + `</div>`;
+    }).join('') + `</div>`;
   } else if(q.t==='MC' && q.alt){
-    optionsHtml = chuteHint + q.alt.map((a,idx)=>{
+    optionsHtml = q.alt.map((a,idx)=>{
       const letraUp = a.letra.toUpperCase();
       const customAlt = EDICOES_USUARIO[uidAtual] && EDICOES_USUARIO[uidAtual]['alt'+idx] && hidratarImagens(limparHtmlEditado(EDICOES_USUARIO[uidAtual]['alt'+idx]));
       let textoHtml = customAlt || esc(a.texto);
@@ -183,7 +175,7 @@ function renderQuiz(){
       return `<button class="${cls}" data-opt="${esc(letraUp)}" ${revelado?'disabled':''} title="2 cliques risca esta alternativa">
         <span class="letter">${esc(letraUp)}</span> <span class="opt-text">${textoHtml}</span>
       </button>`;
-    }).join('') + (emEdicaoAlt ? '' : (revelado ? `<div class="chute-chip-row">${chuteChip}</div>` : btnChutarHtml));
+    }).join('');
   } else {
     optionsHtml = `<p style="font-size:13px;color:var(--ink-soft);padding:8px 0;">Questão sem gabarito identificado — não pontuável. Use as setas para navegar.</p>`;
   }
@@ -238,6 +230,7 @@ function renderQuiz(){
           </div>
         </div>
         <div class="answers">${optionsHtml}</div>
+        ${q.t ? estudoSegHtml(quiz.materia, uidAtual) : ''}
       </div>
       <div class="case-col-right">
         ${revelado ? renderResolucao(q, resposta, quiz) : renderResolucaoPlaceholder(q)}
@@ -256,7 +249,6 @@ function renderQuiz(){
         <span class="toolbar-divider" role="separator"></span>
         <div class="toolbar-grupo" role="group" aria-label="Ferramentas">
           ${btnBarra('btn-reset-questao','desfazer','Limpar a resposta desta questão',{off:!revelado})}
-          ${btnChuteHtml(quiz.materia, uidAtual, revelado)}
           ${btnBarra('btn-focus-toggle', STATE.focusMode?'sairFoco':'foco', STATE.focusMode?'Sair do modo foco':'Modo foco (esconde menus)',{ligado:!!STATE.focusMode})}
           ${btnBarra('btn-fullscreen', document.fullscreenElement?'minimizar':'maximizar', document.fullscreenElement?'Sair da tela cheia':'Tela cheia',{ligado:!!document.fullscreenElement})}
           ${STATE.focusMode ? btnBarra('btn-theme-toggle', STATE.theme==='light'?'lua':'sol','Alternar modo claro/escuro') : ''}
@@ -410,7 +402,14 @@ function destacarChavesNoEnunciado(html, q, onde){
 }
 // item Errado respondido: logo abaixo do enunciado corrigido (trecho riscado + correção) aparece só a "Explicação da armadilha", sob a etiqueta "Justificativa:"
 // norma alterada confirmada: a janela de justificativa abre com o texto novo (data e impacto da mudança)
+// texto da resolução editado à mão pelo usuário (campo 'rt' das edições): gera a figura e vale sobre o cartão de teoria e o texto da lista
+function textoResolucaoEditado(q){
+  const ed = q && EDICOES_USUARIO[q.uid];
+  return (ed && typeof ed.rt==='string' && ed.rt.trim()) ? ed.rt : '';
+}
 function textoResolucaoAtualizado(q){
+  const editado = textoResolucaoEditado(q);
+  if(editado) return editado;
   const base = String(limparResolucao(q.r)||'');
   if(edicaoAtual===q.uid || typeof alteracaoComTrecho!=='function') return base;
   const al = alteracaoComTrecho(q); if(!al || !al.justificativa) return base;
@@ -463,6 +462,17 @@ function campoEditavelSimples(q, campo, htmlAuto){
     ${barraSalvar}
   `;
 }
+// janela de edição: texto da resolução (📌 🔑 ⚠️ 🪤 💡, "- Letra X: …"); a figura é gerada a partir dele
+function rtEditorHtml(q){
+  const uid = q.uid;
+  const atual = textoResolucaoEditado(q) || String(limparResolucao(q.r) || '');
+  return `<div class="rt-editor">
+    <label for="rt-${esc(uid)}"><b>Texto da resolução</b> <span class="rt-ajuda">a figura é gerada a partir dele${textoResolucaoEditado(q) ? ' (texto editado por você)' : ''}</span></label>
+    <textarea id="rt-${esc(uid)}" rows="9" spellcheck="false">${esc(atual)}</textarea>
+    <div class="rt-dica">Uma linha por bloco, começando por ⚖️ 📌 🔑 ⚠️ 🪤 ou 💡 · <code>==destaque==</code> · <code>~~riscado~~</code> · alternativas: <code>- Letra B: Errada; motivo.</code> · deixe vazio e salve para voltar ao texto original da lista.</div>
+    <button type="button" class="btn-ui btn-ui-salvar" id="btn-salvar-rt" data-uid="${esc(uid)}">💾 Salvar texto</button>
+  </div>`;
+}
 function renderResolucao(q, resposta, quiz){
   const correto = resposta.correct;
   const tintClass = correto ? 'tint-correct' : 'tint-incorrect';
@@ -476,7 +486,7 @@ function renderResolucao(q, resposta, quiz){
   const palavrasChave = palavrasChaveDaRespostaCorreta(q);
   const gAlterado = gabAtivo(q.uid);
   // questão com "Teoria em figura": a figura substitui a justificativa escrita e os cartões (em edição, volta ao normal)
-  const tc = (typeof teoriaCartaoDaQuestao==='function' && typeof cartaoTeoriaHtml==='function') ? teoriaCartaoDaQuestao(q) : null;
+  const tc = (!textoResolucaoEditado(q) && typeof teoriaCartaoDaQuestao==='function' && typeof cartaoTeoriaHtml==='function') ? teoriaCartaoDaQuestao(q) : null;
   // sem cartão de teoria: a justificativa escrita vira figura (cartaoResolucaoHtml devolve '' quando não dá, e aí fica o texto)
   const tr = (!tc && typeof cartaoResolucaoHtml==='function') ? cartaoResolucaoHtml(q) : '';
   return `
@@ -491,7 +501,7 @@ function renderResolucao(q, resposta, quiz){
   </div>
   ${gAlterado ? `<div class="tendencia-alerta" style="margin-top:8px;font-size:12px;">⚠ Gabarito alterado manualmente: <b>${esc(gAlterado.original)} → ${esc(gAlterado.novo)}</b>. Motivo: ${esc(gAlterado.motivo||'—')} <span style="opacity:.7;">(${formatarDataHoraSalvamento(gAlterado.ts)})</span></div>` : ''}
   <div class="resolucao-box ${tintClass} resolucao-unica${(tc || tr) ? ' com-figura' : ''}">
-    ${(tc || tr) ? `${edicaoAtual===q.uid ? armPainelHtml(q) : ''}${tc ? cartaoTeoriaHtml(q) : tr}` : (`${armPainelHtml(q)}
+    ${(tc || tr) ? `${edicaoAtual===q.uid ? armPainelHtml(q) + rtEditorHtml(q) : ''}${tc ? cartaoTeoriaHtml(q) : tr}` : (`${armPainelHtml(q)}
     ${campoEditavelSimples(q, 'r', formatarTextoComDestaque(textoResolucaoAtualizado(q).split(/\n/).filter(l=>edicaoAtual===q.uid || !/^\s*(?:⚖|⚠\uFE0F?(?!\s*ERROS))/u.test(l)).filter(l=>{ if(edicaoAtual===q.uid) return true; const ex = explicacaoPlana(q); if(!ex || !/^\s*📌/u.test(l)) return true; const pl = l.replace(/^\s*📌\s*/u,'').replace(/==|\*\*|~~/g,'').replace(/\s+/g,' ').trim(); return pl!==ex; }).join('\n'), palavrasChave, q))}
     ${(edicaoAtual===q.uid || typeof cartaoComparativoHtml!=='function') ? '' : cartaoComparativoHtml(q, resposta && resposta.picked)}
 `)}
@@ -518,7 +528,6 @@ function pickAnswer(opt, uidClicado){
   if(dicaChuteAberta === uid) dicaChuteAberta = null;
   // se o "Chute" estava armado pra esta questão, a resposta que acabou de ser
   // escolhida é que entra no histórico de chutes — e desarma pra próxima
-  if(chuteArmado === uid){ toggleChute(quiz.materia, uid, correct); chuteArmado = null; }
   // finaliza sozinho assim que todas as questões da fila foram respondidas, em
   // qualquer ordem
   if(quiz.queue.every(u=>quiz.respostas[u])){
@@ -529,16 +538,6 @@ function pickAnswer(opt, uidClicado){
   render();
 }
 
-// botão "Chute": armar/desarmar — não responde sozinho, só marca que a
-// PRÓXIMA escolha (Certo/Errado ou uma letra) deve contar como chute
-function toggleChuteArmado(){
-  const quiz = STATE.quiz;
-  if(!quiz) return;
-  const uid = quiz.queue[quiz.idx];
-  if(quiz.respostas[uid]) return;
-  chuteArmado = (chuteArmado===uid) ? null : uid;
-  render();
-}
 
 
 function goPrev(){
@@ -775,21 +774,14 @@ function getCadernoErros(){
     .sort((a,b)=> (b.p.historico[b.p.historico.length-1] ? b.p.historico[b.p.historico.length-1].ts : 0) - (a.p.historico[a.p.historico.length-1] ? a.p.historico[a.p.historico.length-1].ts : 0));
 }
 
-// histórico independente de marcações "Chute!" — não entra nas estatísticas
-// de tentativas/acertos, só mostra onde o usuário sinalizou que respondeu
-// sem segurança no conteúdo (mesmo que tenha acertado)
-function getCadernoChutes(){
+// questões marcadas por você (Teoria / Revisar / Avançar), na matéria e no assunto escolhidos
+function getCadernoMarcas(n){
   if(!STATE.materia) return [];
-  const bucket = getBucket(STATE.materia);
   const scopeUids = scopeUidsComHistorico();
-  return Object.entries(bucket.chutes || {})
-    .filter(([uid]) => scopeUids.has(uid) && BY_UID[uid])
-    .map(([uid,c]) => ({ uid, c }))
-    .sort((a,b)=> (b.c.ts||0) - (a.c.ts||0));
+  return estudoMarcadas(STATE.materia, n).filter(e => scopeUids.has(e.uid));
 }
-
-function refazerTodasChutes(){
-  const uids = getCadernoChutes().map(e=>e.uid);
+function refazerMarcadas(n){
+  const uids = getCadernoMarcas(n).map(e=>e.uid);
   if(uids.length===0) return;
   setLocalTab(STATE.materia, 'simulado');
   STATE.quiz = { queue: shuffle(uids), idx:0, respostas:{}, finished:false, materia: STATE.materia, tema: STATE.tema, origemErros:true };
@@ -799,8 +791,8 @@ function refazerTodasChutes(){
 
 function renderErros(){
   const lista = getCadernoErros();
-  const chutes = getCadernoChutes();
-  if(lista.length===0 && chutes.length===0){
+  const marcas = ESTUDO_MARCAS.map(m => ({ ...m, itens: getCadernoMarcas(m.n) })).filter(m => m.itens.length);
+  if(lista.length===0 && marcas.length===0){
     return emptyState('🗂️','Caderno de erros vazio',`As questões que você errar em "${esc(STATE.materia||'')}" aparecem aqui automaticamente. Acerte-as novamente para removê-las da lista.`);
   }
   let html = `<div class="section-eyebrow">${esc(STATE.materia)}</div>
@@ -823,26 +815,23 @@ function renderErros(){
     <button class="btn btn-primary" id="btn-refazer-todas" style="margin-top:14px;">Refazer todas (${lista.length})</button>`;
   }
 
-  if(chutes.length){
-    html += `<h3 class="section-title" style="margin-top:${lista.length?'32px':'0'};font-size:16px;">🎲 Chutes (${chutes.length})</h3>
-    <p class="section-desc">Questões marcadas como "chutei essa" — histórico independente dos erros, útil pra ver onde a resposta certa não veio de domínio real do conteúdo.</p>
+  marcas.forEach((m, i) => {
+    html += `<h3 class="section-title" style="margin-top:${(lista.length||i)?'32px':'0'};font-size:16px;">${m.ico} ${m.rot} (${m.itens.length})</h3>
+    <p class="section-desc">${esc(m.dica)}. As marcas são suas e alimentam a aba <b>Reta Final</b>.</p>
 
-    ${chutes.map(({uid,c})=>{
+    ${m.itens.map(({uid})=>{
       const q = BY_UID[uid];
-      const statusChip = c.correct===true ? `<span class="review-chip review-know" style="margin-right:8px;">acertou</span>`
-        : c.correct===false ? `<span class="review-chip review-study" style="margin-right:8px;">errou</span>` : '';
       return `<div class="error-row">
         <span class="num">${esc(String(q.n).padStart(3,'0'))}</span>
-        ${statusChip}
         ${cobrancaTag(q) || `<span class="tag tag-cobranca-ausente" title="Esta questão ainda não tem o rótulo de tipo de cobrança (Literal, Interpretativa etc.) classificado">❔ Sem rótulo</span>`}
         <div class="summary">${esc(limparEnunciado(q.q, q.t) || q.rf || '')}</div>
-        <button class="btn btn-ghost btn-sm" data-desmarcar-chute="${esc(uid)}" title="Remover da lista de chutes">✕ Desmarcar</button>
+        <button class="btn btn-ghost btn-sm" data-desmarcar-estudo="${esc(uid)}" title="Remover a marca ${esc(m.rot)}">✕ Desmarcar</button>
         <button class="btn btn-gold btn-sm" data-refazer="${esc(uid)}">Refazer</button>
       </div>`;
     }).join('')}
 
-    <button class="btn btn-primary" id="btn-refazer-chutes" style="margin-top:14px;">Refazer todos os chutes (${chutes.length})</button>`;
-  }
+    <button class="btn btn-primary" data-refazer-marca="${m.n}" style="margin-top:14px;">Refazer todas as marcadas como ${esc(m.rot)} (${m.itens.length})</button>`;
+  });
 
   return html;
 }
