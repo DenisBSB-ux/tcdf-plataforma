@@ -24,11 +24,11 @@ function btnBarra(id, ico, rotulo, o={}){
   const dica = o.atalho ? `${rotulo} (${o.atalho})` : rotulo;
   return `<button type="button" class="icon-btn${o.ligado?' btn-em-uso':''}" id="${id}" aria-label="${esc(rotulo)}" title="${esc(dica)}"${o.ligado!==undefined?` aria-pressed="${o.ligado?'true':'false'}"`:''}${o.off?' disabled':''}>${icoSvg(ico)}</button>`;
 }
-// marcas por questão: Teoria (precisa estudar a matéria), Revisar (ler o resumo ou o mapa mental) e Avançar (só responder questões); dados usados na Reta Final
+// marcas por questão: Estudar (teoria) = precisa estudar a matéria, Revisar (matéria) = ler o resumo ou o mapa mental, Concluído = só responder questões; dados usados na Reta Final
 const ESTUDO_MARCAS = [
-  { n:'teoria',  ico:'📚', rot:'Teoria',  dica:'Precisa estudar a matéria (teoria) antes de avançar' },
-  { n:'revisar', ico:'🔁', rot:'Revisar', dica:'Precisa ler o resumo ou o mapa mental' },
-  { n:'avancar', ico:'⏭', rot:'Avançar', dica:'Está dominada: só responder questões' }
+  { n:'teoria',  ico:'📚', rot:'Estudar (teoria)',  dica:'Precisa estudar a matéria (teoria) antes de avançar' },
+  { n:'revisar', ico:'🔁', rot:'Revisar (matéria)', dica:'Precisa ler o resumo ou o mapa mental' },
+  { n:'avancar', ico:'✅', rot:'Concluído', dica:'Está dominada: só responder questões' }
 ];
 function estudoSegHtml(materiaKey, uid){
   const atual = estudoMarca(materiaKey, uid);

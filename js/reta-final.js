@@ -324,7 +324,7 @@ function retaCabecalho(dias, fase, mats){
     <div class="reta-hero-t">
       <div class="reta-kick">Revisão de reta final · prova ${esc(PROVA_TCDF.rotulo)}</div>
       <h2>Reta Final</h2>
-      <p>O app decide o que estudar hoje, em que ordem e por quanto tempo, a partir dos seus erros, das suas marcas (Teoria, Revisar, Avançar) e do que mais cai.</p>
+      <p>O app decide o que estudar hoje, em que ordem e por quanto tempo, a partir dos seus erros, das suas marcas (Estudar, Revisar, Concluído) e do que mais cai.</p>
 </div>
     <div class="reta-stats"><div><b>${erros}</b><span>erros em aberto</span></div><div><b>${vencidos}</b><span>cartões vencidos</span></div><div><b>${cart.length}</b><span>cartões no total</span></div></div>
     <ol class="reta-passos" aria-label="Fases até a prova">${passos.map((x,i) => `<li class="${i < atual ? 'ok' : (i === atual ? 'on' : '')}"><i>${i < atual ? '✓' : i+1}</i><span><b>${x[1]}</b><small>${x[2]}</small></span></li>`).join('')}</ol>
@@ -344,9 +344,9 @@ function retaCardMarcas(mats){
   const grupos = ESTUDO_MARCAS.map(m => { const porMat = {}; mats.forEach(mt => { const l = estudoMarcadas(mt, m.n); if(l.length) porMat[mt] = l.map(x => x.uid); }); return { ...m, porMat, total:Object.values(porMat).reduce((t, l) => t + l.length, 0) }; });
   const total = grupos.reduce((t, g) => t + g.total, 0);
   return `<div class="card-reta"><h3>Suas marcações <small>· ${total} questões</small></h3>
-    <p class="section-desc" style="margin:0 0 10px;">Você marca cada questão como <b>Teoria</b> (precisa estudar a matéria), <b>Revisar</b> (ler o resumo ou o mapa mental) ou <b>Avançar</b> (só responder). Teoria e Revisar sobem na fila dos cartões e viram blocos do plano.</p>
+    <p class="section-desc" style="margin:0 0 10px;">Você marca cada questão como <b>Estudar (teoria)</b> (precisa estudar a matéria), <b>Revisar (matéria)</b> (ler o resumo ou o mapa mental) ou <b>Concluído</b> (só responder). Estudar e Revisar sobem na fila dos cartões e viram blocos do plano.</p>
     <div class="reta-marcas">${grupos.map(g => `<button class="reta-marca estudo-${g.n}" data-reta-marca="${g.n}" ${g.total ? '' : 'disabled'} title="${esc(g.dica)}"><span class="mi" aria-hidden="true">${g.ico}</span><b>${g.total}</b><small>${g.rot}</small></button>`).join('')}</div>
-    ${total ? '' : '<p class="section-desc" style="margin:10px 0 0;">Nenhuma marca ainda: use os botões Teoria, Revisar e Avançar nas questões.</p>'}</div>`;
+    ${total ? '' : '<p class="section-desc" style="margin:10px 0 0;">Nenhuma marca ainda: use os botões Estudar (teoria), Revisar (matéria) e Concluído nas questões.</p>'}</div>`;
 }
 function retaHtmlHoje(mats){
   const { blocos, fase, dias } = retaPlano(mats);
@@ -365,7 +365,7 @@ function retaHtmlHoje(mats){
       <button class="btn btn-gold reta-cta" data-reta-bloco="proximo">▶ Começar o próximo bloco</button></div>
     ${retaCardMarcas(mats)}
     <div class="card-reta"><h3>Como o plano é feito</h3>
-      <p class="section-desc" style="margin:0 0 6px;">Erros que voltaram (nível e intervalo), cartões vencidos e novos conforme a fase, a sua causa de erro nº 1, as questões marcadas como Teoria e Revisar e um relâmpago com os “quase dominados”. Cada item sai da lista quando você faz.</p>
+      <p class="section-desc" style="margin:0 0 6px;">Erros que voltaram (nível e intervalo), cartões vencidos e novos conforme a fase, a sua causa de erro nº 1, as questões marcadas como Estudar e Revisar e um relâmpago com os “quase dominados”. Cada item sai da lista quando você faz.</p>
       <p class="section-desc" style="margin:0;">Os intervalos encolhem perto da prova: nenhum cartão fica mais de ⅓ do tempo que falta sem voltar.</p></div></div>`;
 }
 
@@ -516,7 +516,7 @@ function retaAnexar(){
   q('[data-reta-marca]').forEach(el => el.addEventListener('click', () => {
     const n = el.dataset.retaMarca, mats = retaMaterias(); let melhor = null;
     mats.forEach(mt => { const l = estudoMarcadas(mt, n); if(l.length && (!melhor || l.length > melhor.l.length)) melhor = { mt, l }; });
-    if(melhor) retaAbrirQuiz(melhor.mt, melhor.l.map(x => x.uid), 'Reta Final · marcadas como ' + n);
+    if(melhor) retaAbrirQuiz(melhor.mt, melhor.l.map(x => x.uid), 'Reta Final · marcadas como ' + ({ teoria:'estudar', revisar:'revisar', avancar:'concluído' }[n] || n));
   }));
   q('[data-reta-sair]').forEach(el => el.addEventListener('click', () => { STATE.retaSessao = null; render(); }));
   q('[data-reta-revelar]').forEach(el => el.addEventListener('click', () => { if(STATE.retaSessao){ STATE.retaSessao.revelado = true; render(); } }));

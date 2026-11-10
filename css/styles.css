@@ -2289,3 +2289,15 @@ body.theme-light .estudo-btn{ border-color:rgba(0,0,0,.25); }
 .reta-marca .mi{ font-size:20px; } .reta-marca b{ font-size:22px; background:none !important; } .reta-marca small{ font-size:12.5px; opacity:.8; }
 .reta-marca.estudo-teoria:not(:disabled){ border-color:#ee8f8f; } .reta-marca.estudo-revisar:not(:disabled){ border-color:#e6bb62; } .reta-marca.estudo-avancar:not(:disabled){ border-color:#74cb9f; }
 body.theme-light .reta-marca{ border-color:rgba(0,0,0,.14); background:#fff; }
+
+/* v453 — marcas Estudar/Revisar/Concluído: alinhadas ao texto da questão e com o mesmo tamanho de letra; letras do cartão harmonizadas */
+.estudo-seg{ margin:0; padding:12px 30px 16px; gap:8px 10px; }
+.estudo-seg::before{ font-size:15px; opacity:.8; margin-right:4px; }
+.estudo-btn{ font-size:15px; line-height:1.2; padding:8px 16px; }
+@media (max-width:700px){ .estudo-seg{ padding:10px 16px 14px; } }
+.cartao-teoria .ct-ponto b{ font-size:16px; }
+.cartao-teoria .ct-ponto div > span{ font-size:15px; }
+.cartao-teoria .ct-arm{ font-size:15px; }
+.cartao-teoria .ct-alt{ font-size:15px; }
+.cartao-teoria footer{ font-size:12.5px; }
+.cartao-teoria .ct-selo{ font-size:12px; }
