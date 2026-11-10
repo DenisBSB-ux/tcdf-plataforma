@@ -2314,3 +2314,17 @@ body .enunciado .campo-editavel-conteudo, body .case-body .campo-editavel-conteu
 .ce-btn .letter{ font-size:17px; }
 .resolucao-box, .resolucao-box.com-figura{ font-size:13.5pt; }
 .btn[disabled], .btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+/* v456 — fundo dos botões de estudo: Estudar (vermelho claro), Revisar (amarelo claro), Concluído (verde claro); o ativo fica mais forte, em negrito e com contorno */
+.estudo-btn{ color:#1f1d24; border-color:transparent; font-weight:500; }
+.estudo-btn.estudo-teoria{ background:#f8c9c9; }
+.estudo-btn.estudo-revisar{ background:#fbe9a8; }
+.estudo-btn.estudo-avancar{ background:#bfe8cf; }
+.estudo-btn:hover{ filter:brightness(1.05); border-color:rgba(0,0,0,.25); }
+.estudo-btn.ativo{ font-weight:800; color:#101114; box-shadow:0 0 0 2px rgba(255,255,255,.85); }
+.estudo-btn.estudo-teoria.ativo{ background:#ee8f8f; }
+.estudo-btn.estudo-revisar.ativo{ background:#efc95a; }
+.estudo-btn.estudo-avancar.ativo{ background:#74cb9f; }
+body.theme-light .estudo-btn{ border-color:transparent; }
+body.theme-light .estudo-btn.ativo{ box-shadow:0 0 0 2px rgba(0,0,0,.55); }
+.estudo-seg.pendente .estudo-btn{ border-color:#e6bb62; }
