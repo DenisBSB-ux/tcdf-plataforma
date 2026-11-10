@@ -1,4 +1,4 @@
-/* Teoria em figura — Decreto 44.330 (Decreto 44.330/2023, IN 5/2017 e Lei 14.133 carregados). Identificados por número + código do enunciado. */
+/* Teoria em figura — Decreto 44.330 (Decreto 44.330/2023, IN 5/2017 e Lei 14.133 carregados; Anexo VIII-A da IN 5 via ext). Identificados por número + código do enunciado. */
 TEORIA_CARTOES.push(
   { m:/44\.?330/i, n:1, h:'clc6w9',  titulo:'Agente de contratação x comissão', base:'Decreto 44.330, art. 5º, § 1º', fonte:[['Decreto 44.330',5]],
     regra:'Nas licitações de {0|bens ou serviços especiais}, o agente de contratação {1|poderá ser substituído} por {2|comissão de contratação} formada por, no mínimo, {3|três membros}.',
@@ -88,6 +88,12 @@ TEORIA_CARTOES.push(
     regra:'Na pesquisa de preços de serviços com {0|dedicação de mão de obra exclusiva}, observa-se como parâmetro normativo a {1|Instrução Normativa nº 5, de 26 de maio de 2017}, ou {2|outra norma que venha a substituí-la}.',
     pontos:[ { ico:'👷', t:'Mão de obra exclusiva', d:'serviços com dedicação exclusiva' }, { ico:'📘', t:'IN nº 5/2017', d:'parâmetro normativo indicado no decreto' }, { ico:'🔄', t:'Norma substituta', d:'vale a que vier a substituir a IN' } ],
     armadilha:'Dizer que a IN federal não se aplica: o decreto distrital a adota expressamente.' },
+  { m:/44\.?330/i, n:23, h:'1ntyibd',  titulo:'IMR e pagamento por resultado', base:'IN SEGES/MP 5/2017, Anexo VIII-A, item 1',
+    ext:{ nome:'IN SEGES/MP 5/2017 (atualizada), Anexo VIII-A, item 1', url:'https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-no-5-de-26-de-maio-de-2017-atualizada',
+      trecho:'poderá utilizar o Instrumento de Medição de Resultado (IMR) [...] ou outro instrumento substituto [...], devendo haver o redimensionamento no pagamento com base nos indicadores estabelecidos' },
+    regra:'A fiscalização técnica, se for o caso, {0|poderá utilizar o IMR} ou outro instrumento substituto, devendo haver o {1|redimensionamento no pagamento} com base nos {2|indicadores estabelecidos}.',
+    pontos:[ { ico:'🧭', t:'IMR ou substituto', d:'a fiscalização poderá utilizá-lo, se for o caso' }, { ico:'📉', t:'Redimensionamento', d:'o pagamento é ajustado conforme o resultado' }, { ico:'📏', t:'Indicadores', d:'base do ajuste: os indicadores estabelecidos' } ],
+    armadilha:'Pagar o valor total sem olhar o resultado ou a qualidade mínima exigida.' },
   { m:/44\.?330/i, n:24, h:'qr8nek',  titulo:'Fiscalização setorial: execução em vários locais', base:'Decreto 44.330, art. 21, IV', fonte:[['Decreto 44.330',21]],
     regra:'Na {0|fiscalização setorial}, acompanha-se a execução nos aspectos {1|técnicos ou administrativos} quando a prestação ocorrer concomitantemente em {2|setores distintos ou em unidades desconcentradas}.',
     pontos:[ { ico:'📍', t:'Fiscalização setorial', d:'acompanha a execução no local' }, { ico:'🔀', t:'Técnico ou administrativo', d:'os dois aspectos são possíveis' }, { ico:'🏬', t:'Unidades desconcentradas', d:'ou setores distintos do órgão' } ],
