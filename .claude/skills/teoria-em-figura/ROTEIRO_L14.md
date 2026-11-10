@@ -1,0 +1,8 @@
+# Roteiro: "Teoria em figura" — Lei 14.133 (nome na plataforma: 'Lei 14.133 220')
+Leia antes ROTEIRO.md, ROTEIRO_EXT.md, ROTEIRO_RJU.md, ROTEIRO_ADM.md e ROTEIRO_CTR.md. Diferenças:
+- Lista: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/l14/padrao.md (232 questões, numeração única 1..232: `pos` = número do cabeçalho). Índice: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/figuras/l14_index.json.
+- `m:/14\.?133/i`. Validação: `MATERIA='Lei 14.133 220' LISTA=<lista acima> MAXPOS=232 node .claude/skills/teoria-em-figura/validar.js <arquivo>`.
+- Texto CARREGADO: Lei 14.133 (231 questões citam; leia com `node .claude/skills/formatar-resolucoes/lei.js "Lei 14.133" N`), mais IN 5, Decreto 44.330, CF, Súmulas TCU (`"SUM TCU"`). Use `fonte:[['Lei 14.133',N]]`. Acórdãos/jurisprudência: só via `ext` com texto literal (Câmara/Senado; o Planalto bloqueia; gov.br/compras; TCU se acessível).
+- O texto carregado manda (a lei traz alterações e valores atualizados por decreto: não afirme valores de limite sem conferir): divergência da resolução da lista → siga o texto e registre 'divergência: pos N — motivo' no .skip.txt; gabarito em conflito → cartão neutro. Questões "Conferir o gabarito" (74, 78, 102, 104, 107, 117, 152, 155, 156, 159, 168, 172, 188, 189): cartão neutro.
+- Múltipla escolha (29): o cartão trata da regra da alternativa correta; as alternativas já são justificadas pela plataforma.
+- Pule (motivo em .skip.txt) se não houver fonte literal confiável. Um cartão por questão, com título e foco próprios (muitas repetem o tema: varie o foco).
