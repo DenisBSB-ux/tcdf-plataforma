@@ -2328,3 +2328,13 @@ body .enunciado .campo-editavel-conteudo, body .case-body .campo-editavel-conteu
 body.theme-light .estudo-btn{ border-color:transparent; }
 body.theme-light .estudo-btn.ativo{ box-shadow:0 0 0 2px rgba(0,0,0,.55); }
 .estudo-seg.pendente .estudo-btn{ border-color:#e6bb62; }
+
+/* v457 — botões de estudo sem cor de fundo, letra do tamanho do enunciado (18 px); o escolhido fica em negrito e com borda colorida */
+.estudo-btn, .estudo-btn.estudo-teoria, .estudo-btn.estudo-revisar, .estudo-btn.estudo-avancar{ background:transparent; color:inherit; font-size:18px; font-weight:400; border:1px solid rgba(255,255,255,.28); }
+.estudo-seg::before{ font-size:18px; }
+.estudo-btn:hover{ filter:none; border-color:rgba(255,255,255,.6); }
+.estudo-btn.ativo, .estudo-btn.estudo-teoria.ativo, .estudo-btn.estudo-revisar.ativo, .estudo-btn.estudo-avancar.ativo{ background:transparent; color:inherit; font-weight:800; box-shadow:none; border-width:2px; }
+.estudo-btn.estudo-teoria.ativo{ border-color:#ee8f8f; } .estudo-btn.estudo-revisar.ativo{ border-color:#e6bb62; } .estudo-btn.estudo-avancar.ativo{ border-color:#74cb9f; }
+body.theme-light .estudo-btn{ border-color:rgba(0,0,0,.3); } body.theme-light .estudo-btn:hover{ border-color:rgba(0,0,0,.6); }
+body.theme-light .estudo-btn.estudo-teoria.ativo{ border-color:#c24747; } body.theme-light .estudo-btn.estudo-revisar.ativo{ border-color:#b8860b; } body.theme-light .estudo-btn.estudo-avancar.ativo{ border-color:#2f8a5c; }
+.estudo-aviso{ font-size:16px; }
