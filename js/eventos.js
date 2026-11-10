@@ -62,6 +62,17 @@ function attachHandlers(){
   const btnBaixarAuditoria = document.getElementById('btn-baixar-auditoria');
   if(btnBaixarAuditoria) btnBaixarAuditoria.addEventListener('click', downloadRelatorioAuditoria);
 
+  const btnSalvarRt = document.getElementById('btn-salvar-rt');
+  if(btnSalvarRt) btnSalvarRt.addEventListener('click', ()=>{
+    const uid = btnSalvarRt.dataset.uid, ta = document.getElementById('rt-'+uid); if(!ta) return;
+    const txt = ta.value.replace(/\r/g,'').trim();
+    if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
+    EDICOES_USUARIO[uid].rt = txt;          // vazio = volta ao texto da lista (a string vazia também vence a cópia de outro aparelho)
+    EDICOES_USUARIO[uid].rtT = Date.now();
+    salvarEdicoesUsuario();
+    const qq = BY_UID[uid]; if(qq){ marcarProgressoSujo(qq.materia); pushToCloud(); }
+    edicaoAtual = null; STATE.armEditUid = null; render();
+  });
   const chkBackupAuto = document.getElementById('chk-backup-arquivo-auto');
   if(chkBackupAuto) chkBackupAuto.addEventListener('change', ()=>{ definirBackupArquivoAuto(chkBackupAuto.checked); if(chkBackupAuto.checked) backupArquivoAutomatico(); });
   const btnExportarProgresso = document.getElementById('btn-exportar-progresso');
@@ -234,8 +245,6 @@ function attachHandlers(){
       toggleRiscarAlternativa(el.dataset.opt);
     });
   });
-  const btnChutarArmar = document.getElementById('btn-chute-armar');
-  if(btnChutarArmar) btnChutarArmar.addEventListener('click', toggleChuteArmado);
   const btnPrev = document.getElementById('btn-prev');
   if(btnPrev) btnPrev.addEventListener('click', goPrev);
   const btnPrevTop = document.getElementById('btn-prev-top');
@@ -359,22 +368,24 @@ function attachHandlers(){
   });
   const btnResetQuestao = document.getElementById('btn-reset-questao');
   if(btnResetQuestao) btnResetQuestao.addEventListener('click', resetQuestaoAtual);
-  const btnChute = document.getElementById('btn-chute');
-  if(btnChute) btnChute.addEventListener('click', ()=>{
-    const uid = btnChute.dataset.uid;
-    const quiz = STATE.quiz;
-    const resposta = quiz && quiz.respostas[uid];
-    toggleChute(quiz.materia, uid, resposta ? resposta.correct : null);
-    render();
-  });
-  root.querySelectorAll('[data-desmarcar-chute]').forEach(el=>{
+  root.querySelectorAll('[data-estudo-marca]').forEach(el=>{
     el.addEventListener('click', ()=>{
-      toggleChute(STATE.materia, el.dataset.desmarcarChute);
+      const quiz = STATE.quiz; if(!quiz) return;
+      definirEstudoMarca(quiz.materia, el.dataset.uid, el.dataset.estudoMarca);
       render();
     });
   });
-  const btnRefazerChutes = document.getElementById('btn-refazer-chutes');
-  if(btnRefazerChutes) btnRefazerChutes.addEventListener('click', refazerTodasChutes);
+  root.querySelectorAll('[data-desmarcar-estudo]').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const uid = el.dataset.desmarcarEstudo, q = BY_UID[uid]; if(!q) return;
+      const atual = estudoMarca(STATE.materia, uid);
+      if(atual) definirEstudoMarca(STATE.materia, uid, atual);   // clicar na marca atual a remove
+      render();
+    });
+  });
+  root.querySelectorAll('[data-refazer-marca]').forEach(el=>{
+    el.addEventListener('click', ()=> refazerMarcadas(el.dataset.refazerMarca));
+  });
   const btnResetSimulado = document.getElementById('btn-reset-simulado');
   if(btnResetSimulado) btnResetSimulado.addEventListener('click', resetSimuladoAtual);
   const btnAbandonar = document.getElementById('btn-abandonar');

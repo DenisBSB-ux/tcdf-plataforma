@@ -274,6 +274,17 @@ function normalizarBucketProgresso(b){
   Object.defineProperty(b,'__norm',{ value:true, enumerable:false, configurable:true });
   return b;
 }
+// o botão "Chute" saiu: cada questão marcada como chute vira marca 'teoria' (as estatísticas de chute passam a ser as de Teoria)
+function migrarChutesParaEstudo(materiaKey, b){
+  const ch = b && b.chutes; if(!ch) return;
+  const uids = Object.keys(ch); if(!uids.length) return;
+  uids.forEach(uid=>{
+    const c = ch[uid], ex = b.estudo[uid];
+    if(!ex || !ex.n) b.estudo[uid] = { n:'teoria', t:(c && c.ts) || Date.now(), o:'chute' };
+  });
+  b.chutes = {};
+  try{ marcarProgressoSujo(materiaKey); }catch(_){}
+}
 function getBucket(materiaKey){
   if(!PROGRESS[materiaKey]) PROGRESS[materiaKey] = { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{} };
   normalizarBucketProgresso(PROGRESS[materiaKey]);
@@ -284,6 +295,10 @@ function getBucket(materiaKey){
   if(!PROGRESS[materiaKey].chutes) PROGRESS[materiaKey].chutes = {};
   // "srs": agenda de revisão dos cartões de lacuna (Reta Final): { uid: { i:intervalo(dias), e:facilidade, r:acertos seguidos, l:lapsos, d:próxima revisão, t:última } }
   if(!PROGRESS[materiaKey].srs) PROGRESS[materiaKey].srs = {};
+  // "estudo": marca por questão — 'teoria' (precisa estudar a matéria), 'revisar' (ler o resumo/mapa mental) ou 'avancar' (só responder): { uid: { n, t } }
+  // n vazio = marca removida (o carimbo t sincroniza a remoção). Usado na aba Reta Final.
+  if(!PROGRESS[materiaKey].estudo) PROGRESS[materiaKey].estudo = {};
+  migrarChutesParaEstudo(materiaKey, PROGRESS[materiaKey]);
   return PROGRESS[materiaKey];
 }
 

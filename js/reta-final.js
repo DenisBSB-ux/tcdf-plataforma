@@ -1,7 +1,7 @@
 /* ============ RETA FINAL ============
    Aba única de revisão de reta final: Hoje (plano do dia), Caderno de erros (por causa e nível), Cartões de lacuna
    (repetição espaçada comprimida até a prova), Prontidão (mapa por assunto) e Cola de véspera (folha para imprimir).
-   Usa só dados que já existem: histórico de respostas (perguntas), chutes, classificação de armadilha, teoria em figura
+   Usa só dados que já existem: histórico de respostas (perguntas), marcas Teoria/Revisar/Avançar, classificação de armadilha, teoria em figura
    e resolução em figura. A agenda dos cartões fica em bucket.srs[uid] (sincroniza entre aparelhos; ver mergeBucket). */
 
 /* ---------- lógica pura (testada em tests/geral.test.js) ---------- */
@@ -85,6 +85,8 @@ function retaQuestoes(materias){
   const set = new Set(materias);
   return ALL_QUESTIONS.filter(q => set.has(q.materia) && !q.duplicataOculta && (q.t === 'CE' || q.t === 'MC'));
 }
+// peso da marca do aluno: Teoria sobe na fila, Revisar sobe um pouco, Avançar desce
+function retaPesoMarca(mat, uid){ const n = estudoMarca(mat, uid); return n === 'teoria' ? 3 : (n === 'revisar' ? 2 : (n === 'avancar' ? -1 : 0)); }
 function retaPeso(q){ const n = String(q.nv||''); return /alta/i.test(n) ? 3 : (/m[eé]dia/i.test(n) ? 2 : 1); }
 function retaNomeCausa(q){
   if(q.t !== 'CE') return 'Alternativa trocada';
@@ -96,7 +98,7 @@ function retaNomeCausa(q){
 
 // cartão de lacuna da questão (ou null): a figura de teoria quando existe; senão a resolução em figura
 function retaCloze(q){
-  let c = null; try{ c = teoriaCartaoDaQuestao(q); }catch(_){}
+  let c = null; try{ c = textoResolucaoEditado(q) ? null : teoriaCartaoDaQuestao(q); }catch(_){}
   if(c){
     const partes = retaPartesDeRegra(c.regra);
     if(partes.some(p => p.l)) return { partes, titulo:c.titulo, figura:() => cartaoTeoriaHtml(q) };
@@ -131,7 +133,7 @@ function retaErros(materias){
     Object.entries(b.perguntas || {}).forEach(([uid, p]) => {
       const q = BY_UID[uid]; if(!q || q.materia !== m || q.duplicataOculta) return;
       const n = retaNivelErro(p); if(!n) return;
-      out.push({ uid, q, mat:m, nivel:n.nivel, reinc:n.reinc, ultimoTs:n.ultimoTs, causa:retaNomeCausa(q), chute:!!(b.chutes && b.chutes[uid]) });
+      out.push({ uid, q, mat:m, nivel:n.nivel, reinc:n.reinc, ultimoTs:n.ultimoTs, causa:retaNomeCausa(q), chute:chuteMarcado(m, uid) });
     });
   });
   return out;
@@ -173,7 +175,7 @@ function retaPlano(materias){
     const limiteNovos = fase.id === 'leve' ? 0 : (fase.id === 'fixar' ? 5 : 10);
     const novosHoje = cartoes.filter(c => { const s = retaAgendaDe(c.uid, c.mat); return s && s.t >= hoje0 && (s.r||0) + (s.l||0) <= 1 && s.l === 0 && s.r === 1; }).length;
     const novosPlano = limiteNovos ? Math.max(0, limiteNovos - novosHoje) : 0;
-    const peso = c => (retaErrosPorUid(erros, c.uid) ? 4 : 0) + retaPeso(c.q);
+    const peso = c => (retaErrosPorUid(erros, c.uid) ? 4 : 0) + retaPeso(c.q) + retaPesoMarca(c.mat, c.uid);
     const fila = vencidos.sort((a,b) => peso(b) - peso(a)).slice(0, 30).concat(novos.sort((a,b) => peso(b) - peso(a)).slice(0, novosPlano));
     if(fila.length || feitosCart){
       blocos.push({ id:'cartoes', ico:'🃏', titulo:'Cartões de lacuna', sub: vencidos.length + ' vencidos' + (novosPlano ? ' · ' + Math.min(novosPlano, novos.length) + ' novos' : ''), min:Math.max(3, Math.ceil(fila.length*0.4)), total:fila.length + feitosCart, feitos:feitosCart,
@@ -192,13 +194,14 @@ function retaPlano(materias){
           feitos:escolha.filter(x => x.p && (((x.p.historico||[]).slice(-1)[0]||{}).ts||0) >= hoje0).length,
           alvo:{ tipo:'quiz', materia:doMesmo[0], uids:escolha.map(x => x.q.uid), rotulo:'Reta Final · pegadinha ' + topCausa[0] } });
       }
-      // 4) chutes
-      const chutes = [];
-      materias.forEach(m => Object.entries(getBucket(m).chutes || {}).forEach(([uid, c]) => { const q = BY_UID[uid]; if(q && q.materia === m && !q.duplicataOculta) chutes.push({ uid, q, mat:m, ts:(c&&c.ts)||0, feito:(((getBucket(m).perguntas||{})[uid]||{}).historico||[]).some(h => (h.ts||0) >= hoje0) }); }));
-      const ch = chutes.sort((a,b) => (a.ts - b.ts)).slice(0, 5);
-      if(ch.length){ const topC = materiaMaisFrequente(ch);
-        blocos.push({ id:'chutes', ico:'🎲', titulo:'Chutes para confirmar', sub: ch.length + ' questões · acerto sem domínio', min:Math.ceil(ch.length*1.2), total:ch.length, feitos:ch.filter(x => x.feito).length,
-          alvo:{ tipo:'quiz', materia:topC[0], uids:ch.filter(x => x.mat === topC[0]).map(x => x.uid), rotulo:'Reta Final · chutes' } }); }
+      // 4) suas marcações: Teoria (estudar a matéria) e Revisar (resumo ou mapa mental); as mais antigas primeiro
+      const marcadas = (n) => { const l = []; materias.forEach(m => estudoMarcadas(m, n).forEach(x => l.push({ uid:x.uid, mat:m, t:x.t, feito:((((getBucket(m).perguntas||{})[x.uid]||{}).historico)||[]).some(h => (h.ts||0) >= hoje0) }))); return l.sort((a,b) => a.t - b.t).slice(0, 6); };
+      [['teoria','📚','Teoria para estudar','estudar a matéria e refazer'], ['revisar','🔁','Resumo e mapa mental','ler o resumo ou o mapa mental e refazer']].forEach(([n, ico, titulo, sub]) => {
+        const l = marcadas(n); if(!l.length) return;
+        const top = materiaMaisFrequente(l);
+        blocos.push({ id:'marca-' + n, ico, titulo, sub: l.length + ' questões marcadas · ' + sub, min:Math.ceil(l.length*1.5), total:l.length, feitos:l.filter(x => x.feito).length,
+          alvo:{ tipo:'quiz', materia:top[0], uids:l.filter(x => x.mat === top[0]).map(x => x.uid), rotulo:'Reta Final · ' + titulo.toLowerCase() } });
+      });
     }
     // 5) relâmpago de 5 minutos: erros "quase dominados"
     const quase = erros.filter(e => e.nivel === 2).sort((a,b) => a.ultimoTs - b.ultimoTs).slice(0, 10);
@@ -212,7 +215,7 @@ function retaPlano(materias){
 function retaErrosPorUid(erros, uid){ return erros.some(e => e.uid === uid); }
 
 /* ---------- prontidão ---------- */
-// chance estimada de acertar: acerto suavizado, dando mais peso às respostas recentes; chute acertado vale meio acerto
+// chance estimada de acertar: acerto suavizado, dando mais peso às respostas recentes; acerto em questão marcada como Teoria vale meio acerto
 function retaChance(p, chute){
   if(!p || !p.tentativas) return null;
   const h = Array.isArray(p.historico) ? p.historico.slice(-6) : [];
@@ -229,7 +232,7 @@ function retaProntidao(materias){
     retaQuestoes([m]).forEach(q => {
       const t = q.tema || 'Geral'; const o = porTema[t] || (porTema[t] = { tema:t, mat:m, total:0, resp:0, soma:0, peso:0 });
       const w = retaPeso(q); o.total++; o.peso += w;
-      const c = retaChance((b.perguntas||{})[q.uid], !!(b.chutes && b.chutes[q.uid]));
+      const c = retaChance((b.perguntas||{})[q.uid], chuteMarcado(q.materia, q.uid));
       if(c !== null){ o.resp++; o.soma += c * w; }
     });
     const temas = Object.values(porTema).map(o => ({ ...o, chance: o.resp ? o.soma / Math.max(1e-9, retaPesoResp(m, o.tema)) : null, cobertura: o.resp / Math.max(1, o.total) }));
@@ -260,7 +263,7 @@ function retaPontos(linhas){
 function retaCola(mat){
   const b = getBucket(mat);
   const erros = retaErros([mat]).filter(e => e.nivel < 3).sort((a,b2) => (b2.reinc - a.reinc) || (retaPeso(b2.q) - retaPeso(a.q)));
-  const chutes = Object.keys(b.chutes || {}).map(u => BY_UID[u]).filter(q => q && q.materia === mat);
+  const chutes = estudoMarcadas(mat, 'teoria').map(x => BY_UID[x.uid]).filter(Boolean);
   const linhas = q => String(textoResolucaoAtualizado(q) || '').split(/\n/).map(l => l.trim()).filter(Boolean);
   const pega = (q, re) => { const l = linhas(q).find(x => re.test(x)); return l ? _crLimpa(l.replace(re, '')) : ''; };
   const uniq = arr => { const s = new Set(); return arr.filter(x => x && !s.has(x) && s.add(x)); };
@@ -321,7 +324,7 @@ function retaCabecalho(dias, fase, mats){
     <div class="reta-hero-t">
       <div class="reta-kick">Revisão de reta final · prova ${esc(PROVA_TCDF.rotulo)}</div>
       <h2>Reta Final</h2>
-      <p>O app decide o que estudar hoje, em que ordem e por quanto tempo, a partir dos seus erros, chutes e do que mais cai.</p>
+      <p>O app decide o que estudar hoje, em que ordem e por quanto tempo, a partir dos seus erros, das suas marcas (Teoria, Revisar, Avançar) e do que mais cai.</p>
 </div>
     <div class="reta-stats"><div><b>${erros}</b><span>erros em aberto</span></div><div><b>${vencidos}</b><span>cartões vencidos</span></div><div><b>${cart.length}</b><span>cartões no total</span></div></div>
     <ol class="reta-passos" aria-label="Fases até a prova">${passos.map((x,i) => `<li class="${i < atual ? 'ok' : (i === atual ? 'on' : '')}"><i>${i < atual ? '✓' : i+1}</i><span><b>${x[1]}</b><small>${x[2]}</small></span></li>`).join('')}</ol>
@@ -333,9 +336,18 @@ function retaAbas(){
   return `<nav class="reta-abas" role="tablist" aria-label="Seções da Reta Final">${abas.map(x => `<button role="tab" aria-selected="${a===x[0]}" class="${a===x[0]?'on':''}" data-reta-aba="${x[0]}"><i aria-hidden="true">${x[1]}</i><span>${x[2]}</span></button>`).join('')}</nav>
   <div class="reta-escopo"><span class="reta-escopo-rot">Escopo</span>
     <div class="reta-seg" role="group" aria-label="Escopo"><button class="${STATE.retaEscopo==='materia'?'':'on'}" data-reta-escopo="todas">🌐 Todas as matérias</button><button class="${STATE.retaEscopo==='materia'?'on':''}" data-reta-escopo="materia">📚 ${esc(STATE.materia||'Esta matéria')}</button></div>
-    <span class="reta-escopo-links"><button data-reta-classico="erros" title="A lista simples de erros e chutes desta matéria">Lista clássica de erros</button><button data-reta-classico="flashcards" title="Os flashcards de resumo desta matéria">Flashcards de resumo</button></span></div>`;
+    <span class="reta-escopo-links"><button data-reta-classico="erros" title="A lista simples de erros e marcas desta matéria">Lista clássica de erros</button><button data-reta-classico="flashcards" title="Os flashcards de resumo desta matéria">Flashcards de resumo</button></span></div>`;
 }
 
+// resumo das marcas do aluno (Teoria / Revisar / Avançar) no escopo atual, com acesso direto a cada grupo
+function retaCardMarcas(mats){
+  const grupos = ESTUDO_MARCAS.map(m => { const porMat = {}; mats.forEach(mt => { const l = estudoMarcadas(mt, m.n); if(l.length) porMat[mt] = l.map(x => x.uid); }); return { ...m, porMat, total:Object.values(porMat).reduce((t, l) => t + l.length, 0) }; });
+  const total = grupos.reduce((t, g) => t + g.total, 0);
+  return `<div class="card-reta"><h3>Suas marcações <small>· ${total} questões</small></h3>
+    <p class="section-desc" style="margin:0 0 10px;">Você marca cada questão como <b>Teoria</b> (precisa estudar a matéria), <b>Revisar</b> (ler o resumo ou o mapa mental) ou <b>Avançar</b> (só responder). Teoria e Revisar sobem na fila dos cartões e viram blocos do plano.</p>
+    <div class="reta-marcas">${grupos.map(g => `<button class="reta-marca estudo-${g.n}" data-reta-marca="${g.n}" ${g.total ? '' : 'disabled'} title="${esc(g.dica)}"><span class="mi" aria-hidden="true">${g.ico}</span><b>${g.total}</b><small>${g.rot}</small></button>`).join('')}</div>
+    ${total ? '' : '<p class="section-desc" style="margin:10px 0 0;">Nenhuma marca ainda: use os botões Teoria, Revisar e Avançar nas questões.</p>'}</div>`;
+}
 function retaHtmlHoje(mats){
   const { blocos, fase, dias } = retaPlano(mats);
   const total = blocos.reduce((s,b) => s + b.min, 0), feitoMin = blocos.filter(b => b.feito).reduce((s,b) => s + b.min, 0);
@@ -343,7 +355,7 @@ function retaHtmlHoje(mats){
   if(fase.id === 'dia') return `<div class="card-reta"><h3>🍀 Dia da prova</h3><p class="section-desc">Hoje não se estuda matéria nova. Respire, revise só a cola de véspera se precisar e confie no que já fez.</p><button class="btn btn-gold" data-reta-aba="vespera">Abrir a cola de véspera</button></div>`;
   if(fase.id === 'pos') return `<div class="card-reta"><h3>Prova concluída</h3><p class="section-desc">A Reta Final termina na data da prova. Os cartões e erros continuam disponíveis nas outras abas.</p></div>`;
   if(!blocos.length) return `<div class="card-reta"><h3>Nada vencido hoje 🎉</h3><p class="section-desc">Você está em dia com os erros e cartões deste escopo. Use a aba <b>Cartões</b> para antecipar revisões ou a <b>Prontidão</b> para ver onde ainda dá para ganhar pontos.</p></div>`;
-  const dicaFase = { cobrir:'Cobrir lacunas: amplie o que ainda não viu e corrija os erros novos.', fixar:'Fixar: poucos assuntos novos; foco em erros, cartões vencidos e chutes.', leve:'Leve: sem matéria nova. Cartões já vistos e a cola de véspera.' }[fase.id] || '';
+  const dicaFase = { cobrir:'Cobrir lacunas: amplie o que ainda não viu e corrija os erros novos.', fixar:'Fixar: poucos assuntos novos; foco em erros, cartões vencidos e as suas marcas.', leve:'Leve: sem matéria nova. Cartões já vistos e a cola de véspera.' }[fase.id] || '';
   return `<div class="reta-grade">
     <div class="card-reta"><h3>Plano de hoje <small>· ${retaFmtMin(total)}</small></h3>
       <p class="section-desc" style="margin:0 0 10px;">${esc(dicaFase)}</p>
@@ -351,8 +363,9 @@ function retaHtmlHoje(mats){
       <div class="reta-barra-leg"><span>${blocos.filter(b=>b.feito).length} de ${blocos.length} blocos</span><span>${retaFmtMin(Math.max(0,total-feitoMin))} restantes</span></div>
       <ul class="reta-plano">${blocos.map(b => `<li class="${b.feito?'ok':''}"><span class="reta-ico" aria-hidden="true">${b.feito?'✓':b.ico}</span><div class="t"><b>${esc(b.titulo)}</b><small>${esc(b.sub)}</small><div class="reta-mini" title="${b.feitos} de ${b.total}"><i style="width:${b.total?Math.round(100*Math.min(1,b.feitos/b.total)):0}%"></i></div></div><div class="reta-lado"><span class="min">⏱ ${retaFmtMin(b.min)}</span><button class="btn btn-sm ${b.feito?'':'btn-gold'}" data-reta-bloco="${b.id}">${b.feito?'Refazer':'Começar'}</button></div></li>`).join('')}</ul>
       <button class="btn btn-gold reta-cta" data-reta-bloco="proximo">▶ Começar o próximo bloco</button></div>
+    ${retaCardMarcas(mats)}
     <div class="card-reta"><h3>Como o plano é feito</h3>
-      <p class="section-desc" style="margin:0 0 6px;">Erros que voltaram (nível e intervalo), cartões vencidos e novos conforme a fase, a sua causa de erro nº 1, chutes e um relâmpago com os “quase dominados”. Cada item sai da lista quando você faz.</p>
+      <p class="section-desc" style="margin:0 0 6px;">Erros que voltaram (nível e intervalo), cartões vencidos e novos conforme a fase, a sua causa de erro nº 1, as questões marcadas como Teoria e Revisar e um relâmpago com os “quase dominados”. Cada item sai da lista quando você faz.</p>
       <p class="section-desc" style="margin:0;">Os intervalos encolhem perto da prova: nenhum cartão fica mais de ⅓ do tempo que falta sem voltar.</p></div></div>`;
 }
 
@@ -368,7 +381,7 @@ function retaHtmlErros(mats){
   const niveis = [0,1,2,3].map(n => erros.filter(e => e.nivel === n).length);
   let lista = erros;
   if(filtro === 'reinc') lista = erros.filter(e => e.reinc >= 2 && e.nivel < 3);
-  else if(filtro === 'chutes') lista = erros.filter(e => e.chute);
+  else if(filtro === 'teoria') lista = erros.filter(e => e.chute);
   else if(filtro === 'dominados') lista = erros.filter(e => e.nivel === 3);
   else if(/^causa:/.test(filtro)) lista = ativos.filter(e => e.causa === filtro.slice(6));
   else lista = ativos;
@@ -379,14 +392,14 @@ function retaHtmlErros(mats){
       ${causas.map(([c,n],i) => `<div class="reta-causa" data-reta-filtro="causa:${esc(c)}" title="Filtrar por esta causa"><span>${esc(c)}</span><div class="b"><i style="width:${Math.max(6,Math.round(100*n/maxC))}%;background:${cores[i%cores.length]}"></i></div><b>${Math.round(100*n/totalC)}%</b></div>`).join('')}</div>
     <div class="card-reta"><h3>Níveis de domínio</h3><p class="section-desc" style="margin:0 0 8px;">O erro só sai depois de 3 acertos espaçados (≥ 20 h). Cada erro volta ao início e conta como reincidência.</p>
       <div class="reta-niveis">${RETA_NIVEIS.map((n,i) => `<span class="cx ${n.cls}">${n.ico} ${n.n} · ${niveis[i]}</span>`).join('')}</div>
-      <div class="reta-filtros">${chip('todos','Em aberto',ativos.length)}${chip('reinc','Reincidentes',erros.filter(e=>e.reinc>=2&&e.nivel<3).length)}${chip('chutes','Chutes',erros.filter(e=>e.chute).length)}${chip('dominados','Dominados',niveis[3])}</div></div></div>
+      <div class="reta-filtros">${chip('todos','Em aberto',ativos.length)}${chip('reinc','Reincidentes',erros.filter(e=>e.reinc>=2&&e.nivel<3).length)}${chip('teoria','Teoria',erros.filter(e=>e.chute).length)}${chip('dominados','Dominados',niveis[3])}</div></div></div>
     <div class="card-reta" style="margin-top:14px;"><h3>Fila ${esc(filtro==='todos'?'':'· ' + filtro.replace(/^causa:/,''))}</h3>
       ${lista.length ? lista.map(e => retaLinhaErro(e)).join('') : '<p class="section-desc">Nada neste filtro.</p>'}
       ${lista.length > 1 && lista.every(e => e.mat === lista[0].mat) ? `<button class="btn btn-primary" data-reta-treino="${esc(lista.map(e=>e.uid).join(','))}" data-reta-materia="${esc(lista[0].mat)}" style="margin-top:10px;">Refazer estes ${lista.length}</button>` : ''}</div>`;
 }
 function retaLinhaErro(e){
   const n = RETA_NIVEIS[e.nivel], q = e.q;
-  const fig = (()=>{ try{ return (teoriaCartaoDaQuestao(q) ? cartaoTeoriaHtml(q) : (typeof cartaoResolucaoHtml==='function' ? cartaoResolucaoHtml(q) : '')); }catch(_){ return ''; } })();
+  const fig = (()=>{ try{ return ((!textoResolucaoEditado(q) && teoriaCartaoDaQuestao(q)) ? cartaoTeoriaHtml(q) : (typeof cartaoResolucaoHtml==='function' ? cartaoResolucaoHtml(q) : '')); }catch(_){ return ''; } })();
   const aberto = STATE.retaFigura === e.uid;
   return `<div class="reta-erro"><div class="reta-erro-cab"><span class="cx ${n.cls}">${n.ico} ${n.n}</span>${e.reinc>=2?`<span class="cx rr">reincidente ×${e.reinc}</span>`:''}<span class="chip">${esc(e.mat)}${q.tema?' · '+esc(q.tema):''}</span><span class="chip">${esc(e.causa)}</span>${e.chute?'<span class="chip">🎲 chute</span>':''}</div>
     <p>${esc(limparEnunciado(q.q, q.t) || '')}</p>
@@ -420,12 +433,12 @@ function retaHtmlCartoes(mats){
   const vencidos = cart.filter(c => { const x = retaAgendaDe(c.uid, c.mat); return x && x.d <= agora; });
   const novos = cart.filter(c => !retaAgendaDe(c.uid, c.mat));
   const fracos = cart.filter(c => retaErrosPorUidMat(c.uid, c.mat));
-  const chutes = cart.filter(c => (getBucket(c.mat).chutes||{})[c.uid]);
+  const chutes = cart.filter(c => chuteMarcado(c.mat, c.uid));
   const deck = (id, ico, txt, lista) => `<button class="reta-deck" data-reta-deck="${id}" ${lista.length?'':'disabled'}><b>${ico} ${txt}</b><span>${lista.length} cartões</span></button>`;
   const porMat = {}; cart.forEach(c => { porMat[c.mat] = (porMat[c.mat]||0) + 1; });
   return `<div class="reta-grade">
     <div class="card-reta"><h3>Escolha um baralho</h3><div class="reta-decks">
-      ${deck('vencidos','🔔','Vencem hoje',vencidos)}${deck('fracos','🎯','Lacunas fracas',fracos)}${deck('novos','🆕','Novos',novos.slice(0,10))}${deck('chutes','🎲','Chutes',chutes)}</div>
+      ${deck('vencidos','🔔','Vencem hoje',vencidos)}${deck('fracos','🎯','Lacunas fracas',fracos)}${deck('novos','🆕','Novos',novos.slice(0,10))}${deck('teoria','📚','Teoria',chutes)}</div>
       <p class="section-desc" style="margin:12px 0 0;">Intervalo calculado para a prova: ${dias>0?'com '+dias+' dias, nenhum cartão passa de '+Math.max(1,Math.floor(dias/3))+' dia(s) sem voltar.':'a prova já passou ou é hoje.'}</p></div>
     <div class="card-reta"><h3>Cartões de lacuna, feitos sozinhos</h3><p class="section-desc" style="margin:0 0 8px;">Cada “Teoria em figura” e cada “Resolução em figura” tem palavras-chave marcadas. O app as transforma em lacunas: você completa de cabeça e o verso é a própria figura.</p>
       <div class="reta-filtros">${Object.entries(porMat).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([m,n]) => `<span class="chip">${esc(m)} · ${n}</span>`).join('')}</div></div></div>`;
@@ -436,7 +449,7 @@ function retaFilaDeDeck(id, mats){
   if(id === 'vencidos') return cart.filter(c => { const x = retaAgendaDe(c.uid, c.mat); return x && x.d <= agora; }).sort((a,b) => retaAgendaDe(a.uid,a.mat).d - retaAgendaDe(b.uid,b.mat).d).map(c => c.uid);
   if(id === 'novos') return cart.filter(c => !retaAgendaDe(c.uid, c.mat)).sort((a,b) => retaPeso(b.q) - retaPeso(a.q)).slice(0, 10).map(c => c.uid);
   if(id === 'fracos') return cart.filter(c => retaErrosPorUidMat(c.uid, c.mat)).map(c => c.uid);
-  if(id === 'chutes') return cart.filter(c => (getBucket(c.mat).chutes||{})[c.uid]).map(c => c.uid);
+  if(id === 'teoria') return cart.filter(c => chuteMarcado(c.mat, c.uid)).map(c => c.uid);
   return [];
 }
 
@@ -448,7 +461,7 @@ function retaHtmlProntidao(mats){
   const topo = pontos.slice(0, 6);
   const ganhoTop5 = pontos.slice(0,5).reduce((s,x) => s + x.ganho, 0);
   return `<div class="reta-grade">
-    <div class="card-reta" style="grid-column:1/-1;"><h3>Mapa de prontidão</h3><p class="section-desc" style="margin:0 0 10px;">Chance estimada de acertar cada assunto hoje (acertos recentes pesam mais; chute acertado vale meio). É uma <b>estimativa</b>, não uma promessa de nota.</p>
+    <div class="card-reta" style="grid-column:1/-1;"><h3>Mapa de prontidão</h3><p class="section-desc" style="margin:0 0 10px;">Chance estimada de acertar cada assunto hoje (acertos recentes pesam mais; acerto em questão marcada como Teoria vale meio). É uma <b>estimativa</b>, não uma promessa de nota.</p>
       ${linhas.map(l => { const resp = l.temas.filter(t => t.chance!==null); const m = resp.length ? resp.reduce((s,t)=>s+t.chance*t.peso,0)/resp.reduce((s,t)=>s+t.peso,0) : null;
         return `<div class="reta-mat"><div class="reta-mat-cab"><b>${esc(l.mat)}</b><span>${m===null?'sem respostas':Math.round(m*100)+'%'}</span></div>
           <div class="reta-tiles">${l.temas.slice().sort((a,b)=>(a.chance===null?2:a.chance)-(b.chance===null?2:b.chance)).slice(0,14).map(t => `<div class="reta-tile${t.chance===null?' vazio':''}" style="${t.chance===null?'':'background:'+retaCorChance(t.chance)}" title="${esc(t.tema)} · ${t.resp}/${t.total} respondidas"><span>${t.chance===null?'—':Math.round(t.chance*100)+'%'}</span><small>${esc(t.tema)}</small></div>`).join('')}</div></div>`; }).join('')}
@@ -467,8 +480,8 @@ function retaHtmlVespera(mats){
     <h4>Pegadinhas que mais te pegaram</h4>${lista(c.pegadinhas)}
     <h4>Regras dos seus erros (${c.qErros} em aberto)</h4>${lista(c.regras)}
     <h4>Macetes</h4>${lista(c.macetes)}
-    <h4>Seus chutes (revisar)</h4>${lista(c.chutes)}
-    <p class="rodape">Gerada do seu histórico: erros em aberto, chutes, macetes e armadilhas das resoluções. Sem questões novas, só reforço.</p></div>
+    <h4>Marcadas como Teoria (estudar)</h4>${lista(c.chutes)}
+    <p class="rodape">Gerada do seu histórico: erros em aberto, marcas Teoria, macetes e armadilhas das resoluções. Sem questões novas, só reforço.</p></div>
   <p class="section-desc no-print">Uma folha por matéria, para ler na véspera.</p>`;
 }
 
@@ -500,6 +513,11 @@ function retaAnexar(){
   q('[data-reta-refazer]').forEach(el => el.addEventListener('click', () => retaAbrirQuiz(el.dataset.retaMateria, [el.dataset.retaRefazer], 'Reta Final · refazer erro')));
   q('[data-reta-treino]').forEach(el => el.addEventListener('click', () => retaAbrirQuiz(el.dataset.retaMateria, el.dataset.retaTreino.split(','), 'Reta Final · erros')));
   q('[data-reta-deck]').forEach(el => el.addEventListener('click', () => retaIniciarCartoes(retaFilaDeDeck(el.dataset.retaDeck, retaMaterias()), 'Baralho: ' + el.textContent.replace(/\s*\d+ cartões.*/,'').trim())));
+  q('[data-reta-marca]').forEach(el => el.addEventListener('click', () => {
+    const n = el.dataset.retaMarca, mats = retaMaterias(); let melhor = null;
+    mats.forEach(mt => { const l = estudoMarcadas(mt, n); if(l.length && (!melhor || l.length > melhor.l.length)) melhor = { mt, l }; });
+    if(melhor) retaAbrirQuiz(melhor.mt, melhor.l.map(x => x.uid), 'Reta Final · marcadas como ' + n);
+  }));
   q('[data-reta-sair]').forEach(el => el.addEventListener('click', () => { STATE.retaSessao = null; render(); }));
   q('[data-reta-revelar]').forEach(el => el.addEventListener('click', () => { if(STATE.retaSessao){ STATE.retaSessao.revelado = true; render(); } }));
   q('[data-reta-nota]').forEach(el => el.addEventListener('click', () => retaAvaliar(parseInt(el.dataset.retaNota, 10))));

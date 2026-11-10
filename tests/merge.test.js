@@ -40,12 +40,12 @@ r = mb(com2, desfeito); t('desfazer (remoto)', r.perguntas.u1.tentativas === 1);
 r = mb(B({ desfeitos: { u1: { ts: now, keys: ['1-true'] } } }), B({ perguntas: { u1: P(1, 1, [H(1, true)]) } })); t('desfazer até zero', !r.perguntas.u1);
 // 6. chute desmarcado e simulado excluído
 r = mb(B({ lapides: { 'c:u9': now } }), B({ chutes: { u9: { ts: 100 } } })); t('chute desmarcado', !r.chutes.u9);
-r = mb(B({ lapides: { 'c:u9': now } }), B({ chutes: { u9: { ts: now + 10 } } })); t('chute remarcado depois', !!r.chutes.u9);
+r = mb(B({ lapides: { 'c:u9': now } }), B({ chutes: { u9: { ts: now + 10 } } })); t('chute remarcado depois', !!(r.estudo && r.estudo.u9 && r.estudo.u9.n === 'teoria') && !Object.keys(r.chutes).length);
 r = mb(B({ lapides: { 's:55': now } }), B({ simuladosSalvos: [{ ts: 55 }] })); t('simulado excluído', r.simuladosSalvos.length === 0);
 // 7. substituir por matéria: geração e mapa de uids
 const velho = B({ perguntas: { 'm-1': P(3, 2, [H(1, true)]), 'm-2': P(1, 0, [H(5, false)]) }, chutes: { 'm-1': { ts: 5 } } });
 const novo = B({ perguntas: { 'm-7': P(2, 1, [H(1, true)]), 'm-1': P(9, 9, [H(1, true)]) }, geracao: 100, migracao: { de: 0, id: 100, mapa: { 'm-1': 'm-7' } } });
-r = mb(novo, velho); t('migração por mapa', r.perguntas['m-7'] && r.perguntas['m-7'].tentativas >= 2 && r.perguntas['m-1'].tentativas === 9 && !r.perguntas['m-2'] && r.chutes['m-7']);
+r = mb(novo, velho); t('migração por mapa', r.perguntas['m-7'] && r.perguntas['m-7'].tentativas >= 2 && r.perguntas['m-1'].tentativas === 9 && !r.perguntas['m-2'] && r.estudo && r.estudo['m-7'] && r.estudo['m-7'].n === 'teoria');
 r = mb(velho, novo); t('migração por mapa (inverso)', r.perguntas['m-7'] && r.perguntas['m-1'].tentativas === 9 && !r.perguntas['m-2']);
 // 8. idempotência: mesclar duas vezes dá o mesmo resultado
 const a = B({ perguntas: { u1: P(2, 1, [H(1, true), H(2, false)]) } }), b2 = B({ perguntas: { u1: P(3, 2, [H(1, true), H(3, true)]) } });
@@ -71,5 +71,22 @@ r = mb(B({ sessoes: [{ ts: 1 }, { ts: 2 }] }), B({ sessoes: [{ ts: 2 }, { ts: 3 
   t('srs: apagar histórico descarta a agenda anterior ao reset', rs.srs && !rs.srs.u1 && !!rs.srs.u2);
 }
 
+// 5. marcas Teoria/Revisar/Avançar (estudo): vale a mais recente por questão, inclusive a remoção
+r = mb(B({ estudo: { q1: { n: 'teoria', t: 10 } } }), B({ estudo: { q1: { n: 'revisar', t: 20 }, q2: { n: 'avancar', t: 5 } } }));
+t('estudo: mais recente vence e união', r.estudo.q1.n === 'revisar' && r.estudo.q2.n === 'avancar');
+r = mb(B({ estudo: { q1: { n: '', t: 30 } } }), B({ estudo: { q1: { n: 'teoria', t: 10 } } }));
+t('estudo: remoção mais nova sincroniza', r.estudo.q1.n === '');
+r = mb(B({ estudo: { q1: { n: 'teoria', t: 10 } } }), B({ estudo: { q1: { n: '', t: 5 } } }));
+t('estudo: marca mais nova vence remoção antiga', r.estudo.q1.n === 'teoria');
+// 6. chute de aparelho antigo vira Teoria; não sobrescreve marca escolhida depois
+r = mb(B(), B({ chutes: { q3: { ts: 50 } } }));
+t('chute antigo vira teoria', r.estudo.q3.n === 'teoria' && !Object.keys(r.chutes).length);
+r = mb(B({ estudo: { q3: { n: 'avancar', t: 100 } } }), B({ chutes: { q3: { ts: 50 } } }));
+t('chute não sobrescreve marca existente', r.estudo.q3.n === 'avancar');
+// 7. apagar histórico limpa as marcas anteriores ao reset
+r = mb(B({ resetEm: now }), B({ estudo: { q4: { n: 'teoria', t: now - 1000 } } }));
+t('reset limpa marcas antigas', !r.estudo || !r.estudo.q4);
+
 console.log('merge: ' + ok + ' ok, ' + bad + ' falhas');
 process.exit(bad ? 1 : 0);
+

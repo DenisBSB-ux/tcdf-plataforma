@@ -301,6 +301,8 @@ function _migrarBucketPorMapa(velho, novo){
   Object.entries(velho.chutes||{}).forEach(([u,c])=>{ const n = mapa[u]; if(n && !out.chutes[n]) out.chutes[n] = c; });
   out.srs = {};   // agenda dos cartões (Reta Final) acompanha a questão renumerada
   Object.entries(velho.srs||{}).forEach(([u,x])=>{ const n = mapa[u]; if(n && !out.srs[n]) out.srs[n] = x; });
+  out.estudo = {};   // marcas Teoria/Revisar/Avançar acompanham a questão renumerada
+  Object.entries(velho.estudo||{}).forEach(([u,x])=>{ const n = mapa[u]; if(n && !out.estudo[n]) out.estudo[n] = x; });
   return out;
 }
 // ---- remoções que sincronizam ("lápides") ----
@@ -318,6 +320,7 @@ function _aposReset(side, R){
   Object.entries(side.flash||{}).forEach(([uid,f])=>{ if(((f&&f.ts)||0)>R) o.flash[uid] = f; });
   Object.entries(side.chutes||{}).forEach(([uid,c])=>{ if(((c&&c.ts)||0)>R) o.chutes[uid] = c; });
   o.srs = {}; Object.entries(side.srs||{}).forEach(([uid,x])=>{ if(((x&&x.t)||0)>R) o.srs[uid] = x; });
+  o.estudo = {}; Object.entries(side.estudo||{}).forEach(([uid,x])=>{ if(((x&&x.t)||0)>R) o.estudo[uid] = x; });
   o.sessoes = (side.sessoes||[]).filter(x=>(x.ts||0)>R);
   o.simuladosSalvos = (side.simuladosSalvos||[]).filter(x=>(x.ts||0)>R);
   return o;
@@ -345,8 +348,8 @@ function mergeBucket(local, remote){
     if(gr > gl){ local = _migrarBucketPorMapa(local || {}, remote); local.geracao = gr; local.migracao = remote.migracao; }
     else { remote = _migrarBucketPorMapa(remote || {}, local); remote.geracao = gl; }
   }
-  local = local || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{}, srs:{} };
-  remote = remote || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{}, srs:{} };
+  local = local || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{}, srs:{}, estudo:{} };
+  remote = remote || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{}, srs:{}, estudo:{} };
   // "apagar histórico": o lado que não conhece o reset perde o que é anterior a ele
   const R = Math.max(local.resetEm||0, remote.resetEm||0);
   if(R){
@@ -404,6 +407,20 @@ function mergeBucket(local, remote){
     if(!ls || ((rs&&rs.t)||0) > ((ls&&ls.t)||0)) merged.srs[uid] = rs;
   });
   if(!Object.keys(merged.srs).length) delete merged.srs;
+
+  // marcas Teoria/Revisar/Avançar: por questão, vale a mais recente (n vazio = removida)
+  merged.estudo = { ...(local.estudo||{}) };
+  Object.entries(remote.estudo||{}).forEach(([uid, re])=>{
+    const le = merged.estudo[uid];
+    if(!le || ((re&&re.t)||0) > ((le&&le.t)||0)) merged.estudo[uid] = re;
+  });
+  // chute de aparelho que ainda não tem a atualização: vira marca 'teoria' (ver migrarChutesParaEstudo)
+  Object.entries(merged.chutes||{}).forEach(([uid, c])=>{
+    const e = merged.estudo[uid];
+    if(!e || (!e.n && ((c&&c.ts)||0) > (e.t||0))) merged.estudo[uid] = { n:'teoria', t:(c&&c.ts)||Date.now(), o:'chute' };
+  });
+  merged.chutes = {};
+  if(!Object.keys(merged.estudo).length) delete merged.estudo;
 
   Object.entries(remote.flash||{}).forEach(([uid, remoteF])=>{
     const localF = merged.flash[uid];
@@ -471,7 +488,16 @@ function mergeRemoteGabaritosNaMemoria(remoto){
 function mergeRemoteEdicoesNaMemoria(remoteEdicoes){
   let mudou = false;
   Object.entries(remoteEdicoes||{}).forEach(([uid, campos])=>{
+    // texto da resolução editado (rt + rtT): vale a edição mais recente (carimbo rtT), em qualquer aparelho
+    if(campos && typeof campos.rt === 'string'){
+      const tr = Number(campos.rtT) || 0, lt = Number(EDICOES_USUARIO[uid] && EDICOES_USUARIO[uid].rtT) || 0;
+      if(!EDICOES_USUARIO[uid] || typeof EDICOES_USUARIO[uid].rt !== 'string' || tr > lt){
+        if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
+        EDICOES_USUARIO[uid].rt = campos.rt; EDICOES_USUARIO[uid].rtT = tr; mudou = true;
+      }
+    }
     Object.entries(campos||{}).forEach(([campo, html])=>{
+      if(campo === 'rt' || campo === 'rtT') return;
       if(!EDICOES_USUARIO[uid]) EDICOES_USUARIO[uid] = {};
       if(EDICOES_USUARIO[uid][campo] === undefined){
         EDICOES_USUARIO[uid][campo] = limparHtmlEditado(html);
@@ -1648,9 +1674,28 @@ function undoRegistro(materiaKey, uid){
 // "Chute!": marcação independente de tentativas/acertos — só registra que o
 // usuário não tinha certeza da resposta (ainda que tenha acertado por sorte).
 // Vive na própria aba Caderno de Erros, numa lista separada da de erros reais.
-function chuteMarcado(materiaKey, uid){
-  const bucket = getBucket(materiaKey);
-  return !!(bucket.chutes && bucket.chutes[uid]);
+// marca de estudo da questão: 'teoria' | 'revisar' | 'avancar' | '' (sem marca)
+function estudoMarca(materiaKey, uid){
+  const e = (getBucket(materiaKey).estudo || {})[uid];
+  return (e && e.n) || '';
+}
+// clicar na marca atual a remove; clicar em outra troca (as três são exclusivas)
+function definirEstudoMarca(materiaKey, uid, n){
+  const b = getBucket(materiaKey);
+  const atual = (b.estudo[uid] && b.estudo[uid].n) || '';
+  b.estudo[uid] = { n: (atual === n ? '' : n), t: Date.now() };
+  marcarProgressoSujo(materiaKey);
+  saveProgress();
+}
+// questões com a marca, da mais recente para a mais antiga (visíveis: sem duplicata oculta)
+function estudoMarcadas(materiaKey, n){
+  return Object.entries(getBucket(materiaKey).estudo || {})
+    .filter(([uid, e]) => e && e.n === n && BY_UID[uid] && BY_UID[uid].materia === materiaKey && !BY_UID[uid].duplicataOculta)
+    .map(([uid, e]) => ({ uid, t: e.t || 0, o: e.o || '' }))
+    .sort((a, b) => b.t - a.t);
+}
+function chuteMarcado(materiaKey, uid){   // estatísticas de "chute" = questões marcadas como Teoria
+  return estudoMarca(materiaKey, uid) === 'teoria';
 }
 function toggleChute(materiaKey, uid, correct){
   const bucket = getBucket(materiaKey);
