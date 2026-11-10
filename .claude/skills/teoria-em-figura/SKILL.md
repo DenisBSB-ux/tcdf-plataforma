@@ -71,3 +71,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - **Direito Civil, reimportação (10/11/2026, v445):** a lista reexportada pela plataforma trouxe a Q126 com alternativas separadas (enunciado mudou); o cartão da Q126 ganhou uma segunda entrada com o código novo do enunciado, e as duas versões funcionam.
 - **Lei 14.133 (10/11/2026, v446):** lista de 232 padronizada e renumerada (13 repetidos; Q56 e Q218 reescritas); 231 cartões (`teoria-cartoes-l14.js`, só texto carregado). Sem cartão: 73.
   - 2ª rodada Lei 14.133 (v447): +1 cartão (73, ext IN SEGES 73/2022 art. 23); 232/232.
+- **Lei Orgânica do TCDF (10/11/2026, v448):** lista de 225 padronizada e renumerada (25 repetidos); 221 cartões (`teoria-cartoes-lo.js`, LC 1, RI TCDF, CF, LODF, LC 101; Súmula 347 e Temas 445/897 do STF via ext). Sem cartão: 120, 133, 134, 200.
