@@ -68,3 +68,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - **Decreto 44.330 (10/11/2026, v442):** lista de 53 padronizada e renumerada (3 repetidos); 52 cartões (`teoria-cartoes-d44.js`, Decreto 44.330, IN 5 e Lei 14.133 carregados). Sem cartão: 23 (IMR, Anexo VIII-A da IN 5).
   - 2ª rodada Decreto 44.330 (v443): +1 cartão (23, ext gov.br/compras, Anexo VIII-A item 1); 53/53.
 - **Contratos (10/11/2026, v444):** lista de 200 padronizada e renumerada (68 repetidos; Q133 com ERROS por letra); 200 cartões (`teoria-cartoes-ctr.js`, Lei 14.133, IN 5, Decreto 44.330 e Súmulas TCU carregados; Q99 com Anexo VIII-A via ext). Sem puladas, então sem segunda busca.
+- **Direito Civil, reimportação (10/11/2026, v445):** a lista reexportada pela plataforma trouxe a Q126 com alternativas separadas (enunciado mudou); o cartão da Q126 ganhou uma segunda entrada com o código novo do enunciado, e as duas versões funcionam.
