@@ -2301,3 +2301,6 @@ body.theme-light .reta-marca{ border-color:rgba(0,0,0,.14); background:#fff; }
 .cartao-teoria .ct-alt{ font-size:15px; }
 .cartao-teoria footer{ font-size:12.5px; }
 .cartao-teoria .ct-selo{ font-size:12px; }
+
+/* v454 — sem o rótulo "Como estudar esta questão:" antes dos botões */
+.estudo-seg::before{ content:none; display:none; }
