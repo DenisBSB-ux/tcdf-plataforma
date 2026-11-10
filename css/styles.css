@@ -2304,3 +2304,13 @@ body.theme-light .reta-marca{ border-color:rgba(0,0,0,.14); background:#fff; }
 
 /* v454 — sem o rótulo "Como estudar esta questão:" antes dos botões */
 .estudo-seg::before{ content:none; display:none; }
+
+/* v455 — avançar só depois de escolher uma marca; escala de letras: enunciado e alternativas 18 px, resolução 18 px (base do cartão) */
+.estudo-aviso{ font-size:14px; color:#e6bb62; margin-left:4px; }
+.estudo-seg.pendente .estudo-btn{ border-color:#e6bb62; }
+body.theme-light .estudo-aviso{ color:#a16207; }
+body .enunciado .campo-editavel-conteudo, body .case-body .campo-editavel-conteudo{ font-size:18px; line-height:1.6; }
+.answer-opt .opt-text{ font-size:18px; }
+.ce-btn .letter{ font-size:17px; }
+.resolucao-box, .resolucao-box.com-figura{ font-size:13.5pt; }
+.btn[disabled], .btn:disabled{ opacity:.5; cursor:not-allowed; }

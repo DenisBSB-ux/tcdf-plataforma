@@ -372,6 +372,8 @@ function attachHandlers(){
     el.addEventListener('click', ()=>{
       const quiz = STATE.quiz; if(!quiz) return;
       definirEstudoMarca(quiz.materia, el.dataset.uid, el.dataset.estudoMarca);
+      // a marca da última questão respondida encerra o simulado (a finalização automática esperou por ela)
+      if(!quiz.finished && quiz.queue.every(u=>quiz.respostas[u]) && estudoMarca(quiz.materia, quiz.queue[quiz.idx])){ finalizarQuiz(); return; }
       render();
     });
   });
