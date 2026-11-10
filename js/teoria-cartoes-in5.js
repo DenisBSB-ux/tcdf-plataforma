@@ -1,4 +1,4 @@
-/* Teoria em figura — IN nº 5 (IN 5/2017 e Lei 14.133 carregadas). Identificados por número + código do enunciado. */
+/* Teoria em figura — IN nº 5 (IN 5/2017 e Lei 14.133 carregadas; Anexo VII-A item 7.6 via ext). Identificados por número + código do enunciado. */
 TEORIA_CARTOES.push(
   { m:/in n[ºo°] ?5/i, n:1, h:'to1olu',  titulo:'Fiscalização pelo público usuário', base:'IN 5/2017, art. 40, V', fonte:[['IN 5',40]],
     regra:'A {0|Fiscalização pelo Público Usuário} é o acompanhamento da execução contratual por {1|pesquisa de satisfação} junto ao usuário, para aferir {2|os resultados da prestação dos serviços}, os recursos materiais e os procedimentos da contratada.',
@@ -128,6 +128,11 @@ TEORIA_CARTOES.push(
     regra:'Os servidores devem {0|reportar-se somente aos prepostos}, exceto quando o objeto previr a {1|notificação direta} das tarefas descritas no contrato para a função específica, como {2|recepção, apoio administrativo ou ao usuário}.',
     pontos:[ { ico:'🤝', t:'Regra', d:'reportar-se aos prepostos ou responsáveis indicados' }, { ico:'📬', t:'Exceção', d:'notificação direta prevista no objeto' }, { ico:'🛎️', t:'Recepção e apoio', d:'exemplos citados no inciso II' } ],
     armadilha:'Dizer que a vedação ao mando é absoluta, sem a exceção do inciso II.' },
+  { m:/in n[ºo°] ?5/i, n:33, h:'unrvn0',  titulo:'Exequibilidade com a planilha de custos', base:'IN 5/2017, Anexo VII-A, item 7.6',
+    ext:{ nome:'IN SEGES/MP 5/2017 (texto atualizado, gov.br/compras), Anexo VII-A, item 7.6', url:'https://www.gov.br/compras/pt-br/acesso-a-informacao/legislacao/instrucoes-normativas/instrucao-normativa-no-5-de-26-de-maio-de-2017-atualizada', trecho:'A análise da exequibilidade da proposta de preços nos serviços continuados com dedicação exclusiva da mão de obra deverá ser realizada com o auxílio da planilha de custos e formação de preços, a ser preenchida pelo licitante em relação à sua proposta final' },
+    regra:'A {0|análise da exequibilidade} da proposta de preços nos {1|serviços continuados com dedicação exclusiva da mão de obra} é feita com o auxílio da {2|planilha de custos e formação de preços}, preenchida pelo licitante sobre a {3|proposta final}.',
+    pontos:[ { ico:'🔍', t:'Análise da exequibilidade', d:'verifica se o preço proposto se sustenta' }, { ico:'👷', t:'Dedicação exclusiva', d:'serviços continuados com mão de obra exclusiva' }, { ico:'🧾', t:'Planilha de custos', d:'instrumento de auxílio na análise' }, { ico:'📝', t:'Proposta final', d:'planilha preenchida pelo licitante' } ],
+    armadilha:'A regra do item 7.6 vale para serviços com dedicação exclusiva de mão de obra.' },
   { m:/in n[ºo°] ?5/i, n:34, h:'1staxe9',  titulo:'Documentos entregues aos fiscais', base:'IN 5/2017, art. 42, § 4º', fonte:[['IN 5',42]],
     regra:'Os fiscais deverão receber, pelo {0|setor de contratos}, cópias dos documentos essenciais, a exemplo dos Estudos Preliminares, do ato convocatório, do {1|contrato}, da {2|proposta da contratada} e da {3|garantia}, quando houver.',
     pontos:[ { ico:'🏢', t:'Setor de contratos', d:'quem entrega os documentos aos fiscais' }, { ico:'📃', t:'Contrato', d:'além de estudos e edital' }, { ico:'💼', t:'Proposta da contratada', d:'documento essencial da contratação' }, { ico:'🛡️', t:'Garantia', d:'quando houver' } ],
