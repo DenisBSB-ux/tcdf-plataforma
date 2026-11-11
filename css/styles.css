@@ -2320,3 +2320,38 @@ body .enunciado .campo-editavel-conteudo, body .case-body .campo-editavel-conteu
 /* v458 — botões <button> não herdam a fonte da página: Certo/Errado e alternativas usam a mesma fonte do enunciado */
 body .answer-opt, body .ce-btn, body .answer-opt .opt-text, body .ce-btn .opt-text, body .answer-opt .letter, body .ce-btn .letter{ font-family:var(--font-body); }
 body .ce-btn .letter, body .answer-opt .letter{ font-size:16px; }
+
+/* v470: Reta Final · revisão de 7 dias (js/reta-7dias.js) */
+.r7{ display:flex; flex-direction:column; gap:14px; }
+.r7-hero{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:16px 24px; align-items:center; padding:20px 22px; border-radius:18px; background:var(--surf); border:1px solid var(--bd); }
+.r7-hero h2{ margin:2px 0 6px; font-size:clamp(22px,3vw,30px); letter-spacing:-.02em; line-height:1.1; }
+.r7-hero p{ margin:0; font-size:14.5px; line-height:1.5; color:var(--mut); max-width:58ch; }
+.r7-ctrl{ display:flex; flex-direction:column; gap:8px; align-items:flex-start; min-width:0; }
+.r7-ctrl > span{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); }
+.r7-seg{ display:flex; gap:4px; padding:4px; background:var(--surf2); border:1px solid var(--bd); border-radius:12px; }
+.r7-seg button{ border:0; background:transparent; color:inherit; padding:7px 12px; border-radius:9px; font:inherit; font-size:13px; font-weight:600; cursor:pointer; }
+.r7-seg button.on{ background:var(--acc); color:var(--acc-ink); }
+.r7-links{ display:flex; gap:14px; flex-wrap:wrap; }
+.r7-links button{ border:0; background:none; padding:0; color:var(--mut); font:inherit; font-size:13px; text-decoration:underline; cursor:pointer; }
+.r7-tira{ display:grid; grid-template-columns:repeat(auto-fit,minmax(78px,1fr)); gap:8px; }
+.r7-dia{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 6px; border-radius:14px; border:1px solid var(--bd); background:var(--surf); color:inherit; font:inherit; cursor:pointer; }
+.r7-dia b{ font-size:14px; } .r7-dia small{ color:var(--mut); font-size:11.5px; } .r7-dia span{ font-size:12px; font-weight:700; color:var(--mut); }
+.r7-dia.on{ border-color:var(--acc); box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 35%,transparent); }
+.r7-dia.ok span{ color:#2e9b57; } .r7-dia.perdido span{ color:#c0803a; }
+.r7-dia:focus-visible, .r7-seg button:focus-visible, .r7-links button:focus-visible{ outline:2px solid var(--acc); outline-offset:2px; }
+.r7-resumo{ display:flex; align-items:center; gap:10px 16px; flex-wrap:wrap; justify-content:space-between; }
+.r7-resumo b{ font-size:17px; } .r7-resumo span{ color:var(--mut); font-size:14px; margin-right:auto; }
+.r7-grade{ display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:12px; }
+.r7-card{ display:flex; flex-direction:column; gap:8px; padding:16px; border-radius:16px; background:var(--surf); border:1px solid var(--bd); min-width:0; }
+.r7-card.ok{ border-color:#2e9b57; }
+.r7-card.r7-atual{ box-shadow:0 0 0 2px color-mix(in srgb,var(--acc) 30%,transparent); }
+.r7-top{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; } .r7-top h3{ margin:0; font-size:16px; font-weight:700; margin-right:auto; overflow-wrap:anywhere; }
+.r7-tag, .r7-feito{ font-size:11.5px; font-weight:700; padding:2px 8px; border-radius:999px; background:var(--surf2); border:1px solid var(--bd); }
+.r7-feito{ color:#2e9b57; border-color:#2e9b57; }
+.r7-why{ margin:0; font-size:13.5px; color:var(--mut); line-height:1.45; }
+.r7-meta{ margin:0; font-size:14px; } .r7-meta span{ color:var(--mut); font-size:13px; }
+.r7-barra{ height:6px; border-radius:6px; background:var(--surf2); overflow:hidden; } .r7-barra i{ display:block; height:100%; background:var(--acc); border-radius:6px; }
+.r7-go{ align-self:flex-start; margin-top:2px; }
+.r7-aviso{ margin:0; padding:10px 14px; border-radius:12px; background:var(--surf2); border:1px dashed var(--bd); font-size:13.5px; color:var(--mut); }
+.reta-abas .r7-voltar{ flex:0 0 auto; }
+@media (max-width:720px){ .r7-hero{ grid-template-columns:minmax(0,1fr); } .r7-tira{ grid-template-columns:repeat(4,1fr); } }

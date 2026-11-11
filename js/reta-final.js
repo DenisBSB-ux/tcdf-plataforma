@@ -333,7 +333,7 @@ function retaCabecalho(dias, fase, mats){
 function retaAbas(){
   const a = STATE.retaAba || 'hoje';
   const abas = [['hoje','🎯','Hoje'],['erros','🗂️','Caderno de erros'],['cartoes','🃏','Cartões'],['prontidao','📊','Prontidão'],['vespera','📄','Cola de véspera']];
-  return `<nav class="reta-abas" role="tablist" aria-label="Seções da Reta Final">${abas.map(x => `<button role="tab" aria-selected="${a===x[0]}" class="${a===x[0]?'on':''}" data-reta-aba="${x[0]}"><i aria-hidden="true">${x[1]}</i><span>${x[2]}</span></button>`).join('')}</nav>
+  return `<nav class="reta-abas" role="tablist" aria-label="Seções da Reta Final"><button class="r7-voltar" data-r7-voltar="1" title="Voltar à revisão de 7 dias"><i aria-hidden="true">←</i><span>7 dias</span></button>${abas.map(x => `<button role="tab" aria-selected="${a===x[0]}" class="${a===x[0]?'on':''}" data-reta-aba="${x[0]}"><i aria-hidden="true">${x[1]}</i><span>${x[2]}</span></button>`).join('')}</nav>
   <div class="reta-escopo"><span class="reta-escopo-rot">Escopo</span>
     <div class="reta-seg" role="group" aria-label="Escopo"><button class="${STATE.retaEscopo==='materia'?'':'on'}" data-reta-escopo="todas">🌐 Todas as matérias</button><button class="${STATE.retaEscopo==='materia'?'on':''}" data-reta-escopo="materia">📚 ${esc(STATE.materia||'Esta matéria')}</button></div>
     <span class="reta-escopo-links"><button data-reta-classico="erros" title="A lista simples de erros e marcas desta matéria">Lista clássica de erros</button><button data-reta-classico="flashcards" title="Os flashcards de resumo desta matéria">Flashcards de resumo</button></span></div>`;
@@ -486,6 +486,10 @@ function retaHtmlVespera(mats){
 }
 
 function renderReta(){
+  // tela padrão: revisão de 7 dias, matéria por matéria (js/reta-7dias.js); o modo completo (abas abaixo) fica a um clique
+  if(typeof renderReta7 === 'function' && STATE.retaModo !== 'completo' && !STATE.retaSessao){
+    try{ const h = renderReta7(); if(h) return h; }catch(e){ console.warn('reta 7 dias', e); }
+  }
   const mats = retaMaterias(), dias = retaDias(), fase = retaFaseDeDias(dias);
   const aba = STATE.retaAba || 'hoje';
   let corpo = '';
@@ -504,6 +508,7 @@ function renderReta(){
 let _retaTecla = false, _retaToque = null;
 function retaAnexar(){
   const r = document.getElementById('app'); if(!r) return;
+  if(typeof reta7Anexar === 'function') reta7Anexar(r);
   const q = sel => r.querySelectorAll(sel);
   q('[data-reta-aba]').forEach(el => el.addEventListener('click', () => { STATE.retaAba = el.dataset.retaAba; STATE.retaSessao = null; render(); }));
   q('[data-reta-escopo]').forEach(el => el.addEventListener('click', () => { STATE.retaEscopo = el.dataset.retaEscopo; STATE.retaSessao = null; render(); }));
