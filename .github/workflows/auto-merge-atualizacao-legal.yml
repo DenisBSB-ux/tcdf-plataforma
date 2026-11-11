@@ -38,7 +38,7 @@ jobs:
           for f in $(grep '\.js$' arquivos.txt); do node --check "$f"; done
           node -e "
           const t=require('fs').readFileSync('index.html','utf8');
-          const v=[...new Set((t.match(/v\d{3}/g)||[]))];
+          const v=[...new Set((t.match(/(?<=\?v=|versao: ')v\d+/g)||[]))];
           if(v.length!==1){console.error('versões diferentes no index.html:',v);process.exit(1)}
           global.window=global;global.document={addEventListener(){}};global.esc=String;
           (0,eval)(require('fs').readFileSync('js/atualizacoes-legais.js','utf8')+';if(!Array.isArray(ALTERACOES_LEGAIS)||!ATUALIZACOES_LEGAIS.length) throw new Error(\"estrutura inválida\")');

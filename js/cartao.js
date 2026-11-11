@@ -126,10 +126,6 @@ function alternarCartoes(){
   if(typeof sincronizarPrefs==='function') sincronizarPrefs();
   render();
 }
-function cartoesBotaoHtml(){
-  const on = cartoesAtivos();
-  return `<button type="button" class="cartoes-switch${on ? ' on' : ''}" id="btn-cartoes" aria-pressed="${on}" title="Cartões comparativos: ${on ? 'ligados (clique para ocultar)' : 'desligados (clique para mostrar)'}">📊</button>`;
-}
 function _ccFrase(lista, cls){
   const w = _ccJanela(lista);
   const tag = cls==='antes' ? 'del' : 'ins';

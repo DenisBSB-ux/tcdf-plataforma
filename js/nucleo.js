@@ -206,7 +206,7 @@ function extrairFonteEmbutida(texto){
 // Essa função detecta esse padrão e separa o resumo pro campo próprio.
 function extrairResumoFlashEmbutido(texto){
   if(!texto) return null;
-  const m = texto.match(/[⚡💡]?\s*Resumo\s+Flash\s*:\s*([\s\S]+)$/i);
+  const m = texto.match(/(?:⚡|💡)?\s*Resumo\s+Flash\s*:\s*([\s\S]+)$/i);
   if(!m) return null;
   const limpo = texto.slice(0, m.index).trim();
   if(!limpo) return null; // evita esvaziar o texto inteiro se o "match" cobrir tudo

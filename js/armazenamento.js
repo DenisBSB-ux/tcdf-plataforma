@@ -125,11 +125,6 @@ function homologarGabarito(uid){
   salvarGabaritosAlterados(uid); render();
 }
 /* confirma o gabarito atual (sem alterá-lo) como definitivo; sincroniza com a nuvem */
-function confirmarGabarito(uid){
-  const q = BY_UID[uid]; if(!q) return;
-  GABARITOS_ALTERADOS[uid] = { novo: gabaritoEfetivo(q), motivo: 'Gabarito confirmado pelo usuário', original: q.g, ts: Date.now(), homologado:true, confirmado:true };
-  salvarGabaritosAlterados(uid); render();
-}
 function alterarGabarito(uid){
   const q = BY_UID[uid];
   if(!q) return;

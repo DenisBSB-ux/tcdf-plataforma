@@ -192,29 +192,8 @@ function armExplTexto(s){ const d=document.createElement('div'); d.innerHTML=arm
 function armPainelHtml(q){
   const a = armEfetiva(q);
   if(!a) return '';
-  const uid = q.uid;
-  const editando = STATE.armEditUid === uid;
-  const lapis = ''; // edição unificada: o botão único "Editar" fica junto de "Corrigir gabarito"
-  if(editando) return armEditorHtml(q, a);
+  if(STATE.armEditUid === q.uid) return armEditorHtml(q, a);
   return '';   // painel "Armadilha da banca" removido da tela a pedido do usuário (26/10/2026); o editor continua no modo Editar
-  const origemTxt = a.origem==='manual' ? 'manual' : (a.origem==='gemini' ? 'Gemini' : 'IA');
-  if(!a.classificada){
-    return `<div class="arm-box arm-box-vazia"><span class="arm-rot">Armadilha da banca</span> <span class="arm-nc">não classificada</span> ${lapis}</div>`;
-  }
-  if(a.errado){
-    const cods = armCodigos(a);
-    const p = ARM_TIPOS[a.p];
-    // só o nome da armadilha (sem definição, explicação nem trecho): pedido do usuário em 20/10/2026
-    const nomes = cods.map(c=>ARM_TIPOS[c]?`<span class="arm-nome" style="background:${ARM_TIPOS[c].bg};">${esc(ARM_TIPOS[c].nome)}</span>`:'').filter(Boolean).join(' · ');
-    return `<div class="arm-box">
-      <div class="arm-linha"><span class="arm-rot">Armadilha da banca:</span> ${nomes} ${lapis}</div>
-    </div>`;
-  }
-  const s = ARM_SINAIS[a.sinal];
-  return `<div class="arm-box arm-box-certo">
-    <div class="arm-linha"><span class="arm-rot">Item certo</span> ${s ? `<span class="arm-expl-inline"><span class="arm-nome" style="background:#e0f2fe;">${esc(s.nome)}</span> — ${esc(s.por)}</span>` : '<span class="arm-nc">sem sinal de veracidade registrado</span>'} ${lapis}</div>
-    ${a.sinal==='ABS-L' ? `<div class="arm-macete">⚠ Contra-armadilha: a palavra absoluta aqui vem da própria lei — não marque Errado só por vê-la.</div>` : ''}
-  </div>`;
 }
 function armParesHtml(a){
   const tr = String(a.trecho||'').split(' | '), co = String(a.correcao||'').split(' | ');

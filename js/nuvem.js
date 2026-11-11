@@ -1711,18 +1711,6 @@ function estudoMarcadas(materiaKey, n){
 function chuteMarcado(materiaKey, uid){   // estatísticas de "chute" = questões marcadas como Teoria
   return estudoMarca(materiaKey, uid) === 'teoria';
 }
-function toggleChute(materiaKey, uid, correct){
-  const bucket = getBucket(materiaKey);
-  if(bucket.chutes[uid]){
-    delete bucket.chutes[uid];
-    (bucket.lapides = bucket.lapides || {})['c:'+uid] = Date.now();
-  } else {
-    bucket.chutes[uid] = { ts: Date.now(), correct: (correct===true || correct===false) ? correct : null };
-  }
-  marcarProgressoSujo(materiaKey);
-  saveProgress();
-}
-
 function registrarFlash(materiaKey, uid, status){
   getBucket(materiaKey).flash[uid] = { status, ts: Date.now() };
   marcarProgressoSujo(materiaKey);

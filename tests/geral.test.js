@@ -12,7 +12,7 @@ try { new vm.Script(fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8'), { filenam
 
 // 2. versão ?v= única no index.html e todo script/estilo local referenciado existe
 const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
-const versoes = [...new Set(html.match(/v\d{3}/g) || [])];
+const versoes = [...new Set(html.match(/(?<=[?=']|^)v\d{3,}(?=['"&]|$)/g) || [])];
 t('versão única no index.html', versoes.length === 1, versoes.join(','));
 const refs = [...html.matchAll(/(?:src|href)="((?:js|css)\/[^"?]+)/g)].map(m => m[1]);
 t('arquivos referenciados existem', refs.every(r => fs.existsSync(path.join(raiz, r))), refs.filter(r => !fs.existsSync(path.join(raiz, r))).join(','));
@@ -125,6 +125,20 @@ try {
 // 5. nenhum JS usa lookbehind em regex literal (quebra Safari < 16.4)
 const comLookbehind = js.filter(f => !/texto|dados|doutrina/.test(f) && /\/[^\/\n]*\(\?<[=!][^\/\n]*\/[gimsuy]*[,;)\s]/.test(fs.readFileSync(path.join(raiz, 'js', f), 'utf8').replace(/new RegExp\([^)]*\)/g, '')));
 t('sem lookbehind em regex literal', !comLookbehind.length, comLookbehind.join(','));
+
+// 6. cartões de teoria: todos ligam por número + código do enunciado (sem código, renumerar a lista os trocaria de questão),
+//    sem duplicata, e as expressões de matéria reconhecem os nomes em uso (cartão que não casa com o nome da matéria nunca aparece)
+try {
+  const cartoes = [];
+  global.TEORIA_CARTOES = cartoes; global.window = global;
+  for (const f of ['teoria-cartoes.js', ...js.filter(f => /^teoria-cartoes-.*\.js$/.test(f))]) (0, eval)(fs.readFileSync(path.join(raiz, 'js', f), 'utf8'));
+  const semH = cartoes.filter(c => c.n !== undefined && !c.h);
+  t('cartões: todos têm código do enunciado (h)', !semH.length, semH.length + ' sem h, ex.: ' + semH.slice(0, 2).map(c => c.n + ' ' + c.titulo).join(' | '));
+  const chaves = cartoes.map(c => String(c.m) + '|' + c.n + '|' + c.h), dup = chaves.filter((k, i) => chaves.indexOf(k) !== i);
+  t('cartões: sem duplicata (matéria|n|h)', !dup.length, dup.slice(0, 3).join(' ; '));
+  const nomes = { 'Administrativo (geral)': /adm geral|administrativo \(geral\)/i, 'Adm Geral & Pub': null, 'Analise Dados IA': null, 'Análise de Dados e IA': null, 'D.Tributário': null, 'LODF': null, 'Adm (LGPD + LAI)': null };
+  for (const nome of Object.keys(nomes)) t('cartões: algum cartão reconhece a matéria "' + nome + '"', cartoes.some(c => c.m && c.m.test(nome)));
+} catch (e) { t('cartões de teoria', false, e.message); }
 
 console.log('geral: ' + ok + ' ok, ' + bad + ' falhas');
 process.exit(bad ? 1 : 0);
