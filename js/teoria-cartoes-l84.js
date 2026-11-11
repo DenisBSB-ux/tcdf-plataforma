@@ -1,4 +1,4 @@
-/* Teoria em figura — Adm (Lei 8.429, Lei 9.784, Lei 2.834; LINDB e CF) carregadas. Identificados por número + código do enunciado. */
+/* Teoria em figura — Adm (Lei 8.429, Lei 9.784, Lei 2.834; LINDB e CF) carregadas; Tema 897 do STF via ext. Identificados por número + código do enunciado. */
 TEORIA_CARTOES.push(
   { m:/8\.429/i, n:1, h:'39ibkg',  titulo:"Dolo: elemento subjetivo da improbidade", base:"Lei 8.429, art. 1º, §§ 1º e 2º", fonte:[["Lei 8.429",1]],
     regra:"O elemento subjetivo é o {0|dolo}, exigido nos {1|arts. 9º, 10 e 11}: a {2|vontade livre e consciente} de alcançar o resultado ilícito tipificado.",
@@ -28,6 +28,10 @@ TEORIA_CARTOES.push(
     regra:"Sócios, cotistas, diretores e colaboradores {0|não respondem} pelo ato da pessoa jurídica, salvo {1|participação e benefícios diretos}; as sanções {2|não se aplicam à pessoa jurídica} se o ato também for sancionado pela {3|Lei nº 12.846}.",
     pontos:[ { ico:"🙅", t:"Regra dos sócios", d:"não respondem pelo ato da empresa" }, { ico:"💼", t:"Exceção", d:"participação e benefícios diretos, nos limites dela" }, { ico:"🏢", t:"Pessoa jurídica", d:"sem sanções se o ato cai na Lei Anticorrupção" }, { ico:"📘", t:"Lei nº 12.846/2013", d:"regime próprio para o ato lesivo" } ],
     armadilha:"Dizer que a empresa responde integralmente, mesmo havendo sanção pela Lei 12.846." },
+  { m:/8\.429/i, n:8, h:'1m5773u',  titulo:'Imprescritibilidade só para ato doloso', base:'STF, Tema 897 (RE 852475)', ext:{ nome:'STF, Tema 897 (RE 852475)', url:'https://jurisprudencia.stf.jus.br/pages/search?base=acordaos&queryString=RE%20852475', trecho:'São imprescritíveis as ações de ressarcimento ao erário fundadas na prática de ato doloso tipificado na Lei de Improbidade Administrativa.' },
+    regra:'São {0|imprescritíveis} as ações de {1|ressarcimento ao erário} fundadas na prática de {2|ato doloso} tipificado na {3|Lei de Improbidade Administrativa}.',
+    pontos:[ { ico:'♾️', t:'Imprescritíveis', d:'as ações de ressarcimento nessa hipótese' }, { ico:'💰', t:'Ressarcimento', d:'reparação do dano ao erário' }, { ico:'🎯', t:'Ato doloso', d:'a tese exige dolo, e não mera culpa' }, { ico:'📘', t:'Improbidade', d:'ato tipificado na Lei de Improbidade Administrativa' } ],
+    armadilha:'A tese vale para ato doloso de improbidade; não alcança toda conduta.' },
   { m:/8\.429/i, n:9, h:'1qv3cnt',  titulo:"Despesa não autorizada e lesão ao erário", base:"Lei 8.429, art. 10, caput e IX", fonte:[["Lei 8.429",10]],
     regra:"Há lesão ao erário na {0|ação ou omissão dolosa} que enseje, {1|efetiva e comprovadamente}, perda patrimonial; exemplo: {2|ordenar ou permitir despesas não autorizadas em lei ou regulamento}.",
     pontos:[ { ico:"🧠", t:"Ação ou omissão dolosa", d:"o dolo é requisito do tipo" }, { ico:"📉", t:"Perda efetiva e comprovada", d:"não basta dano presumido" }, { ico:"🧾", t:"Inciso IX", d:"despesa não autorizada em lei ou regulamento" } ],
