@@ -207,7 +207,8 @@ function reta7Cartao(b, dia0){
     <p class="r7-meta"><b>${reta7Fmt(b.min)}</b> · ${leitura ? 'leitura do resumo ' + leitura + ' min + ' : ''}${ses.uids.length} questões${comp ? ' <span>(' + esc(comp) + ')</span>' : ''}</p>
     <div class="r7-barra" title="${feitas} respostas hoje nesta matéria"><i style="width:${pct}%"></i></div>
     <div class="r7-acoes"><button class="btn btn-gold r7-go" data-r7-iniciar="${esc(mat)}" data-r7-qtd="${qtd}" ${ses.uids.length ? '' : 'disabled'}>${ok ? '↻ Refazer' : '▶ Começar'}</button>
-      ${resumo ? `<button class="btn r7-res" data-r7-resumo="${esc(mat)}">📄 Resumo</button>` : ''}</div>
+      ${resumo ? `<button class="btn r7-res" data-r7-resumo="${esc(mat)}">📄 Resumo</button>` : ''}
+      ${(typeof treinoDisponivel === 'function' && treinoDisponivel(mat)) ? `<button class="btn r7-res" data-tr-abrir="${esc(mat)}" data-tr-modo="flash">🃏 Flashcards</button><button class="btn r7-res" data-tr-abrir="${esc(mat)}" data-tr-modo="lacunas">🧩 Lacunas</button>` : ''}</div>
   </article>`;
 }
 function renderReta7(){
@@ -268,6 +269,7 @@ function reta7Anexar(raiz){
   q('[data-r7-completo]').forEach(el => el.addEventListener('click', () => { STATE.retaModo = 'completo'; render(); }));
   q('[data-r7-voltar]').forEach(el => el.addEventListener('click', () => { STATE.retaModo = 'sete'; STATE.retaSessao = null; render(); }));
   q('[data-r7-resumo]').forEach(el => el.addEventListener('click', () => reta7AbrirResumo(el.dataset.r7Resumo)));
+  q('[data-tr-abrir]').forEach(el => el.addEventListener('click', () => { if(typeof treinoAbrir === 'function') treinoAbrir(el.dataset.trAbrir, el.dataset.trModo); }));
   q('[data-r7-iniciar]').forEach(el => el.addEventListener('click', () => {
     const mat = el.dataset.r7Iniciar, s = reta7Sessao(mat, parseInt(el.dataset.r7Qtd, 10) || 15);
     if(s.uids.length) retaAbrirQuiz(mat, s.uids, 'Reta Final · ' + mat);
