@@ -95,3 +95,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - **Treino liberado: Lei Orgânica do TCDF (v475):** 97 lacunas e 301 flashcards, conferidos item a item (reprovados e excluídos: 27 lacunas, 22 flashcards). Só código/dados.
 - **Treino liberado: LODF (v476):** 101 lacunas e 244 flashcards, conferidos item a item (flashcards reprovados antes de receber a resolução foram reavaliados com ela; reprovadas 18 lacunas e 18 flashcards). Só código/dados.
 - **Treino liberado: Regimento Interno (v477):** 107 lacunas e 274 flashcards, conferidos item a item (reprovadas 33 lacunas; flashcards reprovados 21+10 questões). Só código/dados.
+- **Treino liberado: Adm LGPD + LAI (v478):** 116 lacunas e 188 flashcards, conferidos item a item (reprovadas 28 lacunas; flashcards reprovados 38+16 itens). Só código/dados.
