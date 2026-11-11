@@ -286,9 +286,15 @@ function retaAbrirQuiz(materia, uids, rotulo){
   if(STATE.quiz) salvarQuizEmAndamento();
   STATE.materia = materia; STATE.tema = 'todos'; STATE.viewImportar = false; STATE.flashDeck = null;
   setLocalTab(materia, 'simulado');
-  STATE.quiz = { queue:uids, idx:0, respostas:{}, finished:false, materia, tema:'todos', origemErros:true, treinoArmadilha:rotulo };
+  STATE.quiz = { queue:uids, idx:0, respostas:{}, finished:false, materia, tema:'todos', origemErros:true, origemReta:true, treinoArmadilha:rotulo };
   salvarQuizEmAndamento();
   render();
+}
+// quiz aberto pela Reta Final: ao terminar ou voltar, retorna à página principal da aba Reta Final (tela de 7 dias)
+function retaVoltarSePreciso(quiz){
+  if(!quiz || !quiz.origemReta) return false;
+  STATE.retaModo = 'sete'; STATE.retaSessao = null; STATE.viewImportar = false; setLocalTab(quiz.materia || STATE.materia, 'reta');
+  return true;
 }
 function retaIniciarCartoes(uids, rotulo){
   const mats = retaMaterias(); const porUid = {}; retaCartoes(mats).forEach(c => { porUid[c.uid] = c; });

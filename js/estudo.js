@@ -654,6 +654,7 @@ function reiniciarSimuladoDaMateria(materiaNome){
 }
 
 function abandonarQuiz(){
+  if(typeof retaVoltarSePreciso === 'function') retaVoltarSePreciso(STATE.quiz);
   STATE.quiz = null;
   STATE.focusMode = false;
   render();
@@ -763,7 +764,7 @@ function renderResults(){
     <p style="font-size:12.5px;color:var(--ink-soft);margin-top:10px;">Essas questões já estão salvas automaticamente no caderno de erros desta matéria.</p>
   </div>` : (respondidas.length>0 ? `<div class="card-block"><h3>Gabarito impecável — nenhum erro registrado nesta sessão.</h3></div>` : '')}
   <div style="display:flex; gap:10px; flex-wrap:wrap;">
-    <button class="btn-outline" id="btn-voltar-resultado">← Voltar para "${esc(STATE.materia||'')}"</button>
+    <button class="btn-outline" id="btn-voltar-resultado">${quiz.origemReta ? '← Voltar para a Reta Final' : '← Voltar para "' + esc(STATE.materia||'') + '"'}</button>
     <button class="btn btn-primary" id="btn-novo-simulado">Novo simulado</button>
     ${!quiz.reaberto ? `<button class="btn-outline" id="btn-salvar-simulado">💾 Salvar para comparar depois</button>` : `<span class="side-status detail" style="align-self:center;">Visualizando um simulado salvo anteriormente</span>`}
   </div>

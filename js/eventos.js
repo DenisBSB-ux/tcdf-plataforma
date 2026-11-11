@@ -393,9 +393,9 @@ function attachHandlers(){
   const btnAbandonar = document.getElementById('btn-abandonar');
   if(btnAbandonar) btnAbandonar.addEventListener('click', abandonarQuiz);
   const btnVoltarResultado = document.getElementById('btn-voltar-resultado');
-  if(btnVoltarResultado) btnVoltarResultado.addEventListener('click', ()=>{ STATE.quiz=null; STATE.focusMode=false; render(); });
+  if(btnVoltarResultado) btnVoltarResultado.addEventListener('click', ()=>{ if(typeof retaVoltarSePreciso==='function') retaVoltarSePreciso(STATE.quiz); STATE.quiz=null; STATE.focusMode=false; render(); });
   const btnNovoSimulado = document.getElementById('btn-novo-simulado');
-  if(btnNovoSimulado) btnNovoSimulado.addEventListener('click', ()=>{ STATE.quiz=null; STATE.focusMode=false; render(); });
+  if(btnNovoSimulado) btnNovoSimulado.addEventListener('click', ()=>{ if(typeof retaVoltarSePreciso==='function') retaVoltarSePreciso(STATE.quiz); STATE.quiz=null; STATE.focusMode=false; render(); });
 
   root.querySelectorAll('[data-refazer]').forEach(el=>{
     el.addEventListener('click', ()=> refazerQuestao(el.dataset.refazer));

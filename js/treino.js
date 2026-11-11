@@ -32,7 +32,7 @@ function treinoAbrir(mat, modo){
   const slug = treinoSlug(mat); if(!slug || !treinoDisponivel(mat)) return;
   treinoCarregar(slug, ok => {
     if(!ok){ alert('Não foi possível carregar o treino agora. Tente de novo com internet.'); return; }
-    TR = { mat, slug, dados:TREINO_TCDF[slug], modo: modo || 'flash', filtro:'todos', fila:[], i:0, virado:false, slots:[], sel:null, checado:false, sessao:{ ok:0, tot:0 } };
+    TR = { mat, slug, dados:TREINO_TCDF[slug], modo: modo || 'flash', filtro:'todos', fila:[], i:0, virado:false, slots:[], sel:null, checado:false, sessao:{ ok:0, tot:0 }, mem:{} };
     treinoMontarFila();
     let box = document.getElementById('tr-modal'); if(box) box.remove();
     box = document.createElement('div'); box.id = 'tr-modal'; box.className = 'r7-modal tr-modal'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'Treino de ' + mat);
@@ -61,20 +61,30 @@ function treinoMontarFila(){
   }
   TR.i = 0; TR.virado = false; TR.checado = false; treinoPrepararLacuna();
 }
-function treinoPrepararLacuna(){
-  TR.sel = null; TR.checado = false; TR.sessaoItem = null;
-  if(TR.modo !== 'lacunas'){ TR.slots = []; TR.banco = []; return; }
-  const it = TR.fila[TR.i]; if(!it){ TR.slots = []; TR.banco = []; return; }
+// cada lacuna guarda a última resposta da sessão: ao avançar ou voltar, ela reaparece como foi deixada
+function treinoNovaLacuna(it){
   const resp = it.p.filter(p => p.l !== undefined).map(p => p.l);
-  TR.slots = resp.map(() => null);
-  TR.banco = treinoEmbaralha(resp.concat(it.d || []).map((w, id) => ({ w, id })));
+  return { slots: resp.map(() => null), banco: treinoEmbaralha(resp.concat(it.d || []).map((w, id) => ({ w, id }))), checado:false };
+}
+function treinoPrepararLacuna(){
+  TR.sel = null;
+  if(TR.modo !== 'lacunas'){ TR.slots = []; TR.banco = []; TR.checado = false; return; }
+  const it = TR.fila[TR.i]; if(!it){ TR.slots = []; TR.banco = []; TR.checado = false; return; }
+  const k = treinoChaveItem(it, 'l');
+  if(!TR.mem[k]) TR.mem[k] = treinoNovaLacuna(it);
+  const m = TR.mem[k]; TR.slots = m.slots; TR.banco = m.banco; TR.checado = m.checado;
+}
+function treinoGuardarLacuna(){
+  if(!TR || TR.modo !== 'lacunas') return; const it = TR.fila[TR.i]; if(!it) return;
+  TR.mem[treinoChaveItem(it, 'l')] = { slots:TR.slots, banco:TR.banco, checado:TR.checado };
 }
 function treinoDesenhar(){
   const box = document.getElementById('tr-modal'); if(!box || !TR) return;
   const d = TR.dados, slug = TR.slug, m = treinoLer()[slug] || {};
   const nOk = d.flash.filter(x => m[treinoChaveItem(x, 'f')] === 'ok').length, nRev = d.flash.filter(x => m[treinoChaveItem(x, 'f')] === 'rev').length;
   const lOk = d.lacunas.filter(x => m[treinoChaveItem(x, 'l')] === 'ok').length, lErr = d.lacunas.filter(x => m[treinoChaveItem(x, 'l')] === 'err').length;
-  const abas = `<div class="r7-seg tr-abas" role="tablist"><button class="${TR.modo === 'flash' ? 'on' : ''}" data-tr-modo="flash" role="tab" aria-selected="${TR.modo === 'flash'}">🃏 Flashcards <small>${d.flash.length}</small></button><button class="${TR.modo === 'lacunas' ? 'on' : ''}" data-tr-modo="lacunas" role="tab" aria-selected="${TR.modo === 'lacunas'}">🧩 Lacunas <small>${d.lacunas.length}</small></button></div>`;
+  treinoGuardarLacuna();
+  const abas = `<div class="tr-modos" role="group" aria-label="Tipo de treino"><button class="${TR.modo === 'flash' ? 'on' : ''}" data-tr-modo="flash" aria-pressed="${TR.modo === 'flash'}"><span>🃏 Flashcards</span><small>${d.flash.length}</small></button><button class="${TR.modo === 'lacunas' ? 'on' : ''}" data-tr-modo="lacunas" aria-pressed="${TR.modo === 'lacunas'}"><span>🧩 Lacunas</span><small>${d.lacunas.length}</small></button></div>`;
   const filtros = TR.modo === 'flash'
     ? [['todos', 'Todos'], ['revisar', 'Revisar (' + nRev + ')'], ['novos', 'Novos (' + (d.flash.length - nOk - nRev) + ')']]
     : [['todos', 'Todas'], ['erradas', 'Que errei (' + lErr + ')'], ['novos', 'Novas (' + (d.lacunas.length - lOk - lErr) + ')']];
@@ -86,7 +96,7 @@ function treinoDesenhar(){
   else corpo = treinoHtmlLacuna(it);
   const fim = TR.fila.length ? `${TR.i + 1} / ${TR.fila.length}` : '0';
   const stat = TR.modo === 'flash' ? `✓ ${nOk} sei · 🔁 ${nRev} revisar` : `✓ ${lOk} certas · ✗ ${lErr} erradas · sessão ${TR.sessao.ok}/${TR.sessao.tot}`;
-  box.innerHTML = `<div class="r7-modal-caixa tr-caixa"><button class="r7-modal-x" aria-label="Fechar" data-tr-fechar="1">✕</button>
+  box.innerHTML = `<div class="r7-modal-caixa tr-caixa"><button class="r7-modal-x" aria-label="Fechar" data-tr-fechar="1">✕</button><button class="tr-tema" data-tr-tema="1" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">${document.body.classList.contains('theme-light') ? '🌙' : '☀️'}</button>
     <div class="tr-topo"><h2>${esc(d.nome)}</h2><p class="tr-sub">Gerado só das questões da lista · ${esc(stat)}</p>${abas}${chips}</div>
     <div class="tr-corpo">${corpo}</div>
     <div class="tr-nav"><button class="btn" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}>← Anterior</button><span>${fim}</span><button class="btn" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button></div></div>`;
@@ -118,9 +128,10 @@ function treinoHtmlLacuna(it){
     const resp = it.p.filter(p => p.l !== undefined).map(p => p.l);
     fb = `<div class="tr-fb ${todos ? 'ok' : 'no'}"><b>${todos ? '✓ Correto!' : '✗ Não foi dessa vez.'}</b>${todos ? '' : ' Resposta: <i>' + esc(resp.join(' · ')) + '</i>.'}${it.ref ? ' <span class="tr-ref">' + esc(it.ref) + '</span>' : ''}${it.exp ? '<p class="tr-extra">' + esc(it.exp) + '</p>' : ''}</div>`;
   }
-  const acao = TR.checado
-    ? `<button class="btn btn-gold" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button><button class="btn" data-tr-questao="${it.n}:${esc(it.h)}">Ver a questão</button>`
-    : `<button class="btn btn-gold" data-tr-verificar="1" ${completo ? '' : 'disabled'}>Verificar</button><button class="btn" data-tr-limpar="1">Limpar</button>`;
+  const acao = `<button class="btn btn-gold" data-tr-verificar="1" ${completo && !TR.checado ? '' : 'disabled'}>Verificar</button>
+      <button class="btn" data-tr-limpar="1" title="Limpa só as palavras desta questão">Limpar</button>
+      <button class="btn" data-tr-resetar="1" title="Volta esta questão ao início (palavras e resultado)">Resetar</button>
+      ${TR.checado ? `<button class="btn" data-tr-questao="${it.n}:${esc(it.h)}">Ver a questão</button>` : ''}`;
   return `<div class="tr-card tr-lacuna"><span class="tr-tag">Complete arrastando as palavras</span><p class="tr-frase">${frase}</p>
     <div class="tr-banco" aria-label="Banco de palavras">${banco || '<span class="tr-dica">Todas as palavras foram usadas.</span>'}</div></div>${fb}<div class="tr-acoes">${acao}</div>`;
 }
@@ -167,7 +178,9 @@ function treinoClique(e){
     if(uid){ treinoFechar(); retaAbrirQuiz(mat, [uid], 'Treino · ' + mat); } return;
   }
   if(t.closest('[data-tr-verificar]')){ treinoVerificar(); return; }
-  if(t.closest('[data-tr-limpar]')){ if(!TR.checado){ TR.slots = TR.slots.map(() => null); TR.sel = null; treinoDesenhar(); } return; }
+  if(t.closest('[data-tr-tema]')){ if(typeof alternarTema === 'function') alternarTema(); treinoDesenhar(); return; }
+  if(t.closest('[data-tr-limpar]')){ TR.slots.fill(null); TR.checado = false; TR.sel = null; treinoDesenhar(); return; }      // só a questão atual
+  if(t.closest('[data-tr-resetar]')){ const it = TR.fila[TR.i]; if(it){ treinoMarcar(TR.slug, treinoChaveItem(it, 'l'), ''); const n = treinoNovaLacuna(it); TR.mem[treinoChaveItem(it, 'l')] = n; TR.slots = n.slots; TR.banco = n.banco; TR.checado = false; TR.sel = null; treinoDesenhar(); } return; }
   if((el = t.closest('[data-tr-chip]'))){ if(TR.checado) return; const id = parseInt(el.dataset.trChip, 10); TR.sel = TR.sel === id ? null : id; treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-blank]'))){
     if(TR.checado) return; const bi = parseInt(el.dataset.trBlank, 10);
