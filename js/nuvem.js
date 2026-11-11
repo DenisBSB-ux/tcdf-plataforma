@@ -287,12 +287,25 @@ if(typeof pdfjsLib !== 'undefined'){
 
 // Troca de numeração (Substituir por matéria): o lado mais antigo tem uids que, na lista nova, apontam para OUTRAS questões.
 // Se o lado novo traz o mapa antigo->novo e ele parte exatamente da geração do lado antigo, migra; senão descarta os dados por uid.
+// Várias trocas seguidas (Substituir por matéria 2x antes do outro aparelho sincronizar): o mapa de cada troca encadeia no seguinte.
+// Devolve o mapa composto uid-da-geração-velha -> uid-atual, ou null se a cadeia não cobre a geração velha.
+function _mapaDaCadeia(geracaoVelha, novo){
+  const lista = (novo && Array.isArray(novo.migracoes) && novo.migracoes.length) ? novo.migracoes : (novo && novo.migracao ? [novo.migracao] : []);
+  let i = lista.findIndex(m => m && m.mapa && (m.de||0) === (geracaoVelha||0));
+  if(i < 0) return null;
+  let mapa = { ...lista[i].mapa }, id = lista[i].id;
+  for(i = i + 1; i < lista.length; i++){
+    const m = lista[i]; if(!m || !m.mapa || (m.de||0) !== id) return null;
+    const prox = {}; Object.keys(mapa).forEach(u => { const v = m.mapa[mapa[u]]; if(v) prox[u] = v; });
+    mapa = prox; id = m.id;
+  }
+  return (novo.geracao||0) === id ? mapa : null;
+}
 function _migrarBucketPorMapa(velho, novo){
-  const mig = novo && novo.migracao;
-  const ok = mig && mig.mapa && (mig.de||0) === (velho.geracao||0);
+  const mapa = _mapaDaCadeia(velho.geracao, novo);
+  const ok = !!mapa;
   const out = { ...velho, perguntas:{}, flash:{}, chutes:{}, sessoes:(velho.sessoes||[]).map(x=>({ ...x, queue:null, respostas:null })), simuladosSalvos:[] };
   if(!ok) return out;
-  const mapa = mig.mapa;
   Object.entries(velho.perguntas||{}).forEach(([u,p])=>{
     const n = mapa[u]; if(!n || !p) return;
     out.perguntas[n] = out.perguntas[n] && typeof somarProgressoDaQuestao==='function' ? somarProgressoDaQuestao(out.perguntas[n], p) : p;
@@ -345,7 +358,7 @@ function mergeBucket(local, remote){
   const gl = (local && local.geracao) || 0, gr = (remote && remote.geracao) || 0;
   if(gl !== gr){
     // o lado de geração menor é migrado para a numeração do maior antes de mesclar
-    if(gr > gl){ local = _migrarBucketPorMapa(local || {}, remote); local.geracao = gr; local.migracao = remote.migracao; }
+    if(gr > gl){ local = _migrarBucketPorMapa(local || {}, remote); local.geracao = gr; local.migracao = remote.migracao; if(remote.migracoes) local.migracoes = remote.migracoes; }
     else { remote = _migrarBucketPorMapa(remote || {}, local); remote.geracao = gl; }
   }
   local = local || { perguntas:{}, flash:{}, sessoes:[], simuladosSalvos:[], chutes:{}, srs:{}, estudo:{} };
@@ -449,15 +462,16 @@ function mergeBucket(local, remote){
 // uid antigo, passariam a valer em OUTRA questão. Move-os pelo mapa; o que o mapa não cobre (e cai em uid desta matéria) sai.
 function _migrarEdicoesEGabaritos(materiaKey, localBucket, remoteBucket){
   const gl = (localBucket && localBucket.geracao) || 0, gr = (remoteBucket && remoteBucket.geracao) || 0;
-  const mig = remoteBucket && remoteBucket.migracao;
+  const mig = remoteBucket && (remoteBucket.migracao || (remoteBucket.migracoes||[])[0]);
   if(!(gr > gl) || !mig || !mig.mapa) return;
+  const mapaCadeia = _mapaDaCadeia(gl, remoteBucket);
   const slug = slugify(materiaKey);
   const daMateria = u => u.startsWith(slug+'-') && /^\d+(-\d+)?$/.test(u.slice(slug.length+1));
-  const encadeia = (mig.de||0) === gl;
+  const encadeia = !!mapaCadeia;
   [EDICOES_USUARIO, GABARITOS_ALTERADOS].forEach(mapaDados=>{
     const movidos = {};
     Object.keys(mapaDados).filter(daMateria).forEach(u=>{
-      if(encadeia && mig.mapa[u]) movidos[mig.mapa[u]] = mapaDados[u];
+      if(encadeia && mapaCadeia[u]) movidos[mapaCadeia[u]] = mapaDados[u];
       delete mapaDados[u];
     });
     Object.assign(mapaDados, movidos);

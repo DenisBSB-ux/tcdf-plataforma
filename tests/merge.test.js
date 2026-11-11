@@ -47,6 +47,16 @@ const velho = B({ perguntas: { 'm-1': P(3, 2, [H(1, true)]), 'm-2': P(1, 0, [H(5
 const novo = B({ perguntas: { 'm-7': P(2, 1, [H(1, true)]), 'm-1': P(9, 9, [H(1, true)]) }, geracao: 100, migracao: { de: 0, id: 100, mapa: { 'm-1': 'm-7' } } });
 r = mb(novo, velho); t('migração por mapa', r.perguntas['m-7'] && r.perguntas['m-7'].tentativas >= 2 && r.perguntas['m-1'].tentativas === 9 && !r.perguntas['m-2'] && r.estudo && r.estudo['m-7'] && r.estudo['m-7'].n === 'teoria');
 r = mb(velho, novo); t('migração por mapa (inverso)', r.perguntas['m-7'] && r.perguntas['m-1'].tentativas === 9 && !r.perguntas['m-2']);
+// 7b. duas trocas seguidas (Substituir 2x) antes do outro aparelho sincronizar: as respostas dele não podem ser descartadas
+{
+  const aparelho = B({ perguntas: { 'm-1': P(2, 1, [H(1, true), H(9, false)]) } });                       // geração 0, ainda na numeração original
+  const g2 = B({ perguntas: { 'm-7': P(1, 1, [H(1, true)]) }, geracao: 200, migracao: { de: 100, id: 200, mapa: { 'm-3': 'm-7' } },
+    migracoes: [{ de: 0, id: 100, mapa: { 'm-1': 'm-3' } }, { de: 100, id: 200, mapa: { 'm-3': 'm-7' } }] });
+  r = mb(g2, aparelho); t('duas trocas: respostas do aparelho antigo seguem a questão', r.perguntas['m-7'] && r.perguntas['m-7'].tentativas >= 2 && !r.perguntas['m-1']);
+  r = mb(aparelho, g2); t('duas trocas (inverso)', r.perguntas['m-7'] && r.perguntas['m-7'].tentativas >= 2 && r.geracao === 200);
+  const quebrada = B({ perguntas: { 'm-7': P(1, 1, [H(1, true)]) }, geracao: 200, migracao: { de: 100, id: 200, mapa: { 'm-3': 'm-7' } } });
+  r = mb(quebrada, aparelho); t('cadeia incompleta continua descartando (numeração não confiável)', !r.perguntas['m-1'] && r.perguntas['m-7'].tentativas === 1);
+}
 // 8. idempotência: mesclar duas vezes dá o mesmo resultado
 const a = B({ perguntas: { u1: P(2, 1, [H(1, true), H(2, false)]) } }), b2 = B({ perguntas: { u1: P(3, 2, [H(1, true), H(3, true)]) } });
 const m1 = mb(a, b2), m2 = mb(m1, b2);
