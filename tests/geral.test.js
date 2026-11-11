@@ -163,5 +163,24 @@ try {
   t('reta7: datas', cx.D('2026-11-11', '2026-11-13') === 2 && cx.S('2026-11-30', 1) === '2026-12-01' && cx.D('2026-11-13', '2026-11-11') === -2);
 } catch (e) { t('reta 7 dias', false, e.message); }
 
+// 8. Treino por matéria (js/treino.js + js/treino-<matéria>.js): só matérias liberadas, com dados íntegros
+try {
+  const tr = fs.readFileSync(path.join(raiz, 'js', 'treino.js'), 'utf8');
+  const lib = JSON.parse(tr.match(/TREINO_LIBERADAS = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
+  t('treino: há matéria liberada', lib.length >= 1);
+  const r7 = fs.readFileSync(path.join(raiz, 'js', 'reta-7dias.js'), 'utf8'), mapa = r7.match(/R7_RESUMO_MAPA = \[([\s\S]*?)\n\];/)[1];
+  lib.forEach(slug => {
+    const arq = path.join(raiz, 'js', 'treino-' + slug + '.js');
+    t('treino: arquivo de ' + slug + ' existe e está no mapa de matérias', fs.existsSync(arq) && mapa.includes("'" + slug + "'"));
+    const cx = { TREINO_TCDF: {} }; vm.createContext(cx); vm.runInContext(fs.readFileSync(arq, 'utf8'), cx);
+    const d = cx.TREINO_TCDF[slug];
+    t('treino: ' + slug + ' tem flashcards e lacunas', d && d.flash.length >= 50 && d.lacunas.length >= 50);
+    t('treino: ' + slug + ' flashcards com frente e verso', d.flash.every(f => f.f && f.v && f.n && f.h));
+    const ruins = d.lacunas.filter(x => { const bl = x.p.filter(p => p.l !== undefined); const frase = x.p.map(p => p.t !== undefined ? p.t : p.l).join(''); return !bl.length || bl.length > 3 || !x.d || !x.d.length || x.d.some(w => bl.some(b => b.l.toLowerCase() === w.toLowerCase()) || frase.toLowerCase().includes(w.toLowerCase())) || bl.some(b => !b.l.trim()) || /＿|\[\[|\]\]/.test(frase); });
+    t('treino: ' + slug + ' lacunas íntegras (1 a 3 espaços, distratores fora da frase e das respostas)', !ruins.length, ruins.slice(0, 2).map(x => x.n).join(','));
+    const ch = d.lacunas.map(x => x.n + ':' + x.h); t('treino: ' + slug + ' sem lacuna duplicada', new Set(ch).size === ch.length);
+  });
+} catch (e) { t('treino', false, e.message); }
+
 console.log('geral: ' + ok + ' ok, ' + bad + ' falhas');
 process.exit(bad ? 1 : 0);

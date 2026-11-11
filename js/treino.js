@@ -106,7 +106,7 @@ function treinoHtmlLacuna(it){
   let k = 0;
   const frase = it.p.map(p => {
     if(p.l === undefined) return esc(p.t);
-    const i = k++, w = TR.slots[i], cert = TR.checado ? (w === p.l ? ' ok' : ' no') : '';
+    const i = k++, w = TR.slots[i], cert = TR.checado ? (w && w.w === p.l ? ' ok' : ' no') : '';
     return `<span class="tr-blank${w ? ' cheio' : ''}${cert}" data-tr-blank="${i}" tabindex="0" role="button" aria-label="Espaço ${i + 1}${w ? ': ' + esc(w.w) : ' vazio'}">${w ? esc(w.w) : '＿＿＿＿'}</span>`;
   }).join('');
   const usados = new Set(TR.slots.filter(Boolean).map(x => x.id));
