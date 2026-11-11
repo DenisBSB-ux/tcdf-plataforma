@@ -1,0 +1,8 @@
+# Roteiro: "Teoria em figura" — Adm (Lei nº 8.429; nº 9.784; nº 2.834)
+Leia antes ROTEIRO.md, ROTEIRO_EXT.md, ROTEIRO_RJU.md e ROTEIRO_ADM.md. Diferenças:
+- Lista: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/l84/padrao.md (200 questões, numeração única 1..200: `pos` = número do cabeçalho). Índice: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/figuras/l84_index.json.
+- `m:/8\.429/i` (nome da matéria na plataforma: 'Adm (Lei nº 8.429; nº 9.784; nº 2.834)'). Validação: `MATERIA='Adm (Lei nº 8.429; nº 9.784; nº 2.834)' LISTA=<lista acima> MAXPOS=200 node .claude/skills/teoria-em-figura/validar.js <arquivo>`.
+- Textos CARREGADOS (lei.js): **Lei 8.429** (improbidade, com a Lei 14.230/2021; 105 questões), **Lei 9.784** (93), **Lei 2.834** (DF), CF, Decreto-lei 4.657 (LINDB). Use `fonte:[['Lei 8.429',N]]` etc. Jurisprudência (STF Tema 1199, ADI 7236, súmulas STJ): só com texto literal via `ext` (API do STF: stf.js/stfq.py, WAF: repita com pausa; SumulasSTJ.pdf); o Planalto bloqueia.
+- O texto carregado manda (a Lei 8.429 mudou muito em 2021: resoluções antigas podem citar a redação revogada): divergência da resolução da lista → siga o texto e registre 'divergência: pos N — motivo' no .skip.txt; gabarito em conflito → cartão neutro. Questões "Conferir o gabarito" (1, 8, 13, 17, 102, 108, 109, 147, 184): cartão neutro.
+- Múltipla escolha (34): o cartão trata da regra da alternativa correta; as alternativas já são justificadas pela plataforma.
+- Pule (motivo em .skip.txt) se não houver fonte literal confiável; sem blog de cursinho nem Wikipedia. Um cartão por questão, com título e foco próprios (muitas repetem o tema: varie o foco).
