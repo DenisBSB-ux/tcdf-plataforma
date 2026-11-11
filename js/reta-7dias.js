@@ -146,10 +146,13 @@ function reta7AbrirResumo(mat){
     const r = ok && typeof RESUMOS_TCDF !== 'undefined' && RESUMOS_TCDF[slug];
     let box = document.getElementById('r7-modal'); if(box) box.remove();
     box = document.createElement('div'); box.id = 'r7-modal'; box.className = 'r7-modal'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'Resumo de ' + mat);
-    box.innerHTML = '<div class="r7-modal-caixa"><button class="r7-modal-x" aria-label="Fechar">✕</button><div class="r7-md">' + (r ? reta7Md(r.md) : '<p>Não foi possível carregar o resumo agora. Tente de novo com internet.</p>') + '</div></div>';
+    box.innerHTML = '<div class="r7-modal-caixa"><button class="r7-modal-x" aria-label="Fechar">✕</button><button class="tr-tema" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">' + (document.body.classList.contains('theme-light') ? '🌙' : '☀️') + '</button><div class="r7-md">' + (r ? reta7Md(r.md) : '<p>Não foi possível carregar o resumo agora. Tente de novo com internet.</p>') + '</div></div>';
     const fechar = () => { box.remove(); document.removeEventListener('keydown', tecla, true); };
     const tecla = e => { if(e.key === 'Escape'){ e.stopPropagation(); fechar(); } };
-    box.addEventListener('click', e => { if(e.target === box || e.target.closest('.r7-modal-x')) fechar(); });
+    box.addEventListener('click', e => {
+      if(e.target === box || e.target.closest('.r7-modal-x')){ fechar(); return; }
+      const tm = e.target.closest('.tr-tema'); if(tm){ if(typeof alternarTema === 'function') alternarTema(); tm.textContent = document.body.classList.contains('theme-light') ? '🌙' : '☀️'; }
+    });
     document.addEventListener('keydown', tecla, true);
     document.body.appendChild(box); const x = box.querySelector('.r7-modal-x'); if(x) x.focus();
   };
