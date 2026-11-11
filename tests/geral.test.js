@@ -140,5 +140,26 @@ try {
   for (const nome of Object.keys(nomes)) t('cartões: algum cartão reconhece a matéria "' + nome + '"', cartoes.some(c => c.m && c.m.test(nome)));
 } catch (e) { t('cartões de teoria', false, e.message); }
 
+// 7. Reta Final · revisão de 7 dias (js/reta-7dias.js): distribuição das matérias pelos dias e datas
+try {
+  const r7 = fs.readFileSync(path.join(raiz, 'js', 'reta-7dias.js'), 'utf8');
+  const cx = {}; vm.createContext(cx);
+  vm.runInContext(r7.slice(r7.indexOf('/* R7-PURO-INI */'), r7.indexOf('/* R7-PURO-FIM */')) + ';this.P = reta7Plano; this.D = reta7DiffDias; this.S = reta7SomaDias;', cx);
+  const stats = Array.from({ length: 21 }, (_, i) => ({ mat: 'M' + String(i).padStart(2, '0'), score: 1 - i / 21 }));   // M00 é a mais fraca
+  const a = cx.P(stats, 7, 60);
+  t('reta7: 21 matérias em 7 dias a 60 min: ninguém fica de fora', a.fora.length === 0 && new Set(a.dias.flat()).size === 21);
+  t('reta7: nenhum dia vazio nem acima da capacidade', a.dias.every(d => d.length >= 1 && d.length <= a.cap) && a.cap === 4);
+  t('reta7: as mais fracas vêm primeiro', a.dias[0].includes('M00') && !a.dias[0].includes('M20'));
+  t('reta7: sem matéria repetida no mesmo dia', a.dias.every(d => new Set(d).size === d.length));
+  const dia1 = m => a.dias.findIndex(d => d.includes(m)), dia2 = m => a.dias.findIndex((d, i) => i > dia1(m) && d.includes(m));
+  t('reta7: segunda passada só 3+ dias depois da primeira', a.segunda.length > 0 && a.segunda.every(m => dia2(m) - dia1(m) >= 3));
+  const b = cx.P(stats, 7, 30);
+  t('reta7: pouco tempo: ficam de fora as mais fortes', b.cap === 2 && b.fora.length === 7 && b.fora.includes('M20') && !b.fora.includes('M00'));
+  const c = cx.P(stats.slice(0, 3), 1, 60);
+  t('reta7: plano de 1 dia e poucas matérias', c.dias.length === 1 && c.dias[0].length === 3 && c.segunda.length === 0);
+  t('reta7: nDias é limitado a 1..7', cx.P(stats, 99, 60).dias.length === 7 && cx.P(stats, 0, 60).dias.length === 1);
+  t('reta7: datas', cx.D('2026-11-11', '2026-11-13') === 2 && cx.S('2026-11-30', 1) === '2026-12-01' && cx.D('2026-11-13', '2026-11-11') === -2);
+} catch (e) { t('reta 7 dias', false, e.message); }
+
 console.log('geral: ' + ok + ' ok, ' + bad + ' falhas');
 process.exit(bad ? 1 : 0);
