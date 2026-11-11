@@ -403,9 +403,9 @@ function tendenciaQuente(q){
 // prefixo "INÉDITA" no campo de banca — robusto a variações de vírgula/espaço,
 // já que o prompt de geração pode formatar o texto de formas ligeiramente diferentes
 function isInedita(q){
-  // duas convenções em uso nas listas geradas até aqui: "INÉDITA, ..." e
+  // duas convenções em uso nas listas geradas até aqui: "INÉDITA, ...", "QUESTÃO INÉDITA (ESTILO CEBRASPE), ..." e
   // "Elaboração própria — ...". Ambas indicam questão sintética, não de banca real.
-  return !!(q.bc && /^\s*(inédita\b|elabora[çc][ãa]o pr[óo]pria\b)/i.test(q.bc));
+  return !!(q.bc && /^\s*((quest[ãa]o\s+)?in[ée]dita\b|elabora[çc][ãa]o pr[óo]pria\b)/i.test(q.bc));
 }
 function ineditaBadge(q){
   if(!isInedita(q)) return '';
