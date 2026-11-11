@@ -2373,3 +2373,23 @@ body .ce-btn .letter, body .answer-opt .letter{ font-size:16px; }
 .r7-md blockquote{ margin:6px 0 10px; padding:6px 12px; border-left:3px solid #b08d3c; background:#f4efe3; color:#4a4130; border-radius:0 8px 8px 0; }
 .r7-md ul{ margin:4px 0 8px; padding-left:20px; } .r7-md li{ margin:3px 0; } .r7-md p{ margin:6px 0; }
 .r7-md table{ width:100%; border-collapse:collapse; margin:8px 0 12px; font-size:13.5px; } .r7-md th, .r7-md td{ border:1px solid #d6d9de; padding:5px 8px; text-align:left; vertical-align:top; } .r7-md th{ background:#eef1f5; } .r7-md strong{ color:#0f2f4d; }
+
+/* v472: Treino por matéria (js/treino.js): flashcards e lacunas de arrastar */
+.tr-caixa{ width:min(760px,100%); } .tr-topo h2{ margin:0 0 2px; font-size:20px; } .tr-sub{ margin:0 0 10px; font-size:13px; color:#5a6472; }
+.tr-modal .r7-seg{ background:#f4efe3; border-color:#d6d0c0; } .tr-modal .r7-seg button{ color:#1d1d1f; } .tr-modal .r7-seg button.on{ background:#b08d3c; color:#fff; }
+.tr-abas small{ opacity:.7; margin-left:4px; }
+.tr-filtros{ display:flex; gap:6px; flex-wrap:wrap; margin:10px 0 4px; } .tr-filtros button{ border:1px solid #d6d0c0; background:#fffdf8; color:#1d1d1f; border-radius:999px; padding:4px 12px; font:inherit; font-size:12.5px; cursor:pointer; } .tr-filtros button.on{ background:#1d3b58; border-color:#1d3b58; color:#fff; }
+.tr-corpo{ margin:12px 0; }
+.tr-card{ border:1px solid #d6d0c0; border-radius:14px; padding:18px 20px; background:#fffdf8; min-height:150px; position:relative; }
+.tr-frente{ cursor:pointer; background:#f4efe3; } .tr-verso{ background:#eef6ee; border-color:#9bc79b; cursor:pointer; }
+.tr-tag{ display:inline-block; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#7a5b12; margin-bottom:8px; }
+.tr-texto, .tr-frase{ font-size:17px; line-height:1.6; margin:0; color:#1d1d1f; } .tr-extra{ margin:10px 0 0; font-size:13.5px; color:#4a4130; }
+.tr-ref{ display:inline-block; margin-top:8px; font-size:12px; color:#5a6472; } .tr-dica{ display:block; margin-top:12px; font-size:12px; color:#8a8f98; }
+.tr-acoes{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; } .tr-acoes .btn{ color:#1d1d1f; } .tr-acoes .btn-gold{ color:#fff; } .tr-sei.on{ outline:2px solid #2e9b57; } .tr-rev.on{ outline:2px solid #c0803a; }
+.tr-blank{ display:inline-block; min-width:92px; padding:1px 10px; margin:0 2px; border:2px dashed #b08d3c; border-radius:8px; background:#fff; color:#8a8f98; text-align:center; cursor:pointer; line-height:1.4; vertical-align:baseline; }
+.tr-blank.cheio{ border-style:solid; color:#0f2f4d; font-weight:600; background:#eef3fa; } .tr-blank.ok{ border-color:#2e9b57; background:#e5f4e8; color:#1c6b3a; } .tr-blank.no{ border-color:#c0392b; background:#fbe9e6; color:#8a2a1f; }
+.tr-banco{ display:flex; gap:8px; flex-wrap:wrap; margin-top:16px; padding:12px; min-height:54px; border-radius:12px; background:#f4efe3; border:1px dashed #d6d0c0; }
+.tr-chip{ border:1px solid #1d3b58; background:#fff; color:#1d3b58; border-radius:999px; padding:6px 14px; font:inherit; font-size:14px; cursor:grab; touch-action:manipulation; user-select:none; } .tr-chip:active{ cursor:grabbing; } .tr-chip.sel{ background:#1d3b58; color:#fff; box-shadow:0 0 0 3px rgba(29,59,88,.25); }
+.tr-fb{ margin-top:12px; padding:10px 14px; border-radius:10px; font-size:14.5px; } .tr-fb.ok{ background:#e5f4e8; color:#1c6b3a; } .tr-fb.no{ background:#fbe9e6; color:#8a2a1f; } .tr-fb .tr-extra{ color:inherit; }
+.tr-nav{ display:flex; align-items:center; justify-content:space-between; gap:10px; color:#5a6472; font-size:13px; } .tr-nav .btn{ color:#1d1d1f; } .tr-vazio{ padding:30px 0; text-align:center; color:#5a6472; }
+.tr-blank:focus-visible, .tr-chip:focus-visible, .tr-card:focus-visible, .tr-filtros button:focus-visible{ outline:2px solid #1d3b58; outline-offset:2px; }
