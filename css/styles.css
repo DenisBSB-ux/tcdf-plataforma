@@ -2355,3 +2355,21 @@ body .ce-btn .letter, body .answer-opt .letter{ font-size:16px; }
 .r7-aviso{ margin:0; padding:10px 14px; border-radius:12px; background:var(--surf2); border:1px dashed var(--bd); font-size:13.5px; color:var(--mut); }
 .reta-abas .r7-voltar{ flex:0 0 auto; }
 @media (max-width:720px){ .r7-hero{ grid-template-columns:minmax(0,1fr); } .r7-tira{ grid-template-columns:repeat(4,1fr); } }
+
+/* v471: Reta Final · disponibilidade (horas por dia, dias) e resumos */
+.r7-disp{ display:flex; align-items:center; gap:10px 14px; flex-wrap:wrap; padding:12px 14px; border-radius:14px; background:var(--surf); border:1px solid var(--bd); }
+.r7-disp > span{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); }
+.r7-chips{ display:flex; gap:6px; flex-wrap:wrap; flex:1 1 280px; }
+.r7-chip{ display:flex; flex-direction:column; align-items:center; gap:1px; padding:6px 10px; border-radius:10px; border:1px dashed var(--bd); background:transparent; color:var(--mut); font:inherit; cursor:pointer; min-width:64px; }
+.r7-chip b{ font-size:12.5px; } .r7-chip small{ font-size:11px; }
+.r7-chip.on{ border-style:solid; border-color:var(--acc); background:color-mix(in srgb,var(--acc) 14%,transparent); color:inherit; }
+.r7-chip:focus-visible, .r7-passo button:focus-visible, .r7-res:focus-visible, .r7-modal-x:focus-visible{ outline:2px solid var(--acc); outline-offset:2px; }
+.r7-passo{ display:inline-flex; align-items:center; gap:6px; margin-right:auto; } .r7-passo button{ width:28px; height:28px; border-radius:8px; border:1px solid var(--bd); background:var(--surf2); color:inherit; font:inherit; font-size:16px; line-height:1; cursor:pointer; }
+.r7-acoes{ display:flex; gap:8px; flex-wrap:wrap; margin-top:2px; }
+.r7-modal{ position:fixed; inset:0; z-index:1200; display:flex; align-items:flex-start; justify-content:center; padding:4vh 12px; background:rgba(0,0,0,.6); overflow:auto; }
+.r7-modal-caixa{ position:relative; width:min(860px,100%); background:#fffdf8; color:#1d1d1f; border:1px solid #d6d0c0; border-radius:18px; padding:22px 24px 26px; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+.r7-modal-x{ position:sticky; top:0; float:right; margin:-6px -8px 0 8px; width:34px; height:34px; border-radius:10px; border:1px solid #d6d0c0; background:#f4efe3; color:#1d1d1f; font-size:16px; cursor:pointer; }
+.r7-md{ font-size:15px; line-height:1.55; } .r7-md h2{ font-size:22px; margin:0 0 6px; } .r7-md h3{ font-size:16px; margin:18px 0 6px; padding-bottom:3px; border-bottom:1.5px solid #b08d3c; } .r7-md h4{ font-size:14.5px; margin:12px 0 4px; color:#1d3b58; }
+.r7-md blockquote{ margin:6px 0 10px; padding:6px 12px; border-left:3px solid #b08d3c; background:#f4efe3; color:#4a4130; border-radius:0 8px 8px 0; }
+.r7-md ul{ margin:4px 0 8px; padding-left:20px; } .r7-md li{ margin:3px 0; } .r7-md p{ margin:6px 0; }
+.r7-md table{ width:100%; border-collapse:collapse; margin:8px 0 12px; font-size:13.5px; } .r7-md th, .r7-md td{ border:1px solid #d6d9de; padding:5px 8px; text-align:left; vertical-align:top; } .r7-md th{ background:#eef1f5; } .r7-md strong{ color:#0f2f4d; }

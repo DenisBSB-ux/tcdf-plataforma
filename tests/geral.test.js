@@ -140,24 +140,26 @@ try {
   for (const nome of Object.keys(nomes)) t('cartões: algum cartão reconhece a matéria "' + nome + '"', cartoes.some(c => c.m && c.m.test(nome)));
 } catch (e) { t('cartões de teoria', false, e.message); }
 
-// 7. Reta Final · revisão de 7 dias (js/reta-7dias.js): distribuição das matérias pelos dias e datas
+// 7. Reta Final · plano por matéria (js/reta-7dias.js): distribuição pelo tempo e dias disponíveis; calendário e datas
 try {
   const r7 = fs.readFileSync(path.join(raiz, 'js', 'reta-7dias.js'), 'utf8');
   const cx = {}; vm.createContext(cx);
-  vm.runInContext(r7.slice(r7.indexOf('/* R7-PURO-INI */'), r7.indexOf('/* R7-PURO-FIM */')) + ';this.P = reta7Plano; this.D = reta7DiffDias; this.S = reta7SomaDias;', cx);
-  const stats = Array.from({ length: 21 }, (_, i) => ({ mat: 'M' + String(i).padStart(2, '0'), score: 1 - i / 21 }));   // M00 é a mais fraca
-  const a = cx.P(stats, 7, 60);
-  t('reta7: 21 matérias em 7 dias a 60 min: ninguém fica de fora', a.fora.length === 0 && new Set(a.dias.flat()).size === 21);
-  t('reta7: nenhum dia vazio nem acima da capacidade', a.dias.every(d => d.length >= 1 && d.length <= a.cap) && a.cap === 4);
-  t('reta7: as mais fracas vêm primeiro', a.dias[0].includes('M00') && !a.dias[0].includes('M20'));
-  t('reta7: sem matéria repetida no mesmo dia', a.dias.every(d => new Set(d).size === d.length));
-  const dia1 = m => a.dias.findIndex(d => d.includes(m)), dia2 = m => a.dias.findIndex((d, i) => i > dia1(m) && d.includes(m));
-  t('reta7: segunda passada só 3+ dias depois da primeira', a.segunda.length > 0 && a.segunda.every(m => dia2(m) - dia1(m) >= 3));
-  const b = cx.P(stats, 7, 30);
-  t('reta7: pouco tempo: ficam de fora as mais fortes', b.cap === 2 && b.fora.length === 7 && b.fora.includes('M20') && !b.fora.includes('M00'));
-  const c = cx.P(stats.slice(0, 3), 1, 60);
-  t('reta7: plano de 1 dia e poucas matérias', c.dias.length === 1 && c.dias[0].length === 3 && c.segunda.length === 0);
-  t('reta7: nDias é limitado a 1..7', cx.P(stats, 99, 60).dias.length === 7 && cx.P(stats, 0, 60).dias.length === 1);
+  vm.runInContext(r7.slice(r7.indexOf('/* R7-PURO-INI */'), r7.indexOf('/* R7-PURO-FIM */')) + ';this.P = reta7Distribuir; this.D = reta7DiffDias; this.S = reta7SomaDias; this.C = reta7Calendario;', cx);
+  const stats = Array.from({ length: 20 }, (_, i) => ({ mat: 'M' + String(i).padStart(2, '0'), score: 1 - i / 20, w: 2 - i / 20 }));   // M00 é a mais fraca
+  const dias8 = Array.from({ length: 8 }, (_, i) => ({ d: '2026-11-' + String(11 + i).padStart(2, '0'), min: 240 }));
+  const a = cx.P(stats, dias8), soma = o => Object.values(o).reduce((x, y) => x + y, 0);
+  t('reta7: 8 dias x 4h usam exatamente 32h e ninguém fica de fora', soma(a.porMateria) === 1920 && a.fora.length === 0 && Object.keys(a.porMateria).length === 20);
+  t('reta7: nenhum dia estoura o tempo e todos são usados', a.agenda.every((d, i) => d.reduce((x, b) => x + b.min, 0) <= 240 && d.length > 0));
+  t('reta7: mais fracas ganham mais tempo e vêm antes', a.porMateria.M00 > a.porMateria.M19 && a.agenda[0].some(b => b.mat === 'M00') && !a.agenda[0].some(b => b.mat === 'M19'));
+  t('reta7: tempo mínimo por matéria é 45 min com folga', Object.values(a.porMateria).every(m => m >= 45 && m % 15 === 0));
+  const dd = m => a.agenda.map((d, i) => d.some(b => b.mat === m) ? i : -1).filter(i => i >= 0);
+  t('reta7: a mesma matéria aparece em mais de um dia (1ª e 2ª passada)', stats.slice(0, 10).every(s => dd(s.mat).length >= 2 || a.agenda.flat().some(b => b.mat === s.mat && b.t === '12')));
+  const b = cx.P(stats, [{ d: '2026-11-12', min: 120 }, { d: '2026-11-13', min: 60 }]);
+  t('reta7: pouco tempo: só as mais fracas entram (15 min por matéria)', soma(b.porMateria) === 180 && b.fora.length === 8 && b.fora.includes('M19') && !b.fora.includes('M00'));
+  t('reta7: sem dias disponíveis tudo fica de fora', cx.P(stats, []).fora.length === 20);
+  t('reta7: um dia só', cx.P(stats.slice(0, 3), [{ d: '2026-11-12', min: 180 }]).agenda[0].reduce((x, y) => x + y.min, 0) === 180);
+  const cal = cx.C('2026-11-11', 11, { horas: 3, dias: { '2026-11-12': { on: false }, '2026-11-14': { on: true, min: 90 } } });   // 11/11 é quarta
+  t('reta7: calendário (seg a sex por padrão, folga e override)', cal.length === 11 && cal[0].on && !cal[1].on && !cal[3].on === false && cal[3].on && cal[3].min === 90 && cal[4].dw === 0 && !cal[4].on && cal[0].min === 180);
   t('reta7: datas', cx.D('2026-11-11', '2026-11-13') === 2 && cx.S('2026-11-30', 1) === '2026-12-01' && cx.D('2026-11-13', '2026-11-11') === -2);
 } catch (e) { t('reta 7 dias', false, e.message); }
 

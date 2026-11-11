@@ -40,7 +40,7 @@ try{
             const lazy = [];
             try{ Object.values(LEI_FONTES).forEach(f=>{ if(f.arquivo) lazy.push(f.arquivo+q); }); }catch(_){}
             lazy.push('manifest.webmanifest','img/icon-192.png','img/icon-512.png');
-            ['doutrina-ps','doutrina-pdpm','doutrina-df','doutrina-dadm','doutrina-cst','doutrina-adm','teoria-dt','armadilhas-dados'].forEach(n=>lazy.push('js/'+n+'.js'+q));
+            ['doutrina-ps','doutrina-pdpm','doutrina-df','doutrina-dadm','doutrina-cst','doutrina-adm','teoria-dt','armadilhas-dados','resumos-dados'].forEach(n=>lazy.push('js/'+n+'.js'+q));
             const alvo = reg.active || navigator.serviceWorker.controller;
             if(alvo) alvo.postMessage({ tipo:'precache', urls: [location.href].concat(usados, lazy) });
           }catch(_){}
