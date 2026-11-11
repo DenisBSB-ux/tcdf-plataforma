@@ -676,10 +676,30 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
     if(c) (porFinal[finalDaChave(c)] = porFinal[finalDaChave(c)] || []).push({ q, chave: c });
   });
   // todas as cópias anteriores equivalentes (a matéria pode ter duplicatas)
-  const equivalentesAnteriores = r => {
+  const equivalentesExatas = r => {
     const c = chaveDeEnunciado(textoDeChave(r));
     return c ? (porFinal[finalDaChave(c)] || []).filter(x => mesmaQuestao(c, x.chave)).map(x => x.q) : [];
   };
+  // Texto que mudou um pouco entre os arquivos (edição na plataforma, alternativas dentro do enunciado, espaços): a questão
+  // não casa pela chave exata e perderia o progresso. Só entre as SOBRAS (sem par exato dos dois lados), em pares únicos e
+  // mútuos, com palavras quase iguais — assim duas questões parecidas, ambas presentes, nunca trocam o progresso entre si.
+  const aproximadas = new Map();
+  if(modo === 'substituir'){
+    const usadas = new Set(), semPar = [];
+    results.forEach(r => { const eq = equivalentesExatas(r); if(eq.length) eq.forEach(q => usadas.add(q.uid)); else semPar.push(r); });
+    const sobras = anteriores.filter(q => !usadas.has(q.uid));
+    const palavras = t => new Set(chaveDeEnunciado(t).split(' ').filter(w => w.length > 2));
+    const jac = (a, b) => { let i = 0; a.forEach(w => { if(b.has(w)) i++; }); return a.size + b.size - i ? i / (a.size + b.size - i) : 0; };
+    const pa = semPar.map(r => palavras(textoDeChave(r))), po = sobras.map(q => palavras(textoDeChave(q)));
+    const melhor = (v, lista) => { let bi = -1, bs = 0, seg = 0; lista.forEach((w, i) => { const j = jac(v, w); if(j > bs){ seg = bs; bs = j; bi = i; } else if(j > seg) seg = j; }); return { bi, bs, seg }; };
+    semPar.forEach((r, i) => {
+      if(pa[i].size < 6) return;
+      const m = melhor(pa[i], po); if(m.bi < 0 || m.bs < 0.8 || m.seg > m.bs - 0.05) return;
+      const volta = melhor(po[m.bi], pa); if(volta.bi !== i || volta.seg > volta.bs - 0.05) return;
+      aproximadas.set(r, [sobras[m.bi]]);
+    });
+  }
+  const equivalentesAnteriores = r => { const eq = equivalentesExatas(r); return eq.length ? eq : (aproximadas.get(r) || []); };
   // Substituir: a lista passa a ser exatamente a do arquivo, e o progresso vai
   // junto pra questão equivalente (não pelo número, que muda entre arquivos).
   // Progresso de questão que não existe mais no arquivo é descartado.
