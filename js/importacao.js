@@ -751,7 +751,7 @@ async function aplicarImportacao(materiaNome, content, results, ignoradas, semGa
   });
   if(progressoAnterior){
     // registra a "geração" do progresso: outro aparelho que ainda tenha uids antigos usa este mapa para migrá-los no merge
-    try{ const idGer = Date.now(); bucket.migracao = { de: bucket.geracao||0, id: idGer, mapa: mapaUid }; bucket.geracao = idGer; marcarProgressoSujo(materiaNome); }catch(_){}
+    try{ const idGer = Date.now(); const mig = { de: bucket.geracao||0, id: idGer, mapa: mapaUid }; bucket.migracao = mig; bucket.migracoes = (Array.isArray(bucket.migracoes) ? bucket.migracoes : []).concat([mig]).slice(-8); bucket.geracao = idGer; marcarProgressoSujo(materiaNome); }catch(_){}
     // 2) os uids são `${slug}-${número}` e o número muda entre arquivos: o simulado salvo (respostas por uid) passaria a apontar
     //    para outra questão. O progresso já acompanhou cada questão pelo enunciado; o simulado é descartado e recomeça dele.
     try{ limparQuizSalvo(materiaNome); if(STATE.quiz && STATE.quiz.materia===materiaNome) STATE.quiz = null; }catch(_){}
