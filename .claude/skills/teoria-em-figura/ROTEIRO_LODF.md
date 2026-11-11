@@ -1,0 +1,8 @@
+# Roteiro: "Teoria em figura" — LODF (Lei Orgânica do Distrito Federal)
+Leia antes ROTEIRO.md, ROTEIRO_EXT.md, ROTEIRO_RJU.md e ROTEIRO_ADM.md. Diferenças:
+- Lista: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/lodf/padrao.md (224 questões, numeração única 1..224: `pos` = número do cabeçalho). Índice: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/figuras/lodf_index.json.
+- `m:/lodf/i` (nome da matéria na plataforma: 'LODF'). Validação: `MATERIA='LODF' LISTA=<lista acima> MAXPOS=224 node .claude/skills/teoria-em-figura/validar.js <arquivo>`.
+- Textos CARREGADOS (lei.js): **LODF** (sigla "LODF": `node .claude/skills/formatar-resolucoes/lei.js "LODF" N`; ~211 questões) e **CF**. Use `fonte:[['LODF',N]]` e `fonte:[['CF',N]]`. Emendas à LODF, leis distritais e jurisprudência: só com texto literal via `ext` (fonte oficial, sem blog de cursinho nem Wikipedia); sem fonte confiável, pule (motivo no .skip.txt). Não confunda com a Lei Orgânica do TCDF (outra matéria).
+- O texto carregado manda: divergência da resolução da lista → siga o texto e registre 'divergência: pos N — motivo' no .skip.txt; gabarito em conflito → cartão neutro. Questões "Conferir o gabarito" (19, 25, 40, 117, 140, 141, 143, 166, 180, 182, 183, 184, 185, 197, 205, 215, 217, 218, 219): cartão neutro.
+- Múltipla escolha (128): o cartão trata da regra da alternativa correta; as alternativas já são justificadas pela plataforma a partir do bloco ERROS.
+- Um cartão por questão, com título e foco próprios (muitas repetem o tema: varie o foco).
