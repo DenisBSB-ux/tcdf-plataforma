@@ -1,0 +1,8 @@
+# Roteiro: "Teoria em figura" — Adm (LGPD + LAI)
+Leia antes ROTEIRO.md, ROTEIRO_EXT.md, ROTEIRO_RJU.md e ROTEIRO_ADM.md. Diferenças:
+- Lista: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/lg/padrao.md (203 questões, numeração única 1..203: `pos` = número do cabeçalho). Índice: /tmp/claude-0/-home-user-tcdf-plataforma/55457dd8-8058-5227-a2b0-20df72d047fa/scratchpad/figuras/lg_index.json.
+- `m:/lgpd/i` (nome da matéria na plataforma: 'Adm (LGPD + LAI)'). Validação: `MATERIA='Adm (LGPD + LAI)' LISTA=<lista acima> MAXPOS=203 node .claude/skills/teoria-em-figura/validar.js <arquivo>`.
+- Textos CARREGADOS (lei.js): **Lei 13.709** (LGPD; ~87 questões) e **Lei 12.527** (LAI; ~114), além de CF, Lei 8.429 e Lei 9.784. Use `fonte:[['Lei 13.709',N]]` e `fonte:[['Lei 12.527',N]]`. Decreto 7.724/2012 (regulamento da LAI), Decreto 10.046/2019, Resoluções da ANPD e doutrina: só com texto literal via `ext` (fonte oficial, sem blog de cursinho nem Wikipedia); sem fonte confiável, pule (motivo no .skip.txt).
+- O texto carregado manda (LGPD alterada pela Lei 13.853/2019 e pela Lei 14.460/2022; LAI): divergência da resolução da lista → siga o texto e registre 'divergência: pos N — motivo' no .skip.txt; gabarito em conflito → cartão neutro. Questões "Conferir o gabarito" (2, 63, 67, 69, 70, 122, 132, 197): cartão neutro.
+- Múltipla escolha (41): o cartão trata da regra da alternativa correta; as alternativas já são justificadas pela plataforma a partir do bloco ERROS.
+- Um cartão por questão, com título e foco próprios (muitas repetem o tema: varie o foco).
