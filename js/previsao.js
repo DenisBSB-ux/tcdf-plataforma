@@ -24,7 +24,8 @@
    acrescentado pelo gerador de questões é descartado, especialidades do mesmo
    concurso contam como uma prova só, e questões de "Elaboração própria" (não
    são de prova) ficam de fora, assim como questões cujo "bc" não traz o ano
-   da prova (não dá pra saber de qual prova são). */
+   da prova (não dá pra saber de qual prova são). Desde 11/11/2026 simulados de
+   cursinho e questões inéditas COM ano no "bc" também contam (decisão do usuário). */
 
 const MEIA_VIDA_ANOS = 4;
 const FORCA_PRIOR = 2;
@@ -33,9 +34,10 @@ const ORGAO_ALVO = /\bTC\s*DF\b|\bTCDF\b/i;
 // { id, banca, cargo, orgao, ano } da prova de onde veio a questão, ou null
 // quando não é questão de prova real
 function identificarProva(q){
-  if(!q || !q.bc || isInedita(q)) return null;
+  if(!q || !q.bc) return null;
   let txt = String(q.bc).trim();
-  if(/^elabora[cç][aã]o/i.test(txt)) return null;
+  // toda questão com banca e ano escritos conta (simulados e inéditas incluídos, decisão do usuário em 11/11/2026);
+  // sem ano (ex.: "Elaboração própria") não dá pra saber de qual prova é e fica de fora, mais abaixo
   txt = txt.replace(/,\s*Auditor de Controle Externo,\s*TCDF\s*$/i, '').trim();
   const anos = txt.match(/\b(19|20)\d{2}\b/g);
   // sem ano escrito no "bc" não dá pra saber de qual prova é: o campo "ar" é
