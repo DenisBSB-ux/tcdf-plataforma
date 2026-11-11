@@ -82,3 +82,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - **Adm (Lei 8.429; 9.784; 2.834) (11/11/2026, v459):** lista de 200 padronizada e renumerada (14 repetidos); 198 cartões (`teoria-cartoes-l84.js`, só texto carregado). Sem cartão: 8, 109.
   - 2ª rodada Adm 8.429/9.784 (v460): +1 cartão (8, ext STF Tema 897); 199/200. Sem cartão: 109.
 - **Adm (LGPD + LAI) (11/11/2026, v461):** lista de 203 padronizada e renumerada (5 resoluções escritas, 1 ERROS corrigido); 203 cartões (`teoria-cartoes-lgpd.js`, Lei 13.709 e Lei 12.527 carregadas). Neutros (Conferir o gabarito): 2, 63, 67, 69, 70, 117, 122, 132, 197.
+  - Gabaritos Adm (LGPD + LAI) conferidos (v462): nenhum alterado; ⚖️ e cartões de 69 (art. 29) e 70 (art. 26) corrigidos; marcas "Conferir o gabarito" removidas (2, 63, 67, 69, 70, 122, 132, 197). 117 mantida sem alteração (sem fonte do regulamento da LAI).
