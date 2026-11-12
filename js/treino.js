@@ -5,7 +5,7 @@
    que você arrasta para os espaços (ou toca na palavra e depois no espaço, no celular). O que você marca fica neste aparelho. */
 
 const TREINO_TCDF = {};
-const TREINO_LIBERADAS = ['direito-civil', 'lei-14133', 'previdenciario', 'rju-lc840', 'constitucional', 'lei-organica-tcdf', 'lodf', 'reg-interno', 'adm-lgpd-lai', 'adm-8429', 'analise-dados-ia', 'conhec-df', 'contratos', 'pdpm'];
+const TREINO_LIBERADAS = ['direito-civil', 'lei-14133', 'previdenciario', 'rju-lc840', 'constitucional', 'lei-organica-tcdf', 'lodf', 'reg-interno', 'adm-lgpd-lai', 'adm-8429', 'analise-dados-ia', 'conhec-df', 'contratos', 'pdpm', 'in5', 'primeiros-socorros', 'decreto-44330', 'administrativo-geral', 'afo'];
 const TREINO_KEY = 'tcdf_treino_v1';
 
 function treinoSlug(mat){ return typeof reta7SlugResumo === 'function' ? reta7SlugResumo(mat) : null; }
@@ -13,7 +13,12 @@ function treinoDisponivel(mat){ const s = treinoSlug(mat); return !!s && TREINO_
 function treinoLer(){ try{ return JSON.parse(localStorage.getItem(TREINO_KEY) || '{}') || {}; }catch(_){ return {}; } }
 function treinoGravar(m){ try{ localStorage.setItem(TREINO_KEY, JSON.stringify(m)); }catch(_){} }
 function treinoMarca(slug, k){ return (treinoLer()[slug] || {})[k] || ''; }
-function treinoMarcar(slug, k, v){ const m = treinoLer(); (m[slug] = m[slug] || {})[k] = v; treinoGravar(m); }
+function treinoMarcar(slug, k, v){
+  const m = treinoLer(); (m[slug] = m[slug] || {})[k] = v; treinoGravar(m);
+  if(v){ try{ const L = JSON.parse(localStorage.getItem(TREINO_LOG_KEY) || '[]') || []; L.push({ ts:Date.now(), s:slug, t:String(k)[0], r:v }); localStorage.setItem(TREINO_LOG_KEY, JSON.stringify(L.slice(-4000))); }catch(_){} }   // registro por dia: alimenta o gráfico da Reta Final
+}
+const TREINO_LOG_KEY = 'tcdf_treino_log_v1';
+function treinoLog(){ try{ const L = JSON.parse(localStorage.getItem(TREINO_LOG_KEY) || '[]'); return Array.isArray(L) ? L : []; }catch(_){ return []; } }
 function treinoEmbaralha(a){ const x = a.slice(); for(let i = x.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; }
 function treinoCarregar(slug, cb){
   if(TREINO_TCDF[slug]){ cb(true); return; }
