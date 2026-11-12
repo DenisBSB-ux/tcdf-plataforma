@@ -167,7 +167,7 @@ function reta7AbrirResumo(mat){
       const tm = e.target.closest('.tr-tema'); if(tm){ if(typeof alternarTema === 'function') alternarTema(); tm.textContent = document.body.classList.contains('theme-light') ? '🌙' : '☀️'; }
     });
     document.body.appendChild(box);
-    if(typeof janelaFlutuante === 'function') janelaFlutuante(box, '📄 Resumo · ' + mat, fechar);
+    if(typeof janelaFlutuante === 'function') janelaFlutuante(box, '📄 Resumo · ' + mat, fechar, 'resumo');
   };
   reta7CarregarResumos(mostrar);
 }

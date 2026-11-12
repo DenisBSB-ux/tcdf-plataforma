@@ -32,19 +32,35 @@ const TRS = [];
 /* ---- janelas flutuantes independentes (resumo, flashcards e lacunas): abrem lado a lado, cada uma com o seu estado,
    podem ser arrastadas pela barra do topo e fechadas separadamente; clicar numa traz para a frente ---- */
 let _janZ = 1200;
-function janelaFlutuante(box, titulo, fechar){
-  const n = document.querySelectorAll('.jan').length, larg = Math.min(560, window.innerWidth - 16);
+const JAN_TAM_KEY = 'tcdf_jan_tam_v1';
+function janTamLer(){ try{ return JSON.parse(localStorage.getItem(JAN_TAM_KEY) || '{}') || {}; }catch(_){ return {}; } }
+function janTamGravar(chave, w, h){ if(!chave) return; try{ const m = janTamLer(); m[chave] = { w:Math.round(w), h:Math.round(h) }; localStorage.setItem(JAN_TAM_KEY, JSON.stringify(m)); }catch(_){} }
+function janelaFlutuante(box, titulo, fechar, chave){
+  const n = document.querySelectorAll('.jan').length, VW = window.innerWidth, VH = window.innerHeight;
+  const salvo = (chave && janTamLer()[chave]) || null;
+  const larg = Math.min(salvo ? salvo.w : 560, VW - 16);
   box.classList.add('jan'); box._fechar = fechar;
   box.style.width = larg + 'px';
-  box.style.left = Math.max(8, Math.round((window.innerWidth - larg) / 2 + ((n % 5) - 2) * 36)) + 'px';
+  if(salvo && salvo.h) box.style.height = Math.min(salvo.h, VH - 16) + 'px';
+  box.style.left = Math.max(8, Math.round((VW - larg) / 2 + ((n % 5) - 2) * 36)) + 'px';
   box.style.top = (16 + (n % 5) * 30) + 'px';
   box.style.zIndex = ++_janZ;
-  const barra = document.createElement('div'); barra.className = 'jan-barra'; barra.setAttribute('aria-hidden', 'true'); barra.innerHTML = '<span>⠿</span> ' + esc(titulo);
+  const barra = document.createElement('div'); barra.className = 'jan-barra';
+  barra.innerHTML = '<span class="jan-tit"><span aria-hidden="true">⠿</span> ' + esc(titulo) + '</span><span class="jan-bt"><button type="button" data-jan-menos title="Diminuir a janela" aria-label="Diminuir a janela">−</button><button type="button" data-jan-mais title="Aumentar a janela" aria-label="Aumentar a janela">+</button><button type="button" data-jan-max title="Tela cheia / restaurar" aria-label="Tela cheia ou restaurar">⤢</button></span>';
   box.insertBefore(barra, box.firstChild);
-  const trazer = () => { box.style.zIndex = ++_janZ; };
-  box.addEventListener('pointerdown', trazer, true);
+  const grip = document.createElement('div'); grip.className = 'jan-grip'; grip.title = 'Arraste para redimensionar'; grip.setAttribute('aria-hidden', 'true'); box.appendChild(grip);
+  const limita = () => {
+    const w = Math.max(280, Math.min(box.offsetWidth, window.innerWidth - 8)), h = Math.max(180, Math.min(box.offsetHeight, window.innerHeight - 8));
+    box.style.width = w + 'px'; box.style.height = h + 'px';
+    box.style.left = Math.max(0, Math.min(window.innerWidth - Math.min(w, 120), box.offsetLeft)) + 'px';
+    box.style.top = Math.max(0, Math.min(window.innerHeight - 40, box.offsetTop)) + 'px';
+    janTamGravar(chave, w, h);
+  };
+  box.addEventListener('pointerdown', () => { box.style.zIndex = ++_janZ; }, true);
+  // arrastar pela barra
   let arr = null;
   barra.addEventListener('pointerdown', e => {
+    if(e.target.closest('button')) return;
     arr = { x:e.clientX - box.offsetLeft, y:e.clientY - box.offsetTop }; try{ barra.setPointerCapture(e.pointerId); }catch(_){}
     e.preventDefault();
   });
@@ -55,6 +71,31 @@ function janelaFlutuante(box, titulo, fechar){
   });
   const solta = () => { arr = null; };
   barra.addEventListener('pointerup', solta); barra.addEventListener('pointercancel', solta);
+  // redimensionar pelo canto (mouse ou toque)
+  let red = null;
+  grip.addEventListener('pointerdown', e => { red = { x:e.clientX, y:e.clientY, w:box.offsetWidth, h:box.offsetHeight }; try{ grip.setPointerCapture(e.pointerId); }catch(_){} e.preventDefault(); e.stopPropagation(); });
+  grip.addEventListener('pointermove', e => {
+    if(!red) return;
+    box.style.width = Math.max(280, Math.min(window.innerWidth - box.offsetLeft, red.w + e.clientX - red.x)) + 'px';
+    box.style.height = Math.max(180, Math.min(window.innerHeight - box.offsetTop, red.h + e.clientY - red.y)) + 'px';
+  });
+  const fimRed = () => { if(red){ red = null; limita(); } };
+  grip.addEventListener('pointerup', fimRed); grip.addEventListener('pointercancel', fimRed);
+  // botões − / + / tela cheia
+  let antes = null;
+  barra.addEventListener('click', e => {
+    const bt = e.target.closest('button'); if(!bt) return;
+    const w = box.offsetWidth, h = box.offsetHeight;
+    if(bt.hasAttribute('data-jan-max')){
+      if(antes){ box.style.left = antes.l + 'px'; box.style.top = antes.t + 'px'; box.style.width = antes.w + 'px'; box.style.height = antes.h + 'px'; antes = null; }
+      else { antes = { l:box.offsetLeft, t:box.offsetTop, w, h }; box.style.left = '4px'; box.style.top = '4px'; box.style.width = (window.innerWidth - 8) + 'px'; box.style.height = (window.innerHeight - 8) + 'px'; }
+    } else {
+      const f = bt.hasAttribute('data-jan-mais') ? 1.15 : 1 / 1.15;
+      box.style.width = Math.max(280, Math.min(window.innerWidth - box.offsetLeft, Math.round(w * f))) + 'px';
+      box.style.height = Math.max(180, Math.min(window.innerHeight - box.offsetTop, Math.round(h * f))) + 'px'; antes = null;
+    }
+    limita();
+  });
 }
 document.addEventListener('keydown', e => {      // Esc fecha a janela que está na frente
   if(e.key !== 'Escape') return;
@@ -79,7 +120,7 @@ function treinoAbrir(mat, modo){
     box.addEventListener('pointerdown', () => { TR = st; });
     box.addEventListener('dragstart', e => { TR = st; treinoDragStart(e); }); box.addEventListener('dragover', e => { if(e.target.closest('.tr-blank, .tr-banco')) e.preventDefault(); }); box.addEventListener('drop', e => { TR = st; treinoDrop(e); });
     treinoDesenhar();
-    janelaFlutuante(box, (modo === 'lacunas' ? '🧩 Lacunas' : '🃏 Flashcards') + ' · ' + mat, () => { TR = st; treinoFechar(); });
+    janelaFlutuante(box, (modo === 'lacunas' ? '🧩 Lacunas' : '🃏 Flashcards') + ' · ' + mat, () => { TR = st; treinoFechar(); }, modo);
   });
 }
 function treinoFechar(){
@@ -140,11 +181,11 @@ function treinoDesenhar(){
   else corpo = treinoHtmlLacuna(it);
   const fim = TR.fila.length ? `${TR.i + 1} / ${TR.fila.length}` : '0';
   const stat = TR.modo === 'flash' ? `✓ ${nOk} sei · 🔁 ${nRev} revisar` : `✓ ${lOk} certas · ✗ ${lErr} erradas · sessão ${TR.sessao.ok}/${TR.sessao.tot}`;
-  const barra = box.querySelector('.jan-barra'); box.innerHTML = `<div class="r7-modal-caixa tr-caixa"><button class="r7-modal-x" aria-label="Fechar" data-tr-fechar="1">✕</button><button class="tr-tema" data-tr-tema="1" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">${document.body.classList.contains('theme-light') ? '🌙' : '☀️'}</button>
+  const fixos = [...box.querySelectorAll('.jan-barra, .jan-grip')]; box.innerHTML = `<div class="r7-modal-caixa tr-caixa"><button class="r7-modal-x" aria-label="Fechar" data-tr-fechar="1">✕</button><button class="tr-tema" data-tr-tema="1" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">${document.body.classList.contains('theme-light') ? '🌙' : '☀️'}</button>
     <div class="tr-topo"><h2>${TR.modo === 'lacunas' ? '🧩 Lacunas' : '🃏 Flashcards'} · ${esc(d.nome)}</h2><p class="tr-sub">Gerado só das questões da lista · ${esc(stat)}</p>${abas}${chips}</div>
     <div class="tr-corpo">${corpo}</div>
     <div class="tr-nav"><button class="btn" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}>← Anterior</button><span>${fim}</span><button class="btn" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button></div></div>`;
-  if(barra) box.insertBefore(barra, box.firstChild);
+  fixos.forEach(f => { if(f.classList.contains('jan-barra')) box.insertBefore(f, box.firstChild); else box.appendChild(f); });
 }
 function treinoHtmlFlash(it){
   const ref = it.ref ? `<span class="tr-ref">${esc(it.ref)}</span>` : '';
