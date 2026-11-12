@@ -9,7 +9,7 @@
 const R7_BASE_MIN = 45;          // tempo mínimo por matéria (menos se o total não comportar)
 const R7_HORAS = [2, 3, 4, 5, 6];
 // matérias já no formato mais novo (resumo por assunto em ordem de relevância + flashcards com o texto da questão)
-const R7_ATUALIZADAS = ['direito-civil', 'lei-14133', 'previdenciario', 'rju-lc840'];
+const R7_ATUALIZADAS = ['direito-civil', 'lei-14133', 'previdenciario', 'rju-lc840', 'constitucional', 'lei-organica-tcdf', 'lodf', 'reg-interno', 'adm-lgpd-lai'];
 const R7_LEITURA = 15;           // minutos de leitura do resumo, dentro da 1ª passada
 
 // distribui as matérias pelos dias. stats: [{ mat, score, w }] (score maior = mais fraca; w = peso do tempo).
