@@ -2475,3 +2475,7 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 /* v511: lacunas com todos os botões numa linha; posição da questão */
 .tr-pos{ margin:8px 0 0; font-size:12.5px; color:var(--m-mut); text-align:right; }
 .tr-lacuna + .tr-fb + .tr-acoes, .tr-lacuna ~ .tr-acoes{ flex-wrap:wrap; }
+
+/* v512: lacunas sobre o enunciado completo (texto longo, com quebra de linha na alternativa) */
+.tr-frase{ white-space:pre-line; font-size:16px; line-height:1.7; }
+.tr-lacuna .tr-blank{ white-space:normal; }
