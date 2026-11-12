@@ -5,7 +5,7 @@
    que você arrasta para os espaços (ou toca na palavra e depois no espaço, no celular). O que você marca fica neste aparelho. */
 
 const TREINO_TCDF = {};
-const TREINO_LIBERADAS = ['direito-civil', 'lei-14133', 'previdenciario', 'rju-lc840', 'constitucional', 'lei-organica-tcdf', 'lodf', 'reg-interno', 'adm-lgpd-lai', 'adm-8429', 'analise-dados-ia', 'conhec-df', 'contratos', 'pdpm', 'in5', 'primeiros-socorros', 'decreto-44330'];
+const TREINO_LIBERADAS = ['direito-civil', 'lei-14133', 'previdenciario', 'rju-lc840', 'constitucional', 'lei-organica-tcdf', 'lodf', 'reg-interno', 'adm-lgpd-lai', 'adm-8429', 'analise-dados-ia', 'conhec-df', 'contratos', 'pdpm', 'in5', 'primeiros-socorros', 'decreto-44330', 'administrativo-geral'];
 const TREINO_KEY = 'tcdf_treino_v1';
 
 function treinoSlug(mat){ return typeof reta7SlugResumo === 'function' ? reta7SlugResumo(mat) : null; }
