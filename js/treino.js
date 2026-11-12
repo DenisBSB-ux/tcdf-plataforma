@@ -31,6 +31,10 @@ function treinoCarregar(slug, cb){
 }
 function treinoUidDe(mat, n, h){ return (ALL_QUESTIONS.find(q => q.materia === mat && Number(q.n) === Number(n) && _ctHash(q.q) === h) || {}).uid || null; }
 
+/* ---- zoom do texto das janelas de flashcards e lacunas (lembrado por tipo) ---- */
+const TREINO_ZOOM_KEY = 'tcdf_treino_zoom_v1';
+function treinoZoomLer(modo){ try{ const z = Number((JSON.parse(localStorage.getItem(TREINO_ZOOM_KEY) || '{}') || {})[modo]); return z >= 0.8 && z <= 2 ? z : 1; }catch(_){ return 1; } }
+function treinoZoomGravar(modo, z){ try{ const o = JSON.parse(localStorage.getItem(TREINO_ZOOM_KEY) || '{}') || {}; o[modo] = z; localStorage.setItem(TREINO_ZOOM_KEY, JSON.stringify(o)); }catch(_){} }
 /* ---- o que você respondeu fica guardado ao fechar a janela: respostas das lacunas, ordem e posição ---- */
 const TREINO_RESP_KEY = 'tcdf_treino_resp_v1';
 function treinoRespLer(slug, modo){ try{ const o = JSON.parse(localStorage.getItem(TREINO_RESP_KEY) || '{}') || {}; return (o[slug] || {})[modo] || null; }catch(_){ return null; } }
@@ -198,7 +202,7 @@ function treinoDesenhar(){
   const filtros = TR.modo === 'flash'
     ? [['todos', 'Todos'], ['revisar', 'Revisar (' + nRev + ')'], ['novos', 'Novos (' + (d.flash.length - nOk - nRev) + ')']]
     : [['todos', 'Todas'], ['erradas', 'Que errei (' + lErr + ')'], ['novos', 'Novas (' + (d.lacunas.length - lOk - lErr) + ')']];
-  const chips = `<div class="tr-filtros">${filtros.map(f => `<button class="${TR.filtro === f[0] ? 'on' : ''}" data-tr-filtro="${f[0]}">${esc(f[1])}</button>`).join('')}<button data-tr-embaralhar="1" title="Embaralha de novo">🔀</button></div>`;
+  const chips = `<div class="tr-filtros">${filtros.map(f => `<button class="${TR.filtro === f[0] ? 'on' : ''}" data-tr-filtro="${f[0]}">${esc(f[1])}</button>`).join('')}<button data-tr-embaralhar="1" title="Embaralha de novo">🔀</button><span class="tr-zoom" role="group" aria-label="Zoom do texto"><button data-tr-zoom="-1" title="Diminuir o texto" aria-label="Diminuir o texto">A−</button><b>${Math.round(treinoZoomLer(TR.modo) * 100)}%</b><button data-tr-zoom="1" title="Aumentar o texto" aria-label="Aumentar o texto">A+</button></span></div>`;
   const it = TR.fila[TR.i];
   let corpo;
   if(!it) corpo = `<p class="tr-vazio">${TR.filtro === 'todos' ? 'Nenhum item.' : 'Nada neste filtro. Escolha outro.'}</p>`;
@@ -209,7 +213,8 @@ function treinoDesenhar(){
   const fixos = [...box.querySelectorAll('.jan-barra, .jan-grip')]; box.innerHTML = `<div class="r7-modal-caixa tr-caixa"><button class="r7-modal-x" aria-label="Fechar" data-tr-fechar="1">✕</button><button class="tr-tema" data-tr-tema="1" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">${document.body.classList.contains('theme-light') ? '🌙' : '☀️'}</button>
     <div class="tr-topo"><h2>${TR.modo === 'lacunas' ? '🧩 Lacunas' : '🃏 Flashcards'} · ${esc(d.nome)}</h2><p class="tr-sub">Gerado só das questões da lista · ${esc(stat)}</p>${abas}${chips}</div>
     <div class="tr-corpo">${corpo}</div>
-    ${TR.modo === 'lacunas' ? `<p class="tr-pos">${fim}</p>` : `<div class="tr-nav"><button class="btn" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}>← Anterior</button><span>${fim}</span><button class="btn" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button></div>`}</div>`;
+    <p class="tr-pos">${fim}</p></div>`;
+  box.style.setProperty('--tr-zoom', treinoZoomLer(TR.modo));
   fixos.forEach(f => { if(f.classList.contains('jan-barra')) box.insertBefore(f, box.firstChild); else box.appendChild(f); });
 }
 function treinoHtmlFlash(it){
@@ -218,9 +223,11 @@ function treinoHtmlFlash(it){
   const lado = TR.virado
     ? `<div class="tr-card tr-verso" data-tr-virar="1"><span class="tr-tag">Resposta${it.k === 'troca' ? ' · troca típica' : ''}</span>${it.g ? `<p class="tr-gab ${/^ERRADO/.test(it.g) ? 'no' : 'ok'}">${esc(it.g)}</p>` : ''}<p class="tr-texto">${esc(it.v)}</p>${it.k === 'troca' && it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : (it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : '')}${ref}</div>`
     : `<div class="tr-card tr-frente" data-tr-virar="1" tabindex="0"><span class="tr-tag">${it.k === 'troca' ? 'Corrija' : (it.k === 'questao' ? 'Questão' : 'Pergunta')}</span><p class="tr-texto${it.k === 'questao' ? ' tr-quest' : ''}">${esc(it.f)}</p><span class="tr-dica">toque ou Espaço para virar</span></div>`;
+  const nav = `<button class="btn" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}>← Anterior</button><button class="btn" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button>`;
+  const q = `<button class="btn" data-tr-questao="${it.n}:${esc(it.h)}">Ver a questão</button>`;
   const acoes = TR.virado
-    ? `<div class="tr-acoes"><button class="btn tr-sei${m === 'ok' ? ' on' : ''}" data-tr-marca="ok">✓ Já sei <small>(1)</small></button><button class="btn tr-rev${m === 'rev' ? ' on' : ''}" data-tr-marca="rev">🔁 Revisar <small>(2)</small></button><button class="btn" data-tr-questao="${it.n}:${esc(it.h)}">Ver a questão</button></div>`
-    : `<div class="tr-acoes"><button class="btn btn-gold" data-tr-virar="1">Virar</button><button class="btn" data-tr-questao="${it.n}:${esc(it.h)}">Ver a questão</button></div>`;
+    ? `<div class="tr-acoes"><button class="btn tr-sei${m === 'ok' ? ' on' : ''}" data-tr-marca="ok">✓ Já sei <small>(1)</small></button><button class="btn tr-rev${m === 'rev' ? ' on' : ''}" data-tr-marca="rev">🔁 Revisar <small>(2)</small></button>${nav}${q}</div>`
+    : `<div class="tr-acoes"><button class="btn btn-gold" data-tr-virar="1">Virar</button>${nav}${q}</div>`;
   return lado + acoes;
 }
 function treinoHtmlLacuna(it){
@@ -282,6 +289,7 @@ function treinoClique(e){
   let el;
   if((el = t.closest('[data-tr-filtro]'))){ TR.filtro = el.dataset.trFiltro; TR.salvo = null; treinoMontarFila(); treinoDesenhar(); return; }
   if(t.closest('[data-tr-embaralhar]')){ TR.salvo = null; treinoMontarFila(); treinoDesenhar(); return; }
+  if((el = t.closest('[data-tr-zoom]'))){ const z = Math.max(0.8, Math.min(2, Math.round((treinoZoomLer(TR.modo) + 0.1 * parseInt(el.dataset.trZoom, 10)) * 10) / 10)); treinoZoomGravar(TR.modo, z); treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-nav]'))){ treinoIr(parseInt(el.dataset.trNav, 10)); return; }
   if(t.closest('[data-tr-virar]')){ TR.virado = !TR.virado; treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-marca]'))){ const it = TR.fila[TR.i]; if(it){ treinoMarcar(TR.slug, treinoChaveItem(it, 'f'), el.dataset.trMarca); if(TR.i < TR.fila.length - 1 && TR.filtro !== 'todos') { treinoMontarFilaMantendo(); } else if(TR.i < TR.fila.length - 1){ treinoIr(1); return; } treinoDesenhar(); } return; }
