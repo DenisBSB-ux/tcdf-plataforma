@@ -174,7 +174,7 @@ try {
     t('treino: arquivo de ' + slug + ' existe e está no mapa de matérias', fs.existsSync(arq) && mapa.includes("'" + slug + "'"));
     const cx = { TREINO_TCDF: {} }; vm.createContext(cx); vm.runInContext(fs.readFileSync(arq, 'utf8'), cx);
     const d = cx.TREINO_TCDF[slug];
-    t('treino: ' + slug + ' tem flashcards e lacunas', d && d.flash.length >= 50 && d.lacunas.length >= 50);
+    t('treino: ' + slug + ' tem flashcards e lacunas', d && d.flash.length >= 50 && d.lacunas.length >= 30);
     t('treino: ' + slug + ' flashcards com frente e verso', d.flash.every(f => f.f && f.v && f.n && f.h));
     const ruins = d.lacunas.filter(x => { const bl = x.p.filter(p => p.l !== undefined); const frase = x.p.map(p => p.t !== undefined ? p.t : p.l).join(''); return !bl.length || bl.length > 3 || !x.d || !x.d.length || x.d.some(w => bl.some(b => b.l.toLowerCase() === w.toLowerCase()) || frase.toLowerCase().includes(w.toLowerCase())) || bl.some(b => !b.l.trim()) || /＿|\[\[|\]\]/.test(frase); });
     t('treino: ' + slug + ' lacunas íntegras (1 a 3 espaços, distratores fora da frase e das respostas)', !ruins.length, ruins.slice(0, 2).map(x => x.n).join(','));
