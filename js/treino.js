@@ -26,24 +26,68 @@ function treinoCarregar(slug, cb){
 }
 function treinoUidDe(mat, n, h){ return (ALL_QUESTIONS.find(q => q.materia === mat && Number(q.n) === Number(n) && _ctHash(q.q) === h) || {}).uid || null; }
 
-let TR = null;     // estado da janela aberta
+let TR = null;     // estado da janela em uso (cada janela aberta tem o seu; TRS guarda todas)
+const TRS = [];
+
+/* ---- janelas flutuantes independentes (resumo, flashcards e lacunas): abrem lado a lado, cada uma com o seu estado,
+   podem ser arrastadas pela barra do topo e fechadas separadamente; clicar numa traz para a frente ---- */
+let _janZ = 1200;
+function janelaFlutuante(box, titulo, fechar){
+  const n = document.querySelectorAll('.jan').length, larg = Math.min(560, window.innerWidth - 16);
+  box.classList.add('jan'); box._fechar = fechar;
+  box.style.width = larg + 'px';
+  box.style.left = Math.max(8, Math.round((window.innerWidth - larg) / 2 + ((n % 5) - 2) * 36)) + 'px';
+  box.style.top = (16 + (n % 5) * 30) + 'px';
+  box.style.zIndex = ++_janZ;
+  const barra = document.createElement('div'); barra.className = 'jan-barra'; barra.setAttribute('aria-hidden', 'true'); barra.innerHTML = '<span>⠿</span> ' + esc(titulo);
+  box.insertBefore(barra, box.firstChild);
+  const trazer = () => { box.style.zIndex = ++_janZ; };
+  box.addEventListener('pointerdown', trazer, true);
+  let arr = null;
+  barra.addEventListener('pointerdown', e => {
+    arr = { x:e.clientX - box.offsetLeft, y:e.clientY - box.offsetTop }; try{ barra.setPointerCapture(e.pointerId); }catch(_){}
+    e.preventDefault();
+  });
+  barra.addEventListener('pointermove', e => {
+    if(!arr) return;
+    box.style.left = Math.max(0, Math.min(window.innerWidth - 80, e.clientX - arr.x)) + 'px';
+    box.style.top = Math.max(0, Math.min(window.innerHeight - 40, e.clientY - arr.y)) + 'px';
+  });
+  const solta = () => { arr = null; };
+  barra.addEventListener('pointerup', solta); barra.addEventListener('pointercancel', solta);
+}
+document.addEventListener('keydown', e => {      // Esc fecha a janela que está na frente
+  if(e.key !== 'Escape') return;
+  const js = [...document.querySelectorAll('.jan')]; if(!js.length) return;
+  const topo = js.reduce((a, b) => (Number(b.style.zIndex) > Number(a.style.zIndex) ? b : a));
+  if(topo._fechar){ e.stopPropagation(); topo._fechar(); }
+}, true);
 
 function treinoAbrir(mat, modo){
   const slug = treinoSlug(mat); if(!slug || !treinoDisponivel(mat)) return;
+  modo = modo === 'lacunas' ? 'lacunas' : 'flash';
+  const ja = TRS.find(x => x.slug === slug && x.modo === modo);
+  if(ja && ja.box && ja.box.isConnected){ ja.box.style.zIndex = ++_janZ; TR = ja; return; }
   treinoCarregar(slug, ok => {
     if(!ok){ alert('Não foi possível carregar o treino agora. Tente de novo com internet.'); return; }
-    TR = { mat, slug, dados:TREINO_TCDF[slug], modo: modo || 'flash', filtro:'todos', fila:[], i:0, virado:false, slots:[], sel:null, checado:false, sessao:{ ok:0, tot:0 }, mem:{} };
+    const st = { mat, slug, dados:TREINO_TCDF[slug], modo, filtro:'todos', fila:[], i:0, virado:false, slots:[], sel:null, checado:false, sessao:{ ok:0, tot:0 }, mem:{}, box:null };
+    TR = st; TRS.push(st);
     treinoMontarFila();
-    let box = document.getElementById('tr-modal'); if(box) box.remove();
-    box = document.createElement('div'); box.id = 'tr-modal'; box.className = 'r7-modal tr-modal'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'Treino de ' + mat);
-    document.body.appendChild(box);
-    box.addEventListener('click', treinoClique);
-    box.addEventListener('dragstart', treinoDragStart); box.addEventListener('dragover', e => { if(e.target.closest('.tr-blank, .tr-banco')) e.preventDefault(); }); box.addEventListener('drop', treinoDrop);
-    document.addEventListener('keydown', treinoTecla, true);
+    const box = document.createElement('div'); box.className = 'r7-modal tr-modal'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', (modo === 'lacunas' ? 'Lacunas de ' : 'Flashcards de ') + mat);
+    st.box = box; document.body.appendChild(box);
+    box.addEventListener('click', e => { TR = st; treinoClique(e); });
+    box.addEventListener('pointerdown', () => { TR = st; });
+    box.addEventListener('dragstart', e => { TR = st; treinoDragStart(e); }); box.addEventListener('dragover', e => { if(e.target.closest('.tr-blank, .tr-banco')) e.preventDefault(); }); box.addEventListener('drop', e => { TR = st; treinoDrop(e); });
     treinoDesenhar();
+    janelaFlutuante(box, (modo === 'lacunas' ? '🧩 Lacunas' : '🃏 Flashcards') + ' · ' + mat, () => { TR = st; treinoFechar(); });
   });
 }
-function treinoFechar(){ const b = document.getElementById('tr-modal'); if(b) b.remove(); document.removeEventListener('keydown', treinoTecla, true); TR = null; }
+function treinoFechar(){
+  const st = TR; if(!st) return;
+  if(st.box) st.box.remove();
+  const i = TRS.indexOf(st); if(i >= 0) TRS.splice(i, 1);
+  TR = TRS.length ? TRS[TRS.length - 1] : null;
+}
 
 function treinoChaveItem(it, tipo){ return tipo + ':' + it.n + ':' + it.h + (it.k ? ':' + it.k : ''); }
 function treinoMontarFila(){
@@ -79,12 +123,12 @@ function treinoGuardarLacuna(){
   TR.mem[treinoChaveItem(it, 'l')] = { slots:TR.slots, banco:TR.banco, checado:TR.checado };
 }
 function treinoDesenhar(){
-  const box = document.getElementById('tr-modal'); if(!box || !TR) return;
+  const box = TR && TR.box; if(!box || !TR) return;
   const d = TR.dados, slug = TR.slug, m = treinoLer()[slug] || {};
   const nOk = d.flash.filter(x => m[treinoChaveItem(x, 'f')] === 'ok').length, nRev = d.flash.filter(x => m[treinoChaveItem(x, 'f')] === 'rev').length;
   const lOk = d.lacunas.filter(x => m[treinoChaveItem(x, 'l')] === 'ok').length, lErr = d.lacunas.filter(x => m[treinoChaveItem(x, 'l')] === 'err').length;
   treinoGuardarLacuna();
-  const abas = `<div class="tr-modos" role="group" aria-label="Tipo de treino"><button class="${TR.modo === 'flash' ? 'on' : ''}" data-tr-modo="flash" aria-pressed="${TR.modo === 'flash'}"><span>🃏 Flashcards</span><small>${d.flash.length}</small></button><button class="${TR.modo === 'lacunas' ? 'on' : ''}" data-tr-modo="lacunas" aria-pressed="${TR.modo === 'lacunas'}"><span>🧩 Lacunas</span><small>${d.lacunas.length}</small></button></div>`;
+  const abas = '';
   const filtros = TR.modo === 'flash'
     ? [['todos', 'Todos'], ['revisar', 'Revisar (' + nRev + ')'], ['novos', 'Novos (' + (d.flash.length - nOk - nRev) + ')']]
     : [['todos', 'Todas'], ['erradas', 'Que errei (' + lErr + ')'], ['novos', 'Novas (' + (d.lacunas.length - lOk - lErr) + ')']];
@@ -96,10 +140,11 @@ function treinoDesenhar(){
   else corpo = treinoHtmlLacuna(it);
   const fim = TR.fila.length ? `${TR.i + 1} / ${TR.fila.length}` : '0';
   const stat = TR.modo === 'flash' ? `✓ ${nOk} sei · 🔁 ${nRev} revisar` : `✓ ${lOk} certas · ✗ ${lErr} erradas · sessão ${TR.sessao.ok}/${TR.sessao.tot}`;
-  box.innerHTML = `<div class="r7-modal-caixa tr-caixa"><button class="r7-modal-x" aria-label="Fechar" data-tr-fechar="1">✕</button><button class="tr-tema" data-tr-tema="1" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">${document.body.classList.contains('theme-light') ? '🌙' : '☀️'}</button>
-    <div class="tr-topo"><h2>${esc(d.nome)}</h2><p class="tr-sub">Gerado só das questões da lista · ${esc(stat)}</p>${abas}${chips}</div>
+  const barra = box.querySelector('.jan-barra'); box.innerHTML = `<div class="r7-modal-caixa tr-caixa"><button class="r7-modal-x" aria-label="Fechar" data-tr-fechar="1">✕</button><button class="tr-tema" data-tr-tema="1" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">${document.body.classList.contains('theme-light') ? '🌙' : '☀️'}</button>
+    <div class="tr-topo"><h2>${TR.modo === 'lacunas' ? '🧩 Lacunas' : '🃏 Flashcards'} · ${esc(d.nome)}</h2><p class="tr-sub">Gerado só das questões da lista · ${esc(stat)}</p>${abas}${chips}</div>
     <div class="tr-corpo">${corpo}</div>
     <div class="tr-nav"><button class="btn" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}>← Anterior</button><span>${fim}</span><button class="btn" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button></div></div>`;
+  if(barra) box.insertBefore(barra, box.firstChild);
 }
 function treinoHtmlFlash(it){
   const ref = it.ref ? `<span class="tr-ref">${esc(it.ref)}</span>` : '';
@@ -165,9 +210,8 @@ function treinoIr(delta){
 }
 function treinoClique(e){
   if(!TR) return; const t = e.target;
-  if(t === document.getElementById('tr-modal') || t.closest('[data-tr-fechar]')){ treinoFechar(); return; }
+  if(t.closest('[data-tr-fechar]')){ treinoFechar(); return; }
   let el;
-  if((el = t.closest('[data-tr-modo]'))){ TR.modo = el.dataset.trModo; TR.filtro = 'todos'; treinoMontarFila(); treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-filtro]'))){ TR.filtro = el.dataset.trFiltro; treinoMontarFila(); treinoDesenhar(); return; }
   if(t.closest('[data-tr-embaralhar]')){ treinoMontarFila(); treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-nav]'))){ treinoIr(parseInt(el.dataset.trNav, 10)); return; }
@@ -178,7 +222,7 @@ function treinoClique(e){
     if(uid){ treinoFechar(); retaAbrirQuiz(mat, [uid], 'Treino · ' + mat); } return;
   }
   if(t.closest('[data-tr-verificar]')){ treinoVerificar(); return; }
-  if(t.closest('[data-tr-tema]')){ if(typeof alternarTema === 'function') alternarTema(); treinoDesenhar(); return; }
+  if(t.closest('[data-tr-tema]')){ if(typeof alternarTema === 'function') alternarTema(); const atual = TR; TRS.slice().forEach(x => { TR = x; treinoDesenhar(); }); TR = atual; return; }
   if(t.closest('[data-tr-limpar]')){ TR.slots.fill(null); TR.checado = false; TR.sel = null; treinoDesenhar(); return; }      // só a questão atual
   if(t.closest('[data-tr-resetar]')){ const it = TR.fila[TR.i]; if(it){ treinoMarcar(TR.slug, treinoChaveItem(it, 'l'), ''); const n = treinoNovaLacuna(it); TR.mem[treinoChaveItem(it, 'l')] = n; TR.slots = n.slots; TR.banco = n.banco; TR.checado = false; TR.sel = null; treinoDesenhar(); } return; }
   if((el = t.closest('[data-tr-chip]'))){ if(TR.checado) return; const id = parseInt(el.dataset.trChip, 10); TR.sel = TR.sel === id ? null : id; treinoDesenhar(); return; }
@@ -190,8 +234,9 @@ function treinoClique(e){
 }
 function treinoMontarFilaMantendo(){ const it = TR.fila[TR.i]; TR.fila.splice(TR.i, 1); if(TR.i >= TR.fila.length) TR.i = Math.max(0, TR.fila.length - 1); TR.virado = false; }
 function treinoTecla(e){
-  if(!TR) return;
-  if(e.key === 'Escape'){ e.stopPropagation(); treinoFechar(); return; }
+  if(!TR || !TR.box || !TR.box.isConnected) return;
+  const foco = document.activeElement; if(foco && foco !== document.body && !TR.box.contains(foco)) return;   // só quando o foco está nesta janela (ou em lugar nenhum)
+  if(e.key === 'Escape') return;
   const el = document.activeElement; if(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
   if(TR.modo === 'flash'){
     if(e.key === ' ' || e.key === 'Enter'){ if(el && el.tagName === 'BUTTON' && e.key === 'Enter') return; e.preventDefault(); TR.virado = !TR.virado; treinoDesenhar(); }
@@ -199,3 +244,4 @@ function treinoTecla(e){
     else if(TR.virado && (e.key === '1' || e.key === '2')){ const it = TR.fila[TR.i]; if(it){ treinoMarcar(TR.slug, treinoChaveItem(it, 'f'), e.key === '1' ? 'ok' : 'rev'); if(TR.i < TR.fila.length - 1) treinoIr(1); else treinoDesenhar(); } }
   } else if(e.key === 'ArrowRight'){ treinoIr(1); } else if(e.key === 'ArrowLeft'){ treinoIr(-1); }
 }
+document.addEventListener('keydown', treinoTecla, true);

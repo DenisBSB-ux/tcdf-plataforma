@@ -2416,3 +2416,17 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 .r7-ass button.on{ background:var(--m-acc); color:#1d1d1f; border-color:var(--m-acc); font-weight:700; }
 .r7-ass button small{ opacity:.7; margin-left:4px; }
 .r7-ass button:focus-visible{ outline:2px solid var(--m-link); outline-offset:2px; }
+
+/* v485: janelas independentes (resumo, flashcards e lacunas lado a lado, arrastáveis) e botões menores um ao lado do outro */
+.r7-modal.jan{ inset:auto; display:block; padding:0; background:none; overflow:visible; pointer-events:auto; }
+.jan .r7-modal-caixa{ width:100%; max-height:calc(100vh - 70px); overflow:auto; border-radius:0 0 16px 16px; padding:16px 18px 20px; }
+.jan-barra{ display:flex; align-items:center; gap:6px; height:28px; padding:0 12px; border-radius:14px 14px 0 0; background:var(--m-acc); color:#1b1608; font-size:12.5px; font-weight:700; cursor:move; user-select:none; touch-action:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:0 8px 30px rgba(0,0,0,.45); }
+.jan{ filter:drop-shadow(0 12px 28px rgba(0,0,0,.35)); }
+.r7-acoes{ flex-direction:row; align-items:center; flex-wrap:wrap; gap:6px; }
+.r7-acoes .btn{ width:auto; padding:5px 10px; font-size:12.5px; line-height:1.2; }
+.tr-acoes{ flex-direction:row; flex-wrap:wrap; align-items:center; max-width:none; gap:6px; }
+.tr-acoes .btn{ width:auto; padding:6px 12px; font-size:13px; }
+.tr-nav .btn{ padding:6px 12px; font-size:13px; }
+@media (max-width:520px){ .jan .r7-modal-caixa{ padding:12px 12px 16px; } .tr-texto, .tr-frase{ font-size:15.5px; } }
+.r7-ant{ display:flex; flex-direction:column; gap:6px; } .r7-ant > span{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--mut); }
+.r7-tira-ant{ grid-template-columns:repeat(auto-fill,minmax(88px,1fr)); } .r7-dia.passado{ opacity:.85; background:var(--surf2); } .r7-dia.passado.on{ opacity:1; }
