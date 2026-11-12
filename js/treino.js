@@ -105,8 +105,8 @@ function treinoHtmlFlash(it){
   const ref = it.ref ? `<span class="tr-ref">${esc(it.ref)}</span>` : '';
   const m = treinoMarca(TR.slug, treinoChaveItem(it, 'f'));
   const lado = TR.virado
-    ? `<div class="tr-card tr-verso" data-tr-virar="1"><span class="tr-tag">Resposta${it.k === 'troca' ? ' · troca típica' : ''}</span><p class="tr-texto">${esc(it.v)}</p>${it.k === 'troca' && it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : (it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : '')}${ref}</div>`
-    : `<div class="tr-card tr-frente" data-tr-virar="1" tabindex="0"><span class="tr-tag">${it.k === 'troca' ? 'Corrija' : 'Pergunta'}</span><p class="tr-texto">${esc(it.f)}</p><span class="tr-dica">toque ou Espaço para virar</span></div>`;
+    ? `<div class="tr-card tr-verso" data-tr-virar="1"><span class="tr-tag">Resposta${it.k === 'troca' ? ' · troca típica' : ''}</span>${it.g ? `<p class="tr-gab ${/^ERRADO/.test(it.g) ? 'no' : 'ok'}">${esc(it.g)}</p>` : ''}<p class="tr-texto">${esc(it.v)}</p>${it.k === 'troca' && it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : (it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : '')}${ref}</div>`
+    : `<div class="tr-card tr-frente" data-tr-virar="1" tabindex="0"><span class="tr-tag">${it.k === 'troca' ? 'Corrija' : (it.k === 'questao' ? 'Questão' : 'Pergunta')}</span><p class="tr-texto${it.k === 'questao' ? ' tr-quest' : ''}">${esc(it.f)}</p><span class="tr-dica">toque ou Espaço para virar</span></div>`;
   const acoes = TR.virado
     ? `<div class="tr-acoes"><button class="btn tr-sei${m === 'ok' ? ' on' : ''}" data-tr-marca="ok">✓ Já sei <small>(1)</small></button><button class="btn tr-rev${m === 'rev' ? ' on' : ''}" data-tr-marca="rev">🔁 Revisar <small>(2)</small></button><button class="btn" data-tr-questao="${it.n}:${esc(it.h)}">Ver a questão</button></div>`
     : `<div class="tr-acoes"><button class="btn btn-gold" data-tr-virar="1">Virar</button><button class="btn" data-tr-questao="${it.n}:${esc(it.h)}">Ver a questão</button></div>`;
