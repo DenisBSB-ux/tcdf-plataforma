@@ -141,31 +141,33 @@ function reta7Md(md){
   fechaLista(); fechaTab(); return out;
 }
 // resumo separado por assunto: aba "Visão geral" (tabela do que mais cai) + uma aba por assunto
+function reta7MdVisao(r){ return r.geral || reta7MdGeral(r.md); }
 function reta7MdGeral(md){ const i = String(md || '').indexOf('## 2.'); return i > 0 ? md.slice(0, i).trim() : String(md || ''); }
 function reta7AbasAssunto(r, sel){
   const abas = [{ nome:'Visão geral', n:0 }].concat(r.assuntos || []);
-  return abas.map((a, i) => '<button type="button" data-r7-ass="' + i + '" class="' + (i === sel ? 'on' : '') + '" aria-pressed="' + (i === sel) + '">' + esc(a.nome) + (a.n ? '<small>' + a.n + '</small>' : '') + '</button>').join('');
+  return abas.map((a, i) => '<button type="button" data-r7-ass="' + i + '" class="' + (i === sel ? 'on' : '') + '" aria-pressed="' + (i === sel) + '">' + esc(a.nome) + (a.pct !== undefined ? '<small>' + a.pct + '%</small>' : (a.n ? '<small>' + a.n + '</small>' : '')) + '</button>').join('');
 }
 function reta7AbrirResumo(mat){
   const slug = reta7SlugResumo(mat); if(!slug) return;
+  const id = 'r7-res-' + slug, ja = document.getElementById(id);
+  if(ja){ ja.style.zIndex = ++_janZ; return; }
   const mostrar = ok => {
     const r = ok && typeof RESUMOS_TCDF !== 'undefined' && RESUMOS_TCDF[slug];
-    let box = document.getElementById('r7-modal'); if(box) box.remove();
-    box = document.createElement('div'); box.id = 'r7-modal'; box.className = 'r7-modal'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-modal', 'true'); box.setAttribute('aria-label', 'Resumo de ' + mat);
-    box.innerHTML = '<div class="r7-modal-caixa"><button class="r7-modal-x" aria-label="Fechar">✕</button><button class="tr-tema" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">' + (document.body.classList.contains('theme-light') ? '🌙' : '☀️') + '</button>' + (r && r.assuntos ? '<div class="r7-ass" role="group" aria-label="Assuntos">' + reta7AbasAssunto(r, 0) + '</div>' : '') + '<div class="r7-md">' + (r ? reta7Md(r.assuntos ? reta7MdGeral(r.md) : r.md) : '<p>Não foi possível carregar o resumo agora. Tente de novo com internet.</p>') + '</div></div>';
-    const fechar = () => { box.remove(); document.removeEventListener('keydown', tecla, true); };
-    const tecla = e => { if(e.key === 'Escape'){ e.stopPropagation(); fechar(); } };
+    if(document.getElementById(id)) return;
+    const box = document.createElement('div'); box.id = id; box.className = 'r7-modal'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Resumo de ' + mat);
+    box.innerHTML = '<div class="r7-modal-caixa"><button class="r7-modal-x" aria-label="Fechar">✕</button><button class="tr-tema" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">' + (document.body.classList.contains('theme-light') ? '🌙' : '☀️') + '</button>' + (r && r.assuntos ? '<div class="r7-ass" role="group" aria-label="Assuntos">' + reta7AbasAssunto(r, 0) + '</div>' : '') + '<div class="r7-md">' + (r ? reta7Md(r.assuntos ? reta7MdVisao(r) : r.md) : '<p>Não foi possível carregar o resumo agora. Tente de novo com internet.</p>') + '</div></div>';
+    const fechar = () => box.remove();
     box.addEventListener('click', e => {
-      if(e.target === box || e.target.closest('.r7-modal-x')){ fechar(); return; }
+      if(e.target.closest('.r7-modal-x')){ fechar(); return; }
       const ab = e.target.closest('[data-r7-ass]');
       if(ab && r && r.assuntos){
         const i = Number(ab.dataset.r7Ass), md = box.querySelector('.r7-md');
-        md.innerHTML = reta7Md(i === 0 ? reta7MdGeral(r.md) : r.assuntos[i-1].md); box.querySelector('.r7-ass').innerHTML = reta7AbasAssunto(r, i); box.scrollTop = 0; return;
+        md.innerHTML = reta7Md(i === 0 ? reta7MdVisao(r) : r.assuntos[i-1].md); box.querySelector('.r7-ass').innerHTML = reta7AbasAssunto(r, i); box.querySelector('.r7-modal-caixa').scrollTop = 0; return;
       }
       const tm = e.target.closest('.tr-tema'); if(tm){ if(typeof alternarTema === 'function') alternarTema(); tm.textContent = document.body.classList.contains('theme-light') ? '🌙' : '☀️'; }
     });
-    document.addEventListener('keydown', tecla, true);
-    document.body.appendChild(box); const x = box.querySelector('.r7-modal-x'); if(x) x.focus();
+    document.body.appendChild(box);
+    if(typeof janelaFlutuante === 'function') janelaFlutuante(box, '📄 Resumo · ' + mat, fechar);
   };
   reta7CarregarResumos(mostrar);
 }
@@ -175,14 +177,36 @@ const R7_CFG_KEY = 'tcdf_reta7_cfg_v2', R7_PLANO_KEY = 'tcdf_reta7_plano_v2';
 function reta7LerJ(k){ try{ return JSON.parse(localStorage.getItem(k) || 'null'); }catch(_){ return null; } }
 function reta7GravarJ(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(_){} }
 function reta7Cfg(){ const c = reta7LerJ(R7_CFG_KEY); return c && typeof c === 'object' ? c : { horas:4, dias:{} }; }
-function reta7SalvarCfg(c){ reta7GravarJ(R7_CFG_KEY, c); reta7GravarJ(R7_PLANO_KEY, null); }   // mudou a disponibilidade: o plano é refeito
+const R7_HIST_KEY = 'tcdf_reta7_hist_v2';
+// dias que já passaram ficam guardados (terminados ou não) mesmo quando o plano é refeito
+function reta7Arquivar(p){
+  if(!p || !p.dias) return;
+  const hoje = reta7Data(Date.now()), h = reta7LerJ(R7_HIST_KEY), lista = Array.isArray(h) ? h : [];
+  let mudou = false;
+  p.dias.forEach(x => { if(reta7DiffDias(hoje, x.d) < 0 && !lista.some(y => y.d === x.d)){ lista.push({ d:x.d, min:x.min, blocos:x.blocos }); mudou = true; } });
+  if(mudou) reta7GravarJ(R7_HIST_KEY, lista.sort((a, b) => a.d < b.d ? -1 : 1));
+}
+function reta7Historico(){ const h = reta7LerJ(R7_HIST_KEY); return Array.isArray(h) ? h : []; }
+// respostas por dia (últimas 3 semanas): { 'YYYY-MM-DD': { matéria: n } } — para os dias anteriores sem plano
+function reta7AtividadeDias(){
+  const hoje = reta7Data(Date.now()), ini = reta7Dia0(reta7SomaDias(hoje, -21)), fim = reta7Dia0(hoje), out = {};
+  materiasDisponiveis().forEach(mat => {
+    Object.values(getBucket(mat).perguntas || {}).forEach(p => (p && p.historico || []).forEach(h => {
+      if(h && h.ts >= ini && h.ts < fim){ const d = reta7Data(h.ts); (out[d] = out[d] || {})[mat] = (out[d][mat] || 0) + 1; }
+    }));
+  });
+  return out;
+}
+function reta7SalvarCfg(c){ reta7Arquivar(reta7LerJ(R7_PLANO_KEY)); reta7GravarJ(R7_CFG_KEY, c); reta7GravarJ(R7_PLANO_KEY, null); }   // mudou a disponibilidade: o plano é refeito
 // plano vigente: refeito quando falta, quando a configuração muda ou quando o último dia já passou
 function reta7PlanoVigente(forcar){
   const hoje = reta7Data(Date.now()), dias = retaDias();
   if(dias <= 0) return null;
   let p = reta7LerJ(R7_PLANO_KEY);
+  reta7Arquivar(p);
   const vencido = p && (!p.dias || !p.dias.length || reta7DiffDias(hoje, p.dias[p.dias.length - 1].d) < 0 || reta7DiffDias(p.inicio, hoje) < 0);
   if(!p || vencido || forcar){
+    reta7Arquivar(p);
     const cfg = reta7Cfg(), cal = reta7Calendario(hoje, dias, cfg).filter(x => x.on);
     const r = reta7Distribuir(reta7TodasStats(), cal.map(x => ({ d:x.d, min:x.min })));
     p = { inicio:hoje, dias:cal.map((x, i) => ({ d:x.d, min:x.min, blocos:r.agenda[i] })), fora:r.fora, porMateria:r.porMateria, criado:Date.now() };
@@ -196,7 +220,7 @@ const R7_DIAS_SEM = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 function reta7Fmt(m){ return m >= 60 ? Math.floor(m / 60) + 'h' + (m % 60 ? String(m % 60).padStart(2, '0') : '') : m + ' min'; }
 function reta7RotuloDia(d){
   const hoje = reta7Data(Date.now()), df = reta7DiffDias(hoje, d), dp = retaDias() - df, dd = d.split('-');
-  return { curta:dd[2] + '/' + dd[1], nome: df === 0 ? 'Hoje' : (df === 1 ? 'Amanhã' : R7_DIAS_SEM[reta7DiaSemana(d)] + ' ' + dd[2]), dprova: dp > 0 ? 'D-' + dp : 'prova', df };
+  return { curta:dd[2] + '/' + dd[1], nome: df === 0 ? 'Hoje' : (df === 1 ? 'Amanhã' : (df < 0 ? R7_DIAS_SEM[reta7DiaSemana(d)] + ' ' + dd[2] + '/' + dd[1] : R7_DIAS_SEM[reta7DiaSemana(d)] + ' ' + dd[2])), dprova: dp > 0 ? 'D-' + dp : 'prova', df };
 }
 function reta7Porque(s){
   const p = [];
@@ -237,19 +261,29 @@ function renderReta7(){
       <div class="r7-links"><button data-r7-preset="util">Seg a sex</button><button data-r7-preset="todos">Todos os dias</button></div></div>`;
   if(!p.dias.length) return `<div class="reta r7"><section class="r7-hero"><div><h2>Revisão matéria por matéria</h2><p>Nenhum dia disponível até a prova. Marque abaixo os dias em que você pode estudar.</p></div></section>${controles}</div>`;
   const totalMin = p.dias.reduce((s, x) => s + x.min, 0);
-  const idxHoje = Math.max(0, p.dias.findIndex(x => reta7DiffDias(hoje, x.d) >= 0));
-  const sel = (typeof STATE.reta7Dia === 'number' && STATE.reta7Dia >= 0 && STATE.reta7Dia < p.dias.length) ? STATE.reta7Dia : idxHoje;
-  const tira = p.dias.map((dia, i) => {
-    const r = reta7RotuloDia(dia.d), d0 = reta7Dia0(dia.d);
+  // dias anteriores (do plano ou guardados) + dias sem plano em que você respondeu questões; depois os dias do plano
+  const ativ = reta7AtividadeDias(), plano = p.dias.slice(), temD = new Set(plano.map(x => x.d));
+  const ant = [];
+  reta7Historico().forEach(x => { if(!temD.has(x.d)){ ant.push(x); temD.add(x.d); } });
+  Object.keys(ativ).forEach(d => { if(!temD.has(d)){ ant.push({ d, min:0, blocos:[], ativ:ativ[d] }); temD.add(d); } });
+  const todos = ant.concat(plano).sort((a, b2) => a.d < b2.d ? -1 : (a.d > b2.d ? 1 : 0));
+  const idxHoje = Math.max(0, todos.findIndex(x => reta7DiffDias(hoje, x.d) >= 0));
+  const sel = (typeof STATE.reta7Dia === 'number' && STATE.reta7Dia >= 0 && STATE.reta7Dia < todos.length) ? STATE.reta7Dia : idxHoje;
+  const botaoDia = (dia, i) => {
+    const r = reta7RotuloDia(dia.d), d0 = reta7Dia0(dia.d), semPlano = !dia.blocos.length;
+    const nAtiv = dia.ativ ? Object.values(dia.ativ).reduce((a, b2) => a + b2, 0) : 0;
     const feitos = dia.blocos.filter(b => reta7RespondidasNoDia(b.mat, d0) >= Math.max(5, Math.round((b.min - reta7Leitura(b)) * 0.7))).length;
     const completo = dia.blocos.length && feitos === dia.blocos.length;
-    return `<button class="r7-dia${i === sel ? ' on' : ''}${completo ? ' ok' : ''}${r.df < 0 && !completo ? ' perdido' : ''}" data-r7-dia="${i}" aria-pressed="${i === sel}">
-      <b>${esc(r.nome)}</b><small>${esc(r.dprova)} · ${reta7Fmt(dia.min)}</small><span>${completo ? '✓' : feitos + '/' + dia.blocos.length}</span></button>`;
-  }).join('');
-  const dia = p.dias[sel], r = reta7RotuloDia(dia.d), d0 = reta7Dia0(dia.d);
+    return `<button class="r7-dia${i === sel ? ' on' : ''}${completo ? ' ok' : ''}${r.df < 0 && !completo && !semPlano ? ' perdido' : ''}${r.df < 0 ? ' passado' : ''}" data-r7-dia="${i}" aria-pressed="${i === sel}">
+      <b>${esc(r.nome)}</b><small>${esc(r.dprova)} · ${semPlano ? 'sem plano' : reta7Fmt(dia.min)}</small><span>${completo ? '✓' : (semPlano ? nAtiv + ' resp.' : feitos + '/' + dia.blocos.length)}</span></button>`;
+  };
+  const tiraAnt = todos.map((dia, i) => ({ dia, i })).filter(x => reta7DiffDias(hoje, x.dia.d) < 0).map(x => botaoDia(x.dia, x.i)).join('');
+  const tira = todos.map((dia, i) => ({ dia, i })).filter(x => reta7DiffDias(hoje, x.dia.d) >= 0).map(x => botaoDia(x.dia, x.i)).join('');
+  const dia = todos[sel], r = reta7RotuloDia(dia.d), d0 = reta7Dia0(dia.d);
   const cards = dia.blocos.map(b => reta7Cartao(b, d0)).join('');
+  const semPlanoMsg = (!dia.blocos.length && dia.ativ) ? `<p class="section-desc">Dia sem plano. Você respondeu: ${Object.entries(dia.ativ).sort((a, b2) => b2[1] - a[1]).map(x => esc(x[0]) + ' ' + x[1]).join(' · ')}.</p>` : '';
   const usado = dia.blocos.reduce((s, b) => s + b.min, 0);
-  const proxB = (() => { const di = p.dias[idxHoje]; if(!di) return null; const d00 = reta7Dia0(di.d); return di.blocos.find(b => reta7RespondidasNoDia(b.mat, d00) < 5) || null; })();
+  const proxB = (() => { const di = todos[idxHoje]; if(!di || !di.blocos.length) return null; const d00 = reta7Dia0(di.d); return di.blocos.find(b => reta7RespondidasNoDia(b.mat, d00) < 5) || null; })();
   const fora = (p.fora && p.fora.length) ? `<p class="r7-aviso">⚠️ Sem tempo para: ${p.fora.map(esc).join(', ')}. Aumente as horas ou libere mais dias.</p>` : '';
   return `<div class="reta r7">
     <section class="r7-hero">
@@ -260,11 +294,12 @@ function renderReta7(){
         <div class="r7-links"><button data-r7-refazer="1" title="Monta o plano de novo com o seu progresso de hoje">↻ Refazer plano</button><button data-r7-completo="1">Modo completo</button></div></div>
     </section>
     ${controles}
+    ${tiraAnt ? `<div class="r7-ant"><span>Dias anteriores</span><nav class="r7-tira r7-tira-ant" aria-label="Dias anteriores">${tiraAnt}</nav></div>` : ''}
     <nav class="r7-tira" aria-label="Dias do plano">${tira}</nav>
     <div class="r7-resumo"><b>${esc(r.nome)} · ${esc(r.curta)}</b> <span>${dia.blocos.length} ${dia.blocos.length === 1 ? 'matéria' : 'matérias'} · ${reta7Fmt(usado)} de ${reta7Fmt(dia.min)}</span>
       <span class="r7-passo" title="Ajusta o tempo só deste dia"><button data-r7-passo="-30" data-r7-d="${dia.d}" aria-label="Menos 30 minutos neste dia">−</button> <b>${reta7Fmt(dia.min)}</b> <button data-r7-passo="30" data-r7-d="${dia.d}" aria-label="Mais 30 minutos neste dia">+</button></span>
       ${sel === idxHoje && proxB ? `<button class="btn btn-gold" data-r7-iniciar="${esc(proxB.mat)}" data-r7-qtd="${Math.max(5, proxB.min - reta7Leitura(proxB))}">▶ Próxima: ${esc(proxB.mat)}</button>` : ''}</div>
-    <div class="r7-grade">${cards || '<p class="section-desc">Nenhuma matéria neste dia.</p>'}</div>
+    <div class="r7-grade">${cards || semPlanoMsg || '<p class="section-desc">Nenhuma matéria neste dia.</p>'}</div>
     ${fora}
   </div>`;
 }
