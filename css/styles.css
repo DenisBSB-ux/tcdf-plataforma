@@ -2404,3 +2404,15 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 .tr-modal .tr-nav .btn{ background:var(--m-soft); border:1px solid var(--m-bd); color:var(--m-ink); } .tr-modal .tr-nav .btn[disabled]{ opacity:.45; }
 .tr-modal .r7-modal-x, .r7-modal .r7-modal-x{ background:var(--m-soft); border-color:var(--m-bd); color:var(--m-ink); }
 .tr-acoes .btn[disabled], .tr-acoes .btn-gold[disabled]{ opacity:.4; filter:grayscale(.5); cursor:not-allowed; }
+
+/* v484: flashcard de questão (texto da questão na frente; CERTO/ERRADO + regra no verso) */
+.tr-quest{ white-space:pre-line; text-align:left; font-size:15px; line-height:1.5; }
+.tr-gab{ display:inline-block; margin:2px 0 8px; padding:3px 12px; border-radius:999px; font-weight:800; letter-spacing:.04em; font-size:14px; }
+.tr-gab.ok{ background:var(--m-ok-bg); color:var(--m-ok); border:1.5px solid var(--m-ok-bd); }
+.tr-gab.no{ background:var(--m-no-bg); color:var(--m-no); border:1.5px solid var(--m-no); }
+/* resumo por assunto */
+.r7-ass{ display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 14px; padding-right:44px; }
+.r7-ass button{ border:1px solid var(--m-bd); background:var(--m-soft); color:var(--m-ink); border-radius:999px; padding:5px 12px; font-size:13px; cursor:pointer; }
+.r7-ass button.on{ background:var(--m-acc); color:#1d1d1f; border-color:var(--m-acc); font-weight:700; }
+.r7-ass button small{ opacity:.7; margin-left:4px; }
+.r7-ass button:focus-visible{ outline:2px solid var(--m-link); outline-offset:2px; }
