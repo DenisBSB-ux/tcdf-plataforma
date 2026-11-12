@@ -8,6 +8,8 @@
 /* R7-PURO-INI */
 const R7_BASE_MIN = 45;          // tempo mínimo por matéria (menos se o total não comportar)
 const R7_HORAS = [2, 3, 4, 5, 6];
+// matérias já no formato mais novo (resumo por assunto em ordem de relevância + flashcards com o texto da questão)
+const R7_ATUALIZADAS = ['direito-civil', 'lei-14133', 'previdenciario'];
 const R7_LEITURA = 15;           // minutos de leitura do resumo, dentro da 1ª passada
 
 // distribui as matérias pelos dias. stats: [{ mat, score, w }] (score maior = mais fraca; w = peso do tempo).
@@ -167,7 +169,7 @@ function reta7AbrirResumo(mat){
       const tm = e.target.closest('.tr-tema'); if(tm){ if(typeof alternarTema === 'function') alternarTema(); tm.textContent = document.body.classList.contains('theme-light') ? '🌙' : '☀️'; }
     });
     document.body.appendChild(box);
-    if(typeof janelaFlutuante === 'function') janelaFlutuante(box, '📄 Resumo · ' + mat, fechar, 'resumo');
+    if(typeof janelaFlutuante === 'function') janelaFlutuante(box, '📄 Resumo · ' + mat + (R7_ATUALIZADAS.includes(slug) ? ' · ✨ atualizada' : ''), fechar, 'resumo');
   };
   reta7CarregarResumos(mostrar);
 }
@@ -198,6 +200,30 @@ function reta7Historia(){
     }));
   });
   return out;
+}
+// só o período da revisão: mesmas contagens, a partir de 'ini', e as questões distintas vistas por matéria
+function reta7HistoriaRev(ini){
+  const dias = {}, vistas = {}; const ini0 = reta7Dia0(ini);
+  materiasDisponiveis().forEach(mat => {
+    Object.entries(getBucket(mat).perguntas || {}).forEach(([uid, p]) => (p && p.historico || []).forEach(h => {
+      if(!h || !h.ts || h.ts < ini0) return;
+      const d = reta7Data(h.ts), m = ((dias[d] = dias[d] || {})[mat] = dias[d][mat] || { n:0, ok:0 });
+      m.n++; if(h.c === true) m.ok++;
+      (vistas[mat] = vistas[mat] || new Set()).add(uid);
+    }));
+  });
+  return { dias, vistas };
+}
+const R7_INI_KEY = 'tcdf_reta7_inicio_v2';
+// dia em que a revisão começou: o que você marcou, ou o primeiro dia do plano
+function reta7InicioRevisao(){
+  const hoje = reta7Data(Date.now());
+  let v = null; try{ v = localStorage.getItem(R7_INI_KEY); }catch(_){}
+  if(v && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const cand = [reta7LerJ(R7_PLANO_KEY) && reta7LerJ(R7_PLANO_KEY).inicio].concat(reta7Historico().map(x => x.d)).filter(Boolean).sort();
+  v = cand.length ? cand[0] : hoje;
+  try{ localStorage.setItem(R7_INI_KEY, v); }catch(_){}
+  return v;
 }
 function reta7TotDia(mats){ let n = 0, ok = 0; Object.values(mats || {}).forEach(m => { n += m.n; ok += m.ok; }); return { n, ok, pct: n ? Math.round(100 * ok / n) : null }; }
 function reta7SalvarCfg(c){ reta7Arquivar(reta7LerJ(R7_PLANO_KEY)); reta7GravarJ(R7_CFG_KEY, c); reta7GravarJ(R7_PLANO_KEY, null); }   // mudou a disponibilidade: o plano é refeito
@@ -243,7 +269,7 @@ function reta7Cartao(b, dia0){
   const comp = [ses.nErros ? ses.nErros + ' erros' : '', ses.nMarcadas ? ses.nMarcadas + ' marcadas' : '', ses.nNovas ? ses.nNovas + (ses.nNovas === 1 ? ' nova' : ' novas') : ''].filter(Boolean).join(' + ');
   const tag = b.t === '12' ? '1ª + 2ª passada' : (b.t === '2' ? '2ª passada: erros e marcadas' : '1ª passada');
   return `<article class="r7-card${ok ? ' ok' : ''}${STATE.materia === mat ? ' r7-atual' : ''}">
-    <div class="r7-top"><h3>${esc(mat)}</h3><span class="r7-tag">${esc(tag)}</span>${ok ? '<span class="r7-feito">✓ feita</span>' : ''}</div>
+    <div class="r7-top"><h3>${esc(mat)}</h3>${R7_ATUALIZADAS.includes(reta7SlugResumo(mat)) ? '<span class="r7-atual-selo" title="Resumo por assunto em ordem de relevância e flashcards com o texto da questão">✨ Matéria atualizada</span>' : ''}<span class="r7-tag">${esc(tag)}</span>${ok ? '<span class="r7-feito">✓ feita</span>' : ''}</div>
     <p class="r7-why">${esc(reta7Porque(s))}</p>
     <p class="r7-meta"><b>${reta7Fmt(b.min)}</b> · ${leitura ? 'leitura do resumo ' + leitura + ' min + ' : ''}${ses.uids.length} questões${comp ? ' <span>(' + esc(comp) + ')</span>' : ''}</p>
     <div class="r7-barra" title="${feitas} respostas hoje nesta matéria"><i style="width:${pct}%"></i></div>
@@ -268,11 +294,13 @@ function reta7PainelPassado(dia, mats, d0){
     <div class="r7-tab-wrap"><table class="r7-tab"><thead><tr><th>Matéria</th><th>Planejado</th><th>Respostas</th><th>Acertos</th><th>% acerto</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table></div></div>`;
 }
 
-/* ---------- gráfico geral da revisão ---------- */
-function reta7Grafico(hist, hoje){
-  const ds = Object.keys(hist).sort(); if(!ds.length) return '<div class="card-reta"><h3>Gráfico geral</h3><p class="section-desc">Ainda não há respostas registradas. Responda questões e o gráfico aparece aqui.</p></div>';
-  const ini = reta7DiffDias(ds[0], hoje) > 29 ? reta7SomaDias(hoje, -29) : ds[0];
-  const dias = []; for(let d = ini; reta7DiffDias(d, hoje) >= 0; d = reta7SomaDias(d, 1)) dias.push(d);
+/* ---------- gráfico geral da revisão (só o período da revisão) ---------- */
+function reta7Grafico(hoje){
+  const ini = reta7InicioRevisao(), rev = reta7HistoriaRev(ini), hist = rev.dias;
+  const cab = `<section class="card-reta r7-ini"><label>Revisão começou em <input type="date" id="r7-ini" value="${esc(ini)}" max="${esc(hoje)}"></label><span class="section-desc">O gráfico conta só as respostas desse dia em diante. Mude a data se quiser outro ponto de partida.</span></section>`;
+  const ds = Object.keys(hist).sort();
+  if(!ds.length) return cab + '<div class="card-reta"><h3>Gráfico da revisão</h3><p class="section-desc">Ainda não há respostas desde o início da revisão. Responda questões e o gráfico aparece aqui.</p></div>';
+  const dias = []; for(let d = ini; reta7DiffDias(d, hoje) >= 0 && dias.length < 60; d = reta7SomaDias(d, 1)) dias.push(d);
   const por = dias.map(d => ({ d, ...reta7TotDia(hist[d]) }));
   const tudo = reta7TotDia(Object.values(hist).reduce((a, mats) => { Object.entries(mats).forEach(([k, v]) => { const x = (a[k] = a[k] || { n:0, ok:0 }); x.n += v.n; x.ok += v.ok; }); return a; }, {}));
   const estudados = por.filter(x => x.n > 0).length, maxN = Math.max(10, ...por.map(x => x.n)), W = 760, H = 250, L = 38, R = 38, T = 14, B = 34, iw = W - L - R, ih = H - T - B, bw = iw / por.length;
@@ -286,14 +314,17 @@ function reta7Grafico(hist, hoje){
     if(i % Math.ceil(por.length / 10) === 0 || hoje_) rot += `<text x="${cx}" y="${H - 12}" class="g-eixo" text-anchor="middle">${x.d.slice(8)}/${x.d.slice(5, 7)}</text>`;
   });
   const linha = pts.length ? `<polyline points="${pts.map(p => p.join(',')).join(' ')}" class="g-linha"/>` + pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" class="g-pt"/>`).join('') : '';
-  const mats = reta7TodasStats().sort((a, b) => (a.acerto === null ? -1 : a.acerto) - (b.acerto === null ? -1 : b.acerto));
-  const barrasMat = mats.map(m => `<div class="r7-lm"><span>${esc(m.mat)}</span><div class="r7-dupla"><div title="Acerto ${m.acerto === null ? '–' : Math.round(m.acerto * 100) + '%'}"><i class="a" style="width:${m.acerto === null ? 0 : Math.round(m.acerto * 100)}%"></i></div><div title="Questões já vistas ${Math.round(m.cob * 100)}%"><i class="c" style="width:${Math.round(m.cob * 100)}%"></i></div></div><b>${m.acerto === null ? '–' : Math.round(m.acerto * 100) + '%'}</b><small>${Math.round(m.cob * 100)}% vistas${m.erros ? ' · ' + m.erros + ' erros' : ''}</small></div>`).join('');
-  return `<div class="r7-graf">
-    <div class="r7-kpis"><div><b>${tudo.n}</b><span>respostas no período</span></div><div><b>${tudo.pct === null ? '–' : tudo.pct + '%'}</b><span>acerto geral</span></div><div><b>${estudados}</b><span>dias com estudo</span></div><div><b>${estudados ? Math.round(tudo.n / estudados) : 0}</b><span>respostas por dia estudado</span></div></div>
+  // por matéria, só com o que foi respondido desde o início da revisão
+  const porMat = {};
+  Object.values(hist).forEach(mats => Object.entries(mats).forEach(([k, v]) => { const x = (porMat[k] = porMat[k] || { n:0, ok:0 }); x.n += v.n; x.ok += v.ok; }));
+  const linhasMat = Object.keys(porMat).map(mat => { const t = porMat[mat], tot = retaQuestoes([mat]).length, vis = (rev.vistas[mat] || new Set()).size; return { mat, n:t.n, pct:Math.round(100 * t.ok / t.n), vis, cob:tot ? Math.round(100 * vis / tot) : 0 }; }).sort((a, b) => a.pct - b.pct);
+  const barrasMat = linhasMat.map(m => `<div class="r7-lm"><span>${esc(m.mat)}</span><div class="r7-dupla"><div title="Acerto ${m.pct}%"><i class="a" style="width:${m.pct}%"></i></div><div title="Questões diferentes respondidas na revisão: ${m.cob}%"><i class="c" style="width:${m.cob}%"></i></div></div><b>${m.pct}%</b><small>${m.n} resp. · ${m.cob}% das questões vistas</small></div>`).join('');
+  return `<div class="r7-graf">${cab}
+    <div class="r7-kpis"><div><b>${tudo.n}</b><span>respostas na revisão</span></div><div><b>${tudo.pct === null ? '–' : tudo.pct + '%'}</b><span>acerto na revisão</span></div><div><b>${estudados}</b><span>dias com estudo</span></div><div><b>${estudados ? Math.round(tudo.n / estudados) : 0}</b><span>respostas por dia estudado</span></div></div>
     <section class="card-reta"><h3>Respostas e acerto por dia</h3><p class="section-desc">Barras: respostas do dia (eixo esquerdo). Linha: % de acerto do dia (eixo direito).</p>
-      <svg class="r7-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de respostas e acerto por dia">${grade}${barras}${linha}${rot}</svg>
+      <svg class="r7-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de respostas e acerto por dia na revisão">${grade}${barras}${linha}${rot}</svg>
       <div class="r7-leg"><span><i class="lb"></i> respostas</span><span><i class="ll"></i> % de acerto</span></div></section>
-    <section class="card-reta"><h3>Situação por matéria</h3><p class="section-desc">Barra de cima: % de acerto. Barra de baixo: % das questões da matéria que você já viu. Da mais fraca para a mais forte.</p><div class="r7-lms">${barrasMat}</div></section>
+    <section class="card-reta"><h3>Situação por matéria na revisão</h3><p class="section-desc">Barra de cima: % de acerto nas respostas da revisão. Barra de baixo: % das questões da matéria respondidas na revisão. Da mais fraca para a mais forte.</p><div class="r7-lms">${barrasMat}</div></section>
   </div>`;
 }
 
@@ -304,8 +335,8 @@ function renderReta7(){
   const hoje = reta7Data(Date.now()), cfg = reta7Cfg(), cal = reta7Calendario(hoje, dias, cfg), p = reta7PlanoVigente(false);
   if(!p) return '';
   const aba = STATE.reta7Aba === 'grafico' ? 'grafico' : 'plano';
-  const abas = `<div class="r7-abas" role="tablist"><button role="tab" class="${aba === 'plano' ? 'on' : ''}" aria-selected="${aba === 'plano'}" data-r7-aba="plano">📅 Plano</button><button role="tab" class="${aba === 'grafico' ? 'on' : ''}" aria-selected="${aba === 'grafico'}" data-r7-aba="grafico">📊 Gráfico geral</button></div>`;
-  if(aba === 'grafico') return `<div class="reta r7">${abas}${reta7Grafico(reta7Historia(), hoje)}</div>`;
+  const abas = `<div class="r7-abas" role="tablist"><button role="tab" class="${aba === 'plano' ? 'on' : ''}" aria-selected="${aba === 'plano'}" data-r7-aba="plano">📅 Plano</button><button role="tab" class="${aba === 'grafico' ? 'on' : ''}" aria-selected="${aba === 'grafico'}" data-r7-aba="grafico">📊 Gráfico da revisão</button></div>`;
+  if(aba === 'grafico') return `<div class="reta r7">${abas}${reta7Grafico(hoje)}</div>`;
   const horasBtn = R7_HORAS.map(h => `<button class="${(cfg.horas || 4) === h ? 'on' : ''}" data-r7-horas="${h}" aria-pressed="${(cfg.horas || 4) === h}">${h}h</button>`).join('');
   const chips = cal.map(x => { const r = reta7RotuloDia(x.d); return `<button class="r7-chip${x.on ? ' on' : ''}" data-r7-disp="${x.d}" aria-pressed="${x.on}" title="${x.on ? 'Disponível: ' + reta7Fmt(x.min) : 'Indisponível'}"><b>${esc(R7_DIAS_SEM[x.dw])} ${esc(r.curta)}</b><small>${x.on ? reta7Fmt(x.min) : 'folga'}</small></button>`; }).join('');
   const controles = `<div class="r7-disp"><span>Dias disponíveis</span><div class="r7-chips">${chips}</div>
@@ -368,6 +399,7 @@ function reta7Anexar(raiz){
   q('[data-r7-preset]').forEach(el => el.addEventListener('click', () => mudar(c => { c.dias = {}; calDe({ horas:c.horas, dias:{} }).forEach(x => { c.dias[x.d] = { on: el.dataset.r7Preset === 'todos' ? true : (x.dw >= 1 && x.dw <= 5) }; }); })));
   q('[data-r7-passo]').forEach(el => el.addEventListener('click', () => mudar(c => { const d = el.dataset.r7D, x = calDe(c).find(y => y.d === d); const atual = x ? x.min : (c.horas || 4) * 60; c.dias[d] = { on:true, min:Math.max(30, Math.min(720, atual + parseInt(el.dataset.r7Passo, 10))) }; })));
   q('[data-r7-refazer]').forEach(el => el.addEventListener('click', () => { reta7PlanoVigente(true); STATE.reta7Dia = null; render(); }));
+  q('#r7-ini').forEach(el => el.addEventListener('change', () => { if(/^\d{4}-\d{2}-\d{2}$/.test(el.value)){ try{ localStorage.setItem(R7_INI_KEY, el.value); }catch(_){} render(); } }));
   q('[data-r7-aba]').forEach(el => el.addEventListener('click', () => { STATE.reta7Aba = el.dataset.r7Aba; render(); }));
   q('[data-r7-completo]').forEach(el => el.addEventListener('click', () => { STATE.retaModo = 'completo'; render(); }));
   q('[data-r7-voltar]').forEach(el => el.addEventListener('click', () => { STATE.retaModo = 'sete'; STATE.retaSessao = null; render(); }));
