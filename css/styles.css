@@ -2475,3 +2475,15 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 /* v511: lacunas com todos os botões numa linha; posição da questão */
 .tr-pos{ margin:8px 0 0; font-size:12.5px; color:var(--m-mut); text-align:right; }
 .tr-lacuna + .tr-fb + .tr-acoes, .tr-lacuna ~ .tr-acoes{ flex-wrap:wrap; }
+
+/* v512: lacunas sobre o enunciado completo (texto longo, com quebra de linha na alternativa) */
+.tr-frase{ white-space:pre-line; font-size:16px; line-height:1.7; }
+.tr-lacuna .tr-blank{ white-space:normal; }
+
+/* v513: zoom do texto e botões dos flashcards numa linha só */
+.tr-zoom{ margin-left:auto; display:inline-flex; align-items:center; gap:4px; font-size:12.5px; color:var(--m-mut); }
+.tr-zoom button{ border:1px solid var(--m-bd); background:var(--m-bg); color:var(--m-ink); border-radius:8px; padding:3px 9px; font:inherit; font-weight:700; cursor:pointer; } .tr-zoom button:focus-visible{ outline:2px solid var(--m-link); outline-offset:2px; }
+.tr-modal .tr-texto, .tr-modal .tr-frase{ font-size:calc(16px * var(--tr-zoom, 1)); }
+.tr-modal .tr-quest{ font-size:calc(15px * var(--tr-zoom, 1)); }
+.tr-modal .tr-chip{ font-size:calc(14px * var(--tr-zoom, 1)); }
+.tr-modal .tr-gab{ font-size:calc(14px * var(--tr-zoom, 1)); }
