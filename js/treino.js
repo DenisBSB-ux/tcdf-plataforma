@@ -13,7 +13,12 @@ function treinoDisponivel(mat){ const s = treinoSlug(mat); return !!s && TREINO_
 function treinoLer(){ try{ return JSON.parse(localStorage.getItem(TREINO_KEY) || '{}') || {}; }catch(_){ return {}; } }
 function treinoGravar(m){ try{ localStorage.setItem(TREINO_KEY, JSON.stringify(m)); }catch(_){} }
 function treinoMarca(slug, k){ return (treinoLer()[slug] || {})[k] || ''; }
-function treinoMarcar(slug, k, v){ const m = treinoLer(); (m[slug] = m[slug] || {})[k] = v; treinoGravar(m); }
+function treinoMarcar(slug, k, v){
+  const m = treinoLer(); (m[slug] = m[slug] || {})[k] = v; treinoGravar(m);
+  if(v){ try{ const L = JSON.parse(localStorage.getItem(TREINO_LOG_KEY) || '[]') || []; L.push({ ts:Date.now(), s:slug, t:String(k)[0], r:v }); localStorage.setItem(TREINO_LOG_KEY, JSON.stringify(L.slice(-4000))); }catch(_){} }   // registro por dia: alimenta o gráfico da Reta Final
+}
+const TREINO_LOG_KEY = 'tcdf_treino_log_v1';
+function treinoLog(){ try{ const L = JSON.parse(localStorage.getItem(TREINO_LOG_KEY) || '[]'); return Array.isArray(L) ? L : []; }catch(_){ return []; } }
 function treinoEmbaralha(a){ const x = a.slice(); for(let i = x.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; }
 function treinoCarregar(slug, cb){
   if(TREINO_TCDF[slug]){ cb(true); return; }

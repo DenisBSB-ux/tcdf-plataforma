@@ -294,38 +294,66 @@ function reta7PainelPassado(dia, mats, d0){
     <div class="r7-tab-wrap"><table class="r7-tab"><thead><tr><th>Matéria</th><th>Planejado</th><th>Respostas</th><th>Acertos</th><th>% acerto</th><th>Situação</th></tr></thead><tbody>${linhas}</tbody></table></div></div>`;
 }
 
-/* ---------- gráfico geral da revisão (só o período da revisão) ---------- */
+/* ---------- gráfico da revisão: estatísticas dos flashcards e das lacunas de cada matéria ---------- */
+// resultado por matéria a partir das marcas atuais ("já sei" / "revisar" nos cartões; certa / errada nas lacunas)
+function reta7EstatTreino(slug){
+  const d = TREINO_TCDF[slug]; if(!d) return null;
+  const m = treinoLer()[slug] || {};
+  const f = { ok:0, rev:0, tot:d.flash.length }, l = { ok:0, err:0, tot:d.lacunas.length };
+  d.flash.forEach(x => { const v = m[treinoChaveItem(x, 'f')]; if(v === 'ok') f.ok++; else if(v === 'rev') f.rev++; });
+  d.lacunas.forEach(x => { const v = m[treinoChaveItem(x, 'l')]; if(v === 'ok') l.ok++; else if(v === 'err') l.err++; });
+  return { slug, nome:d.nome, f, l };
+}
 function reta7Grafico(hoje){
-  const ini = reta7InicioRevisao(), rev = reta7HistoriaRev(ini), hist = rev.dias;
-  const cab = `<section class="card-reta r7-ini"><label>Revisão começou em <input type="date" id="r7-ini" value="${esc(ini)}" max="${esc(hoje)}"></label><span class="section-desc">O gráfico conta só as respostas desse dia em diante. Mude a data se quiser outro ponto de partida.</span></section>`;
-  const ds = Object.keys(hist).sort();
-  if(!ds.length) return cab + '<div class="card-reta"><h3>Gráfico da revisão</h3><p class="section-desc">Ainda não há respostas desde o início da revisão. Responda questões e o gráfico aparece aqui.</p></div>';
+  const ini = reta7InicioRevisao();
+  return `<div class="r7-graf">
+    <section class="card-reta r7-ini"><label>Contar a atividade por dia a partir de <input type="date" id="r7-ini" value="${esc(ini)}" max="${esc(hoje)}"></label><span class="section-desc">Vale para o gráfico por dia (registrado a partir de agora). A situação por matéria mostra tudo que você já marcou.</span></section>
+    <div id="r7-graf-corpo"><p class="section-desc">Carregando os flashcards e as lacunas…</p></div></div>`;
+}
+function reta7MontarGrafico(corpo){
+  const slugs = (typeof TREINO_LIBERADAS !== 'undefined' ? TREINO_LIBERADAS : []).slice();
+  let pend = slugs.length;
+  const fim = () => { if(!corpo.isConnected) return; corpo.innerHTML = reta7GraficoHtml(slugs); };
+  if(!pend){ fim(); return; }
+  slugs.forEach(sl => treinoCarregar(sl, () => { if(--pend === 0) fim(); }));
+}
+function reta7GraficoHtml(slugs){
+  const hoje = reta7Data(Date.now()), ini = reta7InicioRevisao(), ini0 = reta7Dia0(ini);
+  const est = slugs.map(reta7EstatTreino).filter(Boolean);
+  const sum = est.reduce((a, e) => ({ fOk:a.fOk + e.f.ok, fRev:a.fRev + e.f.rev, fTot:a.fTot + e.f.tot, lOk:a.lOk + e.l.ok, lErr:a.lErr + e.l.err, lTot:a.lTot + e.l.tot }), { fOk:0, fRev:0, fTot:0, lOk:0, lErr:0, lTot:0 });
+  const pc = (a, b) => b ? Math.round(100 * a / b) : 0;
+  const kpis = `<div class="r7-kpis"><div><b>${sum.fOk}</b><span>flashcards "já sei" (${pc(sum.fOk, sum.fTot)}% de ${sum.fTot})</span></div><div><b>${sum.fRev}</b><span>flashcards para revisar</span></div><div><b>${sum.lOk}</b><span>lacunas certas (${pc(sum.lOk, sum.lTot)}% de ${sum.lTot})</span></div><div><b>${sum.lErr}</b><span>lacunas erradas</span></div></div>`;
+  // atividade por dia, a partir do registro (flashcards marcados e lacunas respondidas)
+  const log = treinoLog().filter(x => x.ts >= ini0), porDia = {};
+  log.forEach(x => { const d = reta7Data(x.ts), o = (porDia[d] = porDia[d] || { f:0, fOk:0, l:0, lOk:0 }); if(x.t === 'f'){ o.f++; if(x.r === 'ok') o.fOk++; } else { o.l++; if(x.r === 'ok') o.lOk++; } });
   const dias = []; for(let d = ini; reta7DiffDias(d, hoje) >= 0 && dias.length < 60; d = reta7SomaDias(d, 1)) dias.push(d);
-  const por = dias.map(d => ({ d, ...reta7TotDia(hist[d]) }));
-  const tudo = reta7TotDia(Object.values(hist).reduce((a, mats) => { Object.entries(mats).forEach(([k, v]) => { const x = (a[k] = a[k] || { n:0, ok:0 }); x.n += v.n; x.ok += v.ok; }); return a; }, {}));
-  const estudados = por.filter(x => x.n > 0).length, maxN = Math.max(10, ...por.map(x => x.n)), W = 760, H = 250, L = 38, R = 38, T = 14, B = 34, iw = W - L - R, ih = H - T - B, bw = iw / por.length;
-  const nice = Math.ceil(maxN / 50) * 50 || 50, y = v => T + ih - (v / nice) * ih, yp = v => T + ih - (v / 100) * ih;
-  let barras = '', pts = [], rot = '', grade = '';
-  [0, 0.5, 1].forEach(f => { const yy = T + ih - f * ih; grade += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" class="g-grade"/><text x="${L - 6}" y="${yy + 4}" class="g-eixo" text-anchor="end">${Math.round(nice * f)}</text><text x="${W - R + 6}" y="${yy + 4}" class="g-eixo">${Math.round(100 * f)}%</text>`; });
-  por.forEach((x, i) => {
-    const cx = L + bw * i + bw / 2, w = Math.max(3, bw * 0.62), hoje_ = x.d === hoje;
-    if(x.n) barras += `<rect x="${cx - w / 2}" y="${y(x.n)}" width="${w}" height="${T + ih - y(x.n)}" rx="2" class="g-bar${hoje_ ? ' hoje' : ''}"><title>${esc(x.d.split('-').reverse().slice(0, 2).join('/'))}: ${x.n} respostas, ${x.ok} acertos (${x.pct}%)</title></rect>`;
-    if(x.pct !== null) pts.push([cx, yp(x.pct)]);
-    if(i % Math.ceil(por.length / 10) === 0 || hoje_) rot += `<text x="${cx}" y="${H - 12}" class="g-eixo" text-anchor="middle">${x.d.slice(8)}/${x.d.slice(5, 7)}</text>`;
-  });
-  const linha = pts.length ? `<polyline points="${pts.map(p => p.join(',')).join(' ')}" class="g-linha"/>` + pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" class="g-pt"/>`).join('') : '';
-  // por matéria, só com o que foi respondido desde o início da revisão
-  const porMat = {};
-  Object.values(hist).forEach(mats => Object.entries(mats).forEach(([k, v]) => { const x = (porMat[k] = porMat[k] || { n:0, ok:0 }); x.n += v.n; x.ok += v.ok; }));
-  const linhasMat = Object.keys(porMat).map(mat => { const t = porMat[mat], tot = retaQuestoes([mat]).length, vis = (rev.vistas[mat] || new Set()).size; return { mat, n:t.n, pct:Math.round(100 * t.ok / t.n), vis, cob:tot ? Math.round(100 * vis / tot) : 0 }; }).sort((a, b) => a.pct - b.pct);
-  const barrasMat = linhasMat.map(m => `<div class="r7-lm"><span>${esc(m.mat)}</span><div class="r7-dupla"><div title="Acerto ${m.pct}%"><i class="a" style="width:${m.pct}%"></i></div><div title="Questões diferentes respondidas na revisão: ${m.cob}%"><i class="c" style="width:${m.cob}%"></i></div></div><b>${m.pct}%</b><small>${m.n} resp. · ${m.cob}% das questões vistas</small></div>`).join('');
-  return `<div class="r7-graf">${cab}
-    <div class="r7-kpis"><div><b>${tudo.n}</b><span>respostas na revisão</span></div><div><b>${tudo.pct === null ? '–' : tudo.pct + '%'}</b><span>acerto na revisão</span></div><div><b>${estudados}</b><span>dias com estudo</span></div><div><b>${estudados ? Math.round(tudo.n / estudados) : 0}</b><span>respostas por dia estudado</span></div></div>
-    <section class="card-reta"><h3>Respostas e acerto por dia</h3><p class="section-desc">Barras: respostas do dia (eixo esquerdo). Linha: % de acerto do dia (eixo direito).</p>
-      <svg class="r7-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de respostas e acerto por dia na revisão">${grade}${barras}${linha}${rot}</svg>
-      <div class="r7-leg"><span><i class="lb"></i> respostas</span><span><i class="ll"></i> % de acerto</span></div></section>
-    <section class="card-reta"><h3>Situação por matéria na revisão</h3><p class="section-desc">Barra de cima: % de acerto nas respostas da revisão. Barra de baixo: % das questões da matéria respondidas na revisão. Da mais fraca para a mais forte.</p><div class="r7-lms">${barrasMat}</div></section>
-  </div>`;
+  let grafico;
+  if(!Object.keys(porDia).length) grafico = '<p class="section-desc">O registro por dia começa a partir de agora: marque cartões ("já sei" ou "revisar") e responda lacunas, e o gráfico aparece aqui.</p>';
+  else {
+    const W = 760, H = 240, L = 38, R = 38, T = 14, B = 34, iw = W - L - R, ih = H - T - B, bw = iw / dias.length;
+    const tot = dias.map(d => (porDia[d] ? porDia[d].f + porDia[d].l : 0)), maxN = Math.max(10, ...tot), nice = Math.ceil(maxN / 20) * 20 || 20;
+    const y = v => T + ih - (v / nice) * ih, yp = v => T + ih - (v / 100) * ih;
+    let grade = '', barras = '', rot = '', pts = [];
+    [0, 0.5, 1].forEach(f => { const yy = T + ih - f * ih; grade += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" class="g-grade"/><text x="${L - 6}" y="${yy + 4}" class="g-eixo" text-anchor="end">${Math.round(nice * f)}</text><text x="${W - R + 6}" y="${yy + 4}" class="g-eixo">${Math.round(100 * f)}%</text>`; });
+    dias.forEach((d, i) => {
+      const o = porDia[d] || { f:0, fOk:0, l:0, lOk:0 }, cx = L + bw * i + bw / 2, w = Math.max(3, bw * 0.62), tt = o.f + o.l;
+      if(o.f) barras += `<rect x="${cx - w / 2}" y="${y(o.f)}" width="${w}" height="${T + ih - y(o.f)}" class="g-bar"><title>${d.split('-').reverse().slice(0, 2).join('/')}: ${o.f} flashcards marcados</title></rect>`;
+      if(o.l) barras += `<rect x="${cx - w / 2}" y="${y(o.f + o.l)}" width="${w}" height="${y(o.f) - y(o.f + o.l)}" class="g-bar2"><title>${d.split('-').reverse().slice(0, 2).join('/')}: ${o.l} lacunas respondidas</title></rect>`;
+      if(tt) pts.push([cx, yp(Math.round(100 * (o.fOk + o.lOk) / tt))]);
+      if(i % Math.ceil(dias.length / 10) === 0 || d === hoje) rot += `<text x="${cx}" y="${H - 12}" class="g-eixo" text-anchor="middle">${d.slice(8)}/${d.slice(5, 7)}</text>`;
+    });
+    const linha = pts.length ? `<polyline points="${pts.map(p => p.join(',')).join(' ')}" class="g-linha"/>` + pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" class="g-pt"/>`).join('') : '';
+    grafico = `<svg class="r7-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Flashcards marcados e lacunas respondidas por dia">${grade}${barras}${linha}${rot}</svg>
+      <div class="r7-leg"><span><i class="lb"></i> flashcards marcados</span><span><i class="lb2"></i> lacunas respondidas</span><span><i class="ll"></i> % "já sei" + lacunas certas</span></div>`;
+  }
+  // por matéria: segmentos já sei / revisar / novos e certas / erradas / novas
+  const seg = (a, b, c, tot, ca, cb) => `<div class="r7-seg3" title="${a} · ${b} · ${tot - a - b} novos"><i style="width:${pc(a, tot)}%;background:${ca}"></i><i style="width:${pc(b, tot)}%;background:${cb}"></i></div>`;
+  const linhas = est.sort((x, y) => (y.l.err / Math.max(1, y.l.tot) + y.f.rev / Math.max(1, y.f.tot)) - (x.l.err / Math.max(1, x.l.tot) + x.f.rev / Math.max(1, x.f.tot)) || x.nome.localeCompare(y.nome)).map(e => `<div class="r7-lt"><span>${esc(e.nome)}</span>
+    <div><small>🃏 ${e.f.ok} já sei · ${e.f.rev} revisar · ${e.f.tot - e.f.ok - e.f.rev} novos <em>(${e.f.tot})</em></small>${seg(e.f.ok, e.f.rev, 0, e.f.tot, '#2e9b57', '#c0803a')}</div>
+    <div><small>🧩 ${e.l.ok} certas · ${e.l.err} erradas · ${e.l.tot - e.l.ok - e.l.err} novas <em>(${e.l.tot})</em></small>${seg(e.l.ok, e.l.err, 0, e.l.tot, '#2e9b57', '#c0392b')}</div></div>`).join('');
+  return `${kpis}
+    <section class="card-reta"><h3>Atividade por dia</h3><p class="section-desc">Barras: flashcards marcados e lacunas respondidas no dia (eixo esquerdo). Linha: % de "já sei" nos cartões e de acertos nas lacunas (eixo direito).</p>${grafico}</section>
+    <section class="card-reta"><h3>Situação por matéria</h3><p class="section-desc">Verde: "já sei" ou certas. Laranja: cartões para revisar. Vermelho: lacunas erradas. O resto da barra é o que ainda não foi feito. Das matérias com mais pendências para as com menos.</p><div class="r7-lts">${linhas || '<p class="section-desc">Nenhuma matéria com treino ainda.</p>'}</div></section>`;
 }
 
 function renderReta7(){
@@ -399,6 +427,7 @@ function reta7Anexar(raiz){
   q('[data-r7-preset]').forEach(el => el.addEventListener('click', () => mudar(c => { c.dias = {}; calDe({ horas:c.horas, dias:{} }).forEach(x => { c.dias[x.d] = { on: el.dataset.r7Preset === 'todos' ? true : (x.dw >= 1 && x.dw <= 5) }; }); })));
   q('[data-r7-passo]').forEach(el => el.addEventListener('click', () => mudar(c => { const d = el.dataset.r7D, x = calDe(c).find(y => y.d === d); const atual = x ? x.min : (c.horas || 4) * 60; c.dias[d] = { on:true, min:Math.max(30, Math.min(720, atual + parseInt(el.dataset.r7Passo, 10))) }; })));
   q('[data-r7-refazer]').forEach(el => el.addEventListener('click', () => { reta7PlanoVigente(true); STATE.reta7Dia = null; render(); }));
+  q('#r7-graf-corpo').forEach(el => reta7MontarGrafico(el));
   q('#r7-ini').forEach(el => el.addEventListener('change', () => { if(/^\d{4}-\d{2}-\d{2}$/.test(el.value)){ try{ localStorage.setItem(R7_INI_KEY, el.value); }catch(_){} render(); } }));
   q('[data-r7-aba]').forEach(el => el.addEventListener('click', () => { STATE.reta7Aba = el.dataset.r7Aba; render(); }));
   q('[data-r7-completo]').forEach(el => el.addEventListener('click', () => { STATE.retaModo = 'completo'; render(); }));
