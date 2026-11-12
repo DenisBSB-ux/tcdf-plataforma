@@ -120,7 +120,7 @@ function treinoAbrir(mat, modo){
     box.addEventListener('pointerdown', () => { TR = st; });
     box.addEventListener('dragstart', e => { TR = st; treinoDragStart(e); }); box.addEventListener('dragover', e => { if(e.target.closest('.tr-blank, .tr-banco')) e.preventDefault(); }); box.addEventListener('drop', e => { TR = st; treinoDrop(e); });
     treinoDesenhar();
-    janelaFlutuante(box, (modo === 'lacunas' ? '🧩 Lacunas' : '🃏 Flashcards') + ' · ' + mat, () => { TR = st; treinoFechar(); }, modo);
+    janelaFlutuante(box, (modo === 'lacunas' ? '🧩 Lacunas' : '🃏 Flashcards') + ' · ' + mat + ((typeof R7_ATUALIZADAS !== 'undefined' && R7_ATUALIZADAS.includes(slug)) ? ' · ✨ atualizada' : ''), () => { TR = st; treinoFechar(); }, modo);
   });
 }
 function treinoFechar(){
