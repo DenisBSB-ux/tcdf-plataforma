@@ -31,6 +31,17 @@ function treinoCarregar(slug, cb){
 }
 function treinoUidDe(mat, n, h){ return (ALL_QUESTIONS.find(q => q.materia === mat && Number(q.n) === Number(n) && _ctHash(q.q) === h) || {}).uid || null; }
 
+/* ---- o que você respondeu fica guardado ao fechar a janela: respostas das lacunas, ordem e posição ---- */
+const TREINO_RESP_KEY = 'tcdf_treino_resp_v1';
+function treinoRespLer(slug, modo){ try{ const o = JSON.parse(localStorage.getItem(TREINO_RESP_KEY) || '{}') || {}; return (o[slug] || {})[modo] || null; }catch(_){ return null; } }
+function treinoRespGravar(st){
+  if(!st || !st.fila) return;
+  try{
+    const o = JSON.parse(localStorage.getItem(TREINO_RESP_KEY) || '{}') || {}, tipo = st.modo === 'lacunas' ? 'l' : 'f';
+    (o[st.slug] = o[st.slug] || {})[st.modo] = { i:st.i, ordem:st.fila.map(x => treinoChaveItem(x, tipo)), mem:st.modo === 'lacunas' ? st.mem : undefined, ts:Date.now() };
+    localStorage.setItem(TREINO_RESP_KEY, JSON.stringify(o));
+  }catch(_){}
+}
 let TR = null;     // estado da janela em uso (cada janela aberta tem o seu; TRS guarda todas)
 const TRS = [];
 
@@ -116,7 +127,8 @@ function treinoAbrir(mat, modo){
   if(ja && ja.box && ja.box.isConnected){ ja.box.style.zIndex = ++_janZ; TR = ja; return; }
   treinoCarregar(slug, ok => {
     if(!ok){ alert('Não foi possível carregar o treino agora. Tente de novo com internet.'); return; }
-    const st = { mat, slug, dados:TREINO_TCDF[slug], modo, filtro:'todos', fila:[], i:0, virado:false, slots:[], sel:null, checado:false, sessao:{ ok:0, tot:0 }, mem:{}, box:null };
+    const st = { mat, slug, dados:TREINO_TCDF[slug], modo, filtro:'todos', fila:[], i:0, virado:false, slots:[], sel:null, checado:false, sessao:{ ok:0, tot:0 }, mem:{}, box:null, salvo:null };
+    const sv = treinoRespLer(slug, modo); if(sv){ st.salvo = sv; st.mem = sv.mem || {}; }
     TR = st; TRS.push(st);
     treinoMontarFila();
     const box = document.createElement('div'); box.className = 'r7-modal tr-modal'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', (modo === 'lacunas' ? 'Lacunas de ' : 'Flashcards de ') + mat);
@@ -149,7 +161,15 @@ function treinoMontarFila(){
     else if(TR.filtro === 'novos') l = l.filter(x => !treinoMarca(slug, treinoChaveItem(x, 'l')));
     TR.fila = treinoEmbaralha(l);
   }
-  TR.i = 0; TR.virado = false; TR.checado = false; treinoPrepararLacuna();
+  TR.i = 0;
+  const sv = TR.salvo;
+  if(sv && TR.filtro === 'todos' && Array.isArray(sv.ordem)){      // reabriu: volta à mesma ordem e à mesma questão
+    const tipo = TR.modo === 'lacunas' ? 'l' : 'f', mapa = new Map(TR.fila.map(x => [treinoChaveItem(x, tipo), x])), vistos = new Set();
+    const ord = []; sv.ordem.forEach(k => { const x = mapa.get(k); if(x && !vistos.has(k)){ ord.push(x); vistos.add(k); } });
+    const resto = TR.fila.filter(x => !vistos.has(treinoChaveItem(x, tipo)));
+    TR.fila = ord.concat(resto); TR.i = Math.max(0, Math.min(Number(sv.i) || 0, TR.fila.length - 1));
+  }
+  TR.salvo = null; TR.virado = false; TR.checado = false; treinoPrepararLacuna();
 }
 // cada lacuna guarda a última resposta da sessão: ao avançar ou voltar, ela reaparece como foi deixada
 function treinoNovaLacuna(it){
@@ -173,7 +193,7 @@ function treinoDesenhar(){
   const d = TR.dados, slug = TR.slug, m = treinoLer()[slug] || {};
   const nOk = d.flash.filter(x => m[treinoChaveItem(x, 'f')] === 'ok').length, nRev = d.flash.filter(x => m[treinoChaveItem(x, 'f')] === 'rev').length;
   const lOk = d.lacunas.filter(x => m[treinoChaveItem(x, 'l')] === 'ok').length, lErr = d.lacunas.filter(x => m[treinoChaveItem(x, 'l')] === 'err').length;
-  treinoGuardarLacuna();
+  treinoGuardarLacuna(); treinoRespGravar(TR);
   const abas = '';
   const filtros = TR.modo === 'flash'
     ? [['todos', 'Todos'], ['revisar', 'Revisar (' + nRev + ')'], ['novos', 'Novos (' + (d.flash.length - nOk - nRev) + ')']]
@@ -189,7 +209,7 @@ function treinoDesenhar(){
   const fixos = [...box.querySelectorAll('.jan-barra, .jan-grip')]; box.innerHTML = `<div class="r7-modal-caixa tr-caixa"><button class="r7-modal-x" aria-label="Fechar" data-tr-fechar="1">✕</button><button class="tr-tema" data-tr-tema="1" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">${document.body.classList.contains('theme-light') ? '🌙' : '☀️'}</button>
     <div class="tr-topo"><h2>${TR.modo === 'lacunas' ? '🧩 Lacunas' : '🃏 Flashcards'} · ${esc(d.nome)}</h2><p class="tr-sub">Gerado só das questões da lista · ${esc(stat)}</p>${abas}${chips}</div>
     <div class="tr-corpo">${corpo}</div>
-    <div class="tr-nav"><button class="btn" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}>← Anterior</button><span>${fim}</span><button class="btn" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button></div></div>`;
+    ${TR.modo === 'lacunas' ? `<p class="tr-pos">${fim}</p>` : `<div class="tr-nav"><button class="btn" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}>← Anterior</button><span>${fim}</span><button class="btn" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button></div>`}</div>`;
   fixos.forEach(f => { if(f.classList.contains('jan-barra')) box.insertBefore(f, box.firstChild); else box.appendChild(f); });
 }
 function treinoHtmlFlash(it){
@@ -219,9 +239,11 @@ function treinoHtmlLacuna(it){
     const resp = it.p.filter(p => p.l !== undefined).map(p => p.l);
     fb = `<div class="tr-fb ${todos ? 'ok' : 'no'}"><b>${todos ? '✓ Correto!' : '✗ Não foi dessa vez.'}</b>${todos ? '' : ' Resposta: <i>' + esc(resp.join(' · ')) + '</i>.'}${it.ref ? ' <span class="tr-ref">' + esc(it.ref) + '</span>' : ''}${it.exp ? '<p class="tr-extra">' + esc(it.exp) + '</p>' : ''}</div>`;
   }
-  const acao = `<button class="btn btn-gold" data-tr-verificar="1" ${completo && !TR.checado ? '' : 'disabled'}>Verificar</button>
-      <button class="btn" data-tr-limpar="1" title="Limpa só as palavras desta questão">Limpar</button>
+  const acao = `<button class="btn" data-tr-limpar="1" title="Limpa só as palavras desta questão">Limpar</button>
       <button class="btn" data-tr-resetar="1" title="Volta esta questão ao início (palavras e resultado)">Resetar</button>
+      <button class="btn btn-gold" data-tr-verificar="1" ${completo && !TR.checado ? '' : 'disabled'}>Verificar</button>
+      <button class="btn" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}>← Anterior</button>
+      <button class="btn" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button>
       ${TR.checado ? `<button class="btn" data-tr-questao="${it.n}:${esc(it.h)}">Ver a questão</button>` : ''}`;
   return `<div class="tr-card tr-lacuna"><span class="tr-tag">Complete arrastando as palavras</span><p class="tr-frase">${frase}</p>
     <div class="tr-banco" aria-label="Banco de palavras">${banco || '<span class="tr-dica">Todas as palavras foram usadas.</span>'}</div></div>${fb}<div class="tr-acoes">${acao}</div>`;
@@ -258,8 +280,8 @@ function treinoClique(e){
   if(!TR) return; const t = e.target;
   if(t.closest('[data-tr-fechar]')){ treinoFechar(); return; }
   let el;
-  if((el = t.closest('[data-tr-filtro]'))){ TR.filtro = el.dataset.trFiltro; treinoMontarFila(); treinoDesenhar(); return; }
-  if(t.closest('[data-tr-embaralhar]')){ treinoMontarFila(); treinoDesenhar(); return; }
+  if((el = t.closest('[data-tr-filtro]'))){ TR.filtro = el.dataset.trFiltro; TR.salvo = null; treinoMontarFila(); treinoDesenhar(); return; }
+  if(t.closest('[data-tr-embaralhar]')){ TR.salvo = null; treinoMontarFila(); treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-nav]'))){ treinoIr(parseInt(el.dataset.trNav, 10)); return; }
   if(t.closest('[data-tr-virar]')){ TR.virado = !TR.virado; treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-marca]'))){ const it = TR.fila[TR.i]; if(it){ treinoMarcar(TR.slug, treinoChaveItem(it, 'f'), el.dataset.trMarca); if(TR.i < TR.fila.length - 1 && TR.filtro !== 'todos') { treinoMontarFilaMantendo(); } else if(TR.i < TR.fila.length - 1){ treinoIr(1); return; } treinoDesenhar(); } return; }
