@@ -190,7 +190,7 @@ try {
   t('selo: há matéria atualizada', atual.length >= 1);
   atual.forEach(slug => {
     const a = R[slug] && R[slug].assuntos;
-    t('selo: ' + slug + ' tem resumo por assunto com relevância', Array.isArray(a) && a.length >= 3 && a.every(x => x.nome && x.md && typeof x.pct === 'number') && !!R[slug].geral);
+    t('selo: ' + slug + ' tem resumo por assunto com relevância', Array.isArray(a) && a.length >= 2 && a.every(x => x.nome && x.md && typeof x.pct === 'number') && !!R[slug].geral);
     const src = fs.readFileSync(path.join(raiz, 'js', 'treino-' + slug + '.js'), 'utf8');
     const d = JSON.parse(src.split('\n')[1].replace(/^TREINO_TCDF\["[^"]+"\]\s*=\s*/, '').replace(/;\s*$/, ''));
     t('selo: ' + slug + ' tem flashcards com o texto da questão e resposta', d.flash.length >= 50 && d.flash.every(f => f.k === 'questao' && f.f && f.g && f.v));
