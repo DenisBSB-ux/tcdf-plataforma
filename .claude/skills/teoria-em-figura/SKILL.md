@@ -138,3 +138,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v538 (13/11): 12 gabaritos alterados nas listas (confirmados pelo usuário): Civil 97; RJU 237/239/241; Prev 224; Const 65/79; RI 148/215; IN5 19; Adm 8.429 102/147. Precisa reimportar as 7 listas.
 - v539 (13/11): treino harmonizado (lacunas conferem sozinhas, 'Trocar palavras', botões com ícones, borda verde/vermelha, flashcards só avançam após Já sei/Revisar, Anterior sempre ativo, janelas acompanham o zoom do navegador). Só código.
 - v540 (13/11): treino: contador ao lado dos filtros, filtro Novos removido, botão Resetar (todas / só revisar ou erradas). Só código.
+- v541 (13/11): marcas do treino e assuntos estudados com carimbo de hora; na sincronização vale a mais recente (reset propaga entre aparelhos). Só código.

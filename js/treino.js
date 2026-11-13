@@ -13,8 +13,11 @@ function treinoDisponivel(mat){ const s = treinoSlug(mat); return !!s && TREINO_
 function treinoLer(){ try{ return JSON.parse(localStorage.getItem(TREINO_KEY) || '{}') || {}; }catch(_){ return {}; } }
 function treinoGravar(m){ try{ localStorage.setItem(TREINO_KEY, JSON.stringify(m)); }catch(_){} }
 function treinoMarca(slug, k){ return (treinoLer()[slug] || {})[k] || ''; }
+// carimbo (hora) de cada marca: na sincronização entre aparelhos vale a alteração mais recente, inclusive o reset
+const REV_TS_KEY = 'tcdf_rev_ts_v1';
+function revTsSet(tipo, slug, chave, ts){ try{ const o = JSON.parse(localStorage.getItem(REV_TS_KEY) || '{}') || {}; ((o[tipo] = o[tipo] || {})[slug] = o[tipo][slug] || {})[chave] = ts || Date.now(); localStorage.setItem(REV_TS_KEY, JSON.stringify(o)); }catch(_){} }
 function treinoMarcar(slug, k, v){
-  const m = treinoLer(); (m[slug] = m[slug] || {})[k] = v; treinoGravar(m); if(typeof sincronizarRevisao === 'function') sincronizarRevisao();
+  const m = treinoLer(); (m[slug] = m[slug] || {})[k] = v; treinoGravar(m); revTsSet('treino', slug, k); if(typeof sincronizarRevisao === 'function') sincronizarRevisao();
   if(v){ try{ const L = JSON.parse(localStorage.getItem(TREINO_LOG_KEY) || '[]') || []; L.push({ ts:Date.now(), s:slug, t:String(k)[0], r:v }); localStorage.setItem(TREINO_LOG_KEY, JSON.stringify(L.slice(-4000))); }catch(_){} }   // registro por dia: alimenta o gráfico da Reta Final
 }
 const TREINO_LOG_KEY = 'tcdf_treino_log_v1';
@@ -24,7 +27,7 @@ function treinoEmbaralha(a){ const x = a.slice(); for(let i = x.length - 1; i > 
 function treinoMigrar(slug){
   const d = TREINO_TCDF[slug]; if(!d || !d.alias) return;
   const m = treinoLer(), b = m[slug]; if(!b) return; let alt = false;
-  Object.keys(d.alias).forEach(k => { if(b[k] && !b[d.alias[k]]){ b[d.alias[k]] = b[k]; alt = true; } });
+  Object.keys(d.alias).forEach(k => { if(b[k] && !b[d.alias[k]]){ b[d.alias[k]] = b[k]; alt = true; revTsSet('treino', slug, d.alias[k], 1); } });
   if(alt){ treinoGravar(m); if(typeof sincronizarRevisao === 'function') sincronizarRevisao(); }
 }
 function treinoCarregar(slug, cb){
@@ -329,7 +332,7 @@ function treinoResetar(escopo){
   if(!lista.length){ alert(escopo === 'todas' ? 'Não há marcas para apagar.' : (flash ? 'Nenhum cartão marcado como Revisar.' : 'Nenhuma lacuna errada.')); treinoDesenhar(); return; }
   const txt = escopo === 'todas' ? 'Apagar TODAS as marcas (' + lista.length + ') ' + (flash ? 'dos flashcards' : 'das lacunas') + ' desta matéria e recomeçar?' : 'Apagar as ' + lista.length + (flash ? ' marcas "Revisar"' : ' marcas de lacunas erradas') + ' e recomeçar?';
   if(!confirm(txt)){ treinoDesenhar(); return; }
-  lista.forEach(x => { const k = treinoChaveItem(x, tipo); b[k] = ''; delete TR.mem[k]; });
+  lista.forEach(x => { const k = treinoChaveItem(x, tipo); b[k] = ''; delete TR.mem[k]; revTsSet('treino', slug, k); });
   treinoGravar(m); if(typeof sincronizarRevisao === 'function') sincronizarRevisao();
   TR.filtro = 'todos'; TR.salvo = null; treinoMontarFila(); treinoDesenhar();
 }
