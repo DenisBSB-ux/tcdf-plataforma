@@ -426,7 +426,6 @@ function renderReta7(){
   const cards = passadoSel ? reta7PainelPassado(dia, hist[dia.d] || {}, d0) : dia.blocos.map(b => reta7Cartao(b, d0)).join('');
   const semPlanoMsg = '';
   const usado = dia.blocos.reduce((s, b) => s + b.min, 0);
-  const proxB = (() => { const di = todos[idxHoje]; if(!di || !di.blocos.length) return null; const d00 = reta7Dia0(di.d); return di.blocos.find(b => reta7RespondidasNoDia(b.mat, d00) < 5) || null; })();
   const fora = (p.fora && p.fora.length) ? `<p class="r7-aviso">⚠️ Sem tempo para: ${p.fora.map(esc).join(', ')}. Aumente as horas ou libere mais dias.</p>` : '';
   return `<div class="reta r7">
     ${abas}
@@ -437,8 +436,7 @@ function renderReta7(){
     </section>
     <nav class="r7-tira" aria-label="Dias do plano">${tira}</nav>
     <div class="r7-resumo"><b>${esc(r.nome)}${r.df < 0 ? '' : ' · ' + esc(r.curta)}</b>
-      ${passadoSel ? '<span class="r7-trava">🔒 Dia encerrado: só consulta</span>' : `<span class="r7-passo" title="Ajusta o tempo só deste dia"><button data-r7-passo="-30" data-r7-d="${dia.d}" aria-label="Menos 30 minutos neste dia">−</button> <b>${reta7Fmt(dia.min)}</b> <button data-r7-passo="30" data-r7-d="${dia.d}" aria-label="Mais 30 minutos neste dia">+</button></span>`}
-      ${!passadoSel && sel === idxHoje && proxB ? `<button class="btn btn-gold" data-r7-iniciar="${esc(proxB.mat)}" data-r7-qtd="${Math.max(5, proxB.min - reta7Leitura(proxB))}">▶ Próxima: ${esc(proxB.mat)}</button>` : ''}</div>
+      ${passadoSel ? '<span class="r7-trava">🔒 Dia encerrado: só consulta</span>' : `<span class="r7-passo" title="Ajusta o tempo só deste dia"><button data-r7-passo="-30" data-r7-d="${dia.d}" aria-label="Menos 30 minutos neste dia">−</button> <b>${reta7Fmt(dia.min)}</b> <button data-r7-passo="30" data-r7-d="${dia.d}" aria-label="Mais 30 minutos neste dia">+</button></span>`}</div>
     <div class="r7-grade">${cards || semPlanoMsg || '<p class="section-desc">Nenhuma matéria neste dia.</p>'}</div>
     ${fora}
     <details class="r7-mais" data-r7-det="disp"${(STATE.r7Det || {}).disp ? ' open' : ''}><summary>Dias disponíveis</summary>${controles}</details>
