@@ -2538,3 +2538,7 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 .tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest, .tr-modal .tr-extra, .tr-modal .tr-fb{ font-size:calc(17px * var(--tr-zoom, 1)); line-height:1.6; }
 .tr-modal .tr-extra{ opacity:.85; } .tr-modal .tr-chip{ font-size:calc(16px * var(--tr-zoom, 1)); }
 @media (max-width:520px){ .tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest, .tr-modal .tr-extra, .tr-modal .tr-fb{ font-size:calc(16px * var(--tr-zoom, 1)); } }
+/* v544: texto do enunciado, resposta e frase das lacunas +2pt (17 -> 19px) */
+.tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest, .tr-modal .tr-extra, .tr-modal .tr-fb{ font-size:calc(19px * var(--tr-zoom, 1)); }
+.tr-modal .tr-chip{ font-size:calc(18px * var(--tr-zoom, 1)); }
+@media (max-width:520px){ .tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest, .tr-modal .tr-extra, .tr-modal .tr-fb{ font-size:calc(18px * var(--tr-zoom, 1)); } }
