@@ -5,7 +5,7 @@ Uso (raiz do repositório):  python3 .claude/skills/atualizacao-legal-semanal/de
   --baseline    primeira execução: memoriza tudo que já existe (vides_vistas.json) sem criar alertas.
 Funcionamento: para cada norma, lê `vides` (normas posteriores com os dispositivos alterados); o que não estava em vides_vistas.json vira item
 `confirmada` com `dispositivos` (norma+artigo): a plataforma marca as questões que citam esses artigos (🔔) e avisa no pop-up da lei.
-Também atualiza a data/resumo do selo das matérias cobertas (conferência feita hoje na base oficial). Nunca altera gabarito, lista ou texto de lei."""
+Acrescenta ao resumo do selo das matérias cobertas a nota "Base oficial do Senado conferida em DD/MM/AAAA"; NÃO muda a data do selo (só a conferência completa, com selo.py, muda). Nunca altera gabarito, lista ou texto de lei."""
 import json, os, re, sys, datetime, urllib.request, urllib.parse
 SK = os.path.dirname(os.path.abspath(__file__)); RAIZ = os.getcwd()
 H = {'Accept': 'application/json', 'User-Agent': 'TCDF-Plataforma-sync/1.0 (estudo pessoal; leitura de dados abertos)'}
@@ -91,7 +91,7 @@ def main():
                 rx = mm.group(1).replace('\\\\', '\\')
                 if any(re.search(rx, n, re.I) for n in nomes):
                     res = re.sub(r" Base oficial do Senado conferida em \d{2}/\d{2}/\d{4} \(alterações por norma posterior\)\.", '', mm.group(3)) + marca
-                    linha = linha.replace("data: '%s'" % mm.group(2), "data: '%s'" % hoje_iso, 1)
+                    # a DATA do selo não avança aqui: a base do Senado cobre só as normas federais; a data só muda por conferência completa (selo.py)
                     linha = linha.replace("resumo: '%s'" % mm.group(3), "resumo: '%s'" % res, 1)
             out.append(linha)
         s = '\n'.join(out)
