@@ -146,3 +146,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v546 (13/11): removidos o cartão 'Revisão de hoje' (tela da matéria) e o botão 'Próxima: …' (Reta Final). Só código.
 - v547 (13/11): armazenamento: valores grandes (lista importada) vão compactados (gzip) para o IndexedDB (6,2 MB -> 1,3 MB, leitura transparente); aviso de cota ganha botão Baixar backup e dica de espaço em disco. Só código.
 - v548 (13/11): lacunas sem justificativa ganharam 'exp' curta (697 de 2.183): 636 a partir da linha 📌 da resolução, 61 com a regra da própria frase. Só dados do treino.
+- v549 (13/11): treino: cartões mostram banca, cargo, ano, incidência, tendência e assunto da questão (lidos da questão importada no aparelho; 'bq' estático como reserva). Só código.
