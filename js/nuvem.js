@@ -1552,8 +1552,16 @@ function diasDesdeUltimoBackupArquivo(){
 /* ---- cópias automáticas no aparelho (últimos 7 dias) ----
    Uma por dia (últimos 14 dias), guardadas no próprio armazenamento do navegador. "Recuperar" MESCLA a cópia no progresso atual (nunca apaga nada). */
 const SNAPSHOTS_KEY = 'tcdf-snapshots';
-const SNAPSHOTS_MAX = 14;
+const SNAPSHOTS_MAX = 5;
 let SNAPSHOTS = [];   // [{ ts, progress: string(JSON), edicoes, gabaritos }]
+// guarda só as n cópias automáticas mais recentes (cada uma repete o progresso inteiro e ocupa muito espaço)
+async function reduzirSnapshots(n){
+  if(!SNAPSHOTS.length) await carregarSnapshots();
+  if(SNAPSHOTS.length <= n) return false;
+  SNAPSHOTS = SNAPSHOTS.slice(-n);
+  await storageSet(SNAPSHOTS_KEY, JSON.stringify(SNAPSHOTS));
+  return true;
+}
 async function carregarSnapshots(){
   try{ const r = await storageGet(SNAPSHOTS_KEY); SNAPSHOTS = (r && r.value) ? JSON.parse(r.value) : []; if(!Array.isArray(SNAPSHOTS)) SNAPSHOTS = []; }
   catch(_){ SNAPSHOTS = []; }
