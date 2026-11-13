@@ -52,10 +52,10 @@ function treinoZoomGravar(modo, z){ try{ const o = JSON.parse(localStorage.getIt
 const TREINO_RESP_KEY = 'tcdf_treino_resp_v1';
 function treinoRespLer(slug, modo){ try{ const o = JSON.parse(localStorage.getItem(TREINO_RESP_KEY) || '{}') || {}; return (o[slug] || {})[modo] || null; }catch(_){ return null; } }
 function treinoRespGravar(st){
-  if(!st || !st.fila) return;
+  if(!st || !st.fila || st.filtro !== 'todos') return;   // a posição só vale para a fila completa (filtro Revisar/Que errei não sobrescreve)
   try{
     const o = JSON.parse(localStorage.getItem(TREINO_RESP_KEY) || '{}') || {}, tipo = st.modo === 'lacunas' ? 'l' : 'f';
-    (o[st.slug] = o[st.slug] || {})[st.modo] = { i:st.i, ordem:st.fila.map(x => treinoChaveItem(x, tipo)), mem:st.modo === 'lacunas' ? st.mem : undefined, ts:Date.now() };
+    (o[st.slug] = o[st.slug] || {})[st.modo] = { i:st.i, v:!!st.virado, ordem:st.fila.map(x => treinoChaveItem(x, tipo)), mem:st.modo === 'lacunas' ? st.mem : undefined, ts:Date.now() };
     localStorage.setItem(TREINO_RESP_KEY, JSON.stringify(o));
   }catch(_){}
 }
@@ -148,6 +148,7 @@ function treinoAbrir(mat, modo){
     const sv = treinoRespLer(slug, modo); if(sv){ st.salvo = sv; st.mem = sv.mem || {}; }
     TR = st; TRS.push(st);
     treinoMontarFila();
+    if(sv && sv.v && modo === 'flash' && st.fila[st.i]) st.virado = true;   // volta no último cartão, do jeito que estava (virado)
     const box = document.createElement('div'); box.className = 'r7-modal tr-modal'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', (modo === 'lacunas' ? 'Lacunas de ' : 'Flashcards de ') + mat);
     st.box = box; document.body.appendChild(box);
     box.addEventListener('click', e => { TR = st; treinoClique(e); });
@@ -300,7 +301,7 @@ function treinoClique(e){
   if(!TR) return; const t = e.target;
   if(t.closest('[data-tr-fechar]')){ treinoFechar(); return; }
   let el;
-  if((el = t.closest('[data-tr-filtro]'))){ TR.filtro = el.dataset.trFiltro; TR.salvo = null; treinoMontarFila(); treinoDesenhar(); return; }
+  if((el = t.closest('[data-tr-filtro]'))){ TR.filtro = el.dataset.trFiltro; TR.salvo = TR.filtro === 'todos' ? treinoRespLer(TR.slug, TR.modo) : null; treinoMontarFila(); if(TR.salvo === null && TR.filtro === 'todos') TR.salvo = null; treinoDesenhar(); return; }
   if(t.closest('[data-tr-reset-menu]')){ TR.menuReset = !TR.menuReset; treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-reset]'))){ treinoResetar(el.dataset.trReset); return; }
   if(t.closest('[data-tr-embaralhar]')){ TR.salvo = null; treinoMontarFila(); treinoDesenhar(); return; }
