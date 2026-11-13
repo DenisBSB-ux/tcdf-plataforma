@@ -2534,3 +2534,7 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 .tr-reset{ position:relative; display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; }
 .tr-filtros .tr-reset > button{ font-size:14px; padding:7px 15px; font-weight:600; }
 .tr-reset-op{ display:inline-flex; gap:6px; } .tr-reset-op button{ border-color:var(--tr-no, #c0392b) !important; color:var(--tr-no, #c0392b) !important; background:var(--m-bg) !important; }
+/* v542: enunciado, resposta e frase das lacunas com o MESMO tamanho de fonte (acompanha o A−/A+) */
+.tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest, .tr-modal .tr-extra, .tr-modal .tr-fb{ font-size:calc(17px * var(--tr-zoom, 1)); line-height:1.6; }
+.tr-modal .tr-extra{ opacity:.85; } .tr-modal .tr-chip{ font-size:calc(16px * var(--tr-zoom, 1)); }
+@media (max-width:520px){ .tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest, .tr-modal .tr-extra, .tr-modal .tr-fb{ font-size:calc(16px * var(--tr-zoom, 1)); } }
