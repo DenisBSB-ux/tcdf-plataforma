@@ -20,12 +20,16 @@ function teoriaCartaoDaQuestao(q){
   if(!q) return null;
   const n = Number(q.n), mat = String(q.materia||'');
   let hq = null;
-  return TEORIA_CARTOES.find(c => {
+  const exato = TEORIA_CARTOES.find(c => {
     if(c.n !== n || !c.m.test(mat)) return false;
     if(!c.h) return true;
     if(hq === null) hq = _ctHash(q.q);
     return c.h === hq;
-  }) || null;
+  });
+  if(exato) return exato;
+  // lista do aparelho com numeração antiga: o código do enunciado basta (único na matéria)
+  if(hq === null) hq = _ctHash(q.q);
+  return TEORIA_CARTOES.find(c => c.h && c.h === hq && c.m.test(mat)) || null;
 }
 
 // Destaque automático (heurística leve em português) nos trechos que não têm marca manual: verbos, adjetivos e negações/limites.

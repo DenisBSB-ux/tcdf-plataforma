@@ -20,16 +20,26 @@ function treinoMarcar(slug, k, v){
 const TREINO_LOG_KEY = 'tcdf_treino_log_v1';
 function treinoLog(){ try{ const L = JSON.parse(localStorage.getItem(TREINO_LOG_KEY) || '[]'); return Array.isArray(L) ? L : []; }catch(_){ return []; } }
 function treinoEmbaralha(a){ const x = a.slice(); for(let i = x.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [x[i], x[j]] = [x[j], x[i]]; } return x; }
+// matéria renumerada: as marcas guardadas com a chave antiga passam para a nova (a antiga fica; nada se perde)
+function treinoMigrar(slug){
+  const d = TREINO_TCDF[slug]; if(!d || !d.alias) return;
+  const m = treinoLer(), b = m[slug]; if(!b) return; let alt = false;
+  Object.keys(d.alias).forEach(k => { if(b[k] && !b[d.alias[k]]){ b[d.alias[k]] = b[k]; alt = true; } });
+  if(alt){ treinoGravar(m); if(typeof sincronizarRevisao === 'function') sincronizarRevisao(); }
+}
 function treinoCarregar(slug, cb){
   if(TREINO_TCDF[slug]){ cb(true); return; }
   const v = ((window.__TCDF_BUILD__ || {}).versao || '');
   const sc = document.createElement('script');
   sc.src = 'js/treino-' + slug + '.js' + (v ? '?v=' + v : '');
-  sc.onload = () => cb(!!TREINO_TCDF[slug]);
+  sc.onload = () => { treinoMigrar(slug); cb(!!TREINO_TCDF[slug]); };
   sc.onerror = () => { try{ sc.remove(); }catch(_){} cb(false); };
   document.head.appendChild(sc);
 }
-function treinoUidDe(mat, n, h){ return (ALL_QUESTIONS.find(q => q.materia === mat && Number(q.n) === Number(n) && _ctHash(q.q) === h) || {}).uid || null; }
+function treinoUidDe(mat, n, h){   // número + código do enunciado; se a lista do aparelho ainda tem a numeração antiga, vale só o código (único na matéria)
+  const q = ALL_QUESTIONS.find(q => q.materia === mat && Number(q.n) === Number(n) && _ctHash(q.q) === h) || ALL_QUESTIONS.find(q => q.materia === mat && _ctHash(q.q) === h);
+  return (q || {}).uid || null;
+}
 
 /* ---- zoom do texto das janelas de flashcards e lacunas (lembrado por tipo) ---- */
 const TREINO_ZOOM_KEY = 'tcdf_treino_zoom_v1';
