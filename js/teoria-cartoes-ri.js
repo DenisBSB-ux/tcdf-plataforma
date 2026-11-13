@@ -847,5 +847,5 @@ TEORIA_CARTOES.push(
 { m:/reg(imento)?\.? ?interno/i, n:215, h:'olpm4z',  titulo:'Sustação de atos e contratos', base:'RI TCDF, art. 1º, XVI; art. 249, § 2º', fonte:[['RI TCDF',1],['RI TCDF',249]],
   regra:'Não atendido, o Tribunal {0|susta a execução do ato}; no caso de contrato, comunica à {1|Câmara Legislativa}, a quem compete {2|adotar o ato de sustação}.',
   pontos:[{ico:'🛑',t:'Susta o ato',d:'se o responsável não atender'},{ico:'🏛️',t:'Câmara Legislativa',d:'é comunicada no caso de contrato'},{ico:'📜',t:'Sustação do contrato',d:'ato da Câmara; o Tribunal decide só se ela não agir'}],
-  armadilha:'Confira o art. 249: ato é sustado pelo Tribunal, contrato pela Câmara.' },
+  armadilha:'Confira o art. 249: ato é sustado pelo Tribunal; contrato, pela Câmara, mas, se ela e o Executivo não agirem em 90 dias, o Tribunal decide (não é privativa).' },
 );
