@@ -231,13 +231,14 @@ function treinoHtmlFlash(it){
   const ref = it.ref ? `<span class="tr-ref">${esc(it.ref)}</span>` : '';
   const m = treinoMarca(TR.slug, treinoChaveItem(it, 'f'));
   const lado = TR.virado
-    ? `<div class="tr-card tr-verso" data-tr-virar="1"><span class="tr-tag">Resposta${it.k === 'troca' ? ' · troca típica' : ''}</span>${it.g ? `<p class="tr-gab ${/^ERRADO/.test(it.g) ? 'no' : 'ok'}">${esc(it.g)}</p>` : ''}<p class="tr-texto">${esc(it.v)}</p>${it.k === 'troca' && it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : (it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : '')}${ref}</div>`
-    : `<div class="tr-card tr-frente" data-tr-virar="1" tabindex="0"><span class="tr-tag">${it.k === 'troca' ? 'Corrija' : (it.k === 'questao' ? 'Questão' : 'Pergunta')}</span><p class="tr-texto${it.k === 'questao' ? ' tr-quest' : ''}">${esc(it.f)}</p><span class="tr-dica">toque ou Espaço para virar</span></div>`;
-  const nav = `<button class="btn" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}>← Anterior</button><button class="btn" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button>`;
-  const q = `<button class="btn" data-tr-questao="${it.n}:${esc(it.h)}">Ver a questão</button>`;
+    ? `<div class="tr-card tr-verso${m === 'ok' ? ' tr-c-ok' : (m === 'rev' ? ' tr-c-no' : '')}" data-tr-virar="1"><span class="tr-tag">Resposta${it.k === 'troca' ? ' · troca típica' : ''}</span>${it.g ? `<p class="tr-gab ${/^ERRADO/.test(it.g) ? 'no' : 'ok'}">${esc(it.g)}</p>` : ''}<p class="tr-texto">${esc(it.v)}</p>${it.k === 'troca' && it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : (it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : '')}${ref}</div>`
+    : `<div class="tr-card tr-frente${m === 'ok' ? ' tr-c-ok' : (m === 'rev' ? ' tr-c-no' : '')}" data-tr-virar="1" tabindex="0"><span class="tr-tag">${it.k === 'troca' ? 'Corrija' : (it.k === 'questao' ? 'Questão' : 'Pergunta')}</span><p class="tr-texto${it.k === 'questao' ? ' tr-quest' : ''}">${esc(it.f)}</p><span class="tr-dica">toque ou Espaço para virar</span></div>`;
+  const ant = `<button class="btn tr-bt" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}><span class="tr-ic" aria-hidden="true">◀</span>Anterior</button>`;
+  const prox = `<button class="btn tr-bt" data-tr-nav="1" ${(TR.i >= TR.fila.length - 1 || !m) ? 'disabled' : ''} title="${m ? '' : 'Responda com Já sei ou Revisar para avançar'}">Próxima<span class="tr-ic" aria-hidden="true">▶</span></button>`;
+  const q = `<button class="btn tr-bt" data-tr-questao="${it.n}:${esc(it.h)}"><span class="tr-ic" aria-hidden="true">🔎</span>Ver a questão</button>`;
   const acoes = TR.virado
-    ? `<div class="tr-acoes"><button class="btn tr-sei${m === 'ok' ? ' on' : ''}" data-tr-marca="ok">✓ Já sei <small>(1)</small></button><button class="btn tr-rev${m === 'rev' ? ' on' : ''}" data-tr-marca="rev">🔁 Revisar <small>(2)</small></button>${nav}${q}</div>`
-    : `<div class="tr-acoes"><button class="btn btn-gold" data-tr-virar="1">Virar</button>${nav}${q}</div>`;
+    ? `<div class="tr-acoes"><button class="btn tr-bt tr-sei${m === 'ok' ? ' on' : ''}" data-tr-marca="ok"><span class="tr-ic" aria-hidden="true">✅</span>Já sei <small>(1)</small></button><button class="btn tr-bt tr-rev${m === 'rev' ? ' on' : ''}" data-tr-marca="rev"><span class="tr-ic" aria-hidden="true">🔁</span>Revisar <small>(2)</small></button>${ant}${prox}${q}</div>`
+    : `<div class="tr-acoes"><button class="btn btn-gold tr-bt" data-tr-virar="1"><span class="tr-ic" aria-hidden="true">🔄</span>Virar</button>${ant}${prox}${q}</div>`;
   return lado + acoes;
 }
 function treinoHtmlLacuna(it){
@@ -249,20 +250,18 @@ function treinoHtmlLacuna(it){
   }).join('');
   const usados = new Set(TR.slots.filter(Boolean).map(x => x.id));
   const banco = TR.banco.filter(x => !usados.has(x.id)).map(x => `<button class="tr-chip${TR.sel === x.id ? ' sel' : ''}" draggable="true" data-tr-chip="${x.id}">${esc(x.w)}</button>`).join('');
-  const completo = TR.slots.every(Boolean);
   let fb = '';
   if(TR.checado){
     const todos = it.p.filter(p => p.l !== undefined).every((p, i) => TR.slots[i] && TR.slots[i].w === p.l);
     const resp = it.p.filter(p => p.l !== undefined).map(p => p.l);
     fb = `<div class="tr-fb ${todos ? 'ok' : 'no'}"><b>${todos ? '✓ Correto!' : '✗ Não foi dessa vez.'}</b>${todos ? '' : ' Resposta: <i>' + esc(resp.join(' · ')) + '</i>.'}${it.ref ? ' <span class="tr-ref">' + esc(it.ref) + '</span>' : ''}${it.exp ? '<p class="tr-extra">' + esc(it.exp) + '</p>' : ''}</div>`;
   }
-  const acao = `<button class="btn" data-tr-limpar="1" title="Limpa só as palavras desta questão">Limpar</button>
-      <button class="btn" data-tr-resetar="1" title="Volta esta questão ao início (palavras e resultado)">Resetar</button>
-      <button class="btn btn-gold" data-tr-verificar="1" ${completo && !TR.checado ? '' : 'disabled'}>Verificar</button>
-      <button class="btn" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}>← Anterior</button>
-      <button class="btn" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima →</button>
-      ${TR.checado ? `<button class="btn" data-tr-questao="${it.n}:${esc(it.h)}">Ver a questão</button>` : ''}`;
-  return `<div class="tr-card tr-lacuna"><span class="tr-tag">Complete arrastando as palavras</span><p class="tr-frase">${frase}</p>
+  const acao = `<button class="btn tr-bt" data-tr-limpar="1" title="Limpa só as palavras desta questão"><span class="tr-ic" aria-hidden="true">🧹</span>Limpar</button>
+      <button class="btn tr-bt" data-tr-resetar="1" title="Embaralha as palavras de novo e apaga o resultado desta questão"><span class="tr-ic" aria-hidden="true">🔄</span>Trocar palavras</button>
+      <button class="btn tr-bt" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}><span class="tr-ic" aria-hidden="true">◀</span>Anterior</button>
+      <button class="btn tr-bt" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima<span class="tr-ic" aria-hidden="true">▶</span></button>
+      ${TR.checado ? `<button class="btn tr-bt" data-tr-questao="${it.n}:${esc(it.h)}"><span class="tr-ic" aria-hidden="true">🔎</span>Ver a questão</button>` : ''}`;
+  return `<div class="tr-card tr-lacuna${TR.checado ? (TR.slots.every((w, i) => w && w.w === it.p.filter(p => p.l !== undefined)[i].l) ? ' tr-c-ok' : ' tr-c-no') : ''}"><span class="tr-tag">Complete arrastando as palavras</span><p class="tr-frase">${frase}</p>
     <div class="tr-banco" aria-label="Banco de palavras">${banco || '<span class="tr-dica">Todas as palavras foram usadas.</span>'}</div></div>${fb}<div class="tr-acoes">${acao}</div>`;
 }
 
@@ -273,7 +272,9 @@ function treinoColocar(idChip, bi){
   const it = TR.fila[TR.i]; if(!it || TR.checado) return;
   const chip = TR.banco.find(x => x.id === idChip); if(!chip) return;
   const antes = TR.slots.findIndex(s => s && s.id === idChip); if(antes >= 0) TR.slots[antes] = null;
-  TR.slots[bi] = chip; TR.sel = null; treinoDesenhar();
+  TR.slots[bi] = chip; TR.sel = null;
+  if(TR.slots.every(Boolean)){ treinoVerificar(); return; }   // último espaço preenchido: confere sozinho
+  treinoDesenhar();
 }
 function treinoDrop(e){
   if(!TR || TR.modo !== 'lacunas') return;
@@ -302,7 +303,7 @@ function treinoClique(e){
   if((el = t.closest('[data-tr-zoom]'))){ const z = Math.max(0.8, Math.min(2, Math.round((treinoZoomLer(TR.modo) + 0.1 * parseInt(el.dataset.trZoom, 10)) * 10) / 10)); treinoZoomGravar(TR.modo, z); treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-nav]'))){ treinoIr(parseInt(el.dataset.trNav, 10)); return; }
   if(t.closest('[data-tr-virar]')){ TR.virado = !TR.virado; treinoDesenhar(); return; }
-  if((el = t.closest('[data-tr-marca]'))){ const it = TR.fila[TR.i]; if(it){ treinoMarcar(TR.slug, treinoChaveItem(it, 'f'), el.dataset.trMarca); if(TR.i < TR.fila.length - 1 && TR.filtro !== 'todos') { treinoMontarFilaMantendo(); } else if(TR.i < TR.fila.length - 1){ treinoIr(1); return; } treinoDesenhar(); } return; }
+  if((el = t.closest('[data-tr-marca]'))){ const it = TR.fila[TR.i]; if(it){ treinoMarcar(TR.slug, treinoChaveItem(it, 'f'), el.dataset.trMarca); if(TR.i < TR.fila.length - 1){ treinoIr(1); return; } treinoDesenhar(); } return; }
   if((el = t.closest('[data-tr-questao]'))){
     const [n, h] = el.dataset.trQuestao.split(':'), uid = treinoUidDe(TR.mat, n, h), mat = TR.mat;
     if(uid){ treinoFechar(); retaAbrirQuiz(mat, [uid], 'Treino · ' + mat); } return;
@@ -326,8 +327,19 @@ function treinoTecla(e){
   const el = document.activeElement; if(el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
   if(TR.modo === 'flash'){
     if(e.key === ' ' || e.key === 'Enter'){ if(el && el.tagName === 'BUTTON' && e.key === 'Enter') return; e.preventDefault(); TR.virado = !TR.virado; treinoDesenhar(); }
-    else if(e.key === 'ArrowRight'){ treinoIr(1); } else if(e.key === 'ArrowLeft'){ treinoIr(-1); }
+    else if(e.key === 'ArrowRight'){ const it0 = TR.fila[TR.i]; if(it0 && treinoMarca(TR.slug, treinoChaveItem(it0, 'f'))) treinoIr(1); } else if(e.key === 'ArrowLeft'){ treinoIr(-1); }
     else if(TR.virado && (e.key === '1' || e.key === '2')){ const it = TR.fila[TR.i]; if(it){ treinoMarcar(TR.slug, treinoChaveItem(it, 'f'), e.key === '1' ? 'ok' : 'rev'); if(TR.i < TR.fila.length - 1) treinoIr(1); else treinoDesenhar(); } }
   } else if(e.key === 'ArrowRight'){ treinoIr(1); } else if(e.key === 'ArrowLeft'){ treinoIr(-1); }
 }
 document.addEventListener('keydown', treinoTecla, true);
+// zoom do navegador ou janela redimensionada: as janelas flutuantes voltam a caber na tela
+function janAjustarTodas(){
+  document.querySelectorAll('.jan').forEach(box => {
+    const VW = window.innerWidth, VH = window.innerHeight;
+    const w = Math.max(280, Math.min(box.offsetWidth, VW - 8)), h = Math.max(180, Math.min(box.offsetHeight, VH - 8));
+    box.style.width = w + 'px'; box.style.height = h + 'px';
+    box.style.left = Math.max(0, Math.min(VW - w - 4, box.offsetLeft)) + 'px';
+    box.style.top = Math.max(0, Math.min(VH - Math.min(h, 120), box.offsetTop)) + 'px';
+  });
+}
+window.addEventListener('resize', () => { clearTimeout(janAjustarTodas._t); janAjustarTodas._t = setTimeout(janAjustarTodas, 120); });
