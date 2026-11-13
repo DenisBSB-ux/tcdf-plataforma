@@ -5,6 +5,7 @@ name: detectar-alteracoes-legais
 on:
   schedule:
     - cron: '17 8 * * 1'     # segunda 05:17 (Brasília)
+    - cron: '17 8 * * 4'     # quinta 05:17 (Brasília): segunda rodada da semana
   workflow_dispatch:
 permissions:
   contents: write
