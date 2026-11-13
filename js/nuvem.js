@@ -666,7 +666,7 @@ function _lsGet(k){ try{ return window.localStorage.getItem(k); }catch(_){ retur
 function _lsSet(k, v){ try{ if(v===null||v===undefined) window.localStorage.removeItem(k); else window.localStorage.setItem(k, v); }catch(_){} }
 /* ---------- progresso da REVISÃO (marcas de flashcards/lacunas, assuntos estudados, registro por dia, dias do plano) ----------
    Nunca se perde: sobe para a nuvem (doc próprio, mescla por união, o que existe aqui vale mais que o remoto), entra no backup e na restauração. */
-const REV_CHAVES = { treino:'tcdf_treino_v1', check:'tcdf_resumo_check_v1', log:'tcdf_treino_log_v1', hist:'tcdf_reta7_hist_v2' };
+const REV_CHAVES = { treino:'tcdf_treino_v1', check:'tcdf_resumo_check_v1', log:'tcdf_treino_log_v1', hist:'tcdf_reta7_hist_v2', ts:'tcdf_rev_ts_v1' };
 function revisaoColetar(){
   const o = {}; Object.keys(REV_CHAVES).forEach(k => { try{ o[k] = JSON.parse(localStorage.getItem(REV_CHAVES[k]) || 'null'); }catch(_){ o[k] = null; } });
   return o;
@@ -676,12 +676,23 @@ function revisaoMesclar(r){
   const per = new Set(['__proto__','constructor','prototype']); let mudou = false;
   const ler = k => { try{ return JSON.parse(localStorage.getItem(REV_CHAVES[k]) || 'null'); }catch(_){ return null; } };
   const gravar = (k, v) => { try{ localStorage.setItem(REV_CHAVES[k], JSON.stringify(v)); mudou = true; }catch(_){} };
-  [['treino'], ['check']].forEach(([k]) => {   // { slug: { chave: valor } }: une; a marca local prevalece
+  // marcas e assuntos estudados: vale a alteração mais recente (carimbo por marca); sem carimbo, a marca local prevalece
+  const tsL = (ler('ts') && typeof ler('ts') === 'object') ? ler('ts') : {}, tsR = (r.ts && typeof r.ts === 'object') ? r.ts : {}; let altTs = false;
+  ['treino', 'check'].forEach(k => {
     const rem = r[k]; if(!rem || typeof rem !== 'object' || Array.isArray(rem)) return;
     const loc = ler(k) || {}; let alt = false;
-    Object.keys(rem).forEach(sl => { if(per.has(sl) || !rem[sl] || typeof rem[sl] !== 'object') return; const l = (loc[sl] = loc[sl] || {}); Object.keys(rem[sl]).forEach(c => { if(!per.has(c) && !(c in l)){ l[c] = rem[sl][c]; alt = true; } }); });
+    Object.keys(rem).forEach(sl => {
+      if(per.has(sl) || !rem[sl] || typeof rem[sl] !== 'object') return;
+      const l = (loc[sl] = loc[sl] || {}), lt = ((tsL[k] || {})[sl]) || {}, rt = ((tsR[k] || {})[sl]) || {};
+      Object.keys(rem[sl]).forEach(c => {
+        if(per.has(c)) return;
+        const tr = Number(rt[c]) || 0, tl = Number(lt[c]) || 0;
+        if(!(c in l) || tr > tl){ if(l[c] !== rem[sl][c] || !(c in l)){ l[c] = rem[sl][c]; alt = true; } if(tr){ ((tsL[k] = tsL[k] || {})[sl] = tsL[k][sl] || {})[c] = tr; altTs = true; } }
+      });
+    });
     if(alt) gravar(k, loc);
   });
+  if(altTs) gravar('ts', tsL);
   if(Array.isArray(r.log)){
     const loc = Array.isArray(ler('log')) ? ler('log') : [], vistos = new Set(loc.map(x => x.ts + '|' + x.s + '|' + x.t)); let alt = false;
     r.log.forEach(x => { if(x && Number.isFinite(x.ts) && typeof x.s === 'string' && !vistos.has(x.ts + '|' + x.s + '|' + x.t)){ loc.push({ ts:x.ts, s:x.s, t:String(x.t).slice(0, 1), r:String(x.r).slice(0, 4) }); alt = true; } });
