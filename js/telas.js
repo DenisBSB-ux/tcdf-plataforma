@@ -263,6 +263,7 @@ function renderAvisoStorage(){
     <span>⚠️ ${esc(STATE.avisoStorage)}</span>
     ${/QuotaExceeded/.test(STATE.avisoStorage) ? '<span style="flex-basis:100%;font-size:12px;opacity:.95;">Dica: o navegador recusou gravar mesmo com cota livre. Quase sempre é pouco espaço livre no disco do computador: libere alguns GB (esvazie a lixeira, apague downloads) e clique em "Tentar salvar de novo". Para não perder nada, baixe o backup agora.</span>' : ''}
     <button id="btn-baixar-backup-aviso" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:rgba(255,255,255,.18);color:#fff;cursor:pointer;font-size:12px;font-weight:700;">⬇ Baixar backup agora</button>
+    <button id="btn-liberar-espaco" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:rgba(255,255,255,.18);color:#fff;cursor:pointer;font-size:12px;font-weight:700;">🧹 Liberar espaço do navegador</button>
     <button id="btn-tentar-salvar-de-novo" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer;font-size:12px;">Tentar salvar de novo</button>
     <button id="btn-dispensar-aviso-storage" style="padding:4px 10px;border-radius:6px;border:1px solid #fff;background:transparent;color:#fff;cursor:pointer;font-size:12px;">Dispensar</button>
   </div>`;

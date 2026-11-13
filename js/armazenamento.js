@@ -262,6 +262,7 @@ async function storageSet(key, value){
   // 2ª tentativa: reabre o IndexedDB (conexão fechada pelo navegador, aba antiga segurando o banco, falha passageira)
   try{
     idbPromise = null; await new Promise(r => setTimeout(r, 400));
+    try{ await liberarEspacoNavegador(); }catch(_){}
     await idbSet(key, guardar);
     return { key, value };
   }catch(e){ e1 = e; }
@@ -275,9 +276,30 @@ async function storageSet(key, value){
     catch(e3){
       let uso = '';
       try{ const est = await navigator.storage.estimate(); uso = '; uso do navegador ' + Math.round((est.usage || 0) / 1048576) + ' MB de ' + Math.round((est.quota || 0) / 1048576) + ' MB'; }catch(_){}
-      throw new Error('IndexedDB: ' + ((e1 && (e1.name || '') + ' ' + (e1.message || '')) || 'sem detalhe').trim() + ' | localStorage: ' + ((e3 && e3.name) || 'cota excedida') + uso);
+      let maiores = ''; try{ maiores = '; maiores: ' + (await idbTamanhos()).slice(0, 3).map(x => x[0] + ' ' + Math.round(x[1] / 1048576) + ' MB').join(', '); }catch(_){}
+      throw new Error('IndexedDB: ' + ((e1 && (e1.name || '') + ' ' + (e1.message || '')) || 'sem detalhe').trim() + ' | localStorage: ' + ((e3 && e3.name) || 'cota excedida') + uso + maiores);
     }
   }
+}
+// quanto cada chave ocupa no IndexedDB (diagnóstico do aviso de cota)
+async function idbTamanhos(){
+  try{
+    const db = await idbOpen();
+    return await new Promise(res => {
+      const out = []; const rq = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).openCursor();
+      rq.onsuccess = () => { const c = rq.result; if(c){ const v = c.value; out.push([String(c.key), typeof v === 'string' ? v.length : ((v && v.byteLength) || 0)]); c.continue(); } else res(out.sort((a, b) => b[1] - a[1])); };
+      rq.onerror = () => res(out);
+    });
+  }catch(_){ return []; }
+}
+// libera o que é refazível: cache offline do navegador, cópias antigas redundantes e cópias automáticas diárias além das 3 mais recentes
+let _liberando = false;
+async function liberarEspacoNavegador(){
+  if(_liberando) return []; _liberando = true; const feito = [];
+  try{ if(typeof caches !== 'undefined'){ const ks = await caches.keys(); for(const k of ks) await caches.delete(k); if(ks.length) feito.push('cache offline'); } }catch(_){}
+  try{ if(await limparLocalStorageRedundante() > 0) feito.push('cópias antigas'); }catch(_){}
+  try{ if(typeof reduzirSnapshots === 'function' && await reduzirSnapshots(3)) feito.push('cópias automáticas antigas'); }catch(_){}
+  _liberando = false; return feito;
 }
 // cópias grandes do localStorage (versões antigas) que já existem no IndexedDB não servem para nada: o app lê o IndexedDB primeiro
 async function limparLocalStorageRedundante(){

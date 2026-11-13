@@ -29,6 +29,15 @@ function attachHandlers(){
   });
   const btnTodasListas = document.getElementById('btn-baixar-todas-listas');
   if(btnTodasListas) btnTodasListas.addEventListener('click', ()=>{ try{ downloadTodasAsListas(); }catch(e){ alert('Não foi possível gerar o arquivo: ' + (e && e.message ? e.message : e)); } });
+  const btnLiberar = document.getElementById('btn-liberar-espaco');
+  if(btnLiberar) btnLiberar.addEventListener('click', async ()=>{
+    btnLiberar.disabled = true; btnLiberar.textContent = 'Liberando…';
+    let feito = []; try{ feito = await liberarEspacoNavegador(); }catch(_){}
+    STATE.avisoStorage = null; const okCustom = await saveCustomQuestions();
+    let okProgress = true; try{ await storageSet(STORAGE_KEY, JSON.stringify(PROGRESS)); }catch(e){ okProgress = false; STATE.avisoStorage = 'Ainda não foi possível salvar (' + (e && e.message ? e.message : 'erro') + '). Liberei: ' + (feito.join(', ') || 'nada novo') + '. Libere espaço no disco do computador e tente de novo.'; }
+    if(okCustom && okProgress){ pushToCloud(); }
+    render();
+  });
   const btnBackupAviso = document.getElementById('btn-baixar-backup-aviso');
   if(btnBackupAviso) btnBackupAviso.addEventListener('click', ()=>{ try{ exportarProgresso(); }catch(e){ alert('Não foi possível gerar o backup: ' + (e && e.message ? e.message : e)); } });
   const btnDispensarAviso = document.getElementById('btn-dispensar-aviso-storage');
