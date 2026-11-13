@@ -210,9 +210,9 @@ function treinoDesenhar(){
   treinoGuardarLacuna(); treinoRespGravar(TR);
   const abas = '';
   const filtros = TR.modo === 'flash'
-    ? [['todos', 'Todos'], ['revisar', 'Revisar (' + nRev + ')'], ['novos', 'Novos (' + (d.flash.length - nOk - nRev) + ')']]
-    : [['todos', 'Todas'], ['erradas', 'Que errei (' + lErr + ')'], ['novos', 'Novas (' + (d.lacunas.length - lOk - lErr) + ')']];
-  const chips = `<div class="tr-filtros">${filtros.map(f => `<button class="${TR.filtro === f[0] ? 'on' : ''}" data-tr-filtro="${f[0]}">${esc(f[1])}</button>`).join('')}<button data-tr-embaralhar="1" title="Embaralha de novo">🔀</button><span class="tr-zoom" role="group" aria-label="Zoom do texto"><button data-tr-zoom="-1" title="Diminuir o texto" aria-label="Diminuir o texto">A−</button><b>${Math.round(treinoZoomLer(TR.modo) * 100)}%</b><button data-tr-zoom="1" title="Aumentar o texto" aria-label="Aumentar o texto">A+</button></span></div>`;
+    ? [['todos', 'Todos'], ['revisar', 'Revisar (' + nRev + ')']]
+    : [['todos', 'Todas'], ['erradas', 'Que errei (' + lErr + ')']];
+  const chips = `<div class="tr-filtros">${filtros.map(f => `<button class="${TR.filtro === f[0] ? 'on' : ''}" data-tr-filtro="${f[0]}">${esc(f[1])}</button>`).join('')}<span class="tr-cont" aria-live="polite">${TR.fila.length ? (TR.i + 1) + ' / ' + TR.fila.length : '0'}</span><button data-tr-embaralhar="1" title="Embaralha de novo">🔀</button><span class="tr-reset"><button data-tr-reset-menu="1" title="Apaga as marcas para recomeçar">↺ Resetar</button>${TR.menuReset ? `<span class="tr-reset-op"><button data-tr-reset="todas">Todas</button><button data-tr-reset="rev">${TR.modo === 'flash' ? 'Só revisar' : 'Só as que errei'}</button></span>` : ''}</span><span class="tr-zoom" role="group" aria-label="Zoom do texto"><button data-tr-zoom="-1" title="Diminuir o texto" aria-label="Diminuir o texto">A−</button><b>${Math.round(treinoZoomLer(TR.modo) * 100)}%</b><button data-tr-zoom="1" title="Aumentar o texto" aria-label="Aumentar o texto">A+</button></span></div>`;
   const it = TR.fila[TR.i];
   let corpo;
   if(!it) corpo = `<p class="tr-vazio">${TR.filtro === 'todos' ? 'Nenhum item.' : 'Nada neste filtro. Escolha outro.'}</p>`;
@@ -222,8 +222,7 @@ function treinoDesenhar(){
   const stat = TR.modo === 'flash' ? `✓ ${nOk} sei · 🔁 ${nRev} revisar` : `✓ ${lOk} certas · ✗ ${lErr} erradas · sessão ${TR.sessao.ok}/${TR.sessao.tot}`;
   const fixos = [...box.querySelectorAll('.jan-barra, .jan-grip')]; box.innerHTML = `<div class="r7-modal-caixa tr-caixa"><button class="r7-modal-x" aria-label="Fechar" data-tr-fechar="1">✕</button><button class="tr-tema" data-tr-tema="1" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">${document.body.classList.contains('theme-light') ? '🌙' : '☀️'}</button>
     <div class="tr-topo"><h2>${TR.modo === 'lacunas' ? '🧩 Lacunas' : '🃏 Flashcards'} · ${esc(d.nome)}</h2><p class="tr-sub">Gerado só das questões da lista · ${esc(stat)}</p>${abas}${chips}</div>
-    <div class="tr-corpo">${corpo}</div>
-    <p class="tr-pos">${fim}</p></div>`;
+    <div class="tr-corpo">${corpo}</div></div>`;
   box.style.setProperty('--tr-zoom', treinoZoomLer(TR.modo));
   fixos.forEach(f => { if(f.classList.contains('jan-barra')) box.insertBefore(f, box.firstChild); else box.appendChild(f); });
 }
@@ -299,6 +298,8 @@ function treinoClique(e){
   if(t.closest('[data-tr-fechar]')){ treinoFechar(); return; }
   let el;
   if((el = t.closest('[data-tr-filtro]'))){ TR.filtro = el.dataset.trFiltro; TR.salvo = null; treinoMontarFila(); treinoDesenhar(); return; }
+  if(t.closest('[data-tr-reset-menu]')){ TR.menuReset = !TR.menuReset; treinoDesenhar(); return; }
+  if((el = t.closest('[data-tr-reset]'))){ treinoResetar(el.dataset.trReset); return; }
   if(t.closest('[data-tr-embaralhar]')){ TR.salvo = null; treinoMontarFila(); treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-zoom]'))){ const z = Math.max(0.8, Math.min(2, Math.round((treinoZoomLer(TR.modo) + 0.1 * parseInt(el.dataset.trZoom, 10)) * 10) / 10)); treinoZoomGravar(TR.modo, z); treinoDesenhar(); return; }
   if((el = t.closest('[data-tr-nav]'))){ treinoIr(parseInt(el.dataset.trNav, 10)); return; }
@@ -318,6 +319,19 @@ function treinoClique(e){
     if(TR.sel !== null){ treinoColocar(TR.sel, bi); return; }
     if(TR.slots[bi]){ TR.slots[bi] = null; treinoDesenhar(); } return;
   }
+}
+// recomeçar: apaga as marcas (todas, ou só "revisar" / "que errei") deste tipo de exercício, com confirmação
+function treinoResetar(escopo){
+  const d = TR.dados, slug = TR.slug, flash = TR.modo === 'flash', tipo = flash ? 'f' : 'l', itens = flash ? d.flash : d.lacunas, alvo = flash ? 'rev' : 'err';
+  const m = treinoLer(), b = (m[slug] = m[slug] || {});
+  const lista = itens.filter(x => escopo === 'todas' ? !!b[treinoChaveItem(x, tipo)] : b[treinoChaveItem(x, tipo)] === alvo);
+  TR.menuReset = false;
+  if(!lista.length){ alert(escopo === 'todas' ? 'Não há marcas para apagar.' : (flash ? 'Nenhum cartão marcado como Revisar.' : 'Nenhuma lacuna errada.')); treinoDesenhar(); return; }
+  const txt = escopo === 'todas' ? 'Apagar TODAS as marcas (' + lista.length + ') ' + (flash ? 'dos flashcards' : 'das lacunas') + ' desta matéria e recomeçar?' : 'Apagar as ' + lista.length + (flash ? ' marcas "Revisar"' : ' marcas de lacunas erradas') + ' e recomeçar?';
+  if(!confirm(txt)){ treinoDesenhar(); return; }
+  lista.forEach(x => { const k = treinoChaveItem(x, tipo); b[k] = ''; delete TR.mem[k]; });
+  treinoGravar(m); if(typeof sincronizarRevisao === 'function') sincronizarRevisao();
+  TR.filtro = 'todos'; TR.salvo = null; treinoMontarFila(); treinoDesenhar();
 }
 function treinoMontarFilaMantendo(){ const it = TR.fila[TR.i]; TR.fila.splice(TR.i, 1); if(TR.i >= TR.fila.length) TR.i = Math.max(0, TR.fila.length - 1); TR.virado = false; }
 function treinoTecla(e){

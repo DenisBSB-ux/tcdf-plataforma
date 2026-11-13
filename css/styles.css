@@ -2529,3 +2529,8 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 .r7-ass{ padding-right:44px; }
 @media (max-width:560px){ .tr-acoes .tr-bt{ flex:1 1 calc(50% - 10px); padding:10px 10px; font-size:15px; } .tr-card{ padding:16px 16px; } }
 .tr-verso .tr-tag{ display:block; } .tr-gab{ display:inline-block; }
+/* v540: contador ao lado dos filtros, botão Resetar (todas / só revisar) */
+.tr-cont{ display:inline-flex; align-items:center; padding:7px 12px; font-size:14px; font-weight:700; color:var(--m-mut2); border:1px dashed var(--m-bd); border-radius:999px; font-variant-numeric:tabular-nums; }
+.tr-reset{ position:relative; display:inline-flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.tr-filtros .tr-reset > button{ font-size:14px; padding:7px 15px; font-weight:600; }
+.tr-reset-op{ display:inline-flex; gap:6px; } .tr-reset-op button{ border-color:var(--tr-no, #c0392b) !important; color:var(--tr-no, #c0392b) !important; background:var(--m-bg) !important; }
