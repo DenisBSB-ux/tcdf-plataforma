@@ -2554,3 +2554,9 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 .tr-modal .tr-cont{ min-height:44px; border-radius:13px; font-size:15px; }
 .tr-modal .tr-reset > button{ min-height:44px; border-radius:13px; font-size:15px; font-weight:700; }
 .tr-modal .r7-modal-x:hover, .tr-modal .tr-tema:hover, .tr-modal .tr-zoom button:hover, .tr-modal .tr-filtros button:hover{ border-color:var(--m-acc); }
+/* v555: zoom, tema e fechar lado a lado, ao lado do título */
+.tr-modal .tr-cab{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+.tr-modal .tr-cab h2{ margin:0; flex:1 1 220px; min-width:0; }
+.tr-modal .tr-ferr{ display:flex; align-items:center; gap:8px; flex:0 0 auto; margin-left:auto; }
+.tr-modal .tr-ferr .tr-zoom{ margin-left:0; display:inline-flex; gap:8px; }
+.tr-modal .tr-ferr .tr-tema, .tr-modal .tr-ferr .r7-modal-x{ position:static; float:none; margin:0; }
