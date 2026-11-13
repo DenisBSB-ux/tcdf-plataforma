@@ -42,3 +42,6 @@ Suba `vNNN` em todas as ocorrências do `index.html` (e a data/hora de build) �
 - Rode `node .claude/skills/atualizacao-legal-semanal/verificar_cobertura.js $(date +%Y-%m-%d)` e cole o resultado no PR: matéria pendente = aviso explícito ao usuário, nunca "tudo conferido".
 - A notificação final traz: link do PR, nº de matérias conferidas de verdade (com fonte aberta) × não conferidas, alterações novas e decisões pendentes de gabarito.
 - Se algo falhar (API do Senado, fonte oficial, push), diga qual e em que matéria; não esconda.
+
+## 6. PR parcial é permitido (achado do teste de 13/11/2026)
+`verificar_cobertura.js` sai com código 1 enquanto houver matéria sem conferência recente: isso NÃO impede o PR. Abra o PR com o que foi conferido de verdade, cole a saída do verificador e liste as matérias não conferidas com o motivo (Planalto 429, SINJ-DF/CLDF/TCDF sem conexão etc.). O auto-merge trata a cobertura como informativa. `selo.py` age por selo (várias matérias podem dividir o mesmo selo); use `--conferido` descrevendo o que vale para todas as matérias do selo. Se o repositório não vier na sessão (push 403), a sessão da rotina deve entregar o patch e avisar; só a rotina original (com o repositório como fonte) consegue empurrar.

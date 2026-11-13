@@ -46,7 +46,7 @@ CABECALHOS = {'Accept': 'application/json',
               'User-Agent': 'TCDF-Plataforma-sync/1.0 (estudo pessoal; leitura de dados abertos)'}
 API_NORMAS = 'https://normas.leg.br/api/public/normas?urn=%s&&tipo_documento=maior-detalhe'
 API_SENADO = 'https://legis.senado.leg.br/dadosabertos/legislacao/lista?'
-TIPO_URN = {'LEI': 'lei', 'LCP': 'lei.complementar', 'DEC': 'decreto', 'DEL': 'decreto.lei'}
+TIPO_URN = {'LEI': 'lei', 'LCP': 'lei.complementar', 'DEC': 'decreto', 'DEL': 'decreto.lei', 'EMC': 'emenda.constitucional'}
 PORTAO_FIDELIDADE = 0.80        # fração mínima de artigos em comum que devem bater com o js atual
 MAX_LINHAS_POR_ARTIGO = 3       # troca automática: no máximo N linhas revogadas por artigo
 REVOGACAO = re.compile(r'\((?:Revogad[oa]s?|Suprimid[oa]s?)\)\.?\s*$')
