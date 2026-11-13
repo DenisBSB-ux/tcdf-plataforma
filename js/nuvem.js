@@ -664,6 +664,52 @@ function marcarUltimoSyncOk(){
 const PREFS_TS_KEY = 'tcdf-prefs-ts';
 function _lsGet(k){ try{ return window.localStorage.getItem(k); }catch(_){ return null; } }
 function _lsSet(k, v){ try{ if(v===null||v===undefined) window.localStorage.removeItem(k); else window.localStorage.setItem(k, v); }catch(_){} }
+/* ---------- progresso da REVISÃO (marcas de flashcards/lacunas, assuntos estudados, registro por dia, dias do plano) ----------
+   Nunca se perde: sobe para a nuvem (doc próprio, mescla por união, o que existe aqui vale mais que o remoto), entra no backup e na restauração. */
+const REV_CHAVES = { treino:'tcdf_treino_v1', check:'tcdf_resumo_check_v1', log:'tcdf_treino_log_v1', hist:'tcdf_reta7_hist_v2' };
+function revisaoColetar(){
+  const o = {}; Object.keys(REV_CHAVES).forEach(k => { try{ o[k] = JSON.parse(localStorage.getItem(REV_CHAVES[k]) || 'null'); }catch(_){ o[k] = null; } });
+  return o;
+}
+function revisaoMesclar(r){
+  if(!r || typeof r !== 'object') return false;
+  const per = new Set(['__proto__','constructor','prototype']); let mudou = false;
+  const ler = k => { try{ return JSON.parse(localStorage.getItem(REV_CHAVES[k]) || 'null'); }catch(_){ return null; } };
+  const gravar = (k, v) => { try{ localStorage.setItem(REV_CHAVES[k], JSON.stringify(v)); mudou = true; }catch(_){} };
+  [['treino'], ['check']].forEach(([k]) => {   // { slug: { chave: valor } }: une; a marca local prevalece
+    const rem = r[k]; if(!rem || typeof rem !== 'object' || Array.isArray(rem)) return;
+    const loc = ler(k) || {}; let alt = false;
+    Object.keys(rem).forEach(sl => { if(per.has(sl) || !rem[sl] || typeof rem[sl] !== 'object') return; const l = (loc[sl] = loc[sl] || {}); Object.keys(rem[sl]).forEach(c => { if(!per.has(c) && !(c in l)){ l[c] = rem[sl][c]; alt = true; } }); });
+    if(alt) gravar(k, loc);
+  });
+  if(Array.isArray(r.log)){
+    const loc = Array.isArray(ler('log')) ? ler('log') : [], vistos = new Set(loc.map(x => x.ts + '|' + x.s + '|' + x.t)); let alt = false;
+    r.log.forEach(x => { if(x && Number.isFinite(x.ts) && typeof x.s === 'string' && !vistos.has(x.ts + '|' + x.s + '|' + x.t)){ loc.push({ ts:x.ts, s:x.s, t:String(x.t).slice(0, 1), r:String(x.r).slice(0, 4) }); alt = true; } });
+    if(alt) gravar('log', loc.sort((a, b) => a.ts - b.ts).slice(-4000));
+  }
+  if(Array.isArray(r.hist)){
+    const loc = Array.isArray(ler('hist')) ? ler('hist') : [], dias = new Set(loc.map(x => x && x.d)); let alt = false;
+    r.hist.forEach(x => { if(x && typeof x.d === 'string' && !dias.has(x.d)){ loc.push(x); alt = true; } });
+    if(alt) gravar('hist', loc);
+  }
+  return mudou;
+}
+let sincRevTimer = null;
+function sincronizarRevisao(){
+  if(typeof sincronizacaoAtiva!=='function' || !sincronizacaoAtiva()) return;
+  clearTimeout(sincRevTimer);
+  sincRevTimer = setTimeout(async ()=>{
+    try{ await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__revisao`).set(sanitizarParaFirestore(comDono({ revisao: JSON.stringify(revisaoColetar()), updatedAt: Date.now() }))), 15000, 'tempo esgotado ao salvar o progresso da revisão'); }
+    catch(e){ console.warn('Falha ao salvar o progresso da revisão na nuvem', e); }
+  }, 2000);
+}
+async function puxarRevisao(){
+  try{
+    const doc = await comLimiteDeTempo(fbDb.collection('progresso').doc(`${STATE.syncCode}__revisao`).get(), 15000, 'tempo esgotado ao ler o progresso da revisão');
+    if(doc.exists && revisaoMesclar(JSON.parse(doc.data().revisao))){ try{ render(); }catch(_){} }
+    sincronizarRevisao();   // sobe a união (aparelhos novos e antigos acabam iguais)
+  }catch(e){ console.warn('Falha ao buscar o progresso da revisão na nuvem', e); }
+}
 function coletarPrefs(ts){
   return { theme: STATE.theme, cor: STATE.corTema, zoom: STATE.zoomLevel, cartoes: STATE.cartoes!==false,
     ordemMaterias: _lsGet(ORDEM_MATERIAS_KEY), ordemSimulado: _lsGet(ORDEM_SIMULADO_KEY), armCrit: _lsGet(ARM_CRIT_KEY),
@@ -738,6 +784,7 @@ async function pullFromCloud({silent} = {}){
       if(algumaEdicaoNova) salvarEdicoesUsuario();
       if(algumGabaritoNovo) salvarGabaritosAlterados();
       await puxarPrefs();
+      await puxarRevisao();
       // matérias/questões em si não vêm mais daqui — elas já chegam via
       // carregarMateriasPublicas() (coleção publico/{materia}), evitando duplicar
       // o banco inteiro de questões dentro do documento pessoal de progresso
@@ -1468,6 +1515,7 @@ function _payloadBackup(){
     formato: 'sim-progresso-backup-v1',
     exportadoEm: new Date().toISOString(),
     progress: PROGRESS,
+    revisao: revisaoColetar(),
     edicoes: EDICOES_USUARIO,
     gabaritos: GABARITOS_ALTERADOS,
     questoesImportadas: ALL_QUESTIONS.filter(q => q.origem === 'importado'),
@@ -1618,6 +1666,7 @@ async function importarProgresso(file){
         render();
         return;
       }
+      try{ revisaoMesclar(payload.revisao); sincronizarRevisao(); }catch(_){}
       // mescla progresso usando a mesma lógica robusta da sincronização em nuvem
       // (soma tentativas por questão sem perder nada do que já existe aqui)
       mergeRemoteProgressoNaMemoria(limpo);
