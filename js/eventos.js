@@ -27,6 +27,8 @@ function attachHandlers(){
     if(okCustom && okProgress) pushToCloud();
     render();
   });
+  const btnTodasListas = document.getElementById('btn-baixar-todas-listas');
+  if(btnTodasListas) btnTodasListas.addEventListener('click', ()=>{ try{ downloadTodasAsListas(); }catch(e){ alert('Não foi possível gerar o arquivo: ' + (e && e.message ? e.message : e)); } });
   const btnBackupAviso = document.getElementById('btn-baixar-backup-aviso');
   if(btnBackupAviso) btnBackupAviso.addEventListener('click', ()=>{ try{ exportarProgresso(); }catch(e){ alert('Não foi possível gerar o backup: ' + (e && e.message ? e.message : e)); } });
   const btnDispensarAviso = document.getElementById('btn-dispensar-aviso-storage');
