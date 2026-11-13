@@ -144,3 +144,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v544 (13/11): treino: texto do enunciado/resposta/frase +2pt (19px). Só código.
 - v545 (13/11): aviso de cota ao salvar questões importadas: IndexedDB com 2ª tentativa, limpeza de cópias antigas redundantes do localStorage, mensagem com o erro real e o uso do navegador, pede armazenamento persistente. Só código.
 - v546 (13/11): removidos o cartão 'Revisão de hoje' (tela da matéria) e o botão 'Próxima: …' (Reta Final). Só código.
+- v547 (13/11): armazenamento: valores grandes (lista importada) vão compactados (gzip) para o IndexedDB (6,2 MB -> 1,3 MB, leitura transparente); aviso de cota ganha botão Baixar backup e dica de espaço em disco. Só código.

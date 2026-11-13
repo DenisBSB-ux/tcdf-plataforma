@@ -206,6 +206,21 @@ function idbSet(key, value){
   }));
 }
 
+// valores grandes (ex.: lista de questões importadas, vários MB de texto) vão compactados (gzip) para o IndexedDB:
+// ocupam cerca de 1/6 do espaço e têm mais chance de caber quando o disco está apertado. Leitura transparente.
+async function _gzip(texto){
+  const cs = new CompressionStream('gzip'), w = cs.writable.getWriter(); w.write(new TextEncoder().encode(texto)); w.close();
+  return await new Response(cs.readable).arrayBuffer();
+}
+async function _gunzip(buf){
+  const ds = new DecompressionStream('gzip'), w = ds.writable.getWriter(); w.write(buf); w.close();
+  return new TextDecoder().decode(await new Response(ds.readable).arrayBuffer());
+}
+async function _decodificar(v){
+  if(typeof v === 'string' || v === undefined || v === null) return v;
+  if(v instanceof ArrayBuffer || ArrayBuffer.isView(v)) return await _gunzip(v);
+  return v;
+}
 async function storageGet(key){
   if(STORAGE_MODE === 'claude'){
     // erros aqui são esperados (ex.: chave ainda não existe) e não indicam indisponibilidade da API;
@@ -215,7 +230,7 @@ async function storageGet(key){
   let falhouIdb = false;
   try{
     const v = await idbGet(key);
-    if(v !== undefined) return { key, value: v };
+    if(v !== undefined) return { key, value: await _decodificar(v) };
   }catch(e){ falhouIdb = true; /* IndexedDB indisponível nesta sessão — segue pro fallback de localStorage abaixo */ }
   // ainda não migrado pro IndexedDB (ou IndexedDB indisponível): tenta localStorage;
   // se achar, migra silenciosamente pro IndexedDB pra não estourar cota de novo depois
@@ -236,15 +251,18 @@ async function storageSet(key, value){
       STORAGE_MODE = 'local';
     }
   }
-  let e1 = null;
+  let e1 = null, guardar = value;
+  if(typeof value === 'string' && value.length >= 200000 && typeof CompressionStream !== 'undefined' && typeof DecompressionStream !== 'undefined'){
+    try{ const z = await _gzip(value); if(await _gunzip(z) === value) guardar = z; }catch(_){ guardar = value; }   // só usa o compactado se voltar idêntico
+  }
   try{
-    await idbSet(key, value);
+    await idbSet(key, guardar);
     return { key, value };
   }catch(e){ e1 = e; }
   // 2ª tentativa: reabre o IndexedDB (conexão fechada pelo navegador, aba antiga segurando o banco, falha passageira)
   try{
     idbPromise = null; await new Promise(r => setTimeout(r, 400));
-    await idbSet(key, value);
+    await idbSet(key, guardar);
     return { key, value };
   }catch(e){ e1 = e; }
   // último recurso: localStorage (cota pequena). Antes, libera cópias antigas que já estão no IndexedDB

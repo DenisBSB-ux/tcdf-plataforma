@@ -27,6 +27,8 @@ function attachHandlers(){
     if(okCustom && okProgress) pushToCloud();
     render();
   });
+  const btnBackupAviso = document.getElementById('btn-baixar-backup-aviso');
+  if(btnBackupAviso) btnBackupAviso.addEventListener('click', ()=>{ try{ exportarProgresso(); }catch(e){ alert('Não foi possível gerar o backup: ' + (e && e.message ? e.message : e)); } });
   const btnDispensarAviso = document.getElementById('btn-dispensar-aviso-storage');
   if(btnDispensarAviso) btnDispensarAviso.addEventListener('click', ()=>{ STATE.avisoStorage = null; render(); });
   const btnDispensarAvisoAno = document.getElementById('btn-dispensar-aviso-correcao-ano');
