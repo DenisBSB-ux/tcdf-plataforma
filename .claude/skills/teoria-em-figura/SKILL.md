@@ -134,3 +134,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v526 (13/11): cartão da Reta Final sem botão Começar; mini barras de progresso (resumo por assuntos ✓, flashcards, lacunas) por matéria; gráfico por dia com uma barra por matéria. Só código: plataforma resolve sozinha, sem upload.
 - v533 (13/11): painel da Reta Final enxuto (cabeçalho numa linha, dias disponíveis/anteriores recolhidos, cartão sem tag e texto repetido). Só código, sem upload.
 - v536 (13/11): Análise de Dados e IA renumerada 1–200 (a lista repetia números); cartões de teoria e de treino acompanham pelo código do enunciado; marcas antigas migram (treino.alias). Precisa reimportar a lista (🔁 Substituir por matéria); sem reimportar, tudo continua funcionando.
+- v537 (13/11): Adm Geral & Pub renumerada 1–500 (a lista junta repetia números); mesmo tratamento da Análise de Dados (alias de marcas, pareamento por código do enunciado). Precisa reimportar a lista.
