@@ -2544,3 +2544,13 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 @media (max-width:520px){ .tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest, .tr-modal .tr-extra, .tr-modal .tr-fb{ font-size:calc(18px * var(--tr-zoom, 1)); } }
 /* v549: informações da questão (banca, cargo, ano, incidência, assunto) no cartão */
 .tr-info{ display:block; margin:0 0 12px; font-size:12.5px; line-height:1.45; color:var(--m-mut); border-left:3px solid var(--m-acc); padding-left:10px; }
+/* v554: subtítulo oculto; botões do topo (tema, fechar, A−/A+) no mesmo padrão dos botões de ação */
+.tr-modal .tr-sub{ display:none; }
+.tr-modal .r7-modal-x, .tr-modal .tr-tema{ width:44px; height:44px; border-radius:13px; font-size:19px; font-weight:700; border:1px solid var(--m-bd); background:var(--m-soft); color:var(--m-ink); display:inline-flex; align-items:center; justify-content:center; }
+.tr-modal .tr-tema{ margin-right:8px; }
+.tr-modal .tr-zoom{ gap:8px; font-size:14px; } .tr-modal .tr-zoom b{ font-size:14px; font-weight:700; color:var(--m-ink); }
+.tr-modal .tr-zoom button{ min-height:44px; min-width:52px; padding:0 16px; border-radius:13px; font-size:16px; font-weight:700; background:var(--m-soft); border:1px solid var(--m-bd); }
+.tr-modal .tr-filtros button{ min-height:44px; border-radius:13px; font-size:15px; font-weight:700; padding:0 16px; }
+.tr-modal .tr-cont{ min-height:44px; border-radius:13px; font-size:15px; }
+.tr-modal .tr-reset > button{ min-height:44px; border-radius:13px; font-size:15px; font-weight:700; }
+.tr-modal .r7-modal-x:hover, .tr-modal .tr-tema:hover, .tr-modal .tr-zoom button:hover, .tr-modal .tr-filtros button:hover{ border-color:var(--m-acc); }
