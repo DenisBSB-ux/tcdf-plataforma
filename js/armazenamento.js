@@ -236,16 +236,43 @@ async function storageSet(key, value){
       STORAGE_MODE = 'local';
     }
   }
+  let e1 = null;
   try{
     await idbSet(key, value);
     return { key, value };
-  }catch(e){
-    // último recurso, só se o próprio IndexedDB estiver indisponível/bloqueado
-    // (ex.: alguns modos de navegação privada mais antigos) — nesse caso volta
-    // a valer a cota pequena de localStorage, mas pelo menos não quebra tudo
+  }catch(e){ e1 = e; }
+  // 2ª tentativa: reabre o IndexedDB (conexão fechada pelo navegador, aba antiga segurando o banco, falha passageira)
+  try{
+    idbPromise = null; await new Promise(r => setTimeout(r, 400));
+    await idbSet(key, value);
+    return { key, value };
+  }catch(e){ e1 = e; }
+  // último recurso: localStorage (cota pequena). Antes, libera cópias antigas que já estão no IndexedDB
+  try{
     window.localStorage.setItem(key, value);
     return { key, value };
+  }catch(e2){
+    await limparLocalStorageRedundante();
+    try{ window.localStorage.setItem(key, value); return { key, value }; }
+    catch(e3){
+      let uso = '';
+      try{ const est = await navigator.storage.estimate(); uso = '; uso do navegador ' + Math.round((est.usage || 0) / 1048576) + ' MB de ' + Math.round((est.quota || 0) / 1048576) + ' MB'; }catch(_){}
+      throw new Error('IndexedDB: ' + ((e1 && (e1.name || '') + ' ' + (e1.message || '')) || 'sem detalhe').trim() + ' | localStorage: ' + ((e3 && e3.name) || 'cota excedida') + uso);
+    }
   }
+}
+// cópias grandes do localStorage (versões antigas) que já existem no IndexedDB não servem para nada: o app lê o IndexedDB primeiro
+async function limparLocalStorageRedundante(){
+  let liberou = 0;
+  try{
+    const chaves = []; for(let i = 0; i < localStorage.length; i++) chaves.push(localStorage.key(i));
+    for(const k of chaves){
+      const v = localStorage.getItem(k); if(!v || v.length < 50000) continue;
+      let noIdb; try{ noIdb = await idbGet(k); }catch(_){ continue; }
+      if(noIdb !== undefined && String(noIdb).length >= v.length * 0.9){ localStorage.removeItem(k); liberou += v.length; }
+    }
+  }catch(_){}
+  return liberou;
 }
 
 // resultado de uma tentativa: aceita true/false e também 1/0 ou "true"/"false" (progresso importado
@@ -390,3 +417,6 @@ function curarRespostasDoHistorico(quiz){
   return curouAlgo;
 }
 
+
+// pede armazenamento persistente (o navegador deixa de apagar/limitar à toa) e limpa cópias antigas redundantes do localStorage
+setTimeout(() => { try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist(); }catch(_){} limparLocalStorageRedundante(); }, 8000);
