@@ -207,6 +207,105 @@
     ],
     "mat": "primeiros socorros|socorro"
   },
+  "Lei 10.406": {
+    "tipo": "LEI",
+    "numero": 10406,
+    "ano": 2002,
+    "materias": [
+      "Direito Civil"
+    ],
+    "mat": "civil|10\\.?406"
+  },
+  "Lei 8.213": {
+    "tipo": "LEI",
+    "numero": 8213,
+    "ano": 1991,
+    "materias": [
+      "Previdenciário"
+    ],
+    "mat": "previd|109"
+  },
+  "Lei 8.212": {
+    "tipo": "LEI",
+    "numero": 8212,
+    "ano": 1991,
+    "materias": [
+      "Previdenciário"
+    ],
+    "mat": "previd|109"
+  },
+  "Lei 9.717": {
+    "tipo": "LEI",
+    "numero": 9717,
+    "ano": 1998,
+    "materias": [
+      "Previdenciário"
+    ],
+    "mat": "previd|109"
+  },
+  "Lei 13.954": {
+    "tipo": "LEI",
+    "numero": 13954,
+    "ano": 2019,
+    "materias": [
+      "Previdenciário"
+    ],
+    "mat": "previd|109"
+  },
+  "Lei 7.998": {
+    "tipo": "LEI",
+    "numero": 7998,
+    "ano": 1990,
+    "materias": [
+      "Previdenciário"
+    ],
+    "mat": "previd|109"
+  },
+  "Lei 8.742": {
+    "tipo": "LEI",
+    "numero": 8742,
+    "ano": 1993,
+    "materias": [
+      "Previdenciário"
+    ],
+    "mat": "previd|109"
+  },
+  "Lei 10.666": {
+    "tipo": "LEI",
+    "numero": 10666,
+    "ano": 2003,
+    "materias": [
+      "Previdenciário"
+    ],
+    "mat": "previd|109"
+  },
+  "LC 142": {
+    "tipo": "LCP",
+    "numero": 142,
+    "ano": 2013,
+    "materias": [
+      "Previdenciário"
+    ],
+    "mat": "previd|109"
+  },
+  "EC 103": {
+    "tipo": "EMC",
+    "numero": 103,
+    "ano": 2019,
+    "materias": [
+      "Previdenciário"
+    ],
+    "mat": "previd|109"
+  },
+  "EC 132": {
+    "tipo": "EMC",
+    "numero": 132,
+    "ano": 2023,
+    "materias": [
+      "D.Tributário"
+    ],
+    "mat": "tribut|ICMS|ISS|9\\.?430|lucro"
+  },
   "_materias_extras": [
     "Administrativo (geral)",
     "AFO",
