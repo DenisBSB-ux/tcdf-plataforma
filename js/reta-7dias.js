@@ -147,7 +147,7 @@ function reta7MdVisao(r){ return r.geral || reta7MdGeral(r.md); }
 function reta7MdGeral(md){ const i = String(md || '').indexOf('## 2.'); return i > 0 ? md.slice(0, i).trim() : String(md || ''); }
 const R7_CHK_KEY = 'tcdf_resumo_check_v1';
 function reta7CheckLer(slug){ const o = reta7LerJ(R7_CHK_KEY); return (o && o[slug]) || {}; }
-function reta7CheckSet(slug, i, v){ const o = reta7LerJ(R7_CHK_KEY) || {}; const m = (o[slug] = o[slug] || {}); if(v) m[i] = 1; else delete m[i]; reta7GravarJ(R7_CHK_KEY, o); }
+function reta7CheckSet(slug, i, v){ const o = reta7LerJ(R7_CHK_KEY) || {}; const m = (o[slug] = o[slug] || {}); m[i] = v ? 1 : 0; reta7GravarJ(R7_CHK_KEY, o); if(typeof sincronizarRevisao === 'function') sincronizarRevisao(); }
 function reta7CheckBtn(slug, i){ const on = !!reta7CheckLer(slug)[i]; return '<div class="r7-chk"><button type="button" data-r7-chk="' + i + '" class="' + (on ? 'on' : '') + '" aria-pressed="' + on + '">' + (on ? '✓ Assunto estudado' : '☐ Marcar este assunto como estudado') + '</button></div>'; }
 function reta7AbasAssunto(r, sel, slug){
   const abas = [{ nome:'Visão geral', n:0 }].concat(r.assuntos || []), chk = slug ? reta7CheckLer(slug) : {};
@@ -296,7 +296,7 @@ function reta7PreencherProg(raiz){
     const [slug, t] = el.dataset.r7Prog.split(':'), is = el.querySelectorAll('i');
     if(t === 'r'){
       const r = typeof RESUMOS_TCDF !== 'undefined' && RESUMOS_TCDF[slug]; if(!r) return;
-      const tot = (r.assuntos || []).length, ok = Object.keys(reta7CheckLer(slug)).filter(k => Number(k) >= 1 && Number(k) <= tot).length;
+      const tot = (r.assuntos || []).length, ok = Object.keys(reta7CheckLer(slug)).filter(k => reta7CheckLer(slug)[k] && Number(k) >= 1 && Number(k) <= tot).length;
       is[0].style.width = por(ok, tot) + '%'; el.title = ok + ' de ' + tot + ' assuntos estudados'; el.dataset.txt = ok + '/' + tot;
     } else {
       const e = typeof TREINO_TCDF !== 'undefined' && TREINO_TCDF[slug] ? reta7EstatTreino(slug) : null; if(!e) return;

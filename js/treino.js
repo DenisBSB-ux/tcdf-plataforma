@@ -14,7 +14,7 @@ function treinoLer(){ try{ return JSON.parse(localStorage.getItem(TREINO_KEY) ||
 function treinoGravar(m){ try{ localStorage.setItem(TREINO_KEY, JSON.stringify(m)); }catch(_){} }
 function treinoMarca(slug, k){ return (treinoLer()[slug] || {})[k] || ''; }
 function treinoMarcar(slug, k, v){
-  const m = treinoLer(); (m[slug] = m[slug] || {})[k] = v; treinoGravar(m);
+  const m = treinoLer(); (m[slug] = m[slug] || {})[k] = v; treinoGravar(m); if(typeof sincronizarRevisao === 'function') sincronizarRevisao();
   if(v){ try{ const L = JSON.parse(localStorage.getItem(TREINO_LOG_KEY) || '[]') || []; L.push({ ts:Date.now(), s:slug, t:String(k)[0], r:v }); localStorage.setItem(TREINO_LOG_KEY, JSON.stringify(L.slice(-4000))); }catch(_){} }   // registro por dia: alimenta o gráfico da Reta Final
 }
 const TREINO_LOG_KEY = 'tcdf_treino_log_v1';
