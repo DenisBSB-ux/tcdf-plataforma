@@ -923,6 +923,51 @@ function downloadListaQuestoes(materiaKey){
   URL.revokeObjectURL(url);
 }
 
+// ---- baixar TODAS as listas de uma vez (um .zip com um .md por matéria, no mesmo formato do botão "Baixar lista de questões") ----
+let _crcTab = null;
+function _crc32(u8){
+  if(!_crcTab){ _crcTab = new Uint32Array(256); for(let n = 0; n < 256; n++){ let c = n; for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); _crcTab[n] = c >>> 0; } }
+  let c = 0xFFFFFFFF; for(let i = 0; i < u8.length; i++) c = _crcTab[(c ^ u8[i]) & 0xFF] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function montarZip(arquivos){   // [{ nome, dados:Uint8Array }] -> Uint8Array (zip sem compressão, nomes em UTF-8)
+  const enc = new TextEncoder(), agora = new Date();
+  const hora = (agora.getHours() << 11) | (agora.getMinutes() << 5) | (agora.getSeconds() >> 1), data = ((agora.getFullYear() - 1980) << 9) | ((agora.getMonth() + 1) << 5) | agora.getDate();
+  const partes = [], central = []; let desloc = 0;
+  arquivos.forEach(a => {
+    const nome = enc.encode(a.nome), crc = _crc32(a.dados), tam = a.dados.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true); lh.setUint16(8, 0, true); lh.setUint16(10, hora, true); lh.setUint16(12, data, true);
+    lh.setUint32(14, crc, true); lh.setUint32(18, tam, true); lh.setUint32(22, tam, true); lh.setUint16(26, nome.length, true); lh.setUint16(28, 0, true);
+    partes.push(new Uint8Array(lh.buffer), nome, a.dados);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true); ch.setUint16(10, 0, true); ch.setUint16(12, hora, true); ch.setUint16(14, data, true);
+    ch.setUint32(16, crc, true); ch.setUint32(20, tam, true); ch.setUint32(24, tam, true); ch.setUint16(28, nome.length, true); ch.setUint32(42, desloc, true);
+    central.push(new Uint8Array(ch.buffer), nome);
+    desloc += 30 + nome.length + tam;
+  });
+  const tamCentral = central.reduce((n, x) => n + x.length, 0);
+  const eo = new DataView(new ArrayBuffer(22));
+  eo.setUint32(0, 0x06054b50, true); eo.setUint16(8, arquivos.length, true); eo.setUint16(10, arquivos.length, true); eo.setUint32(12, tamCentral, true); eo.setUint32(16, desloc, true);
+  const todos = partes.concat(central, [new Uint8Array(eo.buffer)]), saida = new Uint8Array(desloc + tamCentral + 22); let o = 0;
+  todos.forEach(x => { saida.set(x, o); o += x.length; });
+  return saida;
+}
+function downloadTodasAsListas(){
+  const dataStr = new Date().toISOString().slice(0, 10), enc = new TextEncoder(), arquivos = [];
+  let total = 0;
+  materiasDisponiveis().forEach(m => {
+    if(!ALL_QUESTIONS.some(q => q.materia === m && !q.duplicataOculta)) return;
+    const md = gerarMarkdownDaMateria(m); total += (md.match(/^## QUESTÃO /gm) || []).length;
+    const slug = m.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    arquivos.push({ nome: 'questoes-' + slug + '-' + dataStr + '.md', dados: enc.encode(md) });
+  });
+  if(!arquivos.length){ alert('Não há listas para baixar.'); return; }
+  const blob = new Blob([montarZip(arquivos)], { type: 'application/zip' }), url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = 'listas-de-questoes-' + dataStr + '.zip';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); setTimeout(() => URL.revokeObjectURL(url), 1500);
+  return { listas: arquivos.length, questoes: total };
+}
+
 // true se existe um simulado salvo com progresso real nesta matéria que seria
 // perdido ao iniciar uma nova sessão agora — usado pra confirmar com o usuário
 // antes de qualquer fluxo que crie um STATE.quiz novo (iniciar, refazer erros etc.)

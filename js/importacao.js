@@ -92,6 +92,7 @@ function renderBackupCard(){
     <h3 class="section-title" style="font-size:15px;margin-bottom:6px;">💾 Backup do progresso</h3>
     <p style="font-size:12.5px;color:var(--ink-soft);margin-bottom:10px;">O progresso é salvo sozinho no aparelho e na nuvem. O arquivo é uma garantia extra (guarde em outro lugar). ${esc(aviso)}</p>
     <button class="side-action-btn" id="btn-exportar-progresso" title="Baixa um arquivo .json com progresso, edições e gabaritos corrigidos">⬇ Baixar backup</button>
+    <button class="side-action-btn" id="btn-baixar-todas-listas" title="Baixa um .zip com todas as listas de questões (um arquivo .md por matéria, no formato de importação)">📚 Baixar todas as listas (.zip)</button>
     <button class="side-action-btn" id="btn-importar-progresso" title="Mescla um backup .json no progresso atual (nada é apagado)">⬆ Importar backup</button>
     <input type="file" id="file-input-progresso" accept=".json,application/json" style="display:none;">
     <label style="display:flex;gap:8px;align-items:center;font-size:12.5px;margin:10px 0 4px;cursor:pointer;"><input type="checkbox" id="chk-backup-arquivo-auto" ${(typeof backupArquivoAutoLigado==='function' ? backupArquivoAutoLigado() : true) ? 'checked' : ''}> Baixar o arquivo de backup automaticamente todo dia (na primeira abertura do dia)</label>

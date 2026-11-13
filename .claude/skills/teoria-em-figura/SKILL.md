@@ -149,3 +149,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v549 (13/11): treino: cartões mostram banca, cargo, ano, incidência, tendência e assunto da questão (lidos da questão importada no aparelho; 'bq' estático como reserva). Só código.
 - v550 (13/11): flashcards completos: 4.412 cartões = todas as questões (376 acrescentados; 170 com o aviso 'Gabarito em conferência'). Cartões antigos e chaves n:h inalterados. Só dados do treino.
 - v551 (13/11): 5 gabaritos alterados (Const 13 A→C; Lei 14.133 155, Lei Orgânica 84 e 109, IN5 50 Certo→Errado); marca 'Conferir o gabarito' tirada das demais questões mantidas (restam 17 incertas com aviso); flashcards e cartões de teoria ajustados. Precisa reimportar as listas alteradas.
+- v552 (13/11): botão '📚 Baixar todas as listas (.zip)' no card Backup (Importar): um .md por matéria, mesmo formato do botão por matéria. Só código.
