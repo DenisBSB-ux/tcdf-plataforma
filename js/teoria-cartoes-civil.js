@@ -367,7 +367,7 @@ TEORIA_CARTOES.push(
   { m:/civil/i, n:97, h:'h97xcl',  titulo:'Filiais: domicílio para os atos nelas praticados', base:'CC, art. 75, § 1º', fonte:[['Lei 10.406',75]],
     regra:'Tendo a pessoa jurídica {0|diversos estabelecimentos} em {1|lugares diferentes}, {2|cada um deles} será considerado domicílio {3|para os atos nele praticados}.',
     pontos:[ { ico:'🏬', t:'Diversos estabelecimentos', d:'a pessoa jurídica atua em mais de um lugar' }, { ico:'📍', t:'Lugares diferentes', d:'cada estabelecimento fica em local próprio' }, { ico:'1️⃣', t:'Cada um deles', d:'é considerado domicílio' }, { ico:'📑', t:'Atos nele praticados', d:'o alcance do domicílio do estabelecimento' } ],
-    armadilha:'Fixar só a sede como domicílio e ignorar que o estabelecimento é domicílio para os atos nele praticados.' },
+    armadilha:'Tratar a filial como domicílio para qualquer ato: ela só vale para os atos nela praticados; sem obrigação contraída na filial, vale a sede.' },
   { m:/civil/i, n:98, h:'fijroh',  titulo:'Pluralidade domiciliar', base:'CC, art. 71', fonte:[['Lei 10.406',71]],
     regra:'Se a pessoa natural tiver {0|diversas residências}, onde, {1|alternadamente}, viva, considerar-se-á domicílio seu {2|qualquer delas}.',
     pontos:[ { ico:'🏠', t:'Diversas residências', d:'a pessoa natural possui mais de uma' }, { ico:'🔄', t:'Alternadamente', d:'vive em cada uma delas, em momentos distintos' }, { ico:'✔️', t:'Qualquer delas', d:'todas servem de domicílio' } ],

@@ -135,3 +135,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v533 (13/11): painel da Reta Final enxuto (cabeçalho numa linha, dias disponíveis/anteriores recolhidos, cartão sem tag e texto repetido). Só código, sem upload.
 - v536 (13/11): Análise de Dados e IA renumerada 1–200 (a lista repetia números); cartões de teoria e de treino acompanham pelo código do enunciado; marcas antigas migram (treino.alias). Precisa reimportar a lista (🔁 Substituir por matéria); sem reimportar, tudo continua funcionando.
 - v537 (13/11): Adm Geral & Pub renumerada 1–500 (a lista junta repetia números); mesmo tratamento da Análise de Dados (alias de marcas, pareamento por código do enunciado). Precisa reimportar a lista.
+- v538 (13/11): 12 gabaritos alterados nas listas (confirmados pelo usuário): Civil 97; RJU 237/239/241; Prev 224; Const 65/79; RI 148/215; IN5 19; Adm 8.429 102/147. Precisa reimportar as 7 listas.
