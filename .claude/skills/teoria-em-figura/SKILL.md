@@ -139,3 +139,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v539 (13/11): treino harmonizado (lacunas conferem sozinhas, 'Trocar palavras', botões com ícones, borda verde/vermelha, flashcards só avançam após Já sei/Revisar, Anterior sempre ativo, janelas acompanham o zoom do navegador). Só código.
 - v540 (13/11): treino: contador ao lado dos filtros, filtro Novos removido, botão Resetar (todas / só revisar ou erradas). Só código.
 - v541 (13/11): marcas do treino e assuntos estudados com carimbo de hora; na sincronização vale a mais recente (reset propaga entre aparelhos). Só código.
+- v542 (13/11): treino: enunciado, resposta e frase das lacunas com o mesmo tamanho de fonte. Só código.
