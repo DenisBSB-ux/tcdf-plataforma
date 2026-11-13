@@ -145,9 +145,13 @@ function reta7Md(md){
 // resumo separado por assunto: aba "Visão geral" (tabela do que mais cai) + uma aba por assunto
 function reta7MdVisao(r){ return r.geral || reta7MdGeral(r.md); }
 function reta7MdGeral(md){ const i = String(md || '').indexOf('## 2.'); return i > 0 ? md.slice(0, i).trim() : String(md || ''); }
-function reta7AbasAssunto(r, sel){
-  const abas = [{ nome:'Visão geral', n:0 }].concat(r.assuntos || []);
-  return abas.map((a, i) => '<button type="button" data-r7-ass="' + i + '" class="' + (i === sel ? 'on' : '') + '" aria-pressed="' + (i === sel) + '">' + esc(a.nome) + (a.pct !== undefined ? '<small>' + a.pct + '%</small>' : (a.n ? '<small>' + a.n + '</small>' : '')) + '</button>').join('');
+const R7_CHK_KEY = 'tcdf_resumo_check_v1';
+function reta7CheckLer(slug){ const o = reta7LerJ(R7_CHK_KEY); return (o && o[slug]) || {}; }
+function reta7CheckSet(slug, i, v){ const o = reta7LerJ(R7_CHK_KEY) || {}; const m = (o[slug] = o[slug] || {}); if(v) m[i] = 1; else delete m[i]; reta7GravarJ(R7_CHK_KEY, o); }
+function reta7CheckBtn(slug, i){ const on = !!reta7CheckLer(slug)[i]; return '<div class="r7-chk"><button type="button" data-r7-chk="' + i + '" class="' + (on ? 'on' : '') + '" aria-pressed="' + on + '">' + (on ? '✓ Assunto estudado' : '☐ Marcar este assunto como estudado') + '</button></div>'; }
+function reta7AbasAssunto(r, sel, slug){
+  const abas = [{ nome:'Visão geral', n:0 }].concat(r.assuntos || []), chk = slug ? reta7CheckLer(slug) : {};
+  return abas.map((a, i) => '<button type="button" data-r7-ass="' + i + '" class="' + (i === sel ? 'on' : '') + (i > 0 && chk[i] ? ' chk' : '') + '" aria-pressed="' + (i === sel) + '">' + (i > 0 && chk[i] ? '✓ ' : '') + esc(a.nome) + (a.pct !== undefined ? '<small>' + a.pct + '%</small>' : (a.n ? '<small>' + a.n + '</small>' : '')) + '</button>').join('');
 }
 function reta7AbrirResumo(mat){
   const slug = reta7SlugResumo(mat); if(!slug) return;
@@ -157,14 +161,20 @@ function reta7AbrirResumo(mat){
     const r = ok && typeof RESUMOS_TCDF !== 'undefined' && RESUMOS_TCDF[slug];
     if(document.getElementById(id)) return;
     const box = document.createElement('div'); box.id = id; box.className = 'r7-modal'; box.setAttribute('role', 'dialog'); box.setAttribute('aria-label', 'Resumo de ' + mat);
-    box.innerHTML = '<div class="r7-modal-caixa"><button class="r7-modal-x" aria-label="Fechar">✕</button><button class="tr-tema" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">' + (document.body.classList.contains('theme-light') ? '🌙' : '☀️') + '</button>' + (r && r.assuntos ? '<div class="r7-ass" role="group" aria-label="Assuntos">' + reta7AbasAssunto(r, 0) + '</div>' : '') + '<div class="r7-md">' + (r ? reta7Md(r.assuntos ? reta7MdVisao(r) : r.md) : '<p>Não foi possível carregar o resumo agora. Tente de novo com internet.</p>') + '</div></div>';
+    box.innerHTML = '<div class="r7-modal-caixa"><button class="r7-modal-x" aria-label="Fechar">✕</button><button class="tr-tema" aria-label="Alternar tema claro e escuro" title="Tema claro/escuro">' + (document.body.classList.contains('theme-light') ? '🌙' : '☀️') + '</button>' + (r && r.assuntos ? '<div class="r7-ass" role="group" aria-label="Assuntos">' + reta7AbasAssunto(r, 0, slug) + '</div>' : '') + '<div class="r7-md">' + (r ? reta7Md(r.assuntos ? reta7MdVisao(r) : r.md) : '<p>Não foi possível carregar o resumo agora. Tente de novo com internet.</p>') + '</div></div>';
     const fechar = () => box.remove();
     box.addEventListener('click', e => {
       if(e.target.closest('.r7-modal-x')){ fechar(); return; }
       const ab = e.target.closest('[data-r7-ass]');
+      const ck = e.target.closest('[data-r7-chk]');
+      if(ck && r && r.assuntos){
+        const i = Number(ck.dataset.r7Chk); reta7CheckSet(slug, i, !reta7CheckLer(slug)[i]);
+        box.querySelector('.r7-chk').outerHTML = reta7CheckBtn(slug, i); box.querySelector('.r7-ass').innerHTML = reta7AbasAssunto(r, i, slug);
+        if(typeof reta7PreencherProg === 'function') reta7PreencherProg(document); return;
+      }
       if(ab && r && r.assuntos){
         const i = Number(ab.dataset.r7Ass), md = box.querySelector('.r7-md');
-        md.innerHTML = reta7Md(i === 0 ? reta7MdVisao(r) : r.assuntos[i-1].md); box.querySelector('.r7-ass').innerHTML = reta7AbasAssunto(r, i); box.querySelector('.r7-modal-caixa').scrollTop = 0; return;
+        md.innerHTML = (i === 0 ? '' : reta7CheckBtn(slug, i)) + reta7Md(i === 0 ? reta7MdVisao(r) : r.assuntos[i-1].md); box.querySelector('.r7-ass').innerHTML = reta7AbasAssunto(r, i, slug); box.querySelector('.r7-modal-caixa').scrollTop = 0; return;
       }
       const tm = e.target.closest('.tr-tema'); if(tm){ if(typeof alternarTema === 'function') alternarTema(); tm.textContent = document.body.classList.contains('theme-light') ? '🌙' : '☀️'; }
     });
@@ -262,7 +272,7 @@ function reta7Porque(s){
 function reta7Leitura(b){ return (b.t.includes('1') && reta7SlugResumo(b.mat)) ? Math.min(R7_LEITURA, Math.max(0, b.min - 15)) : 0; }
 function reta7Cartao(b, dia0){
   const mat = b.mat, s = reta7Stats(mat); if(!s) return '';
-  const resumo = !!reta7SlugResumo(mat), leitura = reta7Leitura(b);
+  const slug = reta7SlugResumo(mat), resumo = !!slug, leitura = reta7Leitura(b);
   const qtd = Math.max(5, b.min - leitura), ses = reta7Sessao(mat, qtd);
   const feitas = reta7RespondidasNoDia(mat, dia0), meta = Math.max(5, Math.round(ses.uids.length * 0.7)), ok = feitas >= meta;
   const pct = Math.min(100, Math.round(100 * feitas / Math.max(1, ses.uids.length)));
@@ -273,10 +283,34 @@ function reta7Cartao(b, dia0){
     <p class="r7-why">${esc(reta7Porque(s))}</p>
     <p class="r7-meta"><b>${reta7Fmt(b.min)}</b> · ${leitura ? 'leitura do resumo ' + leitura + ' min + ' : ''}${ses.uids.length} questões${comp ? ' <span>(' + esc(comp) + ')</span>' : ''}</p>
     <div class="r7-barra" title="${feitas} respostas hoje nesta matéria"><i style="width:${pct}%"></i></div>
-    <div class="r7-acoes"><button class="btn btn-gold r7-go" data-r7-iniciar="${esc(mat)}" data-r7-qtd="${qtd}" ${ses.uids.length ? '' : 'disabled'}>${ok ? '↻ Refazer' : '▶ Começar'}</button>
-      ${resumo ? `<button class="btn r7-res" data-r7-resumo="${esc(mat)}">📄 Resumo</button>` : ''}
-      ${(typeof treinoDisponivel === 'function' && treinoDisponivel(mat)) ? `<button class="btn r7-res" data-tr-abrir="${esc(mat)}" data-tr-modo="flash">🃏 Flashcards</button><button class="btn r7-res" data-tr-abrir="${esc(mat)}" data-tr-modo="lacunas">🧩 Lacunas</button>` : ''}</div>
+    <div class="r7-acoes">
+      ${resumo ? `<span class="r7-ac"><span class="r7-prog" data-r7-prog="${esc(slug)}:r" title="Assuntos do resumo marcados como estudados"><i></i></span><button class="btn r7-res" data-r7-resumo="${esc(mat)}">📄 Resumo</button></span>` : ''}
+      ${(typeof treinoDisponivel === 'function' && treinoDisponivel(mat)) ? `<span class="r7-ac"><span class="r7-prog" data-r7-prog="${esc(slug)}:f"><i class="a"></i><i class="b"></i></span><button class="btn r7-res" data-tr-abrir="${esc(mat)}" data-tr-modo="flash">🃏 Flashcards</button></span><span class="r7-ac"><span class="r7-prog" data-r7-prog="${esc(slug)}:l"><i class="a"></i><i class="c"></i></span><button class="btn r7-res" data-tr-abrir="${esc(mat)}" data-tr-modo="lacunas">🧩 Lacunas</button></span>` : ''}</div>
   </article>`;
+}
+/* ---------- mini barras de progresso do cartão (resumo, flashcards, lacunas): só da própria matéria ---------- */
+function reta7PreencherProg(raiz){
+  const els = Array.from((raiz || document).querySelectorAll('[data-r7-prog]')); if(!els.length) return;
+  const por = (a, b) => b ? Math.min(100, Math.round(100 * a / b)) : 0;
+  const pinta = el => {
+    const [slug, t] = el.dataset.r7Prog.split(':'), is = el.querySelectorAll('i');
+    if(t === 'r'){
+      const r = typeof RESUMOS_TCDF !== 'undefined' && RESUMOS_TCDF[slug]; if(!r) return;
+      const tot = (r.assuntos || []).length, ok = Object.keys(reta7CheckLer(slug)).filter(k => Number(k) >= 1 && Number(k) <= tot).length;
+      is[0].style.width = por(ok, tot) + '%'; el.title = ok + ' de ' + tot + ' assuntos estudados'; el.dataset.txt = ok + '/' + tot;
+    } else {
+      const e = typeof TREINO_TCDF !== 'undefined' && TREINO_TCDF[slug] ? reta7EstatTreino(slug) : null; if(!e) return;
+      const x = t === 'f' ? e.f : e.l, a = x.ok, b = t === 'f' ? x.rev : x.err;
+      is[0].style.width = por(a, x.tot) + '%'; is[1].style.width = por(b, x.tot) + '%';
+      el.title = t === 'f' ? a + ' já sei · ' + b + ' revisar · ' + (x.tot - a - b) + ' novos (de ' + x.tot + ')' : a + ' certas · ' + b + ' erradas · ' + (x.tot - a - b) + ' novas (de ' + x.tot + ')';
+      el.dataset.txt = (a + b) + '/' + x.tot;
+    }
+  };
+  els.forEach(el => {
+    const slug = el.dataset.r7Prog.split(':')[0], t = el.dataset.r7Prog.split(':')[1];
+    if(t === 'r') reta7CarregarResumos(() => { if(el.isConnected) pinta(el); });
+    else if(typeof treinoCarregar === 'function') treinoCarregar(slug, () => { if(el.isConnected) pinta(el); });
+  });
 }
 /* ---------- dia anterior: só estatísticas (não dá para responder de novo) ---------- */
 function reta7PainelPassado(dia, mats, d0){
@@ -324,27 +358,26 @@ function reta7GraficoHtml(slugs){
   const pc = (a, b) => b ? Math.round(100 * a / b) : 0;
   const kpis = `<div class="r7-kpis"><div><b>${sum.fOk}</b><span>flashcards "já sei" (${pc(sum.fOk, sum.fTot)}% de ${sum.fTot})</span></div><div><b>${sum.fRev}</b><span>flashcards para revisar</span></div><div><b>${sum.lOk}</b><span>lacunas certas (${pc(sum.lOk, sum.lTot)}% de ${sum.lTot})</span></div><div><b>${sum.lErr}</b><span>lacunas erradas</span></div></div>`;
   // atividade por dia, a partir do registro (flashcards marcados e lacunas respondidas)
-  const log = treinoLog().filter(x => x.ts >= ini0), porDia = {};
-  log.forEach(x => { const d = reta7Data(x.ts), o = (porDia[d] = porDia[d] || { f:0, fOk:0, l:0, lOk:0 }); if(x.t === 'f'){ o.f++; if(x.r === 'ok') o.fOk++; } else { o.l++; if(x.r === 'ok') o.lOk++; } });
+  const log = treinoLog().filter(x => x.ts >= ini0), porDia = {}, usadas = new Set();
+  log.forEach(x => { const d = reta7Data(x.ts), m = ((porDia[d] = porDia[d] || {})[x.s] = porDia[d][x.s] || { n:0, ok:0 }); m.n++; if(x.r === 'ok') m.ok++; usadas.add(x.s); });
   const dias = []; for(let d = ini; reta7DiffDias(d, hoje) >= 0 && dias.length < 60; d = reta7SomaDias(d, 1)) dias.push(d);
+  const nomeDe = sl => ((TREINO_TCDF[sl] || {}).nome) || sl, ordem = slugs.filter(sl => usadas.has(sl)), cor = sl => 'hsl(' + Math.round(360 * ordem.indexOf(sl) / Math.max(1, ordem.length)) + ',62%,52%)';
   let grafico;
-  if(!Object.keys(porDia).length) grafico = '<p class="section-desc">O registro por dia começa a partir de agora: marque cartões ("já sei" ou "revisar") e responda lacunas, e o gráfico aparece aqui.</p>';
+  if(!usadas.size) grafico = '<p class="section-desc">O registro por dia começa a partir de agora: marque cartões ("já sei" ou "revisar") e responda lacunas, e o gráfico aparece aqui.</p>';
   else {
-    const W = 760, H = 240, L = 38, R = 38, T = 14, B = 34, iw = W - L - R, ih = H - T - B, bw = iw / dias.length;
-    const tot = dias.map(d => (porDia[d] ? porDia[d].f + porDia[d].l : 0)), maxN = Math.max(10, ...tot), nice = Math.ceil(maxN / 20) * 20 || 20;
-    const y = v => T + ih - (v / nice) * ih, yp = v => T + ih - (v / 100) * ih;
-    let grade = '', barras = '', rot = '', pts = [];
-    [0, 0.5, 1].forEach(f => { const yy = T + ih - f * ih; grade += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" class="g-grade"/><text x="${L - 6}" y="${yy + 4}" class="g-eixo" text-anchor="end">${Math.round(nice * f)}</text><text x="${W - R + 6}" y="${yy + 4}" class="g-eixo">${Math.round(100 * f)}%</text>`; });
+    const maxMat = Math.max(1, ...dias.map(d => Object.keys(porDia[d] || {}).length)), slot = Math.max(30, 9 * maxMat + 10);
+    const L = 38, R = 10, T = 14, B = 34, H = 240, W = Math.max(760, L + R + slot * dias.length), ih = H - T - B;
+    const maxN = Math.max(10, ...dias.flatMap(d => Object.values(porDia[d] || {}).map(m => m.n))), nice = Math.ceil(maxN / 10) * 10 || 10;
+    const y = v => T + ih - (v / nice) * ih;
+    let grade = '', barras = '', rot = '';
+    [0, 0.5, 1].forEach(f => { const yy = T + ih - f * ih; grade += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" class="g-grade"/><text x="${L - 6}" y="${yy + 4}" class="g-eixo" text-anchor="end">${Math.round(nice * f)}</text>`; });
     dias.forEach((d, i) => {
-      const o = porDia[d] || { f:0, fOk:0, l:0, lOk:0 }, cx = L + bw * i + bw / 2, w = Math.max(3, bw * 0.62), tt = o.f + o.l;
-      if(o.f) barras += `<rect x="${cx - w / 2}" y="${y(o.f)}" width="${w}" height="${T + ih - y(o.f)}" class="g-bar"><title>${d.split('-').reverse().slice(0, 2).join('/')}: ${o.f} flashcards marcados</title></rect>`;
-      if(o.l) barras += `<rect x="${cx - w / 2}" y="${y(o.f + o.l)}" width="${w}" height="${y(o.f) - y(o.f + o.l)}" class="g-bar2"><title>${d.split('-').reverse().slice(0, 2).join('/')}: ${o.l} lacunas respondidas</title></rect>`;
-      if(tt) pts.push([cx, yp(Math.round(100 * (o.fOk + o.lOk) / tt))]);
-      if(i % Math.ceil(dias.length / 10) === 0 || d === hoje) rot += `<text x="${cx}" y="${H - 12}" class="g-eixo" text-anchor="middle">${d.slice(8)}/${d.slice(5, 7)}</text>`;
+      const mats = ordem.filter(sl => (porDia[d] || {})[sl]), n = mats.length, x0 = L + slot * i, w = Math.min(22, (slot - 8) / Math.max(1, n)), tot = w * n, ini2 = x0 + (slot - tot) / 2;
+      mats.forEach((sl, j) => { const m = porDia[d][sl]; barras += `<rect x="${ini2 + j * w}" y="${y(m.n)}" width="${Math.max(2, w - 1)}" height="${T + ih - y(m.n)}" fill="${cor(sl)}"><title>${d.split('-').reverse().slice(0, 2).join('/')} · ${esc(nomeDe(sl))}: ${m.n} marcados/respondidos · ${m.ok} certos (${Math.round(100 * m.ok / m.n)}%)</title></rect>`; });
+      if(i % Math.ceil(dias.length / Math.max(1, Math.floor((W - L) / 56))) === 0 || d === hoje) rot += `<text x="${x0 + slot / 2}" y="${H - 12}" class="g-eixo" text-anchor="middle">${d.slice(8)}/${d.slice(5, 7)}</text>`;
     });
-    const linha = pts.length ? `<polyline points="${pts.map(p => p.join(',')).join(' ')}" class="g-linha"/>` + pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="3" class="g-pt"/>`).join('') : '';
-    grafico = `<svg class="r7-svg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Flashcards marcados e lacunas respondidas por dia">${grade}${barras}${linha}${rot}</svg>
-      <div class="r7-leg"><span><i class="lb"></i> flashcards marcados</span><span><i class="lb2"></i> lacunas respondidas</span><span><i class="ll"></i> % "já sei" + lacunas certas</span></div>`;
+    grafico = `<div class="r7-svg-wrap"><svg class="r7-svg" style="min-width:${W}px" viewBox="0 0 ${W} ${H}" role="img" aria-label="Flashcards marcados e lacunas respondidas por dia, uma barra por matéria">${grade}${barras}${rot}</svg></div>
+      <div class="r7-leg">${ordem.map(sl => `<span><i style="background:${cor(sl)}"></i> ${esc(nomeDe(sl))}</span>`).join('')}</div>`;
   }
   // por matéria: segmentos já sei / revisar / novos e certas / erradas / novas
   const seg = (a, b, c, tot, ca, cb) => `<div class="r7-seg3" title="${a} · ${b} · ${tot - a - b} novos"><i style="width:${pc(a, tot)}%;background:${ca}"></i><i style="width:${pc(b, tot)}%;background:${cb}"></i></div>`;
@@ -352,7 +385,7 @@ function reta7GraficoHtml(slugs){
     <div><small>🃏 ${e.f.ok} já sei · ${e.f.rev} revisar · ${e.f.tot - e.f.ok - e.f.rev} novos <em>(${e.f.tot})</em></small>${seg(e.f.ok, e.f.rev, 0, e.f.tot, '#2e9b57', '#c0803a')}</div>
     <div><small>🧩 ${e.l.ok} certas · ${e.l.err} erradas · ${e.l.tot - e.l.ok - e.l.err} novas <em>(${e.l.tot})</em></small>${seg(e.l.ok, e.l.err, 0, e.l.tot, '#2e9b57', '#c0392b')}</div></div>`).join('');
   return `${kpis}
-    <section class="card-reta"><h3>Atividade por dia</h3><p class="section-desc">Barras: flashcards marcados e lacunas respondidas no dia (eixo esquerdo). Linha: % de "já sei" nos cartões e de acertos nas lacunas (eixo direito).</p>${grafico}</section>
+    <section class="card-reta"><h3>Atividade por dia</h3><p class="section-desc">Uma barra por matéria em cada dia: flashcards marcados + lacunas respondidas. Passe o mouse na barra para ver os acertos.</p>${grafico}</section>
     <section class="card-reta"><h3>Situação por matéria</h3><p class="section-desc">Verde: "já sei" ou certas. Laranja: cartões para revisar. Vermelho: lacunas erradas. O resto da barra é o que ainda não foi feito. Das matérias com mais pendências para as com menos.</p><div class="r7-lts">${linhas || '<p class="section-desc">Nenhuma matéria com treino ainda.</p>'}</div></section>`;
 }
 
@@ -432,6 +465,7 @@ function reta7Anexar(raiz){
   q('[data-r7-aba]').forEach(el => el.addEventListener('click', () => { STATE.reta7Aba = el.dataset.r7Aba; render(); }));
   q('[data-r7-completo]').forEach(el => el.addEventListener('click', () => { STATE.retaModo = 'completo'; render(); }));
   q('[data-r7-voltar]').forEach(el => el.addEventListener('click', () => { STATE.retaModo = 'sete'; STATE.retaSessao = null; render(); }));
+  reta7PreencherProg(raiz);
   q('[data-r7-resumo]').forEach(el => el.addEventListener('click', () => reta7AbrirResumo(el.dataset.r7Resumo)));
   q('[data-tr-abrir]').forEach(el => el.addEventListener('click', () => { if(typeof treinoAbrir === 'function') treinoAbrir(el.dataset.trAbrir, el.dataset.trModo); }));
   q('[data-r7-iniciar]').forEach(el => el.addEventListener('click', () => {

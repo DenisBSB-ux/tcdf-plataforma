@@ -2487,3 +2487,12 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 .tr-modal .tr-quest{ font-size:calc(15px * var(--tr-zoom, 1)); }
 .tr-modal .tr-chip{ font-size:calc(14px * var(--tr-zoom, 1)); }
 .tr-modal .tr-gab{ font-size:calc(14px * var(--tr-zoom, 1)); }
+/* v526: mini barras de progresso no cartão da matéria, ✓ por assunto no resumo, gráfico por dia com uma barra por matéria */
+.r7-ac{ display:inline-flex; align-items:center; gap:6px; }
+.r7-prog{ position:relative; display:inline-flex; width:46px; height:8px; border-radius:6px; background:var(--surf2); overflow:hidden; flex:0 0 auto; }
+.r7-prog i{ display:block; height:100%; width:0; background:#2e9b57; } .r7-prog i.b{ background:#c0803a; } .r7-prog i.c{ background:#c0392b; }
+.r7-chk{ margin:0 0 10px; } .r7-chk button{ border:1px solid var(--m-bd); background:var(--m-soft); color:var(--m-ink); border-radius:999px; padding:6px 14px; font-size:13px; cursor:pointer; }
+.r7-chk button.on{ background:#2e9b57; border-color:#2e9b57; color:#fff; font-weight:700; }
+.r7-ass button.chk{ border-color:#2e9b57; }
+.r7-svg-wrap{ overflow-x:auto; } .r7-leg{ flex-wrap:wrap; }
+.r7-card .r7-acoes{ gap:10px 14px; }
