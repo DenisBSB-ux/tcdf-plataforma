@@ -140,3 +140,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v540 (13/11): treino: contador ao lado dos filtros, filtro Novos removido, botão Resetar (todas / só revisar ou erradas). Só código.
 - v541 (13/11): marcas do treino e assuntos estudados com carimbo de hora; na sincronização vale a mais recente (reset propaga entre aparelhos). Só código.
 - v542 (13/11): treino: enunciado, resposta e frase das lacunas com o mesmo tamanho de fonte. Só código.
+- v543 (13/11): flashcards: ao sair e voltar, retoma no último cartão, do jeito que estava (virado); filtros não apagam o histórico. Só código.
