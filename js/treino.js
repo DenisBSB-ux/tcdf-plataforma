@@ -165,6 +165,23 @@ function treinoFechar(){
   TR = TRS.length ? TRS[TRS.length - 1] : null;
 }
 
+// informações completas da questão (banca, cargo, ano, incidência, tendência, assunto): vêm da própria questão importada no aparelho
+function treinoInfoHtml(it){
+  let q = null;
+  try{ q = ALL_QUESTIONS.find(x => x.materia === TR.mat && Number(x.n) === Number(it.n) && _ctHash(x.q) === it.h) || ALL_QUESTIONS.find(x => x.materia === TR.mat && _ctHash(x.q) === it.h); }catch(_){}
+  let l1 = '', l2 = '';
+  if(q){
+    let bc = String(q.bc || '').replace(/\s*\/\s*/g, ' · ').replace(/\s+-\s+/g, ' · ').replace(/(?:\s*·\s*)+/g, ' · ').replace(/^\s*·\s*|\s*·\s*$/g, '').trim();
+    const p = [bc];
+    if(q.ar && bc.indexOf(String(q.ar)) < 0) p.push(q.ar);
+    if(q.nv) p.push({ alta:'Alta incidência', media:'Média incidência', baixa:'Baixa incidência' }[q.nv] || '');
+    if(q.td) p.push(String(q.td));
+    l1 = p.filter(Boolean).join(' · ');
+    if(q.tema) l2 = 'Assunto: ' + q.tema;
+  } else if(it.bq) l1 = it.bq;
+  if(!l1 && !l2) return '';
+  return '<span class="tr-info">' + (l1 ? esc(l1) : '') + (l2 ? '<br>' + esc(l2) : '') + '</span>';
+}
 function treinoChaveItem(it, tipo){ return tipo + ':' + it.n + ':' + it.h + (it.k ? ':' + it.k : ''); }
 function treinoMontarFila(){
   const d = TR.dados, slug = TR.slug;
@@ -234,8 +251,8 @@ function treinoHtmlFlash(it){
   const ref = it.ref ? `<span class="tr-ref">${esc(it.ref)}</span>` : '';
   const m = treinoMarca(TR.slug, treinoChaveItem(it, 'f'));
   const lado = TR.virado
-    ? `<div class="tr-card tr-verso${m === 'ok' ? ' tr-c-ok' : (m === 'rev' ? ' tr-c-no' : '')}" data-tr-virar="1"><span class="tr-tag">Resposta${it.k === 'troca' ? ' · troca típica' : ''}</span>${it.g ? `<p class="tr-gab ${/^ERRADO/.test(it.g) ? 'no' : 'ok'}">${esc(it.g)}</p>` : ''}<p class="tr-texto">${esc(it.v)}</p>${it.k === 'troca' && it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : (it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : '')}${ref}</div>`
-    : `<div class="tr-card tr-frente${m === 'ok' ? ' tr-c-ok' : (m === 'rev' ? ' tr-c-no' : '')}" data-tr-virar="1" tabindex="0"><span class="tr-tag">${it.k === 'troca' ? 'Corrija' : (it.k === 'questao' ? 'Questão' : 'Pergunta')}</span><p class="tr-texto${it.k === 'questao' ? ' tr-quest' : ''}">${esc(it.f)}</p><span class="tr-dica">toque ou Espaço para virar</span></div>`;
+    ? `<div class="tr-card tr-verso${m === 'ok' ? ' tr-c-ok' : (m === 'rev' ? ' tr-c-no' : '')}" data-tr-virar="1"><span class="tr-tag">Resposta${it.k === 'troca' ? ' · troca típica' : ''}</span>${treinoInfoHtml(it)}${it.g ? `<p class="tr-gab ${/^ERRADO/.test(it.g) ? 'no' : 'ok'}">${esc(it.g)}</p>` : ''}<p class="tr-texto">${esc(it.v)}</p>${it.k === 'troca' && it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : (it.x ? `<p class="tr-extra">${esc(it.x)}</p>` : '')}${ref}</div>`
+    : `<div class="tr-card tr-frente${m === 'ok' ? ' tr-c-ok' : (m === 'rev' ? ' tr-c-no' : '')}" data-tr-virar="1" tabindex="0"><span class="tr-tag">${it.k === 'troca' ? 'Corrija' : (it.k === 'questao' ? 'Questão' : 'Pergunta')}</span>${treinoInfoHtml(it)}<p class="tr-texto${it.k === 'questao' ? ' tr-quest' : ''}">${esc(it.f)}</p><span class="tr-dica">toque ou Espaço para virar</span></div>`;
   const ant = `<button class="btn tr-bt" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}><span class="tr-ic" aria-hidden="true">◀</span>Anterior</button>`;
   const prox = `<button class="btn tr-bt" data-tr-nav="1" ${(TR.i >= TR.fila.length - 1 || !m) ? 'disabled' : ''} title="${m ? '' : 'Responda com Já sei ou Revisar para avançar'}">Próxima<span class="tr-ic" aria-hidden="true">▶</span></button>`;
   const q = `<button class="btn tr-bt" data-tr-questao="${it.n}:${esc(it.h)}"><span class="tr-ic" aria-hidden="true">🔎</span>Ver a questão</button>`;
@@ -264,7 +281,7 @@ function treinoHtmlLacuna(it){
       <button class="btn tr-bt" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}><span class="tr-ic" aria-hidden="true">◀</span>Anterior</button>
       <button class="btn tr-bt" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima<span class="tr-ic" aria-hidden="true">▶</span></button>
       ${TR.checado ? `<button class="btn tr-bt" data-tr-questao="${it.n}:${esc(it.h)}"><span class="tr-ic" aria-hidden="true">🔎</span>Ver a questão</button>` : ''}`;
-  return `<div class="tr-card tr-lacuna${TR.checado ? (TR.slots.every((w, i) => w && w.w === it.p.filter(p => p.l !== undefined)[i].l) ? ' tr-c-ok' : ' tr-c-no') : ''}"><span class="tr-tag">Complete arrastando as palavras</span><p class="tr-frase">${frase}</p>
+  return `<div class="tr-card tr-lacuna${TR.checado ? (TR.slots.every((w, i) => w && w.w === it.p.filter(p => p.l !== undefined)[i].l) ? ' tr-c-ok' : ' tr-c-no') : ''}"><span class="tr-tag">Complete arrastando as palavras</span>${treinoInfoHtml(it)}<p class="tr-frase">${frase}</p>
     <div class="tr-banco" aria-label="Banco de palavras">${banco || '<span class="tr-dica">Todas as palavras foram usadas.</span>'}</div></div>${fb}<div class="tr-acoes">${acao}</div>`;
 }
 

@@ -2542,3 +2542,5 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 .tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest, .tr-modal .tr-extra, .tr-modal .tr-fb{ font-size:calc(19px * var(--tr-zoom, 1)); }
 .tr-modal .tr-chip{ font-size:calc(18px * var(--tr-zoom, 1)); }
 @media (max-width:520px){ .tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest, .tr-modal .tr-extra, .tr-modal .tr-fb{ font-size:calc(18px * var(--tr-zoom, 1)); } }
+/* v549: informações da questão (banca, cargo, ano, incidência, assunto) no cartão */
+.tr-info{ display:block; margin:0 0 12px; font-size:12.5px; line-height:1.45; color:var(--m-mut); border-left:3px solid var(--m-acc); padding-left:10px; }
