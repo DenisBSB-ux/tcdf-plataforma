@@ -153,3 +153,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v553 (13/11): aviso de cota: botão 🧹 Liberar espaço do navegador (apaga cache offline, cópias antigas redundantes e deixa 3 cópias automáticas), liberação automática antes de nova tentativa, cópias automáticas diárias 14→5, mensagem mostra as maiores chaves. Só código.
 - v554 (13/11): treino: subtítulo (✓ certas · ✗ erradas · sessão) oculto; botões tema, fechar, A−/A+, filtros e Resetar no mesmo padrão dos botões de ação. Só código.
 - v555 (13/11): treino: A−/100%/A+, tema e fechar lado a lado ao lado do título. Só código.
+- v556 (13/11): treino: informações da questão sem incidência/tendência; escala única de fontes (13,5 · 15 · 19 · 17); cargo abreviado. Só código.

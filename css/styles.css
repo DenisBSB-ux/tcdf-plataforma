@@ -2560,3 +2560,17 @@ body:not(.theme-light) .r7-modal{ --m-bg:#1d1f24; --m-card:#262930; --m-ink:#e8e
 .tr-modal .tr-ferr{ display:flex; align-items:center; gap:8px; flex:0 0 auto; margin-left:auto; }
 .tr-modal .tr-ferr .tr-zoom{ margin-left:0; display:inline-flex; gap:8px; }
 .tr-modal .tr-ferr .tr-tema, .tr-modal .tr-ferr .r7-modal-x{ position:static; float:none; margin:0; }
+/* v556: escala de fontes única do treino: 13,5 (tag e informações) · 15 (botões e filtros) · 19 (texto) · 17 (palavras do banco) */
+.tr-modal .tr-tag{ font-size:13px; letter-spacing:.08em; margin-bottom:8px; }
+.tr-modal .tr-info{ font-size:calc(13.5px * var(--tr-zoom, 1)); line-height:1.5; margin:0 0 14px; }
+.tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest{ font-size:calc(19px * var(--tr-zoom, 1)); line-height:1.65; }
+.tr-modal .tr-extra, .tr-modal .tr-fb, .tr-modal .tr-fb b{ font-size:calc(16px * var(--tr-zoom, 1)); line-height:1.55; }
+.tr-modal .tr-fb b{ font-weight:800; }
+.tr-modal .tr-chip{ font-size:calc(17px * var(--tr-zoom, 1)); padding:8px 18px; }
+.tr-modal .tr-blank{ font-size:inherit; }
+.tr-modal .tr-gab{ font-size:15px; }
+.tr-modal .tr-dica, .tr-modal .tr-ref{ font-size:13px; }
+.tr-modal .tr-topo h2{ font-size:22px; }
+.tr-modal .tr-acoes .tr-bt, .tr-modal .tr-filtros button, .tr-modal .tr-cont, .tr-modal .tr-reset > button{ font-size:15px; }
+.tr-modal .tr-zoom button{ font-size:15px; }
+@media (max-width:520px){ .tr-modal .tr-texto, .tr-modal .tr-frase, .tr-modal .tr-quest{ font-size:calc(17.5px * var(--tr-zoom, 1)); } }
