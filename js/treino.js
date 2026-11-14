@@ -258,10 +258,9 @@ function treinoHtmlFlash(it){
     : `<div class="tr-card tr-frente${m === 'ok' ? ' tr-c-ok' : (m === 'rev' ? ' tr-c-no' : '')}" data-tr-virar="1" tabindex="0"><span class="tr-tag">${it.k === 'troca' ? 'Corrija' : (it.k === 'questao' ? 'Questão' : 'Pergunta')}</span>${treinoInfoHtml(it)}<p class="tr-texto${it.k === 'questao' ? ' tr-quest' : ''}">${esc(it.f)}</p><span class="tr-dica">toque ou Espaço para virar</span></div>`;
   const ant = `<button class="btn tr-bt" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}><span class="tr-ic" aria-hidden="true">◀</span>Anterior</button>`;
   const prox = `<button class="btn tr-bt" data-tr-nav="1" ${(TR.i >= TR.fila.length - 1 || !m) ? 'disabled' : ''} title="${m ? '' : 'Responda com Já sei ou Revisar para avançar'}">Próxima<span class="tr-ic" aria-hidden="true">▶</span></button>`;
-  const q = `<button class="btn tr-bt" data-tr-questao="${it.n}:${esc(it.h)}"><span class="tr-ic" aria-hidden="true">🔎</span>Ver a questão</button>`;
   const acoes = TR.virado
-    ? `<div class="tr-acoes"><button class="btn tr-bt tr-sei${m === 'ok' ? ' on' : ''}" data-tr-marca="ok"><span class="tr-ic" aria-hidden="true">✅</span>Já sei <small>(1)</small></button><button class="btn tr-bt tr-rev${m === 'rev' ? ' on' : ''}" data-tr-marca="rev"><span class="tr-ic" aria-hidden="true">🔁</span>Revisar <small>(2)</small></button>${ant}${prox}${q}</div>`
-    : `<div class="tr-acoes"><button class="btn btn-gold tr-bt" data-tr-virar="1"><span class="tr-ic" aria-hidden="true">🔄</span>Virar</button>${ant}${prox}${q}</div>`;
+    ? `<div class="tr-acoes"><button class="btn tr-bt tr-sei${m === 'ok' ? ' on' : ''}" data-tr-marca="ok"><span class="tr-ic" aria-hidden="true">✅</span>Já sei <small>(1)</small></button><button class="btn tr-bt tr-rev${m === 'rev' ? ' on' : ''}" data-tr-marca="rev"><span class="tr-ic" aria-hidden="true">🔁</span>Revisar <small>(2)</small></button>${ant}${prox}</div>`
+    : `<div class="tr-acoes"><button class="btn btn-gold tr-bt" data-tr-virar="1"><span class="tr-ic" aria-hidden="true">🔄</span>Virar</button>${ant}${prox}</div>`;
   return lado + acoes;
 }
 function treinoHtmlLacuna(it){
