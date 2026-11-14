@@ -155,3 +155,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v555 (13/11): treino: A−/100%/A+, tema e fechar lado a lado ao lado do título. Só código.
 - v556 (13/11): treino: informações da questão sem incidência/tendência; escala única de fontes (13,5 · 15 · 19 · 17); cargo abreviado. Só código.
 - v557 (14/11): lacunas: Limpar e Trocar palavras passam para a linha de filtros; 🔀 e Resetar (com menu) para a linha de ações. Só código.
+- v558 (14/11): flashcards sem o botão 'Ver a questão' (lacunas mantêm). Só código.
