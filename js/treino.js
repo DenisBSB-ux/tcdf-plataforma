@@ -171,11 +171,9 @@ function treinoInfoHtml(it){
   try{ q = ALL_QUESTIONS.find(x => x.materia === TR.mat && Number(x.n) === Number(it.n) && _ctHash(x.q) === it.h) || ALL_QUESTIONS.find(x => x.materia === TR.mat && _ctHash(x.q) === it.h); }catch(_){}
   let l1 = '', l2 = '';
   if(q){
-    let bc = String(q.bc || '').replace(/\s*\/\s*/g, ' · ').replace(/\s+-\s+/g, ' · ').replace(/(?:\s*·\s*)+/g, ' · ').replace(/^\s*·\s*|\s*·\s*$/g, '').trim();
+    let bc = String(q.bc || '').replace(/\s*\/\s*/g, ' · ').replace(/\s+-\s+/g, ' · ').replace(/(?:\s*·\s*)+/g, ' · ').replace(/ · Área de Gestão( · Serviços Técnico-Administrativos)?/, '').replace(/^\s*·\s*|\s*·\s*$/g, '').trim();
     const p = [bc];
     if(q.ar && bc.indexOf(String(q.ar)) < 0) p.push(q.ar);
-    if(q.nv) p.push({ alta:'Alta incidência', media:'Média incidência', baixa:'Baixa incidência' }[q.nv] || '');
-    if(q.td) p.push(String(q.td));
     l1 = p.filter(Boolean).join(' · ');
     if(q.tema) l2 = 'Assunto: ' + q.tema;
   } else if(it.bq) l1 = it.bq;
