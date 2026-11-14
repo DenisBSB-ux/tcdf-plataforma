@@ -186,11 +186,13 @@ function treinoMontarFila(){
   if(TR.modo === 'flash'){
     let l = d.flash.slice();
     if(TR.filtro === 'revisar') l = l.filter(x => treinoMarca(slug, treinoChaveItem(x, 'f')) === 'rev');
+    else if(TR.filtro === 'sei') l = l.filter(x => treinoMarca(slug, treinoChaveItem(x, 'f')) === 'ok');
     else if(TR.filtro === 'novos') l = l.filter(x => !treinoMarca(slug, treinoChaveItem(x, 'f')));
     TR.fila = treinoEmbaralha(l);
   } else {
     let l = d.lacunas.slice();
     if(TR.filtro === 'erradas') l = l.filter(x => treinoMarca(slug, treinoChaveItem(x, 'l')) === 'err');
+    else if(TR.filtro === 'certas') l = l.filter(x => treinoMarca(slug, treinoChaveItem(x, 'l')) === 'ok');
     else if(TR.filtro === 'novos') l = l.filter(x => !treinoMarca(slug, treinoChaveItem(x, 'l')));
     TR.fila = treinoEmbaralha(l);
   }
@@ -232,8 +234,8 @@ function treinoDesenhar(){
   treinoGuardarLacuna(); treinoRespGravar(TR);
   const abas = '';
   const filtros = TR.modo === 'flash'
-    ? [['todos', 'Todos'], ['revisar', 'Revisar (' + nRev + ')']]
-    : [['todos', 'Todas'], ['erradas', 'Que errei (' + lErr + ')']];
+    ? [['todos', 'Todos'], ['sei', '✓ Já sei (' + nOk + ')'], ['revisar', 'Revisar (' + nRev + ')']]
+    : [['todos', 'Todas'], ['certas', '✓ Certas (' + lOk + ')'], ['erradas', 'Que errei (' + lErr + ')']];
   const chips = `<div class="tr-filtros">${filtros.map(f => `<button class="${TR.filtro === f[0] ? 'on' : ''}" data-tr-filtro="${f[0]}">${esc(f[1])}</button>`).join('')}<span class="tr-cont" aria-live="polite">${TR.fila.length ? (TR.i + 1) + ' / ' + TR.fila.length : '0'}</span>${TR.modo === 'lacunas'
       ? '<button data-tr-limpar="1" title="Limpa só as palavras desta questão"><span class="tr-ic" aria-hidden="true">🧹</span> Limpar</button><button data-tr-resetar="1" title="Embaralha as palavras de novo e apaga o resultado desta questão"><span class="tr-ic" aria-hidden="true">🔄</span> Trocar palavras</button>'
       : treinoBtnEmbaralhar('') + treinoBtnReset('')}</div>`;
