@@ -154,3 +154,4 @@ Questão sem fonte suficiente **não vira pendência para o usuário**: a base �
 - v554 (13/11): treino: subtítulo (✓ certas · ✗ erradas · sessão) oculto; botões tema, fechar, A−/A+, filtros e Resetar no mesmo padrão dos botões de ação. Só código.
 - v555 (13/11): treino: A−/100%/A+, tema e fechar lado a lado ao lado do título. Só código.
 - v556 (13/11): treino: informações da questão sem incidência/tendência; escala única de fontes (13,5 · 15 · 19 · 17); cargo abreviado. Só código.
+- v557 (14/11): lacunas: Limpar e Trocar palavras passam para a linha de filtros; 🔀 e Resetar (com menu) para a linha de ações. Só código.

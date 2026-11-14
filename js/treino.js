@@ -221,6 +221,9 @@ function treinoGuardarLacuna(){
   if(!TR || TR.modo !== 'lacunas') return; const it = TR.fila[TR.i]; if(!it) return;
   TR.mem[treinoChaveItem(it, 'l')] = { slots:TR.slots, banco:TR.banco, checado:TR.checado };
 }
+// botões 🔀 e ↺ Resetar (com o menu Todas / Só revisar·errei): ficam na linha de filtros (flashcards) ou na linha de ações (lacunas)
+function treinoBtnEmbaralhar(cls){ return `<button class="${cls}" data-tr-embaralhar="1" title="Embaralha de novo"><span class="tr-ic" aria-hidden="true">🔀</span></button>`; }
+function treinoBtnReset(cls){ return `<span class="tr-reset"><button class="${cls}" data-tr-reset-menu="1" title="Apaga as marcas para recomeçar"><span class="tr-ic" aria-hidden="true">↺</span>Resetar</button>${TR.menuReset ? `<span class="tr-reset-op"><button data-tr-reset="todas">Todas</button><button data-tr-reset="rev">${TR.modo === 'flash' ? 'Só revisar' : 'Só as que errei'}</button></span>` : ''}</span>`; }
 function treinoDesenhar(){
   const box = TR && TR.box; if(!box || !TR) return;
   const d = TR.dados, slug = TR.slug, m = treinoLer()[slug] || {};
@@ -231,7 +234,9 @@ function treinoDesenhar(){
   const filtros = TR.modo === 'flash'
     ? [['todos', 'Todos'], ['revisar', 'Revisar (' + nRev + ')']]
     : [['todos', 'Todas'], ['erradas', 'Que errei (' + lErr + ')']];
-  const chips = `<div class="tr-filtros">${filtros.map(f => `<button class="${TR.filtro === f[0] ? 'on' : ''}" data-tr-filtro="${f[0]}">${esc(f[1])}</button>`).join('')}<span class="tr-cont" aria-live="polite">${TR.fila.length ? (TR.i + 1) + ' / ' + TR.fila.length : '0'}</span><button data-tr-embaralhar="1" title="Embaralha de novo">🔀</button><span class="tr-reset"><button data-tr-reset-menu="1" title="Apaga as marcas para recomeçar">↺ Resetar</button>${TR.menuReset ? `<span class="tr-reset-op"><button data-tr-reset="todas">Todas</button><button data-tr-reset="rev">${TR.modo === 'flash' ? 'Só revisar' : 'Só as que errei'}</button></span>` : ''}</span></div>`;
+  const chips = `<div class="tr-filtros">${filtros.map(f => `<button class="${TR.filtro === f[0] ? 'on' : ''}" data-tr-filtro="${f[0]}">${esc(f[1])}</button>`).join('')}<span class="tr-cont" aria-live="polite">${TR.fila.length ? (TR.i + 1) + ' / ' + TR.fila.length : '0'}</span>${TR.modo === 'lacunas'
+      ? '<button data-tr-limpar="1" title="Limpa só as palavras desta questão"><span class="tr-ic" aria-hidden="true">🧹</span> Limpar</button><button data-tr-resetar="1" title="Embaralha as palavras de novo e apaga o resultado desta questão"><span class="tr-ic" aria-hidden="true">🔄</span> Trocar palavras</button>'
+      : treinoBtnEmbaralhar('') + treinoBtnReset('')}</div>`;
   const it = TR.fila[TR.i];
   let corpo;
   if(!it) corpo = `<p class="tr-vazio">${TR.filtro === 'todos' ? 'Nenhum item.' : 'Nada neste filtro. Escolha outro.'}</p>`;
@@ -274,8 +279,8 @@ function treinoHtmlLacuna(it){
     const resp = it.p.filter(p => p.l !== undefined).map(p => p.l);
     fb = `<div class="tr-fb ${todos ? 'ok' : 'no'}"><b>${todos ? '✓ Correto!' : '✗ Não foi dessa vez.'}</b>${todos ? '' : ' Resposta: <i>' + esc(resp.join(' · ')) + '</i>.'}${it.ref ? ' <span class="tr-ref">' + esc(it.ref) + '</span>' : ''}${it.exp ? '<p class="tr-extra">' + esc(it.exp) + '</p>' : ''}</div>`;
   }
-  const acao = `<button class="btn tr-bt" data-tr-limpar="1" title="Limpa só as palavras desta questão"><span class="tr-ic" aria-hidden="true">🧹</span>Limpar</button>
-      <button class="btn tr-bt" data-tr-resetar="1" title="Embaralha as palavras de novo e apaga o resultado desta questão"><span class="tr-ic" aria-hidden="true">🔄</span>Trocar palavras</button>
+  const acao = `${treinoBtnEmbaralhar('btn tr-bt')}
+      ${treinoBtnReset('btn tr-bt')}
       <button class="btn tr-bt" data-tr-nav="-1" ${TR.i === 0 ? 'disabled' : ''}><span class="tr-ic" aria-hidden="true">◀</span>Anterior</button>
       <button class="btn tr-bt" data-tr-nav="1" ${TR.i >= TR.fila.length - 1 ? 'disabled' : ''}>Próxima<span class="tr-ic" aria-hidden="true">▶</span></button>
       ${TR.checado ? `<button class="btn tr-bt" data-tr-questao="${it.n}:${esc(it.h)}"><span class="tr-ic" aria-hidden="true">🔎</span>Ver a questão</button>` : ''}`;
